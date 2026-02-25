@@ -386,7 +386,9 @@ Nexus Repository Community Edition (formerly "OSS") is the JFrog Artifactory equ
 - **Proxies and caches upstream registries** — npm, PyPI, Docker Hub, Maven, Helm, Go, NuGet, RubyGems, Apt, Yum, and more. Your `npm install` and `pip install` commands pull through Nexus, which caches locally. Faster builds, protection against upstream outages, and a single audit point.
 - **Hosts private packages** — internal npm modules, Python packages, or Terraform modules served with native package manager protocol.
 - **Provides a single source of truth for all binaries** — Docker images, Helm charts, npm packages, Python wheels, and Terraform providers in one place with a web UI.
-- **Controls what enters your supply chain** — configure Nexus to only serve vetted/approved packages.
+- **Provides a single audit and caching point for all upstream package traffic** — every `npm install`, `pip install`, and `docker pull` flows through one place, creating a complete record of what was fetched and when. This is an audit point, not a security boundary.
+
+  **What Nexus does NOT do by default:** Nexus Community Edition does not scan content for vulnerabilities. A compromised upstream package flows through Nexus to your build unmodified. Scanning is the responsibility of Grype and Trivy. Controlling what enters the supply chain beyond caching requires additional policy configuration: content selectors, repository blocking rules, or allowlist-only hosted repositories. The default proxy configuration described here provides visibility and caching, not content enforcement.
 
 **What Nexus does NOT do:** Vulnerability scanning. Nexus Community Edition is purely a repository manager. Scanning is handled by Grype and Trivy.
 
@@ -445,7 +447,7 @@ helm repo add nexus-proxy http://localhost:8081/repository/helm-proxy/
 
 ```bash
 NEXUS_URL="http://localhost:8081"
-NEXUS_AUTH="admin:your-password"
+NEXUS_AUTH="admin:${NEXUS_PASSWORD:-your-password}"  # Set NEXUS_PASSWORD as an environment variable
 
 # npm proxy
 curl -X POST "${NEXUS_URL}/service/rest/v1/repositories/npm/proxy" \
@@ -468,6 +470,8 @@ curl -X POST "${NEXUS_URL}/service/rest/v1/repositories/pypi/proxy" \
     "negativeCache": {"enabled": true, "timeToLive": 1440},
     "httpClient": {"blocked": false, "autoBlock": true}
   }'
+
+> **`contentMaxAge: -1` tradeoff:** Setting `contentMaxAge` to `-1` means Nexus caches package content indefinitely without rechecking the upstream registry. This improves build reproducibility (the same package version always resolves to the same cached artifact) and protects against upstream outages. The downside: if an upstream package is compromised and later patched or yanked, the compromised version persists in the Nexus cache until it is manually purged. For each repository, you can set a shorter TTL (e.g., `86400` for 24 hours) to limit this exposure window, at the cost of additional upstream traffic and reduced reproducibility. The Grype and Trivy scans in CI are the primary mechanism for detecting compromised packages that have been cached.
 
 # Docker proxy
 curl -X POST "${NEXUS_URL}/service/rest/v1/repositories/docker/proxy" \
@@ -511,6 +515,26 @@ curl -X POST "${NEXUS_URL}/service/rest/v1/repositories/helm/proxy" \
 | Conan | ✅ | ✅ | — |
 | R | ✅ | ✅ | ✅ |
 | Raw | ✅ | ✅ | ✅ |
+
+#### Group Repository Ordering and Dependency Confusion Protection
+
+When using Nexus group repositories (npm-group, pypi-group, etc.) that combine a hosted repository with a proxy repository, **repository ordering matters for dependency confusion protection**.
+
+Dependency confusion is an attack where a maliciously named package on the public registry (npmjs.org, pypi.org) shares the name of an internal package. If the proxy repository is searched before the hosted repository, the upstream attacker-controlled package wins.
+
+Always place hosted (internal) repositories **before** proxy (upstream) repositories in the group member list:
+
+```
+Correct order (internal-first):
+  Group members: [my-internal-npm-hosted, npm-proxy]
+  → A package found in the hosted repo is returned immediately; upstream is never consulted
+
+Wrong order (upstream-first):
+  Group members: [npm-proxy, my-internal-npm-hosted]
+  → An attacker who publishes a higher-version package to npmjs.org under your internal package name wins
+```
+
+Configure group member ordering in the Nexus UI: Repository → your-group-repo → Group → Members → drag hosted repositories above proxy repositories. This does not affect packages that only exist upstream; it only matters when the same name exists in both locations.
 
 ---
 
@@ -570,18 +594,48 @@ helm repo add defectdojo \
   https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/helm-charts
 helm repo update
 
+# Replace 2.x.y with the current stable release from:
+# https://github.com/DefectDojo/django-DefectDojo/releases
 helm install defectdojo defectdojo/defectdojo \
   --namespace defectdojo \
   --create-namespace \
   --set django.ingress.enabled=true \
   --set host="defectdojo.local" \
-  --set tag="latest"
+  --set tag="2.x.y"
 
 kubectl get secret defectdojo -n defectdojo \
   -o jsonpath='{.data.DD_ADMIN_PASSWORD}' | base64 -d
 
 kubectl port-forward -n defectdojo svc/defectdojo-django 8080:80
 ```
+
+#### Storing Helm Values
+
+Store the install configuration in a version-controlled file instead of passing `--set` flags inline. This makes the deployment reproducible and is required before you can run `helm upgrade` reliably.
+
+```yaml
+# defectdojo-values.yaml — commit this to your infrastructure repository
+django:
+  ingress:
+    enabled: true
+host: "defectdojo.local"
+tag: "2.x.y"  # Update this value when upgrading; check release notes first
+```
+
+Install or reinstall using the values file:
+
+```bash
+helm install defectdojo defectdojo/defectdojo \
+  --namespace defectdojo \
+  --create-namespace \
+  -f defectdojo-values.yaml
+```
+
+**Upgrade procedure:**
+1. Back up the DefectDojo PostgreSQL database before any upgrade: `kubectl exec -n defectdojo deploy/defectdojo-postgresql -- pg_dump -U defectdojo defectdojo > defectdojo-backup-$(date +%Y%m%d).sql`
+2. Review the release notes at https://github.com/DefectDojo/django-DefectDojo/releases for breaking changes or migration steps
+3. Update `tag` in `defectdojo-values.yaml` to the new version
+4. Run: `helm upgrade defectdojo defectdojo/defectdojo --namespace defectdojo -f defectdojo-values.yaml`
 
 **Or Docker Compose:**
 
@@ -593,11 +647,13 @@ docker compose up -d
 docker compose logs initializer | grep "Admin password"
 ```
 
+> **Version pinning for Docker Compose:** The default `docker-compose.yml` may reference `latest` tags. Before deploying, edit the compose file to pin the DefectDojo image to a specific version tag (e.g., `defectdojo/defectdojo-django:2.x.y`). Check https://github.com/DefectDojo/django-DefectDojo/releases for the current stable version. Commit the modified compose file to version control alongside a record of which version is deployed.
+
 **Importing scan results:**
 
 ```bash
 DD_URL="http://localhost:8080"
-DD_TOKEN="your-api-token"
+DD_TOKEN="${DEFECTDOJO_API_TOKEN:-your-api-token}"  # Set via environment variable or GitHub Actions secret
 
 # Import Semgrep
 curl -X POST "${DD_URL}/api/v2/import-scan/" \
@@ -645,7 +701,37 @@ curl -X POST "${DD_URL}/api/v2/import-scan/" \
   -F "auto_create_context=True"
 ```
 
+> **Credentials:** Never hardcode API tokens in scripts or commit them to version control. In GitHub Actions, store the token as a repository secret:
+> Settings → Secrets and variables → Actions → New repository secret
+> Name it `DEFECTDOJO_API_TOKEN`. Reference it in workflows as `${{ secrets.DEFECTDOJO_API_TOKEN }}`.
+> Retrieve your DefectDojo API token from the DefectDojo UI: Profile → API v2 Key.
+
 **What DefectDojo gives you:** Consolidated view of all findings, automatic deduplication, finding lifecycle tracking (Open → Under Review → Mitigated → Closed), trending dashboards, per-product/engagement views, SLA tracking, and JIRA integration.
+
+#### Managing Finding Volume
+
+This stack generates findings faster than a single developer can triage on first run. Independent operational analysis estimates 125–750 findings per repository across all scanners combined, depending on codebase size, IaC complexity, and how many dependencies are in use. Without a triage process, DefectDojo quickly becomes a write-only database — findings accumulate, nothing gets closed, and the tool stops informing decisions.
+
+The following practices make the stack sustainable:
+
+**Suppress pre-existing IaC findings with a Checkov baseline.** On first run, the majority of Checkov findings will be pre-existing issues unrelated to the current PR. Use the baseline workflow (documented in the Checkov section above) to snapshot the current state and focus only on new findings going forward:
+
+```bash
+# Run once in each repository to establish the baseline
+checkov -d . --create-baseline
+# Commit .checkov.baseline to the repository
+# Subsequent runs: checkov -d . --baseline .checkov.baseline
+```
+
+See the Checkov baseline workflow above for full details.
+
+**Enable DefectDojo deduplication.** DefectDojo's deduplication engine merges identical findings from multiple scanners (e.g., the same CVE reported by both Trivy and Grype). Configure it per product: DefectDojo UI → Products → select product → Edit → Deduplication algorithm → select the algorithm appropriate for your scanner combination (typically "Legacy" for general use). Without deduplication enabled, the same vulnerability appears multiple times and inflates apparent finding volume.
+
+**Filter by severity on first triage pass.** Configure DefectDojo to auto-close or suppress Info and Low severity findings initially. The first triage pass should focus exclusively on Critical and High findings. Medium findings are a second pass. Info/Low findings can be reviewed in bulk monthly or suppressed by rule if they are not actionable for this codebase. Severity auto-close rules: DefectDojo UI → System Settings → Finding Auto-Close.
+
+**Establish a weekly time-boxed triage cadence.** Rather than triaging every finding as it arrives, reserve a fixed time window each week — 30 minutes is sufficient for steady-state once the initial backlog is addressed. Review new Critical/High findings from the past week, close or accept anything that is a known false positive, and mark duplicates. This cadence prevents the triage backlog from compounding while keeping the investment predictable and sustainable.
+
+A written triage SOP — even a short checklist — is the difference between a security program and a security dashboard. Without it, DefectDojo becomes infrastructure that nobody looks at.
 
 ---
 
@@ -909,6 +995,8 @@ npm audit fix
 
 ---
 
+> **Client-Side Enforcement Limitation:** Pre-commit hooks run entirely on the developer workstation and can be bypassed with `git commit --no-verify` or `git push --no-verify`, including the Gitleaks secrets gate. The Phase 2 GitHub Actions workflow is the compensating control — Gitleaks runs again in CI against the full repository history, and Semgrep/Checkov/Grype run at the PR gate regardless of what happened locally. The only mechanism that cannot be bypassed client-side is branch protection with required CI checks: without it, the CI gate is advisory. Use pre-commit as the fast inner loop it is designed to be; rely on the CI gate and branch protection for enforcement.
+
 ## Pre-commit Configuration
 
 ```yaml
@@ -995,6 +1083,17 @@ repos:
       - id: gitleaks
 ```
 
+### Keeping Hooks Current
+
+Pinned hook versions (`rev: v8.21.2`, `rev: v0.8.4`, etc.) provide reproducibility but require active maintenance — a version pinned today accumulates unpatched bugs and missing detection rules over time. Run `pre-commit autoupdate` monthly to bump all `rev:` entries to their latest upstream tags:
+
+```bash
+pre-commit autoupdate        # updates all rev: entries in .pre-commit-config.yaml
+pre-commit run --all-files   # validate nothing broke after the update
+```
+
+Commit the resulting changes to `.pre-commit-config.yaml` as a routine maintenance commit. For GitHub Actions SHA digests, Dependabot or Renovate automates the equivalent process — configure either tool with a monthly schedule (see the SHA pinning note in the workflow file) so action versions track upstream releases without manual monitoring across 20+ components.
+
 ```bash
 pip install pre-commit --break-system-packages
 pre-commit install
@@ -1025,88 +1124,139 @@ on:
   push:
     branches: [main]
 
+# ─────────────────────────────────────────────────────────────────────────────
+# SHA PINNING NOTE
+#
+# All GitHub Actions below are pinned to immutable SHA digests rather than
+# mutable version tags (e.g. @v4, @master). Mutable tags can be silently
+# updated by the action maintainer — intentionally or after a supply-chain
+# compromise — and your workflow will execute the changed code without notice.
+# SHA pinning ensures you run exactly the code you reviewed.
+#
+# To keep SHAs current without manual tracking, enable Dependabot for
+# GitHub Actions in your repository:
+#
+#   Create .github/dependabot.yml:
+#     version: 2
+#     updates:
+#       - package-ecosystem: "github-actions"
+#         directory: "/"
+#         schedule:
+#           interval: "monthly"
+#
+# Dependabot will open PRs updating SHA digests when new versions are
+# released. Review the release notes before merging. Alternatively, Renovate
+# Bot supports the same workflow with more configuration options.
+#
+# To find the current SHA for any action, run:
+#   gh api repos/<owner>/<repo>/git/ref/tags/<version> --jq '.object.sha'
+# or visit the action's releases page and copy the "full commit SHA" shown
+# next to each release tag.
+# ─────────────────────────────────────────────────────────────────────────────
+
 jobs:
   sast:
     name: SAST — Semgrep CE
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
       - run: pip install semgrep
-      - run: semgrep scan --config auto --json --output semgrep-results.json .
-        continue-on-error: true
-      - if: always()
+      - name: Run Semgrep (JSON output for DefectDojo)
+        run: semgrep scan --config auto --error --json --output semgrep-results.json .
+      - name: Run Semgrep (SARIF output for GitHub Security tab)
+        if: always()
         run: semgrep scan --config auto --sarif --output semgrep.sarif . || true
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@<SHA>  # v3 — pin to current SHA: https://github.com/github/codeql-action/releases
         if: always()
+        continue-on-error: true
         with: { sarif_file: semgrep.sarif }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@<SHA>  # v4 — pin to current SHA: https://github.com/actions/upload-artifact/releases
         if: always()
+        continue-on-error: true
         with: { name: semgrep-results, path: semgrep-results.json }
 
   iac:
     name: IaC — Checkov
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: bridgecrewio/checkov-action@v12
+      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
+      - uses: bridgecrewio/checkov-action@<SHA>  # v12 — pin to current SHA: https://github.com/bridgecrewio/checkov-action/releases
         with:
           directory: .
           output_format: cli,json,sarif
           output_file_path: console,checkov-results.json,checkov.sarif
           quiet: true
+          soft_fail: false
+      - uses: github/codeql-action/upload-sarif@<SHA>  # v3 — pin to current SHA: https://github.com/github/codeql-action/releases
+        if: always()
         continue-on-error: true
-      - uses: github/codeql-action/upload-sarif@v3
-        if: always()
         with: { sarif_file: checkov.sarif }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@<SHA>  # v4 — pin to current SHA: https://github.com/actions/upload-artifact/releases
         if: always()
+        continue-on-error: true
         with: { name: checkov-results, path: checkov-results.json }
 
   sca:
     name: SCA — Grype
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
       - run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
             | sh -s -- -b /usr/local/bin
-      - run: grype dir:. -o json > grype-results.json
-        continue-on-error: true
-      - uses: actions/upload-artifact@v4
+      - name: Run Grype (fails on high/critical findings)
+        run: grype dir:. --fail-on high -o json > grype-results.json
+      - uses: actions/upload-artifact@<SHA>  # v4 — pin to current SHA: https://github.com/actions/upload-artifact/releases
         if: always()
+        continue-on-error: true
         with: { name: grype-results, path: grype-results.json }
 
   container:
     name: Container — Trivy
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    # Runs on both pull_request and push events so container vulnerabilities
+    # are visible to reviewers before merge, not only after.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
       - run: docker build -t app:${{ github.sha }} .
-      - uses: aquasecurity/trivy-action@master
-        with: { image-ref: 'app:${{ github.sha }}', format: json, output: trivy-results.json }
-      - uses: aquasecurity/trivy-action@master
-        with: { image-ref: 'app:${{ github.sha }}', format: sarif, output: trivy.sarif }
-      - uses: github/codeql-action/upload-sarif@v3
+      - name: Run Trivy (JSON output for DefectDojo)
+        uses: aquasecurity/trivy-action@<SHA>  # pin to current SHA: https://github.com/aquasecurity/trivy-action/releases
+        with:
+          image-ref: 'app:${{ github.sha }}'
+          format: json
+          output: trivy-results.json
+          exit-code: '1'
+          severity: 'HIGH,CRITICAL'
+      - name: Run Trivy (SARIF output for GitHub Security tab)
         if: always()
+        uses: aquasecurity/trivy-action@<SHA>  # pin to current SHA: https://github.com/aquasecurity/trivy-action/releases
+        with:
+          image-ref: 'app:${{ github.sha }}'
+          format: sarif
+          output: trivy.sarif
+      - uses: github/codeql-action/upload-sarif@<SHA>  # v3 — pin to current SHA: https://github.com/github/codeql-action/releases
+        if: always()
+        continue-on-error: true
         with: { sarif_file: trivy.sarif }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@<SHA>  # v4 — pin to current SHA: https://github.com/actions/upload-artifact/releases
         if: always()
+        continue-on-error: true
         with: { name: trivy-results, path: trivy-results.json }
 
   secrets:
     name: Secrets — Gitleaks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
         with: { fetch-depth: 0 }
       - run: |
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
             | tar xz -C /usr/local/bin gitleaks
-      - run: gitleaks detect --source . --report-path gitleaks-results.json --report-format json
-        continue-on-error: true
-      - uses: actions/upload-artifact@v4
+      - name: Run Gitleaks (fails on any secret found)
+        run: gitleaks detect --source . --report-path gitleaks-results.json --report-format json
+      - uses: actions/upload-artifact@<SHA>  # v4 — pin to current SHA: https://github.com/actions/upload-artifact/releases
         if: always()
+        continue-on-error: true
         with: { name: gitleaks-results, path: gitleaks-results.json }
 ```
 
@@ -1114,8 +1264,11 @@ jobs:
 
 ```bash
 #!/bin/bash
+# Set DEFECTDOJO_API_TOKEN as a GitHub Actions secret or export it locally:
+#   export DEFECTDOJO_API_TOKEN="your-token-here"
+# In GitHub Actions, reference it as: ${{ secrets.DEFECTDOJO_API_TOKEN }}
 DD_URL="http://localhost:8080"
-DD_TOKEN="your-token"
+DD_TOKEN="${DEFECTDOJO_API_TOKEN}"
 PRODUCT="My App"
 ENGAGEMENT="CI-$(date +%Y%m%d)"
 
@@ -1130,7 +1283,7 @@ for scan in \
     -H "Authorization: Token ${DD_TOKEN}" \
     -F "scan_type=${TYPE}" -F "file=@${FILE}" \
     -F "product_name=${PRODUCT}" -F "engagement_name=${ENGAGEMENT}" \
-    -F "auto_create_context=True" && echo "✓ ${TYPE}"
+    -F "auto_create_context=True" && echo "Imported: ${TYPE}"
 done
 ```
 
@@ -1296,6 +1449,103 @@ For **Azure DevOps** and **GitLab CI** (tertiary use, typically client repositor
 
 ---
 
+## Network Security
+
+### Kubernetes NetworkPolicies
+
+**By default, Kubernetes allows all pod-to-pod traffic across all namespaces.** A compromised pod in any application namespace can reach DefectDojo's API (read, modify, or delete all vulnerability findings), Nexus's API (upload malicious packages into the cache), SonarQube's API (disable quality rules), and Harbor's API (push malicious images). The security stack namespaces hold sensitive data and administrative surfaces — they must be isolated from application workload namespaces.
+
+The starting pattern is a **default-deny ingress** NetworkPolicy applied to each security service namespace:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: defectdojo  # apply per namespace
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+```
+
+Apply this to each namespace: `defectdojo`, `nexus`, `sonarqube`, `harbor`, `trivy-system`. Then add explicit allow rules for required traffic. For example, to permit CI runner pods to reach the DefectDojo API:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ci-runner-ingress
+  namespace: defectdojo
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: defectdojo
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ci-runners
+      ports:
+        - protocol: TCP
+          port: 80
+```
+
+**Note:** NetworkPolicies are only enforced when the cluster has a CNI plugin that supports them (e.g., Calico, Cilium, Weave Net). Clusters using the default Kubenet CNI (common in some managed K8s offerings) silently ignore NetworkPolicy objects — verify your CNI before relying on these policies for isolation.
+
+Reference: [Kubernetes NetworkPolicy documentation](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+
+### TLS / Internal Communication
+
+**All services in this stack currently communicate over plaintext HTTP.** The package manager configurations shown in this document use `insecure-registries` in the Docker daemon config and `trusted-host` in pip configuration — both of which disable certificate verification entirely for the configured host. This means:
+
+- Packages transiting between Nexus and clients can be intercepted and replaced
+- DefectDojo API tokens (used by the CI import script) are transmitted in cleartext
+- Any pod with network access can observe credentials and scan results
+
+The recommended approach is **cert-manager** for automated TLS certificate provisioning and renewal. cert-manager is free, open-source, and integrates with the Kubernetes Ingress layer.
+
+Reference: [cert-manager documentation](https://cert-manager.io/docs/)
+
+At minimum, enforce HTTPS at the **Ingress layer** for all services. Once TLS is operational:
+
+- Remove `insecure-registries` from the Docker daemon configuration on all workstations and CI runners
+- Remove `trusted-host = localhost` and `index-url = http://...` from pip configuration; replace with the HTTPS equivalent
+- Update all service URLs in package manager configs from `http://` to `https://`
+
+A full cert-manager installation guide is out of scope for this document. The upstream docs cover both self-signed certificates (sufficient for internal-only services) and Let's Encrypt issuers (suitable if services are reachable via a real DNS name).
+
+---
+
+## Monitoring the Security Stack
+
+**The security stack itself is unmonitored by default.** Tools that silently fail provide a dangerous illusion of coverage — if Trivy Operator stops scanning, Nexus goes down, or DefectDojo's import pipeline breaks, nothing alerts. Scans stop running but the dashboard continues to show the last known state as if it were current.
+
+**Minimum alerting targets:**
+
+| Condition | Risk if undetected |
+|---|---|
+| Nexus disk usage above threshold | Blob store fills; builds start failing silently as packages cannot be cached |
+| DefectDojo import failures | Scan results stop populating the dashboard; the security picture goes stale without indication |
+| Trivy Operator vulnerability database staleness | Runtime scans run against an outdated DB; new CVEs go undetected |
+| Pod `CrashLoopBackOff` in any security namespace | Service unavailable; no visibility into which tool is down or for how long |
+
+**Recommended approach:** `kube-prometheus-stack` deploys Prometheus, Grafana, and Alertmanager as a single Helm release. All three are free and open-source.
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+  --namespace monitoring --create-namespace
+```
+
+This installs cluster-wide scraping of pod metrics, a Grafana instance with pre-built Kubernetes dashboards, and Alertmanager for routing alerts to email, Slack, or PagerDuty. Nexus exposes Prometheus metrics natively on `/service/metrics/prometheus` when the Metrics capability is enabled. DefectDojo requires a sidecar or custom scrape config to surface application-level metrics.
+
+**Full monitoring setup is out of scope for this document** — the above is sufficient to get started. The security stack should be considered development-grade until alerting is active on all four conditions above. A stack that can fail silently is not a security control.
+
+---
+
 ## Implementation Phases
 
 The stack is organized into four phases. The first two phases require no infrastructure and deliver immediate value. Phases three and four build out the self-hosted K8s layer progressively.
@@ -1348,7 +1598,16 @@ pre-commit run --all-files   # baseline run — fix any existing issues before g
 - All five scanners running on Pull Requests and direct pushes to `main`
 - SARIF results appearing in the GitHub Security → Code Scanning tab
 - JSON artifacts downloadable from each workflow run
-- (Optional) Branch protection rule configured to require the workflow to pass before merge
+- Branch protection configured on the `main` branch (required — without this, the CI security gate is advisory-only and provides zero enforcement)
+
+  **Configure in GitHub:** Settings → Branches → Branch protection rules → Add rule
+  - Branch name pattern: `main`
+  - Enable: **Require a pull request before merging**
+  - Enable: **Require status checks to pass before merging** — add each security workflow job as a required check: `sast`, `iac`, `sca`, `container`, `secrets`
+  - Enable: **Do not allow bypassing the above settings**
+  - Enable: **Restrict who can push to matching branches** (block direct pushes to `main`)
+
+  Without branch protection, a developer can push directly to `main` (bypassing all PR-based scanning), and failing scanner jobs have no effect on merge eligibility. The `continue-on-error` changes described above only enforce quality gates when branch protection makes those status checks required.
 
 ```bash
 # No installation required — all tools install within the GitHub Actions runner.
@@ -1364,6 +1623,8 @@ gitleaks detect --source . --log-opts="--all" --report-format json --report-path
 ```
 
 **Validation:** Open a Pull Request that contains a deliberate IaC misconfiguration (e.g., an S3 bucket with public access enabled in Terraform). Checkov should flag it in the PR checks. Confirm results appear in the Security tab.
+
+Validate branch protection is active: attempt `git push origin main` directly from a local branch without opening a PR. GitHub should reject the push with a branch protection error. Confirm that a PR with a failing required status check cannot be merged (the merge button should be disabled or show a blocking status).
 
 ---
 
@@ -1401,17 +1662,13 @@ helm repo add defectdojo \
   https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/helm-charts
 helm repo update
 
+# Replace 2.x.y with the current stable release from:
+# https://github.com/DefectDojo/django-DefectDojo/releases
+# Use defectdojo-values.yaml (see Section 8 — DefectDojo) rather than --set flags
 helm install defectdojo defectdojo/defectdojo \
   --namespace defectdojo \
   --create-namespace \
-  --set django.ingress.enabled=true \
-  --set host="defectdojo.local" \
-  --set tag="latest"
-
-kubectl get secret defectdojo -n defectdojo \
-  -o jsonpath='{.data.DD_ADMIN_PASSWORD}' | base64 -d
-
-kubectl port-forward -n defectdojo svc/defectdojo-django 8080:80
+  -f defectdojo-values.yaml
 ```
 
 After DefectDojo is healthy, create a Product for each repository, then activate the API import script (from the DefectDojo section above) as a post-workflow step in GitHub Actions. From this point, every PR scan automatically populates the DefectDojo dashboard.
@@ -1425,6 +1682,93 @@ After DefectDojo is healthy, create a Product for each repository, then activate
 - Unified finding dashboard operational with deduplication and lifecycle tracking
 
 **Validation:** Run a full workflow against a PR. Confirm scan results appear in DefectDojo under the correct Product and Engagement. Confirm `npm install` and `pip install` show cache hits in Nexus after the first run.
+
+---
+
+### Backup Considerations
+
+The Phase 3 services are stateful. Losing their data stores does not break the scanners — CI/CD continues running — but it destroys the operational history that makes the security stack useful: vulnerability lifecycle tracking, SLA data, engagement history, and the cached package store that keeps builds fast and offline-capable.
+
+#### DefectDojo — PostgreSQL Database
+
+**DefectDojo's PostgreSQL database is the critical data store.** It holds all findings, lifecycle state (Open → Mitigated → Risk Accepted), engagement history, SLA tracking, and deduplication records. Losing it means rebuilding the entire vulnerability management history from scratch — there is no recovery path from scan artifacts alone, because lifecycle state exists only in the database.
+
+Back up with `pg_dump` targeting the PostgreSQL pod:
+
+```bash
+kubectl exec -n defectdojo deploy/defectdojo-postgresql -- \
+  pg_dump -U defectdojo defectdojo > defectdojo-backup-$(date +%Y%m%d).sql
+```
+
+Wrap this in a Kubernetes **CronJob** to run automatically, or at minimum run it manually before every `helm upgrade`. A broken upgrade with no backup leaves the service unrecoverable without a full reinstall and data loss.
+
+Restore with:
+
+```bash
+kubectl exec -i -n defectdojo deploy/defectdojo-postgresql -- \
+  psql -U defectdojo defectdojo < defectdojo-backup-YYYYMMDD.sql
+```
+
+#### Nexus — `/nexus-data` PVC
+
+**The `/nexus-data` PersistentVolumeClaim is the Nexus blob store.** It contains all packages cached from upstream registries (npm, PyPI, Docker Hub, Helm, Maven, Go modules). Losing it does not destroy any source code or findings, but it forces a full re-download of every cached package from upstream on the next build. For a project with many dependencies this is slow, expensive on metered connections, and fails entirely if any upstream registry is unavailable.
+
+Identify the PVC:
+
+```bash
+kubectl get pvc -n nexus
+```
+
+Back up using your cluster's volume snapshot capability if available:
+
+```bash
+# Example using the Kubernetes VolumeSnapshot API (requires a CSI driver with snapshot support)
+kubectl apply -f - <<EOF
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: nexus-data-snapshot-$(date +%Y%m%d)
+  namespace: nexus
+spec:
+  volumeSnapshotClassName: csi-snapshotter
+  source:
+    persistentVolumeClaimName: nexus-data
+EOF
+```
+
+If your cluster does not support VolumeSnapshots, back up by copying the PVC contents to object storage (e.g., S3) via a backup pod, or scale Nexus to zero replicas before taking a volume-level snapshot via the underlying storage provider.
+
+#### Helm Values — Version Control
+
+**The `helm install` commands shown in this document use inline `--set` flags that are not persisted anywhere.** If Nexus or DefectDojo needs to be rebuilt from scratch, the original configuration must be reconstructed from memory or documentation. This is unnecessary operational risk.
+
+Store all Helm values in version-controlled `values.yaml` files per service:
+
+```bash
+# Capture current values after initial install
+helm get values defectdojo -n defectdojo > defectdojo-values.yaml
+helm get values nexus -n nexus > nexus-values.yaml
+```
+
+Commit these files to a private infrastructure repository. Future installs and upgrades then use:
+
+```bash
+helm install defectdojo defectdojo/defectdojo \
+  --namespace defectdojo \
+  --create-namespace \
+  -f defectdojo-values.yaml
+
+helm upgrade defectdojo defectdojo/defectdojo \
+  --namespace defectdojo \
+  -f defectdojo-values.yaml
+```
+
+#### Optional Services (Harbor, SonarQube)
+
+If Harbor or SonarQube are deployed, both require backup if their data is considered durable:
+
+- **Harbor:** PostgreSQL database (project metadata, user accounts, access logs) and registry blob storage (pushed images). The PostgreSQL backup pattern is identical to DefectDojo above. Registry storage is a PVC — apply the same snapshot approach as Nexus.
+- **SonarQube:** PostgreSQL database (analysis history, quality gate results, issue lifecycle) and Elasticsearch data. Back up PostgreSQL via `pg_dump` targeting the SonarQube pod. The Elasticsearch index can be rebuilt from reanalysis if lost, but historical trending data cannot.
 
 ---
 
@@ -1484,3 +1828,128 @@ kubectl port-forward -n harbor svc/harbor-portal 8443:443
 - (Optional) SonarQube running with quality gates configured per repository
 - (Optional) Harbor serving as the container registry with scan-on-push active
 - All optional service findings feeding into DefectDojo
+
+---
+
+## Security Hardening Notes
+
+This document was updated following a three-agent independent red-team analysis conducted in February 2026. The analysis identified 15 convergent findings — issues raised independently by two or more agents from distinct analytical perspectives (attacker, operator, and architect). All 15 convergent findings are addressed in this document. The full analysis is at `red-team/00-consolidated-findings.md`.
+
+The table below maps each change to the finding it addresses and explains the rationale concisely.
+
+| Change | Addresses | Rationale |
+|--------|-----------|-----------|
+| Removed `continue-on-error: true` from scanner execution steps; added severity-based failure thresholds (`grype --fail-on high`, `semgrep --error`); retained `continue-on-error` only on SARIF and artifact upload steps | Finding #1 | Every scanner step reported "passed" regardless of findings. The CI/CD gate was entirely advisory — a workflow with 200 critical findings was indistinguishable from a clean one. |
+| Enabled container scanning on `pull_request` events (removed `if: github.event_name == 'push'` gate) | Finding #3 | Container vulnerabilities were only discovered post-merge. A Dockerfile pulling a known-vulnerable base image passed the PR gate with no scan. The PR reviewer never saw container findings before approving. |
+| Pinned all GitHub Actions to full SHA digest placeholders; added Dependabot note for automated SHA updates | Finding #11 | Semver tags (`@master`, `@v4`) are mutable — an upstream maintainer or a compromised repository can change what those tags point to. A tampered action executes with access to source code, repository secrets, and the DefectDojo API token. SHA pinning is the only immutable reference. |
+| Promoted branch protection to a required Phase 2 deliverable with explicit setup instructions; added warning that without it the CI gate has zero enforcement effect | Finding #2 | Without mandatory branch protection, developers can push directly to `main`, bypassing all PR-based scanning. The `continue-on-error` fix in Finding #1 has no enforcement effect without branch protection — a required status check is the mechanism that converts the gate from advisory to blocking. |
+| Replaced plaintext API tokens with environment variable references (`${DEFECTDOJO_API_TOKEN}`) in scripts and `${{ secrets.DEFECTDOJO_API_TOKEN }}` in workflow examples; added secrets setup instructions | Finding #14 | Plaintext tokens in reference documentation get copied verbatim into real workflows. A compromised DefectDojo API token gives an attacker read/write access to the complete vulnerability inventory — the most sensitive output of this entire stack. |
+| Pinned DefectDojo Helm installation to a specific version tag; added `defectdojo-values.yaml` example for version-controlled Helm values; added upgrade procedure note | Finding #8 | `tag="latest"` means any pod restart or `helm upgrade` can pull a new major version with breaking schema migrations. Security infrastructure must be reproducible. Uncontrolled upgrades can break the import pipeline and corrupt the findings database. |
+| Added backup guidance for DefectDojo PostgreSQL (`pg_dump` CronJob skeleton) and Nexus (`/nexus-data` PVC snapshots); documented what is lost without backup | Finding #4 | No backup means rebuilding the entire vulnerability history from scratch on any data loss event. Loss of Nexus blob storage triggers re-download of all cached packages from upstream registries — the opposite of supply chain control. |
+| Added NetworkPolicy guidance with a default-deny ingress pattern; noted each service namespace should be isolated from application namespaces | Finding #5 | Default Kubernetes allows all pod-to-pod traffic across all namespaces. A compromised application workload can reach the DefectDojo API (read, modify, or delete all findings), the Nexus API (upload malicious packages into the cache), and the Harbor API (push malicious images). |
+| Added TLS guidance recommending cert-manager for all internal services; added security warnings on `insecure-registries` and `trusted-host` directives | Finding #6 | All internal service communication was plaintext HTTP. DefectDojo API tokens, Nexus credentials, and scan results were transmitted unencrypted. The `trusted-host` pip directive and `insecure-registries` Docker directive disable certificate verification entirely — appropriate only as a temporary bootstrap measure, not a production configuration. |
+| Corrected Nexus "Controls what enters your supply chain" framing to accurately describe it as a caching proxy and single audit point; added group repository ordering guidance (hosted before proxy) to address dependency confusion risk; explained `contentMaxAge: -1` tradeoff | Finding #7 | Nexus does not scan content by default — that is handled by Grype and Trivy. Claiming supply chain control without a content policy or repository ordering is inaccurate. Dependency confusion attacks exploit group repositories where a proxy repo takes precedence over a hosted repo. |
+| Added `--no-verify` bypass warning to the pre-commit section; clarified that the CI/CD gate is the compensating server-side control; framed pre-commit as defense-in-depth, not the enforcement layer | Finding #12 | `git commit --no-verify` and `git push --no-verify` bypass all pre-commit hooks, including Gitleaks. The document acknowledged secrets risk at push but relied on client-side enforcement only. This framing is corrected: pre-commit is a convenience layer; branch protection plus required CI checks is the enforcement layer. |
+| Added version update process guidance: `pre-commit autoupdate` for hook versions, Dependabot or Renovate for GitHub Actions SHA updates, recommended monthly review cadence | Finding #10 | Pinned versions accumulate unpatched vulnerabilities in the security tools themselves and miss detection rules for newly discovered vulnerability patterns. A single developer tracking 30-40 independently versioned components without an automated update process will fall months behind within a year. |
+| Added "Managing Finding Volume" subsection in Phase 3 covering `checkov --create-baseline`, DefectDojo deduplication rules, severity-based auto-close for INFO/LOW findings, and a weekly time-boxed triage cadence | Finding #15 | First-run estimates from the red-team analysis: 125-750 findings per repository. Without a triage SOP, DefectDojo becomes a write-only database. The most likely long-term failure mode of this stack is not a tool failure — it is the developer abandoning triage because the volume is unmanageable. |
+| Added "Monitoring the Security Stack" note identifying minimum alerting targets (Nexus disk usage, DefectDojo import failures, Trivy Operator database staleness, pod CrashLoopBackOff); recommended Prometheus + Alertmanager via kube-prometheus-stack | Finding #9 | Security tools that silently fail provide a dangerous illusion of coverage. If Trivy Operator stops scanning or the DefectDojo import pipeline breaks, there is no notification. The absence of an alert looks identical to a clean environment. |
+
+---
+
+## Known Gaps and Out-of-Scope
+
+No security stack covers everything, especially under a zero-cost, single-developer-sustainability constraint. These gaps are documented so implementers can make informed risk decisions rather than assuming coverage that does not exist.
+
+### Dynamic Application Security Testing (DAST)
+
+This stack is entirely static analysis. No tool tests a running application.
+
+**What is missing:** Authentication bypass, session management flaws, business logic vulnerabilities, runtime injection paths, CORS and CSP misconfiguration, HTTP security header issues, and SSRF. These vulnerability classes are structurally invisible to any form of static analysis — they only manifest in a running system under test.
+
+**Why out of scope:** DAST requires a deployed test environment with realistic configuration. This stack makes no assumptions about deployment targets or test environment availability.
+
+**Free option for future consideration:** OWASP ZAP can run in CI in headless mode against a test deployment. When a test environment exists, adding a ZAP active scan as an additional CI job is a zero-cost extension. The `zap-baseline` scan provides a low-friction starting point.
+
+---
+
+### Runtime Application Protection (RASP / WAF)
+
+Nothing in this stack detects or blocks active exploitation of deployed vulnerabilities. Scanning finds vulnerabilities before deployment; it does not respond to attacks after deployment.
+
+**What is missing:** A web application firewall or runtime protection agent that can detect and block exploitation attempts, abnormal request patterns, and known attack payloads targeting deployed services.
+
+**Why out of scope:** WAF configuration is highly application-specific — rules must be tuned to each application's normal traffic patterns to avoid excessive false positives. The complexity is disproportionate to a single-developer practice without a dedicated security operations function.
+
+**Free options for future consideration:** ModSecurity (open-source WAF, integrates with nginx and Apache). If already on AWS, AWS WAF has a limited free tier through the standard AWS account.
+
+---
+
+### Security Logging, Monitoring, and SIEM
+
+The "Monitoring the Security Stack" section (added in response to Finding #9) covers operational health of the security tooling itself. That is not a SIEM.
+
+**What is missing:** Centralized security event logging, detection of anomalous behavior (unexpected API calls, unusual authentication patterns, privilege escalation), audit trails for security service APIs, and correlation of events across services. Falco, for example, detects container runtime anomalies that none of the static tools can surface.
+
+**Why out of scope:** A SIEM at any meaningful fidelity requires dedicated infrastructure, significant initial tuning, and ongoing rule maintenance. That is a second full-time workload, not a single-developer addition.
+
+**Free option for future consideration:** Wazuh is a self-hosted, open-source SIEM that integrates with Kubernetes and covers log analysis, file integrity monitoring, and vulnerability detection. It is a substantial deployment but requires no external accounts or licensing.
+
+---
+
+### Incident Response Procedures
+
+This document is a tooling reference. It specifies no process for responding to findings the tools surface.
+
+**What is missing:** A defined procedure for secret rotation after Gitleaks detects a committed credential, a supply chain compromise response runbook when a malicious package is found in Nexus, rollback procedures when a compromised image reaches production, SLA targets for remediating high and critical findings, and escalation paths.
+
+**Why out of scope:** Incident response is process documentation, not tooling. The appropriate output is a separate runbook document, not an addition to a tooling reference.
+
+**Note:** These procedures should be documented before treating this stack as production-grade. The tools generate the signal; without a response process, that signal goes unacted on. At minimum, define what to do when Gitleaks fires.
+
+---
+
+### Code and Image Signing / SLSA Provenance
+
+Nothing in this stack verifies that code, artifacts, or container images have not been tampered with between build and deployment.
+
+**What is missing:** Commit signing (GPG or SSH keys) to verify author identity, container image signing (Cosign or Notation) to verify that the image deployed matches the image built in CI, SLSA provenance attestations linking a deployed artifact to its source commit and build pipeline, and an admission controller (OPA Gatekeeper, Kyverno) that rejects unsigned images before they run in the cluster.
+
+**Why out of scope:** Signing infrastructure requires a key management strategy — key generation, storage, rotation, and revocation. SLSA Level 2 and above require specific CI/CD build isolation guarantees that involve significant pipeline restructuring. This is a meaningful architectural investment, not a configuration addition.
+
+**Free options for future consideration:** Sigstore/Cosign (CNCF project, free and open-source) for container image signing; GitHub's built-in commit signing for commits. Both integrate with the existing GitHub Actions and Kubernetes setup described in this document.
+
+---
+
+### Kubernetes RBAC Hardening and Pod Security
+
+The K8s deployment sections in this document focus on getting services running. No workload hardening is configured.
+
+**What is missing:** Pod Security Standards enforcement (blocking privileged containers, host network access, host path mounts), service account restrictions (default service accounts have more permissions than necessary), RBAC policies limiting who can `kubectl exec` into security tool pods, and an admission controller to enforce policies before workloads are scheduled.
+
+**Why out of scope:** RBAC and Pod Security hardening are highly cluster-specific — they require an audit of every workload currently running. Providing generic policies without that audit creates a high risk of breaking existing workloads. This is not addressable in a generic reference document.
+
+**Free options for future consideration:** Kyverno (CNCF project, open-source) for policy-as-code enforcement. Pod Security Admission is built into Kubernetes 1.25+ and requires no additional tooling — it enforces the three Pod Security Standard profiles (privileged, baseline, restricted) at the namespace level.
+
+---
+
+### Cross-File Dataflow SAST
+
+Semgrep Community Edition performs intra-file pattern matching. It does not trace data across function or file boundaries.
+
+**What is missing:** Most real-world injection vulnerabilities involve data that enters at one boundary (an HTTP request handler), passes through several functions across multiple files, and reaches a sink (a database query, a shell command, an HTML render) somewhere else entirely. These multi-hop taint flows are structurally invisible to CE pattern matching. Semgrep CE will not detect SQL injection where the user input is validated in one file and used unsanitized in another.
+
+**Why out of scope:** Cross-file dataflow analysis requires Semgrep Pro (commercial) or CodeQL. Both require either a paid license or a specific repository configuration.
+
+**Note:** GitHub's native CodeQL scanning is free for public repositories. For private repositories it requires GitHub Advanced Security, which is a paid feature. CodeQL provides deep cross-file dataflow analysis for Python, JavaScript, TypeScript, Go, Java, and C/C++. If repositories ever become public, enabling the default CodeQL workflow is a zero-cost upgrade to this stack's SAST coverage.
+
+---
+
+### License Compliance Scanning
+
+Syft generates SBOMs containing license metadata for every dependency. No tool in this stack evaluates whether those licenses are compatible with each other or with the project's intended distribution.
+
+**What is missing:** Detection of GPL or AGPL licensed dependencies in projects that cannot satisfy copyleft requirements, flagging of dual-licensed packages where the open-source version has usage restrictions, and policy enforcement that blocks dependencies with prohibited license types from entering the stack.
+
+**Why out of scope:** License compliance policy is organization-specific — the same dependency may be acceptable in one context and prohibited in another. Configuring a license scanner without a defined policy produces noise, not signal. The tooling question is secondary to the policy question.
+
+**Free options for future consideration:** Trivy has a `--scanners license` mode that can flag licenses against a configurable allow/deny list — it is available in the existing Trivy installation but is not enabled in the CI workflow. FOSSA Community edition (free tier) provides more structured license policy management for future consideration.
