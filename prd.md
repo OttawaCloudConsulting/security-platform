@@ -349,4 +349,4 @@ Create `ADR.md` at the project root documenting decisions that changed as a resu
 | 13 | Known Gaps Section | #13 (DAST) + others |
 | 14 | ADR.md | All changed decisions |
 
-**Total convergent findings addressed: 15/15**	
+**Total convergent findings addressed: 15/15**

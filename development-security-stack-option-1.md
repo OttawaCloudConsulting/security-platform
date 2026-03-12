@@ -142,6 +142,8 @@
 | **YAML Linting** | **yamllint** | MIT | No | — |
 | **Markdown Linting** | **markdownlint-cli** | MIT | No | — |
 | **Fast npm SCA** | **npm audit** *(retained)* | — | No | — |
+| **K8s Runtime Anomaly Detection** | **Falco CE** + **FalcoSidekick** | Apache 2.0 | No | — |
+| **Image Signing / SLSA Provenance** | **Cosign** (keyless) + **slsa-github-generator** + **Kyverno** | Apache 2.0 | No | — |
 
 **Total cost: $0. Total external accounts: 0.**
 
@@ -633,7 +635,7 @@ helm install defectdojo defectdojo/defectdojo \
 
 **Upgrade procedure:**
 1. Back up the DefectDojo PostgreSQL database before any upgrade: `kubectl exec -n defectdojo deploy/defectdojo-postgresql -- pg_dump -U defectdojo defectdojo > defectdojo-backup-$(date +%Y%m%d).sql`
-2. Review the release notes at https://github.com/DefectDojo/django-DefectDojo/releases for breaking changes or migration steps
+2. Review the release notes at <https://github.com/DefectDojo/django-DefectDojo/releases> for breaking changes or migration steps
 3. Update `tag` in `defectdojo-values.yaml` to the new version
 4. Run: `helm upgrade defectdojo defectdojo/defectdojo --namespace defectdojo -f defectdojo-values.yaml`
 
@@ -647,7 +649,7 @@ docker compose up -d
 docker compose logs initializer | grep "Admin password"
 ```
 
-> **Version pinning for Docker Compose:** The default `docker-compose.yml` may reference `latest` tags. Before deploying, edit the compose file to pin the DefectDojo image to a specific version tag (e.g., `defectdojo/defectdojo-django:2.x.y`). Check https://github.com/DefectDojo/django-DefectDojo/releases for the current stable version. Commit the modified compose file to version control alongside a record of which version is deployed.
+> **Version pinning for Docker Compose:** The default `docker-compose.yml` may reference `latest` tags. Before deploying, edit the compose file to pin the DefectDojo image to a specific version tag (e.g., `defectdojo/defectdojo-django:2.x.y`). Check <https://github.com/DefectDojo/django-DefectDojo/releases> for the current stable version. Commit the modified compose file to version control alongside a record of which version is deployed.
 
 **Importing scan results:**
 
@@ -770,6 +772,301 @@ helm install trivy-operator aqua/trivy-operator \
   --namespace trivy-system --create-namespace
 
 kubectl get vulnerabilityreports -A
+```
+
+### 11. Falco CE + FalcoSidekick — Kubernetes Runtime Anomaly Detection
+
+Falco is a CNCF Graduated kernel-level runtime security tool. It uses eBPF (or kernel module) syscall interception and the Kubernetes audit log plugin to detect anomalous behavior that static scanning cannot surface: unexpected processes spawning inside containers, privilege escalation attempts, container escapes, unexpected outbound connections from security namespaces, and `kubectl exec` access to sensitive pods.
+
+**What Falco detects that static tools miss:**
+- A compromised application container executing `/bin/sh` or running `curl` to exfiltrate data
+- A process inside DefectDojo or Nexus spawning an unexpected child process (indicates post-exploitation)
+- `kubectl exec` into any pod in the `defectdojo`, `nexus`, or `falco-system` namespaces
+- Privilege escalation via `setuid` binaries or capability abuse inside containers
+- File writes to read-only container filesystems
+
+**Install Falco with FalcoSidekick (alert routing):**
+
+```bash
+helm repo add falco https://falcosecurity.github.io/charts
+helm repo update
+
+# falco-values.yaml — version-control this file
+cat > falco-values.yaml <<'EOF'
+driver:
+  kind: ebpf  # preferred; falls back to kernel module if eBPF unavailable
+
+falcosidekick:
+  enabled: true
+  config:
+    slack:
+      webhookurl: ""          # Set to your Slack incoming webhook URL, or leave blank
+    webhook:
+      address: ""             # Generic webhook endpoint (e.g. Alertmanager)
+  webui:
+    enabled: true             # FalcoSidekick web UI at port 2802
+
+customRules:
+  custom-stack-rules.yaml: |-
+    # Shell spawned inside a security-stack pod
+    - rule: Shell Spawned in Security Namespace Pod
+      desc: A shell was spawned inside a pod running in a security-sensitive namespace
+      condition: >
+        spawned_process and
+        container and
+        proc.name in (shell_binaries) and
+        k8s.ns.name in (defectdojo, nexus, falco-system, kyverno, trivy-system)
+      output: >
+        Shell spawned in security namespace (user=%user.name pod=%k8s.pod.name
+        ns=%k8s.ns.name image=%container.image.repository:%container.image.tag
+        cmd=%proc.cmdline)
+      priority: WARNING
+      tags: [security-stack, shell]
+
+    # Unexpected exec into a security namespace pod via kubectl
+    - rule: kubectl exec into Security Namespace
+      desc: kubectl exec was used to access a pod in a security-sensitive namespace
+      condition: >
+        ka.verb=create and
+        ka.target.resource=pods/exec and
+        ka.target.namespace in (defectdojo, nexus, falco-system, kyverno, trivy-system)
+      output: >
+        kubectl exec into security namespace (user=%ka.user.name pod=%ka.target.name
+        ns=%ka.target.namespace uri=%ka.uri)
+      priority: WARNING
+      source: k8s_audit
+      tags: [security-stack, kubectl-exec]
+
+    # Outbound network connection from a security namespace pod
+    - rule: Unexpected Outbound Connection from Security Namespace
+      desc: A security-stack pod made an unexpected outbound network connection
+      condition: >
+        outbound and
+        container and
+        k8s.ns.name in (defectdojo, nexus) and
+        not fd.sip.name in (allowed_outbound_destinations_map)
+      output: >
+        Unexpected outbound connection (pod=%k8s.pod.name ns=%k8s.ns.name
+        dst=%fd.rip:%fd.rport image=%container.image.repository)
+      priority: WARNING
+      tags: [security-stack, network]
+
+    # Write to /etc inside any container (common post-exploitation step)
+    - rule: Write to /etc in Container
+      desc: A process wrote to /etc inside a container — unusual in immutable images
+      condition: >
+        open_write and
+        container and
+        fd.name startswith /etc
+      output: >
+        Write to /etc in container (pod=%k8s.pod.name ns=%k8s.ns.name
+        file=%fd.name user=%user.name cmd=%proc.cmdline)
+      priority: WARNING
+      tags: [security-stack, filesystem]
+EOF
+
+helm install falco falco/falco \
+  --namespace falco-system \
+  --create-namespace \
+  -f falco-values.yaml
+```
+
+**Enable Kubernetes audit log plugin** (required for the `kubectl exec` rule):
+
+The Kubernetes audit log plugin sends API server audit events to Falco. Configuration is cluster-specific — consult your cluster provider's documentation for enabling audit log webhooks. For kubeadm clusters, add the webhook configuration to the kube-apiserver manifest.
+
+**Verify Falco is running:**
+
+```bash
+kubectl get pods -n falco-system
+kubectl logs -n falco-system -l app.kubernetes.io/name=falco --tail=50
+
+# Trigger a test alert — exec into a non-security pod to confirm rules fire
+kubectl run test-pod --image=alpine --restart=Never -- sleep 60
+kubectl exec test-pod -- ls /etc
+# → Should appear in Falco logs as a write/exec event
+
+# FalcoSidekick web UI (port-forward to view alert dashboard)
+kubectl port-forward -n falco-system svc/falco-falcosidekick-ui 2802:2802
+# → Open http://localhost:2802
+```
+
+---
+
+### 12. Cosign (Keyless) + SLSA Provenance + Kyverno — Image Signing and Admission Control
+
+This section implements the full artifact integrity chain:
+1. **Cosign keyless signing** — images are signed in CI using the GitHub Actions OIDC token. No private keys are stored or managed. The signing identity is the GitHub Actions workflow URL.
+2. **SLSA Level 2 provenance** — `slsa-github-generator` produces a signed provenance attestation linking each image to a specific commit, repository, and CI build. If an image is built outside the CI pipeline, the attestation will be missing.
+3. **Kyverno admission control** — a ClusterPolicy requires all pods to use images with a valid Cosign attestation matching the GitHub Actions OIDC issuer. Unsigned images are rejected before they run.
+
+**Why keyless?** Keyless Cosign signing (Sigstore Fulcio CA + Rekor transparency log) requires no GPG key generation, no key rotation schedule, and no key storage infrastructure. The signing credential is the ephemeral GitHub OIDC token — valid for the duration of the job, cryptographically bound to the workflow identity.
+
+#### GitHub Actions `sign` Job
+
+Add this job to `.github/workflows/security.yml` after the `container` job:
+
+```yaml
+  sign:
+    name: Sign — Cosign Keyless + SLSA Provenance
+    needs: [container]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write       # Required for keyless Cosign OIDC signing
+      packages: write       # Required if pushing to GHCR or another registry
+      actions: read         # Required by slsa-github-generator
+    steps:
+      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@<SHA>  # pin to current SHA: https://github.com/sigstore/cosign-installer/releases
+
+      - name: Log in to registry
+        run: |
+          echo "${{ secrets.REGISTRY_PASSWORD }}" | \
+            docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and push image
+        id: build
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}:${{ github.sha }}"
+          docker build -t "${IMAGE}" .
+          docker push "${IMAGE}"
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE}" | cut -d@ -f2)
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Sign image with Cosign (keyless — uses GitHub OIDC)
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          cosign sign --yes \
+            --rekor-url https://rekor.sigstore.dev \
+            "${IMAGE}@${DIGEST}"
+
+      - name: Generate SLSA provenance
+        uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@<SHA>
+        # pin to current SHA: https://github.com/slsa-framework/slsa-github-generator/releases
+        with:
+          image: ${{ steps.build.outputs.image }}
+          digest: ${{ steps.build.outputs.digest }}
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+```
+
+**Verification commands:**
+
+```bash
+# Verify image signature (keyless — GitHub OIDC issuer)
+cosign verify \
+  --certificate-identity-regexp "https://github.com/<org>/<repo>/\.github/workflows/security\.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  ghcr.io/<org>/<repo>:<sha>
+
+# Verify SLSA provenance attestation
+cosign verify-attestation \
+  --type slsaprovenance \
+  --certificate-identity-regexp "https://github.com/slsa-framework/slsa-github-generator/\.github/workflows/.*@refs/tags/v.*" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  ghcr.io/<org>/<repo>:<sha>
+```
+
+#### Kyverno Admission Controller
+
+Kyverno enforces image signing as a Kubernetes admission policy. Unsigned images are rejected before scheduling.
+
+```bash
+helm repo add kyverno https://kyverno.github.io/kyverno/
+helm repo update
+
+# kyverno-values.yaml — version-control this file
+cat > kyverno-values.yaml <<'EOF'
+replicaCount: 1            # Increase to 3 for production HA
+EOF
+
+helm install kyverno kyverno/kyverno \
+  --namespace kyverno \
+  --create-namespace \
+  -f kyverno-values.yaml
+```
+
+**ClusterPolicy — require signed images in production namespaces:**
+
+```yaml
+# kyverno-require-signed-images.yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-signed-images
+  annotations:
+    policies.kyverno.io/title: Require Cosign Signed Images
+    policies.kyverno.io/description: >
+      All container images must be signed with Cosign using the GitHub Actions
+      OIDC keyless signing workflow. Unsigned images are blocked before scheduling.
+spec:
+  validationFailureAction: Enforce  # Block unsigned images (use Audit during rollout)
+  background: false
+  rules:
+    - name: check-image-signature
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces:
+                - production
+                - staging
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/<org>/*"
+          attestors:
+            - count: 1
+              entries:
+                - keyless:
+                    subject: "https://github.com/<org>/<repo>/.github/workflows/security.yml@refs/heads/main"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev
+```
+
+```bash
+# Apply the policy
+kubectl apply -f kyverno-require-signed-images.yaml
+
+# Verify Kyverno is running
+kubectl get pods -n kyverno
+
+# Test enforcement — attempt to deploy an unsigned image (should be rejected)
+kubectl run unsigned-test --image=alpine:latest -n production
+# → Expected: admission webhook denied — image not signed
+
+# Test with a signed image — should be admitted
+kubectl run signed-test \
+  --image=ghcr.io/<org>/<repo>:<signed-sha> \
+  -n production
+```
+
+**Rollout recommendation:** Deploy Kyverno with `validationFailureAction: Audit` first. Audit mode logs policy violations without blocking. Review the audit findings (`kubectl get policyreport -A`) to confirm only expected images are in use before switching to `Enforce`.
+
+#### Optional: Commit Signing (Git Level)
+
+For commit-level integrity, configure Git to sign commits using an SSH key (simpler than GPG):
+
+```bash
+# Generate a dedicated signing key (separate from your authentication key)
+ssh-keygen -t ed25519 -C "commit-signing-key" -f ~/.ssh/signing_key
+
+# Configure Git to use SSH signing
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/signing_key.pub
+git config --global commit.gpgsign true
+
+# Add the public key to GitHub: Settings → SSH and GPG keys → New signing key
+# (select "Signing Key" type — not "Authentication Key")
+
+# Verify a signed commit
+git verify-commit HEAD
 ```
 
 ---
@@ -1258,6 +1555,48 @@ jobs:
         if: always()
         continue-on-error: true
         with: { name: gitleaks-results, path: gitleaks-results.json }
+
+  sign:
+    name: Sign — Cosign Keyless + SLSA Provenance
+    # Only runs after container job passes — signs the same image Trivy scanned
+    needs: [container]
+    # Only sign on push to main (not on PRs — no image was pushed)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # Required for keyless Cosign OIDC signing
+      packages: write   # Required for pushing attestation to GHCR
+      actions: read     # Required by slsa-github-generator
+    steps:
+      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@<SHA>  # pin to current SHA: https://github.com/sigstore/cosign-installer/releases
+
+      - name: Log in to registry
+        run: |
+          echo "${{ secrets.REGISTRY_PASSWORD }}" | \
+            docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and push image
+        id: build
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}:${{ github.sha }}"
+          docker build -t "${IMAGE}" .
+          docker push "${IMAGE}"
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE}" | cut -d@ -f2)
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Sign image with Cosign (keyless — uses GitHub OIDC)
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          cosign sign --yes \
+            --rekor-url https://rekor.sigstore.dev \
+            "${IMAGE}@${DIGEST}"
 ```
 
 **Import script for DefectDojo:**
@@ -1443,9 +1782,11 @@ For **Azure DevOps** and **GitLab CI** (tertiary use, typically client repositor
 | SonarQube [Optional] | `sonarqube` | `sonarqube/sonarqube` | 2 Gi | 1 core | 10 Gi |
 | Harbor [Optional] | `harbor` | `harbor/harbor` | 2 Gi | 1 core | 50 Gi+ |
 | Trivy Operator | `trivy-system` | `aqua/trivy-operator` | 512 Mi | 0.5 core | Minimal |
+| Falco + FalcoSidekick | `falco-system` | `falco/falco` | 512 Mi per node (DaemonSet) | 0.5 core per node | Minimal |
+| Kyverno | `kyverno` | `kyverno/kyverno` | 512 Mi | 0.5 core | None |
 
-**Core stack (DefectDojo + Nexus + Trivy Operator):** ~5 Gi RAM, 2.5 cores
-**Full stack with all optional services:** ~10 Gi RAM, 4.5 cores
+**Core stack (DefectDojo + Nexus + Trivy Operator + Falco + Kyverno):** ~6.5 Gi RAM, 3.5 cores (+Falco DaemonSet overhead per node)
+**Full stack with all optional services:** ~11.5 Gi RAM, 5.5 cores
 
 ---
 
@@ -1823,8 +2164,67 @@ helm install harbor harbor/harbor \
 kubectl port-forward -n harbor svc/harbor-portal 8443:443
 ```
 
+#### Falco + FalcoSidekick — Runtime Anomaly Detection
+
+Detects container runtime anomalies (unexpected process execution, privilege escalation, unusual network connections) that static scanning cannot surface. Runs as a DaemonSet on every node.
+
+```bash
+helm repo add falco https://falcosecurity.github.io/charts
+helm repo update
+
+# Create falco-values.yaml (version-control this file — see Tool Details section 11)
+helm install falco falco/falco \
+  --namespace falco-system \
+  --create-namespace \
+  -f falco-values.yaml
+
+# Verify DaemonSet is running on all nodes
+kubectl get pods -n falco-system -o wide
+
+# View live alerts
+kubectl logs -n falco-system -l app.kubernetes.io/name=falco --tail=50 -f
+
+# FalcoSidekick web UI
+kubectl port-forward -n falco-system svc/falco-falcosidekick-ui 2802:2802
+```
+
+See [Tool Details — Section 11](#11-falco-ce--falcosidekick--kubernetes-runtime-anomaly-detection) for the complete `falco-values.yaml` with custom rules targeting this stack.
+
+#### Cosign + SLSA Provenance + Kyverno — Image Signing and Admission Control
+
+Signs container images in CI using keyless Cosign (GitHub OIDC — no key management), generates SLSA Level 2 provenance attestations, and enforces admission control so only signed images can run in production namespaces.
+
+```bash
+# Install Kyverno
+helm repo add kyverno https://kyverno.github.io/kyverno/
+helm repo update
+
+helm install kyverno kyverno/kyverno \
+  --namespace kyverno \
+  --create-namespace \
+  -f kyverno-values.yaml  # see Tool Details section 12
+
+# Apply image signing policy (start in Audit mode)
+kubectl apply -f kyverno-require-signed-images.yaml
+
+# View policy audit results before enforcing
+kubectl get policyreport -A
+
+# Verify a signed image
+cosign verify \
+  --certificate-identity-regexp "https://github.com/<org>/<repo>/\.github/workflows/security\.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  ghcr.io/<org>/<repo>:<sha>
+```
+
+The `sign` job in `.github/workflows/security.yml` handles image signing automatically after the `container` job passes. See [Tool Details — Section 12](#12-cosign-keyless--slsa-provenance--kyverno--image-signing-and-admission-control) for the complete workflow job and Kyverno ClusterPolicy YAML.
+
 **Deliverables at completion:**
 - Trivy Operator actively generating VulnerabilityReports for all cluster workloads
+- Falco DaemonSet running on all nodes with custom rules for security namespace anomalies
+- FalcoSidekick routing alerts to Slack or webhook; web UI accessible
+- Cosign keyless signing running in CI `sign` job on every push to `main`
+- Kyverno ClusterPolicy requiring signed images in production/staging namespaces
 - (Optional) SonarQube running with quality gates configured per repository
 - (Optional) Harbor serving as the container registry with scan-on-push active
 - All optional service findings feeding into DefectDojo
@@ -1884,18 +2284,6 @@ Nothing in this stack detects or blocks active exploitation of deployed vulnerab
 
 ---
 
-### Security Logging, Monitoring, and SIEM
-
-The "Monitoring the Security Stack" section (added in response to Finding #9) covers operational health of the security tooling itself. That is not a SIEM.
-
-**What is missing:** Centralized security event logging, detection of anomalous behavior (unexpected API calls, unusual authentication patterns, privilege escalation), audit trails for security service APIs, and correlation of events across services. Falco, for example, detects container runtime anomalies that none of the static tools can surface.
-
-**Why out of scope:** A SIEM at any meaningful fidelity requires dedicated infrastructure, significant initial tuning, and ongoing rule maintenance. That is a second full-time workload, not a single-developer addition.
-
-**Free option for future consideration:** Wazuh is a self-hosted, open-source SIEM that integrates with Kubernetes and covers log analysis, file integrity monitoring, and vulnerability detection. It is a substantial deployment but requires no external accounts or licensing.
-
----
-
 ### Incident Response Procedures
 
 This document is a tooling reference. It specifies no process for responding to findings the tools surface.
@@ -1905,18 +2293,6 @@ This document is a tooling reference. It specifies no process for responding to 
 **Why out of scope:** Incident response is process documentation, not tooling. The appropriate output is a separate runbook document, not an addition to a tooling reference.
 
 **Note:** These procedures should be documented before treating this stack as production-grade. The tools generate the signal; without a response process, that signal goes unacted on. At minimum, define what to do when Gitleaks fires.
-
----
-
-### Code and Image Signing / SLSA Provenance
-
-Nothing in this stack verifies that code, artifacts, or container images have not been tampered with between build and deployment.
-
-**What is missing:** Commit signing (GPG or SSH keys) to verify author identity, container image signing (Cosign or Notation) to verify that the image deployed matches the image built in CI, SLSA provenance attestations linking a deployed artifact to its source commit and build pipeline, and an admission controller (OPA Gatekeeper, Kyverno) that rejects unsigned images before they run in the cluster.
-
-**Why out of scope:** Signing infrastructure requires a key management strategy — key generation, storage, rotation, and revocation. SLSA Level 2 and above require specific CI/CD build isolation guarantees that involve significant pipeline restructuring. This is a meaningful architectural investment, not a configuration addition.
-
-**Free options for future consideration:** Sigstore/Cosign (CNCF project, free and open-source) for container image signing; GitHub's built-in commit signing for commits. Both integrate with the existing GitHub Actions and Kubernetes setup described in this document.
 
 ---
 

@@ -111,3 +111,27 @@
     - Format: Status / Date / Context / Decision / Consequences
     - One record per changed decision (see prd.md Feature 14 for full list)
     NOTES:
+
+[x] Feature 15: Falco CE + FalcoSidekick — Kubernetes Runtime Anomaly Detection
+    - Added Tool Details section 11 with full Helm install and falco-values.yaml
+    - Added 4 custom Falco rules targeting this stack (shell in security pod, kubectl exec, outbound net, /etc write)
+    - Added Phase 4 deployment subsection with verification commands
+    - Added row to K8s Services Summary table; updated resource totals
+    - Added Falco row to Tool Selection Summary table
+    - Removed "Security Logging, Monitoring, and SIEM" from Known Gaps
+    - Added ADR-013
+    NOTES:
+    Addresses: Known Gap — Security Logging, Monitoring, and SIEM
+
+[x] Feature 16: Cosign Keyless + SLSA Provenance + Kyverno — Image Signing and Admission Control
+    - Added Tool Details section 12 with full Cosign, SLSA, and Kyverno setup
+    - Added sign job to GitHub Actions workflow (needs: [container], push to main only)
+    - Added Kyverno ClusterPolicy YAML (verifyImages, Audit → Enforce rollout)
+    - Added commit signing setup (Git SSH signing)
+    - Added Phase 4 deployment subsection with verification commands
+    - Added Kyverno row to K8s Services Summary table; updated resource totals
+    - Added Cosign/SLSA/Kyverno row to Tool Selection Summary table
+    - Removed "Code and Image Signing / SLSA Provenance" from Known Gaps
+    - Added ADR-014
+    NOTES:
+    Addresses: Known Gap — Code and Image Signing / SLSA Provenance

@@ -2,7 +2,19 @@
   "permissions": {
     "allow": [
       "mcp__notebooklm-mcp__notebook_create",
-      "mcp__notebooklm-mcp__source_add"
+      "mcp__notebooklm-mcp__source_add",
+      "mcp__notebooklm-mcp__notebook_list",
+      "Bash(nlm login:*)",
+      "Bash(which markdownlint-cli2:*)",
+      "Bash(markdownlint-cli2 ADR.md 2>&1)",
+      "Bash(markdownlint-cli2 \"**/*.md\" 2>&1)",
+      "Bash(markdownlint-cli2 \"**/*.md\" 2>&1 | grep -oP 'MD\\\\d+/[a-z-]+' | sort | uniq -c | sort -rn)",
+      "Bash(markdownlint-cli2 \"**/*.md\" 2>&1 | grep -oE 'MD[0-9]+/[a-z-]+' | sort | uniq -c | sort -rn)",
+      "Bash(markdownlint-cli2 \"**/*.md\" 2>&1 | grep 'MD036' | head -15)",
+      "Bash(markdownlint-cli2 \"**/*.md\" 2>&1 | grep 'MD034' | head -10)",
+      "Bash(markdownlint-cli2 \"**/*.md\" 2>&1 | grep -E 'MD029|MD025|MD018|MD010|MD009|MD001')",
+      "Bash(markdownlint-cli2 \"docs/adr/**/*.md\" 2>&1)",
+      "Bash(markdownlint-cli2 \"**/*.md\" 2>&1 | tail -20)"
     ]
   }
 }
