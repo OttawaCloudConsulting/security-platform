@@ -30,6 +30,7 @@
 **Location**: Lines 28–30, Section "Critical Rules"
 
 **Current**:
+
 ```
 - **Dual inheritance model**: Note both FedRAMP Moderate CRM (AWS P-ATO) AND generic NIST 800-53 shared responsibility. AWS maintains a FedRAMP Moderate P-ATO; the Customer Responsibility Matrix (CRM) defines which controls are inherited vs. shared. For non-FedRAMP NIST assessments, apply generic shared responsibility.
 - **USA context**: This skill applies to US-based AWS workloads subject to FISMA and FedRAMP requirements. Default AWS regions are us-east-1 and us-west-2. Flag resources deployed outside US regions when data residency is relevant. Apply CUI (Controlled Unclassified Information) data classification standards where applicable.
@@ -37,6 +38,7 @@
 ```
 
 **Replace with**:
+
 ```
 - **Dual inheritance model**: Apply both FedRAMP Moderate CRM (AWS P-ATO) and generic NIST 800-53 shared responsibility. For non-FedRAMP NIST assessments, apply generic shared responsibility only.
 - **USA context**: Applies to US-based AWS workloads. Flag resources deployed outside US regions when data residency is relevant.
@@ -52,6 +54,7 @@
 **Location**: Lines 44–51 (current position: after Critical Rules, before Phase 0). Lines 10–21 (Output table, target insertion point).
 
 **Current document order**:
+
 ```
 ## Output          ← lines 10–21
 ## Critical Rules  ← lines 23–32
@@ -61,6 +64,7 @@
 ```
 
 **Replace with this order**:
+
 ```
 ## Output
 ## Smart Re-run    ← moved here (pre-flight, before Phase 0)
@@ -80,6 +84,7 @@ Move the entire Smart Re-run section block (lines 44–51) to immediately after 
 **Location**: Lines 103–110, Section "Phase 2 — Control Mapping"
 
 **Current**:
+
 ```
 Before starting this phase, read references/nist-fedramp-controls.md for the control families and IDs to map. For every control, determine:
 
@@ -91,6 +96,7 @@ Before starting this phase, read references/nist-fedramp-controls.md for the con
 ```
 
 **Replace with**:
+
 ```
 Before starting this phase, read references/nist-fedramp-controls.md for the control families and IDs to map. Read references/phase-templates.md "Phase 2" section for required field definitions (Status, Inheritance, Evidence, Notes, FedRAMP ATO Note) and output structure.
 ```
@@ -104,11 +110,13 @@ Before starting this phase, read references/nist-fedramp-controls.md for the con
 **Location**: Line 63, end of Phase 0 section (after the Fallback paragraph). This is the natural placement since Phase 0 is where URLs are fetched and validated.
 
 **Current** (end of Phase 0):
+
 ```
 **Fallback:** If either URL is unreachable or returns unparseable content, skip validation for that source. Warn the user which source could not be verified and proceed using the cached control data in references/nist-fedramp-controls.md. Do not block the assessment.
 ```
 
 **Replace with**:
+
 ```
 **Fallback:** If either URL is unreachable or returns unparseable content, skip validation for that source. Warn the user which source could not be verified and proceed using the cached control data in references/nist-fedramp-controls.md. Do not block the assessment.
 
@@ -124,11 +132,13 @@ If official source URLs change or are uncertain, read references/official-refere
 **Location**: Line 82, Section "Phase 1.2 — Analyze Codebase"
 
 **Current**:
+
 ```
 For IaC-specific detection patterns (CDK, Terraform, CloudFormation, Crossplane), adapt scanning to the detected tech stack.
 ```
 
 **Replace with**:
+
 ```
 For IaC-specific detection patterns, read references/nist-fedramp-controls.md "IaC Detection Patterns" section if present, or apply these defaults: CDK — scan `lib/**/*.ts` for L2/L3 constructs; Terraform — scan `*.tf` for `resource` and `data` blocks; CloudFormation/SAM — scan `template.yaml` for `Properties`; Crossplane — scan `*.yaml` for `apiVersion: aws.crossplane.io`.
 ```
@@ -144,11 +154,13 @@ For IaC-specific detection patterns, read references/nist-fedramp-controls.md "I
 **Location**: Line 3, frontmatter `description` field
 
 **Current**:
+
 ```
 ... perform a NIST assessment, ...
 ```
 
 **Replace with**:
+
 ```
 ... perform a NIST 800-53 assessment, ...
 ```
@@ -162,6 +174,7 @@ For IaC-specific detection patterns, read references/nist-fedramp-controls.md "I
 **Location**: Lines 1–4, frontmatter block
 
 **Current**:
+
 ```
 ---
 name: nist-fedramp-assessment
@@ -170,6 +183,7 @@ description: Map AWS project architecture to NIST SP 800-53 Rev 5 / FedRAMP Mode
 ```
 
 **Replace with**:
+
 ```
 ---
 name: nist-fedramp-assessment
@@ -191,6 +205,7 @@ description: Map AWS project architecture to NIST SP 800-53 Rev 5 / FedRAMP Mode
 **Action**: Read the full file. If line count exceeds 100, insert a table of contents listing all control family sections (AC, AU, CA, CM, CP, IA, IR, PL, RA, SA, SC, SI) as anchor links immediately below the "Source of Truth" section.
 
 **Example format**:
+
 ```markdown
 ## Contents
 
@@ -221,6 +236,7 @@ description: Map AWS project architecture to NIST SP 800-53 Rev 5 / FedRAMP Mode
 **Action**: Read the full file. If line count exceeds 100, insert a table of contents listing all phase sections as anchor links immediately after the opening heading.
 
 **Example format**:
+
 ```markdown
 ## Contents
 

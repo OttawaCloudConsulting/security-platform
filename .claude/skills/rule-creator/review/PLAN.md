@@ -29,11 +29,13 @@
 **Location**: Line 3 / frontmatter `description` field
 
 **Current**:
+
 ```
 description: Generate new rules — always-on behavioral guidelines for Claude Code. Use when asked to create a rule, write best practices, add a new rule file, or generate coding guidelines. Walks through an interactive interview to produce a rule file and its documentation.
 ```
 
 **Replace with**:
+
 ```
 description: Generate new rules — always-on behavioral guidelines for Claude Code. Use when asked to create a rule, write best practices, add a new rule file, or generate coding guidelines. Walks through an interactive interview to produce a rule file and its documentation. Do NOT use for auditing, reviewing, or listing existing rules.
 ```
@@ -47,6 +49,7 @@ description: Generate new rules — always-on behavioral guidelines for Claude C
 **Location**: Lines 1–4 / frontmatter block
 
 **Current**:
+
 ```
 ---
 name: rule-creator
@@ -55,6 +58,7 @@ description: Generate new rules — ...
 ```
 
 **Replace with**:
+
 ```
 ---
 name: rule-creator
@@ -72,6 +76,7 @@ disable-model-invocation: true
 **Location**: Lines 70–75 / Step 4 — Generate Rule
 
 **Current**:
+
 ```
 Follow the format patterns in `references/rule-format.md` exactly:
 
@@ -84,6 +89,7 @@ Follow the format patterns in `references/rule-format.md` exactly:
 ```
 
 **Replace with**:
+
 ```
 Follow `references/rule-format.md` exactly.
 ```
@@ -97,6 +103,7 @@ Follow `references/rule-format.md` exactly.
 **Location**: Lines 83–88 / Step 5 — Generate Documentation
 
 **Current**:
+
 ```
 Follow the format patterns in `references/doc-format.md` exactly:
 
@@ -109,6 +116,7 @@ Follow the format patterns in `references/doc-format.md` exactly:
 ```
 
 **Replace with**:
+
 ```
 Follow `references/doc-format.md` exactly.
 ```
@@ -122,11 +130,13 @@ Follow `references/doc-format.md` exactly.
 **Location**: Line 36 / Step 2 — Research, bullet 2
 
 **Current**:
+
 ```
 2. If the user has a codebase with examples, use Grep to search for configuration files, naming patterns, and recurring idioms (e.g., `grep -r "pattern" src/`). Look for: repeated boilerplate, inconsistent conventions, inline TODOs about best practices, and error-handling patterns
 ```
 
 **Replace with**:
+
 ```
 2. If the user has a codebase with examples, use Grep to search for configuration files, naming patterns, and recurring idioms (e.g., `grep -r "error handling" rules/`). Look for: repeated boilerplate, inconsistent conventions, inline TODOs about best practices, and error-handling patterns
 ```
@@ -140,6 +150,7 @@ Follow `references/doc-format.md` exactly.
 **Location**: Lines 117–124 / Example section, numbered breakdown
 
 **Current**:
+
 ```
 1. **Step 1** — Skip Topic (Go) and Key concerns (error handling, naming) since the user provided them. Ask Rule type and Audience only.
 2. **Step 2** — Grep `rules/` for existing Go rules. Find none. Boundary is clear.
@@ -152,6 +163,7 @@ Follow `references/doc-format.md` exactly.
 ```
 
 **Replace with**:
+
 ```
 - **Trigger**: "Create a rule for Go best practices focused on error handling and naming."
 - **Key decisions**: Topic and concerns already provided — skip those Step 1 questions. No existing Go rules found — boundary clear. Infrastructure-type rule selected.
@@ -167,6 +179,7 @@ Follow `references/doc-format.md` exactly.
 **Location**: Lines 1–4 / frontmatter block (applied after Change 2)
 
 **Current** (after Change 2):
+
 ```
 ---
 name: rule-creator
@@ -176,6 +189,7 @@ disable-model-invocation: true
 ```
 
 **Replace with**:
+
 ```
 ---
 name: rule-creator
@@ -194,6 +208,7 @@ license: MIT
 **Location**: Lines 43–61 / Step 3 — Draft Sections
 
 **Current**:
+
 ```
 Based on the rule type, plan sections. For structural patterns, read `references/rule-format.md`.
 
@@ -220,6 +235,7 @@ Present the planned section outline to the user via AskUserQuestion: "Here's the
 ```
 
 **Replace with**:
+
 ```
 Based on the rule type, plan sections using the section-type guidance in `references/rule-format.md`.
 

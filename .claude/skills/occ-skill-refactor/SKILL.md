@@ -54,6 +54,7 @@ Ask the user directly with these options: proceed with refactor, keep as-is, def
 ### 5. Requirements gathering
 
 Ask the user the 3 questions defined in `references/refactor-protocol.md` under "Requirements Gathering":
+
 1. Which change categories to apply (multi-select: critical / should-fix / nice-to-have / specify below)
 2. Any new requirements or direction changes
 3. Refactor depth — targeted (fix selected issues only) vs full rewrite (only ask if scope is unclear)

@@ -63,11 +63,13 @@
 ## Compiled Findings
 
 ### Critical Issues
+
 (blockers — must fix before publishing)
 
 - None. The skill is functional and conventions-compliant.
 
 ### Improvements
+
 (meaningful improvements that raise quality)
 
 1. **Surface `references/anthropic-best-practices.md` in SKILL.md body** — it exists in the directory but is never named in the skill body. Add explicit when-to-read guidance (e.g., "the red-team agent reads `references/anthropic-best-practices.md`; consult it to understand the evaluation criteria").
@@ -77,6 +79,7 @@
 5. **Add `license: Apache-2.0` to frontmatter** — matches occ-skill-creator's frontmatter; missing here.
 
 ### Minor Notes
+
 (low-priority polish)
 
 - Step 3 says "Present the path to the user" without stating the canonical path inline. The Example block covers this, but stating the path (`temp/<skill-name>/refactor/review-summary.md`) directly in Step 3 would remove the need to cross-reference.

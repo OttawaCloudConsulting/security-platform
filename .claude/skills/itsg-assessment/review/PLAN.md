@@ -29,16 +29,20 @@
 
 **Location**: Line 4 (after `description`, before closing `---`)
 **Current**:
+
 ```
 description: Map project architecture to ITSG-33 ...
 ---
 ```
+
 **Replace with**:
+
 ```
 description: Map project architecture to ITSG-33 ...
 compatibility: "AWS workloads in Canadian regions (ca-central-1, ca-west-1). Requires network access for Phase 0 control validation."
 ---
 ```
+
 **Reason**: The skill has AWS-specific and network-access runtime dependencies that users in restricted environments need to know before triggering.
 
 ---
@@ -47,9 +51,11 @@ compatibility: "AWS workloads in Canadian regions (ca-central-1, ca-west-1). Req
 
 **Location**: Line 17, inside `## Important Rules`
 **Current**:
+
 ```
 - **Canadian jurisdiction**: This skill applies exclusively to ITSG-33 / CCCS Medium — not NIST FedRAMP or other frameworks.
 ```
+
 **Replace with**: *(delete this line entirely)*
 
 **Reason**: This rule fires too late to prevent mis-triggering (body loads after trigger) and too early to add value during assessment execution; the frontmatter negative trigger already covers this.
@@ -60,9 +66,11 @@ compatibility: "AWS workloads in Canadian regions (ca-central-1, ca-west-1). Req
 
 **Location**: Line 144, `## Error Handling` table
 **Current**:
+
 ```
 | Phase 0 web fetch fails | Skip validation, use cached controls, report skip reason |
 ```
+
 **Replace with**: *(delete this row)*
 
 **Reason**: The fetch-fail fallback is already documented at the point of use in Phase 0 (line 65). Duplicating it in the error table adds maintenance burden without adding value.
@@ -73,9 +81,11 @@ compatibility: "AWS workloads in Canadian regions (ca-central-1, ca-west-1). Req
 
 **Location**: Line 147, `## Error Handling` table
 **Current**:
+
 ```
 | Ambiguous control status | Mark "Partially Implemented" with notes explaining uncertainty, flag for user review at checkpoint |
 ```
+
 **Replace with**: *(delete this row)*
 
 **Reason**: This describes normal Phase 2 behavior already specified in the Phase 2 instructions — it is not an error condition and does not belong in the error table.
@@ -86,13 +96,17 @@ compatibility: "AWS workloads in Canadian regions (ca-central-1, ca-west-1). Req
 
 **Location**: Line 52, `## Smart Re-run`, step 2
 **Current**:
+
 ```
 2. If significant changes detected, re-run that phase
 ```
+
 **Replace with**:
+
 ```
 2. If changes detected (any IaC file modified since the phase output was written, or any new AWS service added to the codebase), re-run that phase
 ```
+
 **Reason**: "Significant changes" is undefined and leaves execution non-deterministic; a concrete heuristic removes ambiguity.
 
 ---
@@ -101,6 +115,7 @@ compatibility: "AWS workloads in Canadian regions (ca-central-1, ca-west-1). Req
 
 **Location**: Lines 73–79, `### 1.1 — Detect Tech Stack`
 **Current**:
+
 ```
 | Indicator | Detection |
 |---|---|
@@ -109,7 +124,9 @@ compatibility: "AWS workloads in Canadian regions (ca-central-1, ca-west-1). Req
 | **Containers** | `Dockerfile`, `docker-compose.yml` |
 | **CI/CD** | `.github/workflows/`, `buildspec.yml`, `.gitlab-ci.yml`, `Jenkinsfile` |
 ```
+
 **Replace with**:
+
 ```
 Detect the IaC framework in use — this determines search terms in Phase 1.2:
 
@@ -122,6 +139,7 @@ Detect the IaC framework in use — this determines search terms in Phase 1.2:
 
 Also note language runtime and CI/CD platform for context, but do not let them drive control mapping.
 ```
+
 **Reason**: Language and CI/CD rows list widely known indicators; only the IaC detection has non-obvious patterns (e.g., Crossplane YAML vs CloudFormation YAML) that affect control mapping behavior.
 
 ---
@@ -130,6 +148,7 @@ Also note language runtime and CI/CD platform for context, but do not let them d
 
 **Location**: Lines 84–93, `### 1.2 — Analyze Codebase`
 **Current**:
+
 ```
 | Category | What to search for |
 |---|---|
@@ -142,12 +161,15 @@ Also note language runtime and CI/CD platform for context, but do not let them d
 
 Adapt search terms to the detected IaC framework (e.g., CDK constructs vs Terraform resource types vs CloudFormation resource names).
 ```
+
 **Replace with**:
+
 ```
 Search for security-relevant patterns across these categories: IAM / Access Control, Encryption, Logging / Auditing, Network, Data Protection, Backup / Recovery.
 
 Adapt search terms to the detected IaC framework (CDK constructs, Terraform resource types, or CloudFormation resource names).
 ```
+
 **Reason**: The per-category resource name examples (iam.Role, aws_iam_*, Effect: Allow/Deny, etc.) are common knowledge; listing them adds token cost without informing behavior. Category names alone are sufficient direction.
 
 ---
@@ -159,6 +181,7 @@ Adapt search terms to the detected IaC framework (CDK constructs, Terraform reso
 The `## Example` section currently appears at lines 25–33 and `## Output` at lines 34–44. Swap their order so Output appears first.
 
 **New section order**:
+
 ```markdown
 ## Output
 
@@ -182,6 +205,7 @@ User: "Run an ITSG-33 compliance assessment on this CDK project."
 3. Phase 2 — Map each control from `references/itsg33-controls.md` against discovered architecture; classify inheritance; write `docs/compliance/phase2-control-mapping.md`; checkpoint with user
 4. Phase 3 — Produce risk-rated gap entries for unimplemented controls; write `docs/compliance/phase3-gap-analysis.md` and `docs/compliance/assessment-summary.md`
 ```
+
 **Reason**: The Output table is a reference point readers need before the example makes full sense; presenting it first gives context for what the example's phase outputs produce.
 
 ---
@@ -190,13 +214,17 @@ User: "Run an ITSG-33 compliance assessment on this CDK project."
 
 **Location**: Line 3, `description` field in frontmatter — end of the negative trigger clause
 **Current**:
+
 ```
 Do NOT use for FedRAMP, NIST CSF, SOC 2, or non-Canadian compliance frameworks.
 ```
+
 **Replace with**:
+
 ```
 Do NOT use for FedRAMP, NIST CSF, SOC 2, PBMM standalone reviews, TBS cloud profile assessments, or other non-ITSG-33 compliance frameworks.
 ```
+
 **Reason**: Adjacent Canadian frameworks (PBMM, TBS cloud) share vocabulary with ITSG-33 and create low-but-real over-trigger risk in multi-framework GC environments.
 
 ---

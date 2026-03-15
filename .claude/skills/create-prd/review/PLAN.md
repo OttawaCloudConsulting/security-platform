@@ -26,11 +26,13 @@
 **Location**: Line 3 / `description` field in YAML frontmatter
 
 **Current**:
+
 ```
 description: Create a PRD, architecture document, and progress file for a new project through guided interview. Use when starting a new project, planning a new feature, writing requirements, scoping a project, or creating project documentation from scratch.
 ```
 
 **Replace with**:
+
 ```
 description: Create a PRD, architecture document, and progress file for a new project through guided interview. Use when starting a new project, planning a new feature, writing requirements, scoping a project, or creating project documentation from scratch. Phrases like "I want to plan a new project" or "help me write requirements for" are good triggers. Do NOT use for updating an existing PRD, documenting changes to an existing system, writing a technical design doc for an in-progress change, or starting implementation.
 ```
@@ -44,6 +46,7 @@ description: Create a PRD, architecture document, and progress file for a new pr
 **Location**: Lines 71–79 / Step 3 body (the inline bullet list after "covering these areas from the interview guide:")
 
 **Current**:
+
 ```
 Use Bash (`mkdir -p docs`) to ensure `docs/` exists. Conduct a focused interview using
 `AskUserQuestion` covering these areas from the interview guide:
@@ -59,6 +62,7 @@ Use the Write tool to create `docs/ARCHITECTURE_AND_DESIGN.md`.
 ```
 
 **Replace with**:
+
 ```
 Use Bash (`mkdir -p docs`) to ensure `docs/` exists. Conduct a focused interview using
 `AskUserQuestion` covering all areas from the interview guide.
@@ -75,12 +79,14 @@ Use the Write tool to create `docs/ARCHITECTURE_AND_DESIGN.md`.
 **Location**: Lines 152–162 / `## Error Handling` section — append a new bullet after the last entry
 
 **Current** (last entry in the section):
+
 ```
 - **User wants to skip a round:** Allow it. Record the skipped round in prd.md as a comment so a
   future session can revisit it.
 ```
 
 **Add after**:
+
 ```
 - **Missing asset templates:** If any `assets/` file is absent (`prd-template.md`,
   `architecture-template.md`, `progress-template.txt`), do not silently fail. Notify the user
@@ -103,6 +109,7 @@ This change is folded into Change 1 above. The replacement text for Change 1 alr
 **Location**: Lines 89–99 / Step 4 body
 
 **Current**:
+
 ```
 Read `prd.md` and `docs/ARCHITECTURE_AND_DESIGN.md`. First verify structural consistency:
 
@@ -118,6 +125,7 @@ Then identify content to propagate back to the PRD:
 ```
 
 **Replace with**:
+
 ```
 Read `prd.md` and `docs/ARCHITECTURE_AND_DESIGN.md`. Verify structural consistency: component
 names, configuration parameter names, and feature titles must match exactly across both documents.

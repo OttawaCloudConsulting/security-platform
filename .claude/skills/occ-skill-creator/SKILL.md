@@ -132,12 +132,12 @@ For each use case, identify what reusable resources help:
 
 > **Before writing SKILL.md:** Test every script by running it. Do not document broken scripts. A script that fails during testing must be fixed before proceeding.
 
-3. Write SKILL.md:
+1. Write SKILL.md:
    - Frontmatter with clear `name` and `description` — for description field quality criteria, see `references/anthropic-best-practices.md` Frontmatter Requirements and Trigger Quality Checklist sections
    - Body with workflow guidance and references to bundled resources
    - Use imperative/infinitive form throughout
    - Verify SKILL.md stays under 500 lines; move overflow to `references/`
-4. Delete any unused directories
+2. Delete any unused directories
 
 Consult these guides based on the skill type:
 

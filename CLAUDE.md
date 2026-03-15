@@ -11,8 +11,8 @@ A **reference documentation project** (not buildable software). The primary arti
 - `red-team/` — three-agent red-team analysis and consolidated findings
 - `drafts/` — in-progress section rewrites
 - `docs/ARCHITECTURE_AND_DESIGN.md` — extracted architecture reference
-- `prd.md` — product requirements document
-- `progress.txt` — implementation tracking
+- `prd.md` — (when present) product requirements document
+- `progress.txt` — (when present) implementation tracking
 
 ## Editing Guidelines
 

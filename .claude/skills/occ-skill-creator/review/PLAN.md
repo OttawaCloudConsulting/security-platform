@@ -90,6 +90,7 @@
 **Location**: Lines 3–5 (frontmatter `description` field)
 
 **Current**:
+
 ```yaml
 description: >-
   Guide for creating effective skills. Covers the full lifecycle: creation,
@@ -97,6 +98,7 @@ description: >-
 ```
 
 **Replace with**:
+
 ```yaml
 description: >-
   Guide for creating effective skills. Use when building a new Claude skill,
@@ -114,11 +116,13 @@ description: >-
 **Location**: Line 12
 
 **Current**:
+
 ```markdown
 Create skills -- modular packages that extend Claude with specialized knowledge, workflows, and tools. Skills transform Claude from a general-purpose agent into a domain specialist equipped with procedural knowledge no model fully possesses.
 ```
 
 **Replace with**:
+
 ```markdown
 Create skills -- modular packages that extend Claude with specialized knowledge, workflows, and tools.
 ```
@@ -132,6 +136,7 @@ Create skills -- modular packages that extend Claude with specialized knowledge,
 **Location**: Lines 99–123 (Patterns 2 and 3, including their directory trees and prose)
 
 **Current**:
+
 ```markdown
 **Pattern 2: Domain-specific organization**
 
@@ -158,6 +163,7 @@ cloud-deploy/
 ```
 
 User chooses AWS -- Claude only reads `aws.md`.
+
 ```
 
 **Replace with**:
@@ -174,6 +180,7 @@ Split by domain (`finance.md`, `sales.md`) or variant (`aws.md`, `gcp.md`) when 
 **Location**: Lines 150–159 (Step 3 "Build the Skill")
 
 **Current**:
+
 ```markdown
 ### 3. Build the Skill
 
@@ -188,6 +195,7 @@ Split by domain (`finance.md`, `sales.md`) or variant (`aws.md`, `gcp.md`) when 
 ```
 
 **Replace with**:
+
 ```markdown
 ### 3. Build the Skill
 
@@ -213,6 +221,7 @@ Split by domain (`finance.md`, `sales.md`) or variant (`aws.md`, `gcp.md`) when 
 **Location**: Lines 167–171 (Step 4 "Refactor Review")
 
 **Current**:
+
 ```markdown
 ### 4. Refactor Review
 
@@ -222,6 +231,7 @@ In short: launch parallel critique and red-team agents, compile feedback, get us
 ```
 
 **Replace with**:
+
 ```markdown
 ### 4. Refactor Review
 
@@ -239,6 +249,7 @@ In short: launch parallel critique and red-team agents, compile feedback, get us
 **Location**: Lines 216–241 (Example section)
 
 **Current**:
+
 ```markdown
 ## Example
 
@@ -265,6 +276,7 @@ description: >-
 ```
 
 Body covers: reading the input PDF, selecting pages, calling `scripts/rotate.py`, verifying output. Scripts handle the deterministic rotation logic. No references needed for a focused, single-purpose skill.
+
 ```
 
 **Replace with**:
@@ -315,6 +327,7 @@ Rotate one or more pages in a PDF file.
 | Script errors "not a valid PDF" | Confirm file is not encrypted or corrupted. |
 | Wrong pages rotated | Re-confirm page range with user (1-indexed). |
 ```
+
 ```
 
 **Reason**: The current example shows only frontmatter and a one-line body summary. A reader cannot calibrate what good body content looks like from a summary. The complete example above is short, realistic, and demonstrates: Critical Constraints section, numbered workflow steps, script invocation pattern, and Troubleshooting table — all elements the skill instructs creators to include.

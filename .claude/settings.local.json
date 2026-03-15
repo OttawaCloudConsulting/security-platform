@@ -14,7 +14,21 @@
       "Bash(markdownlint-cli2 \"**/*.md\" 2>&1 | grep 'MD034' | head -10)",
       "Bash(markdownlint-cli2 \"**/*.md\" 2>&1 | grep -E 'MD029|MD025|MD018|MD010|MD009|MD001')",
       "Bash(markdownlint-cli2 \"docs/adr/**/*.md\" 2>&1)",
-      "Bash(markdownlint-cli2 \"**/*.md\" 2>&1 | tail -20)"
+      "Bash(markdownlint-cli2 \"**/*.md\" 2>&1 | tail -20)",
+      "Bash(wc -l /Users/christian/git-repos/OCC-github/development_environment/security_solution/drafts/*.md)",
+      "Read(//Users/christian/.claude/plugins/**)",
+      "Read(//Users/christian/.claude/**)",
+      "Bash(which drawio:*)",
+      "Bash(which cli-anything-drawio:*)",
+      "Read(//private/tmp/**)",
+      "Bash(cli-anything-drawio --json project new -n \"Test\" -o test_drawio.drawio)",
+      "Bash(cli-anything-drawio --json --project test_drawio.drawio shape add -l \"Server\" -t rounded -c blue)",
+      "Bash(cli-anything-drawio --json --project test_drawio.drawio shape add -l \"Database\" -t cylinder -c green -x 300 -y 100)",
+      "Bash(cli-anything-drawio --json --project test_drawio.drawio shape list)",
+      "Bash(cli-anything-drawio --json --project test_drawio.drawio project info)",
+      "Bash(grep -c 'vertex=\"1\"' /tmp/test_drawio.drawio && cli-anything-drawio --json --project /tmp/test_drawio.drawio project info)",
+      "Bash(cd /Users/christian/git-repos/drawio/agent-harness && python3 -m pytest cli_anything/drawio/tests/test_core.py -v --tb=short 2>&1)",
+      "Bash(CLI_ANYTHING_FORCE_INSTALLED=1 python3 -m pytest cli_anything/drawio/tests/test_full_e2e.py -v -s --tb=short 2>&1)"
     ]
   }
 }

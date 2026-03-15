@@ -28,6 +28,7 @@
 **Location**: Lines 1–4 (frontmatter block)
 
 **Current**:
+
 ```
 ---
 name: terraform-testing
@@ -36,6 +37,7 @@ description: Run Terraform validation, security scanning, planning, and deployme
 ```
 
 **Replace with**:
+
 ```
 ---
 name: terraform-testing
@@ -53,6 +55,7 @@ compatibility: "Requires Terraform CLI or OpenTofu (tofu) CLI. AWS credentials r
 **Location**: Lines 17–19 (Prerequisites section)
 
 **Current**:
+
 ```
 ## Prerequisites
 
@@ -60,6 +63,7 @@ Before running, ensure Terraform code is ready for validation.
 ```
 
 **Replace with**:
+
 ```
 ## Prerequisites
 
@@ -77,6 +81,7 @@ Before running, ensure Terraform code is ready for validation.
 **Location**: Lines 27–29 (Running the Script section, after the script path line)
 
 **Current**:
+
 ```
 ## Running the Script
 
@@ -84,6 +89,7 @@ The script is bundled with this skill at `.claude/skills/terraform-testing/scrip
 ```
 
 **Replace with**:
+
 ```
 ## Running the Script
 
@@ -101,6 +107,7 @@ If the script is not present at that path, the skill was likely installed withou
 **Location**: Lines 91–99 (Failure Handling section), after the existing critical step failure bullet
 
 **Current**:
+
 ```
 ## Failure Handling
 
@@ -109,6 +116,7 @@ If the script is not present at that path, the skill was likely installed withou
 ```
 
 **Replace with**:
+
 ```
 ## Failure Handling
 
@@ -126,6 +134,7 @@ If the script is not present at that path, the skill was likely installed withou
 **Location**: Lines 115–127 (Example section)
 
 **Current**:
+
 ```
 ## Example
 
@@ -137,13 +146,15 @@ User says: "test my terraform"
    bash .claude/skills/terraform-testing/scripts/test-terraform.sh
    ```
 
-2. Script executes steps 1-7 (git-secrets through terraform plan).
-3. All steps pass. Output shows plan summary: `2 to add, 0 to change, 0 to destroy`.
-4. Report results to user.
+1. Script executes steps 1-7 (git-secrets through terraform plan).
+2. All steps pass. Output shows plan summary: `2 to add, 0 to change, 0 to destroy`.
+3. Report results to user.
+
 ```
 
 **Replace with**:
 ```
+
 ## Example
 
 User says: "test my terraform"
@@ -153,6 +164,7 @@ bash .claude/skills/terraform-testing/scripts/test-terraform.sh
 ```
 
 All steps pass. Output shows plan summary: `2 to add, 0 to change, 0 to destroy`. Report results to user.
+
 ```
 
 **Reason**: Steps 1 and 4 duplicate the Workflow section; the example's unique value is showing the exact invocation and output format, which is preserved.
@@ -165,6 +177,7 @@ All steps pass. Output shows plan summary: `2 to add, 0 to change, 0 to destroy`
 
 **Current**:
 ```
+
 ## Output Format
 
 ```text
@@ -178,13 +191,16 @@ Terraform Testing: PASS
   Plan: 3 to add, 0 to change, 0 to destroy
   Apply: completed successfully
 ```
+
 ```
 
 **Replace with**:
 ```
+
 ## Output Format
 
 The script prints a per-step pass/fail summary followed by a plan summary line (`N to add, N to change, N to destroy`) and, if deployed, an apply status line.
+
 ```
 
 **Reason**: The sample output block duplicates what the script already prints at runtime; a one-line description preserves agent orientation at lower token cost.

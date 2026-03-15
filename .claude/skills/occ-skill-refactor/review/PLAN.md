@@ -29,6 +29,7 @@
 **Location**: Line 1–5 (frontmatter block)
 
 **Current**:
+
 ```
 ---
 name: occ-skill-refactor
@@ -38,6 +39,7 @@ disable-model-invocation: true
 ```
 
 **Replace with**:
+
 ```
 ---
 name: occ-skill-refactor
@@ -56,22 +58,26 @@ license: Apache-2.0
 **Location**: Lines 24, 34–35, 56 (intro reference pointer and per-step repetitions)
 
 **Current** (line 24):
+
 ```
 See `references/refactor-protocol.md` for full sub-agent prompt templates, output formats, and AskUserQuestion schemas.
 ```
 
 **Current** (lines 34–35, inside Step 2):
+
 ```
 - **Critique agent** — evaluates against internal quality standards (conciseness, degrees of freedom, progressive disclosure, structure, forbidden files). Read `references/refactor-protocol.md` for the prompt template.
 - **Red-team agent** — evaluates against `references/anthropic-best-practices.md` (naming, frontmatter, trigger quality, instruction quality, error handling, file conventions). Read `references/refactor-protocol.md` for the prompt template.
 ```
 
 **Current** (line 56, inside Step 6):
+
 ```
 Apply approved changes in-place to the skill files. Preserve sections not flagged for change in targeted refactors. Log implementation notes to `decisions.md`. Read `references/refactor-protocol.md` for the prompt template.
 ```
 
 **Replace the intro block (line 24) with**:
+
 ```
 Reference files used in this workflow:
 
@@ -80,12 +86,14 @@ Reference files used in this workflow:
 ```
 
 **Replace the Step 2 bullet lines (34–35) with**:
+
 ```
 - **Critique agent** — evaluates against internal quality standards (conciseness, degrees of freedom, progressive disclosure, structure, forbidden files).
 - **Red-team agent** — evaluates against Anthropic's official standards using `references/anthropic-best-practices.md` (naming, frontmatter, trigger quality, instruction quality, error handling, file conventions).
 ```
 
 **Replace the Step 6 body (line 56) with**:
+
 ```
 Apply approved changes in-place to the skill files. Preserve sections not flagged for change in targeted refactors. Log implementation notes to `decisions.md`.
 ```
@@ -99,11 +107,13 @@ Apply approved changes in-place to the skill files. Preserve sections not flagge
 **Location**: Line 52 (Step 5 body)
 
 **Current**:
+
 ```
 Ask the user up to 3 questions: which change categories to apply, any new requirements, refactor depth (targeted vs full rewrite). Log all answers to `temp/<skill-name>/refactor/decisions.md`.
 ```
 
 **Replace with**:
+
 ```
 Ask the user the 3 questions defined in `references/refactor-protocol.md` under "Requirements Gathering":
 1. Which change categories to apply (multi-select: critical / should-fix / nice-to-have / specify below)
@@ -122,11 +132,13 @@ Log all answers to `temp/<skill-name>/refactor/decisions.md`.
 **Location**: Line 44 (Step 3 body)
 
 **Current**:
+
 ```
 Merge both feedback files into `temp/<skill-name>/refactor/review-summary.md`. Present the path to the user and ask them to review it before proceeding.
 ```
 
 **Replace with**:
+
 ```
 Merge both feedback files into `temp/<skill-name>/refactor/review-summary.md`. Present the path `temp/<skill-name>/refactor/review-summary.md` to the user and ask them to review it before proceeding.
 ```
@@ -142,6 +154,7 @@ Merge both feedback files into `temp/<skill-name>/refactor/review-summary.md`. P
 **Location**: After line 5 (after the opening paragraph, before the first `---` separator at line 5)
 
 **Current** (lines 1–6):
+
 ```
 # Refactor Review Protocol
 
@@ -151,6 +164,7 @@ Full protocol for the Refactor Review stage. Claude follows this when executing 
 ```
 
 **Replace with**:
+
 ```
 # Refactor Review Protocol
 
@@ -182,6 +196,7 @@ Full protocol for the Refactor Review stage. Claude follows this when executing 
 **Location**: After line 5 (after the opening paragraph, before the first `---` separator)
 
 **Current** (lines 1–7):
+
 ```
 # Anthropic Skill Best Practices
 
@@ -193,6 +208,7 @@ Source: The Complete Guide to Building Skills for Claude (Anthropic, 2026)
 ```
 
 **Replace with**:
+
 ```
 # Anthropic Skill Best Practices
 

@@ -27,11 +27,13 @@ Note: Change 5 from FEEDBACK.md (moving `review/` out of the skill bundle) is a 
 **Location**: Line 3, frontmatter `description` field — end of sentence beginning "Do NOT use for..."
 
 **Current**:
+
 ```
 Do NOT use for CDK synth-only workflows, Python CDK projects, or non-CDK TypeScript testing.
 ```
 
 **Replace with**:
+
 ```
 Do NOT use for CDK synth-only workflows, Python CDK projects, non-CDK TypeScript testing, or staging/production deployments.
 ```
@@ -45,6 +47,7 @@ Do NOT use for CDK synth-only workflows, Python CDK projects, non-CDK TypeScript
 **Location**: Lines 70-72, Gate 2 section
 
 **Current**:
+
 ```
 **WARNING:** The `--require-approval never` flag bypasses CloudFormation change review. Use this only for dev/sandbox environments. For staging or production, remove the flag or set `--require-approval broadening`.
 
@@ -53,6 +56,7 @@ npx cdk deploy --all --profile dev-account --require-approval never
 ```
 
 **Replace with** (WARNING block removed; command block and pass/failure criteria unchanged):
+
 ```
 ```bash
 npx cdk deploy --all --profile dev-account --require-approval never
@@ -67,6 +71,7 @@ npx cdk deploy --all --profile dev-account --require-approval never
 **Location**: Lines 22-27, Prerequisites section
 
 **Current**:
+
 ```
 Before running, ensure:
 
@@ -77,6 +82,7 @@ Adapt the items below to your project's conventions. The defaults reference a `p
 ```
 
 **Replace with**:
+
 ```
 Before running, confirm:
 
@@ -95,12 +101,14 @@ Adapt the commit workflow references to your project's conventions. The defaults
 **Location**: Lines 107-112, Failure Handling section — insert after the first bullet
 
 **Current**:
+
 ```
 - **Critical step fails:** Script exits immediately. Fix the error and re-run.
 - **npm audit findings:** Reported as warnings. Review with `npm audit`.
 ```
 
 **Replace with**:
+
 ```
 - **Critical step fails:** Script exits immediately. Fix the error and re-run.
 - **git-secrets not installed:** Secrets scanning is skipped automatically; the pipeline continues without it. If secrets scanning is required, install git-secrets before running.
