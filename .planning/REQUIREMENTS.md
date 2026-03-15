@@ -103,36 +103,36 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PCOM-01 | — | Pending |
-| PCOM-02 | — | Pending |
-| PCOM-03 | — | Pending |
-| PCOM-04 | — | Pending |
-| LINT-01 | — | Pending |
-| LINT-02 | — | Pending |
-| LINT-03 | — | Pending |
-| LINT-04 | — | Pending |
-| LINT-05 | — | Pending |
-| LINT-06 | — | Pending |
-| LINT-07 | — | Pending |
-| LINT-08 | — | Pending |
-| LINT-09 | — | Pending |
-| SECR-01 | — | Pending |
-| SECR-02 | — | Pending |
-| SECR-03 | — | Pending |
-| TOOL-01 | — | Pending |
-| TOOL-02 | — | Pending |
-| TOOL-03 | — | Pending |
-| TOOL-04 | — | Pending |
-| TOOL-05 | — | Pending |
-| TOOL-06 | — | Pending |
-| TOOL-07 | — | Pending |
-| TOOL-08 | — | Pending |
+| PCOM-01 | Phase 1 | Pending |
+| PCOM-02 | Phase 1 | Pending |
+| PCOM-03 | Phase 1 | Pending |
+| PCOM-04 | Phase 9 | Pending |
+| LINT-01 | Phase 2 | Pending |
+| LINT-02 | Phase 2 | Pending |
+| LINT-03 | Phase 3 | Pending |
+| LINT-04 | Phase 3 | Pending |
+| LINT-05 | Phase 3 | Pending |
+| LINT-06 | Phase 3 | Pending |
+| LINT-07 | Phase 4 | Pending |
+| LINT-08 | Phase 4 | Pending |
+| LINT-09 | Phase 4 | Pending |
+| SECR-01 | Phase 5 | Pending |
+| SECR-02 | Phase 5 | Pending |
+| SECR-03 | Phase 5 | Pending |
+| TOOL-01 | Phase 6 | Pending |
+| TOOL-02 | Phase 6 | Pending |
+| TOOL-03 | Phase 6 | Pending |
+| TOOL-04 | Phase 7 | Pending |
+| TOOL-05 | Phase 7 | Pending |
+| TOOL-06 | Phase 7 | Pending |
+| TOOL-07 | Phase 8 | Pending |
+| TOOL-08 | Phase 8 | Pending |
 
 **Coverage:**
 - v1 requirements: 24 total
-- Mapped to phases: 0
-- Unmapped: 24 (pending roadmap creation)
+- Mapped to phases: 24
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after initial definition*
+*Last updated: 2026-03-15 after roadmap creation*
