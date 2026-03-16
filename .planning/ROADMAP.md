@@ -13,7 +13,7 @@ M1 delivers the developer workstation security layer: a pre-commit framework wit
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Pre-commit Framework** - Install pre-commit and create the hook configuration file (completed 2026-03-16)
-- [ ] **Phase 2: Shell and Python Hooks** - ShellCheck and Ruff linting on every commit
+- [x] **Phase 2: Shell and Python Hooks** - ShellCheck and Ruff linting on every commit (completed 2026-03-16)
 - [ ] **Phase 3: Web and Config Hooks** - ESLint, hadolint, yamllint, and markdownlint on every commit
 - [ ] **Phase 4: Infrastructure Hooks** - npm audit, terraform fmt, and terraform validate on every commit
 - [ ] **Phase 5: Secrets Detection Gate** - Gitleaks pre-push hook blocks leaked credentials
