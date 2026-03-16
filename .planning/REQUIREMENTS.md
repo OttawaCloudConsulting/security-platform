@@ -17,9 +17,9 @@
 - [x] **LINT-01**: ShellCheck hook catches unquoted variables and shell script issues on every commit
 - [x] **LINT-02**: Ruff hook auto-fixes Python formatting violations and flags linting errors on every commit
 - [ ] **LINT-03**: ESLint hook flags TypeScript/JavaScript linting issues on every commit
-- [ ] **LINT-04**: hadolint hook flags Dockerfile best practice violations on every commit
-- [ ] **LINT-05**: yamllint hook flags YAML/Kubernetes manifest formatting issues on every commit
-- [ ] **LINT-06**: markdownlint hook flags Markdown style issues on every commit
+- [x] **LINT-04**: hadolint hook flags Dockerfile best practice violations on every commit
+- [x] **LINT-05**: yamllint hook flags YAML/Kubernetes manifest formatting issues on every commit
+- [x] **LINT-06**: markdownlint hook flags Markdown style issues on every commit
 - [ ] **LINT-07**: npm audit hook runs lightweight dependency audit when package-lock.json changes
 - [ ] **LINT-08**: terraform fmt hook auto-formats HCL files on every commit
 - [ ] **LINT-09**: terraform validate hook checks HCL syntax on every commit
@@ -110,9 +110,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LINT-01 | Phase 2 | Complete |
 | LINT-02 | Phase 2 | Complete |
 | LINT-03 | Phase 3 | Pending |
-| LINT-04 | Phase 3 | Pending |
-| LINT-05 | Phase 3 | Pending |
-| LINT-06 | Phase 3 | Pending |
+| LINT-04 | Phase 3 | Complete |
+| LINT-05 | Phase 3 | Complete |
+| LINT-06 | Phase 3 | Complete |
 | LINT-07 | Phase 4 | Pending |
 | LINT-08 | Phase 4 | Pending |
 | LINT-09 | Phase 4 | Pending |
