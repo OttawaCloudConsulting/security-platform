@@ -1,0 +1,3 @@
+# .gitleaksignore — Gitleaks false positive suppressions
+# Format: filepath:rule-id:line-number (fingerprint from gitleaks JSON output)
+# Add entries from `gitleaks detect --source . --report-format json` output
