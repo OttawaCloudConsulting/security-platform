@@ -5,7 +5,6 @@ Parse and normalize phase arguments for commands that operate on phases.
 ## Extraction
 
 From `$ARGUMENTS`:
-
 - Extract phase number (first numeric argument)
 - Extract flags (prefixed with `--`)
 - Remaining text is description (for insert/add commands)
@@ -15,11 +14,10 @@ From `$ARGUMENTS`:
 The `find-phase` command handles normalization and validation in one step:
 
 ```bash
-PHASE_INFO=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" find-phase "${PHASE}")
+PHASE_INFO=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" find-phase "${PHASE}")
 ```
 
 Returns JSON with:
-
 - `found`: true/false
 - `directory`: Full path to phase directory
 - `phase_number`: Normalized number (e.g., "06", "06.1")
@@ -47,7 +45,7 @@ fi
 Use `roadmap get-phase` to validate phase exists:
 
 ```bash
-PHASE_CHECK=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" roadmap get-phase "${PHASE}")
+PHASE_CHECK=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" roadmap get-phase "${PHASE}")
 if [ "$(printf '%s\n' "$PHASE_CHECK" | jq -r '.found')" = "false" ]; then
   echo "ERROR: Phase ${PHASE} not found in roadmap"
   exit 1
@@ -59,5 +57,5 @@ fi
 Use `find-phase` for directory lookup:
 
 ```bash
-PHASE_DIR=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" find-phase "${PHASE}" --raw)
+PHASE_DIR=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" find-phase "${PHASE}" --raw)
 ```

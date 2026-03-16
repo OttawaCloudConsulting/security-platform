@@ -16,7 +16,6 @@ Template for `.planning/research/ARCHITECTURE.md` — system structure patterns 
 ### System Overview
 
 ```
-
 ┌─────────────────────────────────────────────────────────────┐
 │                        [Layer Name]                          │
 ├─────────────────────────────────────────────────────────────┤
@@ -36,7 +35,6 @@ Template for `.planning/research/ARCHITECTURE.md` — system structure patterns 
 │  │ [Store]  │  │ [Store]  │  │ [Store]  │                   │
 │  └──────────┘  └──────────┘  └──────────┘                   │
 └─────────────────────────────────────────────────────────────┘
-
 ```
 
 ### Component Responsibilities
@@ -50,7 +48,6 @@ Template for `.planning/research/ARCHITECTURE.md` — system structure patterns 
 ## Recommended Project Structure
 
 ```
-
 src/
 ├── [folder]/           # [purpose]
 │   ├── [subfolder]/    # [purpose]
@@ -60,7 +57,6 @@ src/
 │   └── [file].ts       # [purpose]
 ├── [folder]/           # [purpose]
 └── [folder]/           # [purpose]
-
 ```
 
 ### Structure Rationale
@@ -88,7 +84,6 @@ src/
 **Trade-offs:** [pros and cons]
 
 **Example:**
-
 ```typescript
 // [Brief code example showing the pattern]
 ```
@@ -175,7 +170,6 @@ src/
 ---
 *Architecture research for: [domain]*
 *Researched: [date]*
-
 ```
 
 </template>

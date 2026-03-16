@@ -1,6 +1,6 @@
 ---
 name: gsd:discuss-phase
-description: Gather phase context through adaptive questioning before planning
+description: Gather phase context through adaptive questioning before planning. Use --auto to skip interactive questions (Claude picks recommended defaults).
 argument-hint: "<phase> [--auto]"
 allowed-tools:
   - Read
@@ -18,7 +18,6 @@ allowed-tools:
 Extract implementation decisions that downstream agents need — researcher and planner will use CONTEXT.md to know what to investigate and what choices are locked.
 
 **How it works:**
-
 1. Load prior context (PROJECT.md, REQUIREMENTS.md, STATE.md, prior CONTEXT.md files)
 2. Scout codebase for reusable assets and patterns
 3. Analyze phase — skip gray areas already decided in prior phases
@@ -30,8 +29,8 @@ Extract implementation decisions that downstream agents need — researcher and 
 </objective>
 
 <execution_context>
-@./.claude/get-shit-done/workflows/discuss-phase.md
-@./.claude/get-shit-done/templates/context.md
+@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/discuss-phase.md
+@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/templates/context.md
 </execution_context>
 
 <context>
@@ -52,7 +51,6 @@ Context files are resolved in-workflow using `init phase-op` and roadmap/state t
 9. Offer next steps (research or plan)
 
 **CRITICAL: Scope guardrail**
-
 - Phase boundary from ROADMAP.md is FIXED
 - Discussion clarifies HOW to implement, not WHETHER to add more
 - If user suggests new capabilities: "That's its own phase. I'll note it for later."
@@ -60,7 +58,6 @@ Context files are resolved in-workflow using `init phase-op` and roadmap/state t
 
 **Domain-aware gray areas:**
 Gray areas depend on what's being built. Analyze the phase goal:
-
 - Something users SEE → layout, density, interactions, states
 - Something users CALL → responses, errors, auth, versioning
 - Something users RUN → output format, flags, modes, error handling
@@ -70,14 +67,12 @@ Gray areas depend on what's being built. Analyze the phase goal:
 Generate 3-4 **phase-specific** gray areas, not generic categories.
 
 **Probing depth:**
-
 - Ask 4 questions per area before checking
 - "More questions about [area], or move to next?"
 - If more → ask 4 more, check again
 - After all areas → "Ready to create context?"
 
 **Do NOT ask about (Claude handles these):**
-
 - Technical implementation
 - Architecture choices
 - Performance concerns
@@ -85,7 +80,6 @@ Generate 3-4 **phase-specific** gray areas, not generic categories.
 </process>
 
 <success_criteria>
-
 - Prior context loaded and applied (no re-asking decided questions)
 - Gray areas identified through intelligent analysis
 - User chose which areas to discuss

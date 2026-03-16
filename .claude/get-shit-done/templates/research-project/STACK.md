@@ -66,12 +66,10 @@ npm install -D [packages]
 ## Stack Patterns by Variant
 
 **If [condition]:**
-
 - Use [variation]
 - Because [reason]
 
 **If [condition]:**
-
 - Use [variation]
 - Because [reason]
 
@@ -90,7 +88,6 @@ npm install -D [packages]
 ---
 *Stack research for: [domain]*
 *Researched: [date]*
-
 ```
 
 </template>

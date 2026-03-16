@@ -10,7 +10,6 @@ allowed-tools:
 Check for GSD updates, install if available, and display what changed.
 
 Routes to the update workflow which handles:
-
 - Version detection (local vs global installation)
 - npm version checking
 - Changelog fetching and display
@@ -20,14 +19,13 @@ Routes to the update workflow which handles:
 </objective>
 
 <execution_context>
-@./.claude/get-shit-done/workflows/update.md
+@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/update.md
 </execution_context>
 
 <process>
-**Follow the update workflow** from `@./.claude/get-shit-done/workflows/update.md`.
+**Follow the update workflow** from `@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/update.md`.
 
 The workflow handles all logic including:
-
 1. Installed version detection (local/global)
 2. Latest version checking via npm
 3. Version comparison

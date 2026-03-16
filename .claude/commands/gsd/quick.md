@@ -1,7 +1,7 @@
 ---
 name: gsd:quick
 description: Execute a quick task with GSD guarantees (atomic commits, state tracking) but skip optional agents
-argument-hint: "[--full] [--discuss]"
+argument-hint: "[--full] [--discuss] [--research]"
 allowed-tools:
   - Read
   - Write
@@ -16,7 +16,6 @@ allowed-tools:
 Execute small, ad-hoc tasks with GSD guarantees (atomic commits, STATE.md tracking).
 
 Quick mode is the same system with a shorter path:
-
 - Spawns gsd-planner (quick mode) + gsd-executor(s)
 - Quick tasks live in `.planning/quick/` separate from planned phases
 - Updates STATE.md "Quick Tasks Completed" table (NOT ROADMAP.md)
@@ -27,11 +26,13 @@ Quick mode is the same system with a shorter path:
 
 **`--full` flag:** Enables plan-checking (max 2 iterations) and post-execution verification. Use when you want quality guarantees without full milestone ceremony.
 
-Flags are composable: `--discuss --full` gives discussion + plan-checking + verification.
+**`--research` flag:** Spawns a focused research agent before planning. Investigates implementation approaches, library options, and pitfalls for the task. Use when you're unsure of the best approach.
+
+Flags are composable: `--discuss --research --full` gives discussion + research + plan-checking + verification.
 </objective>
 
 <execution_context>
-@./.claude/get-shit-done/workflows/quick.md
+@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/quick.md
 </execution_context>
 
 <context>
@@ -41,6 +42,6 @@ Context files are resolved inside the workflow (`init quick`) and delegated via 
 </context>
 
 <process>
-Execute the quick workflow from @./.claude/get-shit-done/workflows/quick.md end-to-end.
+Execute the quick workflow from @/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/quick.md end-to-end.
 Preserve all workflow gates (validation, task description, planning, execution, state updates, commits).
 </process>

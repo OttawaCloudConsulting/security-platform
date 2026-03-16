@@ -4,7 +4,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
 **Core principle:** Claude automates everything with CLI/API. Checkpoints are for verification and decisions, not manual work.
 
 **Golden rules:**
-
 1. **If Claude can run it, Claude runs it** - Never ask user to execute CLI commands, start servers, or run builds
 2. **Claude sets up the verification environment** - Start dev servers, seed databases, configure env vars
 3. **User only does what requires human judgment** - Visual checks, UX evaluation, "does this feel right?"
@@ -20,7 +19,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
 **When:** Claude completed automated work, human confirms it works correctly.
 
 **Use for:**
-
 - Visual UI checks (layout, styling, responsiveness)
 - Interactive flows (click through wizard, test user flows)
 - Functional verification (feature works as expected)
@@ -29,7 +27,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
 - Accessibility testing
 
 **Structure:**
-
 ```xml
 <task type="checkpoint:human-verify" gate="blocking">
   <what-built>[What Claude automated and deployed/built]</what-built>
@@ -41,7 +38,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
 ```
 
 **Example: UI Component (shows key pattern: Claude starts server BEFORE checkpoint)**
-
 ```xml
 <task type="auto">
   <name>Build responsive dashboard layout</name>
@@ -72,7 +68,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
 ```
 
 **Example: Xcode Build**
-
 ```xml
 <task type="auto">
   <name>Build macOS app with Xcode</name>
@@ -94,7 +89,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
   <resume-signal>Type "approved" or describe issues</resume-signal>
 </task>
 ```
-
 </type>
 
 <type name="decision">
@@ -103,7 +97,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
 **When:** Human must make choice that affects implementation direction.
 
 **Use for:**
-
 - Technology selection (which auth provider, which database)
 - Architecture decisions (monorepo vs separate repos)
 - Design choices (color scheme, layout approach)
@@ -111,7 +104,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
 - Data model decisions (schema structure)
 
 **Structure:**
-
 ```xml
 <task type="checkpoint:decision" gate="blocking">
   <decision>[What's being decided]</decision>
@@ -133,7 +125,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
 ```
 
 **Example: Auth Provider Selection**
-
 ```xml
 <task type="checkpoint:decision" gate="blocking">
   <decision>Select authentication provider</decision>
@@ -162,7 +153,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
 ```
 
 **Example: Database Selection**
-
 ```xml
 <task type="checkpoint:decision" gate="blocking">
   <decision>Select database for user data</decision>
@@ -190,7 +180,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
   <resume-signal>Select: supabase, planetscale, or convex</resume-signal>
 </task>
 ```
-
 </type>
 
 <type name="human-action">
@@ -199,7 +188,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
 **When:** Action has NO CLI/API and requires human-only interaction, OR Claude hit an authentication gate during automation.
 
 **Use ONLY for:**
-
 - **Authentication gates** - Claude tried CLI/API but needs credentials (this is NOT a failure)
 - Email verification links (clicking email)
 - SMS 2FA codes (phone verification)
@@ -208,14 +196,12 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
 - OAuth app approvals (web-based approval)
 
 **Do NOT use for pre-planned manual work:**
-
 - Deploying (use CLI - auth gate if needed)
 - Creating webhooks/databases (use API/CLI - auth gate if needed)
 - Running builds/tests (use Bash tool)
 - Creating files (use Write tool)
 
 **Structure:**
-
 ```xml
 <task type="checkpoint:human-action" gate="blocking">
   <action>[What human must do - Claude already did everything automatable]</action>
@@ -229,7 +215,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
 ```
 
 **Example: Email Verification**
-
 ```xml
 <task type="auto">
   <name>Create SendGrid account via API</name>
@@ -250,7 +235,6 @@ Plans execute autonomously. Checkpoints formalize interaction points where human
 ```
 
 **Example: Authentication Gate (Dynamic Checkpoint)**
-
 ```xml
 <task type="auto">
   <name>Deploy to Vercel</name>
@@ -296,7 +280,6 @@ When Claude encounters `type="checkpoint:*"`:
 5. **Resume execution** - continue to next task only after confirmation
 
 **For checkpoint:human-verify:**
-
 ```
 ╔═══════════════════════════════════════════════════════╗
 ║  CHECKPOINT: Verification Required                    ║
@@ -319,7 +302,6 @@ How to verify:
 ```
 
 **For checkpoint:decision:**
-
 ```
 ╔═══════════════════════════════════════════════════════╗
 ║  CHECKPOINT: Decision Required                        ║
@@ -351,7 +333,6 @@ Options:
 ```
 
 **For checkpoint:human-action:**
-
 ```
 ╔═══════════════════════════════════════════════════════╗
 ║  CHECKPOINT: Action Required                          ║
@@ -374,7 +355,6 @@ I'll verify: vercel whoami returns your account
 → YOUR ACTION: Type "done" when authenticated
 ────────────────────────────────────────────────────────
 ```
-
 </execution_protocol>
 
 <authentication_gates>
@@ -384,7 +364,6 @@ I'll verify: vercel whoami returns your account
 **Pattern:** Claude tries automation → auth error → creates checkpoint:human-action → user authenticates → Claude retries → continues
 
 **Gate protocol:**
-
 1. Recognize it's not a failure - missing auth is expected
 2. Stop current task - don't retry repeatedly
 3. Create checkpoint:human-action dynamically
@@ -394,7 +373,6 @@ I'll verify: vercel whoami returns your account
 7. Continue normally
 
 **Key distinction:**
-
 - Pre-planned checkpoint: "I need you to do X" (wrong - Claude should automate)
 - Auth gate: "I tried to automate X but need credentials" (correct - unblocks automation)
 
@@ -435,7 +413,6 @@ I'll verify: vercel whoami returns your account
 | Supabase | `supabase secrets set` | `supabase secrets set MY_SECRET=value` |
 
 **Secret collection pattern:**
-
 ```xml
 <!-- WRONG: Asking user to add env vars in dashboard -->
 <task type="checkpoint:human-action">
@@ -466,14 +443,13 @@ I'll verify: vercel whoami returns your account
 
 | Framework | Start Command | Ready Signal | Default URL |
 |-----------|---------------|--------------|-------------|
-| Next.js | `npm run dev` | "Ready in" or "started server" | <http://localhost:3000> |
-| Vite | `npm run dev` | "ready in" | <http://localhost:5173> |
+| Next.js | `npm run dev` | "Ready in" or "started server" | http://localhost:3000 |
+| Vite | `npm run dev` | "ready in" | http://localhost:5173 |
 | Convex | `npx convex dev` | "Convex functions ready" | N/A (backend only) |
-| Express | `npm start` | "listening on port" | <http://localhost:3000> |
-| Django | `python manage.py runserver` | "Starting development server" | <http://localhost:8000> |
+| Express | `npm start` | "listening on port" | http://localhost:3000 |
+| Django | `python manage.py runserver` | "Starting development server" | http://localhost:8000 |
 
 **Server lifecycle:**
-
 ```bash
 # Run in background, capture PID
 npm run dev &
@@ -559,22 +535,19 @@ timeout 30 bash -c 'until curl -s localhost:3000 > /dev/null 2>&1; do sleep 1; d
 <writing_guidelines>
 
 **DO:**
-
 - Automate everything with CLI/API before checkpoint
-- Be specific: "Visit <https://myapp.vercel.app>" not "check deployment"
+- Be specific: "Visit https://myapp.vercel.app" not "check deployment"
 - Number verification steps
 - State expected outcomes: "You should see X"
 - Provide context: why this checkpoint exists
 
 **DON'T:**
-
 - Ask human to do work Claude can automate ❌
 - Assume knowledge: "Configure the usual settings" ❌
 - Skip steps: "Set up database" (too vague) ❌
 - Mix multiple verifications in one checkpoint ❌
 
 **Placement:**
-
 - **After automation completes** - not before Claude does the work
 - **After UI buildout** - before declaring phase complete
 - **Before dependent work** - decisions before implementation
@@ -653,7 +626,6 @@ timeout 30 bash -c 'until curl -s localhost:3000 > /dev/null 2>&1; do sleep 1; d
   <resume-signal>Type "approved" or describe issues</resume-signal>
 </task>
 ```
-
 </examples>
 
 <anti_patterns>
@@ -792,16 +764,13 @@ Checkpoints formalize human-in-the-loop points for verification and decisions, n
 **The golden rule:** If Claude CAN automate it, Claude MUST automate it.
 
 **Checkpoint priority:**
-
 1. **checkpoint:human-verify** (90%) - Claude automated everything, human confirms visual/functional correctness
 2. **checkpoint:decision** (9%) - Human makes architectural/technology choices
 3. **checkpoint:human-action** (1%) - Truly unavoidable manual steps with no API/CLI
 
 **When NOT to use checkpoints:**
-
 - Things Claude can verify programmatically (tests, builds)
 - File operations (Claude can read files)
 - Code correctness (tests and static analysis)
 - Anything automatable via CLI/API
-
 </summary>

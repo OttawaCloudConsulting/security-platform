@@ -22,7 +22,7 @@ elif [ -d "$HOME/.opencode/gsd-local-patches" ]; then
 elif [ -d "$HOME/.gemini/gsd-local-patches" ]; then
   PATCHES_DIR="$HOME/.gemini/gsd-local-patches"
 else
-  PATCHES_DIR="./.claude/gsd-local-patches"
+  PATCHES_DIR="/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/gsd-local-patches"
 fi
 # Local install fallback — check all runtime directories
 if [ ! -d "$PATCHES_DIR" ]; then
@@ -38,14 +38,12 @@ fi
 Read `backup-meta.json` from the patches directory.
 
 **If no patches found:**
-
 ```
 No local patches found. Nothing to reapply.
 
 Local patches are automatically saved when you run /gsd:update
 after modifying any GSD workflow, command, or agent files.
 ```
-
 Exit.
 
 ## Step 2: Show patch summary
@@ -98,7 +96,6 @@ After reapplying, regenerate the file manifest so future updates correctly detec
 ## Step 5: Cleanup option
 
 Ask user:
-
 - "Keep patch backups for reference?" → preserve `gsd-local-patches/`
 - "Clean up patch backups?" → remove `gsd-local-patches/` directory
 
@@ -119,7 +116,6 @@ Ask user:
 </process>
 
 <success_criteria>
-
 - [ ] All backed-up patches processed
 - [ ] User modifications merged into new version
 - [ ] Conflicts resolved with user input

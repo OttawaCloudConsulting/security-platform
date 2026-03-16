@@ -14,7 +14,6 @@ Research how to implement a phase. Spawns gsd-phase-researcher agent with phase 
 **Note:** This is a standalone research command. For most workflows, use `/gsd:plan-phase` which integrates research automatically.
 
 **Use this command when:**
-
 - You want to research without planning yet
 - You want to re-research after planning is complete
 - You need to investigate before deciding if a phase is feasible
@@ -35,22 +34,21 @@ Normalize phase input in step 1 before any directory lookups.
 ## 0. Initialize Context
 
 ```bash
-INIT=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" init phase-op "$ARGUMENTS")
+INIT=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" init phase-op "$ARGUMENTS")
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 ```
 
 Extract from init JSON: `phase_dir`, `phase_number`, `phase_name`, `phase_found`, `commit_docs`, `has_research`, `state_path`, `requirements_path`, `context_path`, `research_path`.
 
 Resolve researcher model:
-
 ```bash
-RESEARCHER_MODEL=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" resolve-model gsd-phase-researcher --raw)
+RESEARCHER_MODEL=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" resolve-model gsd-phase-researcher --raw)
 ```
 
 ## 1. Validate Phase
 
 ```bash
-PHASE_INFO=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" roadmap get-phase "${phase_number}")
+PHASE_INFO=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" roadmap get-phase "${phase_number}")
 ```
 
 **If `found` is false:** Error and exit. **If `found` is true:** Extract `phase_number`, `phase_name`, `goal` from JSON.
@@ -68,7 +66,6 @@ ls .planning/phases/${PHASE}-*/RESEARCH.md 2>/dev/null
 ## 3. Gather Phase Context
 
 Use paths from INIT (do not inline file contents in orchestrator context):
-
 - `requirements_path`
 - `context_path`
 - `state_path`
@@ -185,7 +182,6 @@ Task(
 </process>
 
 <success_criteria>
-
 - [ ] Phase validated against roadmap
 - [ ] Existing research checked
 - [ ] gsd-phase-researcher spawned with context

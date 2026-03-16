@@ -33,14 +33,12 @@ npx get-shit-done-cc@latest
 Initialize new project through unified flow.
 
 One command takes you from idea to ready-for-planning:
-
 - Deep questioning to understand what you're building
 - Optional domain research (spawns 4 parallel researcher agents)
 - Requirements definition with v1/v2/out-of-scope scoping
 - Roadmap creation with phase breakdown and success criteria
 
 Creates all `.planning/` artifacts:
-
 - `PROJECT.md` — vision and requirements
 - `config.json` — workflow mode (interactive/yolo)
 - `research/` — domain research (if selected)
@@ -68,8 +66,11 @@ Help articulate your vision for a phase before planning.
 - Captures how you imagine this phase working
 - Creates CONTEXT.md with your vision, essentials, and boundaries
 - Use when you have ideas about how something should look/feel
+- Optional `--batch` asks 2-5 related questions at a time instead of one-by-one
 
 Usage: `/gsd:discuss-phase 2`
+Usage: `/gsd:discuss-phase 2 --batch`
+Usage: `/gsd:discuss-phase 2 --batch=3`
 
 **`/gsd:research-phase <number>`**
 Comprehensive ecosystem research for niche/complex domains.
@@ -117,18 +118,23 @@ Usage: `/gsd:execute-phase 5`
 
 ### Quick Mode
 
-**`/gsd:quick`**
+**`/gsd:quick [--full] [--discuss] [--research]`**
 Execute small, ad-hoc tasks with GSD guarantees but skip optional agents.
 
 Quick mode uses the same system with a shorter path:
-
-- Spawns planner + executor (skips researcher, checker, verifier)
+- Spawns planner + executor (skips researcher, checker, verifier by default)
 - Quick tasks live in `.planning/quick/` separate from planned phases
 - Updates STATE.md tracking (not ROADMAP.md)
 
-Use when you know exactly what to do and the task is small enough to not need research or verification.
+Flags enable additional quality steps:
+- `--discuss` — Lightweight discussion to surface gray areas before planning
+- `--research` — Focused research agent investigates approaches before planning
+- `--full` — Adds plan-checking (max 2 iterations) and post-execution verification
+
+Flags are composable: `--discuss --research --full` gives the complete quality pipeline for a single task.
 
 Usage: `/gsd:quick`
+Usage: `/gsd:quick --research --full`
 Result: Creates `.planning/quick/NNN-slug/PLAN.md`, `.planning/quick/NNN-slug/SUMMARY.md`
 
 ### Roadmap Management
@@ -301,7 +307,7 @@ Usage: `/gsd:plan-milestone-gaps`
 Configure workflow toggles and model profile interactively.
 
 - Toggle researcher, plan checker, verifier agents
-- Select model profile (quality/balanced/budget)
+- Select model profile (quality/balanced/budget/inherit)
 - Updates `.planning/config.json`
 
 Usage: `/gsd:settings`
@@ -312,6 +318,7 @@ Quick switch model profile for GSD agents.
 - `quality` — Opus everywhere except verification
 - `balanced` — Opus for planning, Sonnet for execution (default)
 - `budget` — Sonnet for writing, Haiku for research/verification
+- `inherit` — Use current session model for all agents (OpenCode `/model`)
 
 Usage: `/gsd:set-profile budget`
 
@@ -409,23 +416,19 @@ Change anytime by editing `.planning/config.json`
 Configure how planning artifacts are managed in `.planning/config.json`:
 
 **`planning.commit_docs`** (default: `true`)
-
 - `true`: Planning artifacts committed to git (standard workflow)
 - `false`: Planning artifacts kept local-only, not committed
 
 When `commit_docs: false`:
-
 - Add `.planning/` to your `.gitignore`
 - Useful for OSS contributions, client projects, or keeping planning private
 - All planning files still work normally, just not tracked in git
 
 **`planning.search_gitignored`** (default: `false`)
-
 - `true`: Add `--no-ignore` to broad ripgrep searches
 - Only needed when `.planning/` is gitignored and you want project-wide searches to include it
 
 Example config:
-
 ```json
 {
   "planning": {

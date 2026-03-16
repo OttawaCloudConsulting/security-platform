@@ -27,7 +27,6 @@ With diagnosis: "Comment doesn't refresh" → "useEffect missing dependency" →
 **Extract gaps from UAT.md:**
 
 Read the "Gaps" section (YAML format):
-
 ```yaml
 - truth: "Comment appears immediately after submission"
   status: failed
@@ -41,7 +40,6 @@ Read the "Gaps" section (YAML format):
 For each gap, also read the corresponding test from "Tests" section to get full context.
 
 Build gap list:
-
 ```
 gaps = [
   {truth: "Comment appears immediately...", severity: "major", test_num: 2, reason: "..."},
@@ -49,7 +47,6 @@ gaps = [
   ...
 ]
 ```
-
 </step>
 
 <step name="report_plan">
@@ -73,7 +70,6 @@ Each agent will:
 
 This runs in parallel - all gaps investigated simultaneously.
 ```
-
 </step>
 
 <step name="spawn_agents">
@@ -92,7 +88,6 @@ Task(
 **All agents spawn in single message** (parallel execution).
 
 Template placeholders:
-
 - `{truth}`: The expected behavior that failed
 - `{expected}`: From UAT test
 - `{actual}`: Verbatim user description from reason field
@@ -107,7 +102,6 @@ Template placeholders:
 **Collect root causes from agents:**
 
 Each agent returns with:
-
 ```
 ## ROOT CAUSE FOUND
 
@@ -128,14 +122,12 @@ Each agent returns with:
 ```
 
 Parse each return to extract:
-
 - root_cause: The diagnosed cause
 - files: Files involved
 - debug_path: Path to debug session file
 - suggested_fix: Hint for gap closure plan
 
 If agent returns `## INVESTIGATION INCONCLUSIVE`:
-
 - root_cause: "Investigation inconclusive - manual review needed"
 - Note which issue needs manual attention
 - Include remaining possibilities from agent return
@@ -165,18 +157,15 @@ For each gap in the Gaps section, add artifacts and missing fields:
 Update status in frontmatter to "diagnosed".
 
 Commit the updated UAT.md:
-
 ```bash
-node "./.claude/get-shit-done/bin/gsd-tools.cjs" commit "docs({phase_num}): add root causes from diagnosis" --files ".planning/phases/XX-name/{phase_num}-UAT.md"
+node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" commit "docs({phase_num}): add root causes from diagnosis" --files ".planning/phases/XX-name/{phase_num}-UAT.md"
 ```
-
 </step>
 
 <step name="report_results">
 **Report diagnosis results and hand off:**
 
 Display:
-
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  GSD ► DIAGNOSIS COMPLETE
@@ -206,25 +195,21 @@ Agents only diagnose—plan-phase --gaps handles fixes (no fix application).
 
 <failure_handling>
 **Agent fails to find root cause:**
-
 - Mark gap as "needs manual review"
 - Continue with other gaps
 - Report incomplete diagnosis
 
 **Agent times out:**
-
 - Check DEBUG-{slug}.md for partial progress
 - Can resume with /gsd:debug
 
 **All agents fail:**
-
 - Something systemic (permissions, git, etc.)
 - Report for manual investigation
 - Fall back to plan-phase --gaps without root causes (less precise)
 </failure_handling>
 
 <success_criteria>
-
 - [ ] Gaps parsed from UAT.md
 - [ ] Debug agents spawned in parallel
 - [ ] Root causes collected from all agents

@@ -29,17 +29,15 @@ Exit.
 Load phase operation context:
 
 ```bash
-INIT=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" init phase-op "0")
+INIT=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" init phase-op "0")
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 ```
 
 Check `roadmap_exists` from init JSON. If false:
-
 ```
 ERROR: No roadmap found (.planning/ROADMAP.md)
 Run /gsd:new-project to initialize.
 ```
-
 Exit.
 </step>
 
@@ -47,11 +45,10 @@ Exit.
 **Delegate the phase addition to gsd-tools:**
 
 ```bash
-RESULT=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" phase add "${description}")
+RESULT=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" phase add "${description}")
 ```
 
 The CLI handles:
-
 - Finding the highest existing integer phase number
 - Calculating next phase number (max + 1)
 - Generating slug from description
@@ -66,7 +63,6 @@ Update STATE.md to reflect the new phase:
 
 1. Read `.planning/STATE.md`
 2. Under "## Accumulated Context" → "### Roadmap Evolution" add entry:
-
    ```
    - Phase {N} added: {description}
    ```
@@ -103,13 +99,11 @@ Roadmap updated: .planning/ROADMAP.md
 
 ---
 ```
-
 </step>
 
 </process>
 
 <success_criteria>
-
 - [ ] `gsd-tools phase add` executed successfully
 - [ ] Phase directory created
 - [ ] Roadmap updated with new phase entry

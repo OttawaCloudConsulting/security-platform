@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Shell and Python Hooks** - ShellCheck and Ruff linting on every commit (completed 2026-03-16)
 - [x] **Phase 3: Web and Config Hooks** - ESLint, hadolint, yamllint, and markdownlint on every commit (completed 2026-03-15)
 - [x] **Phase 4: Infrastructure Hooks** - npm audit, terraform fmt, and terraform validate on every commit (completed 2026-03-16)
-- [ ] **Phase 5: Secrets Detection Gate** - Gitleaks pre-push hook blocks leaked credentials
+- [x] **Phase 5: Secrets Detection Gate** - Gitleaks pre-push hook blocks leaked credentials (completed 2026-03-16)
 - [ ] **Phase 6: SCA and Container CLI Tools** - Trivy, Syft, and Grype installed and on PATH
 - [ ] **Phase 7: SAST and IaC CLI Tools** - Semgrep, Checkov, and Gitleaks CLI installed and on PATH
 - [ ] **Phase 8: CLI Tool Scanning Validation** - Every CLI tool runs a real scan and produces JSON output
@@ -86,11 +86,11 @@ Plans:
   1. `git push` triggers Gitleaks in `protect --staged` mode via the pre-push hook
   2. A commit containing a dummy AWS key pattern (`AKIAIOSFODNN7EXAMPLE`) is blocked on push
   3. Developer can articulate that `--no-verify` bypasses the hook and that CI (M2) is the compensating control
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 05-01-PLAN.md — Install Gitleaks, reconfigure pre-push hook in all three repos, baseline scans
-- [ ] 05-02-PLAN.md — End-to-end dummy AWS key test and bypass documentation
+- [x] 05-01-PLAN.md — Install Gitleaks, reconfigure pre-push hook in all three repos, baseline scans
+- [x] 05-02-PLAN.md — End-to-end dummy AWS key test and bypass documentation
 
 ### Phase 6: SCA and Container CLI Tools
 **Goal**: The supply chain analysis toolchain (SBOM generation, vulnerability matching, container scanning) is installed and available locally
@@ -156,7 +156,7 @@ Note: Phases 2/3/4 depend only on Phase 1 (parallel-eligible). Phases 6/7 have n
 | 2. Shell and Python Hooks | 1/1 | Complete    | 2026-03-15 |
 | 3. Web and Config Hooks | 2/2 | Complete    | 2026-03-15 |
 | 4. Infrastructure Hooks | 1/1 | Complete   | 2026-03-16 |
-| 5. Secrets Detection Gate | 1/2 | In Progress|  |
+| 5. Secrets Detection Gate | 2/2 | Complete | 2026-03-16 |
 | 6. SCA and Container CLI Tools | 0/? | Not started | - |
 | 7. SAST and IaC CLI Tools | 0/? | Not started | - |
 | 8. CLI Tool Scanning Validation | 0/? | Not started | - |

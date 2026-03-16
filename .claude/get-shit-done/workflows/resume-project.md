@@ -11,7 +11,7 @@ Instantly restore full project context so "Where were we?" has an immediate, com
 </purpose>
 
 <required_reading>
-@./.claude/get-shit-done/references/continuation-format.md
+@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/references/continuation-format.md
 </required_reading>
 
 <process>
@@ -20,7 +20,7 @@ Instantly restore full project context so "Where were we?" has an immediate, com
 Load all context in one call:
 
 ```bash
-INIT=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" init resume)
+INIT=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" init resume)
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 ```
 
@@ -209,7 +209,6 @@ Wait for user selection.
 Based on user selection, route to appropriate workflow:
 
 - **Execute plan** → Show command for user to run after clearing:
-
   ```
   ---
 
@@ -223,9 +222,7 @@ Based on user selection, route to appropriate workflow:
 
   ---
   ```
-
 - **Plan phase** → Show command for user to run after clearing:
-
   ```
   ---
 
@@ -245,7 +242,6 @@ Based on user selection, route to appropriate workflow:
 
   ---
   ```
-
 - **Transition** → ./transition.md
 - **Check todos** → Read .planning/todos/pending/, present summary
 - **Review alignment** → Read PROJECT.md, compare to current state
@@ -292,7 +288,6 @@ This handles cases where:
 
 <quick_resume>
 If user says "continue" or "go":
-
 - Load state silently
 - Determine primary action
 - Execute immediately without presenting options

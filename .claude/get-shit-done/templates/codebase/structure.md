@@ -18,13 +18,11 @@ Template for `.planning/codebase/STRUCTURE.md` - captures physical file organiza
 [ASCII box-drawing tree of top-level directories with purpose - use ├── └── │ characters for tree structure only]
 
 ```
-
 [project-root]/
 ├── [dir]/          # [Purpose]
 ├── [dir]/          # [Purpose]
 ├── [dir]/          # [Purpose]
 └── [file]          # [Purpose]
-
 ```
 
 ## Directory Purposes
@@ -117,7 +115,6 @@ Template for `.planning/codebase/STRUCTURE.md` - captures physical file organiza
 ```
 
 <good_examples>
-
 ```markdown
 # Codebase Structure
 
@@ -126,7 +123,6 @@ Template for `.planning/codebase/STRUCTURE.md` - captures physical file organiza
 ## Directory Layout
 
 ```
-
 get-shit-done/
 ├── bin/                # Executable entry points
 ├── commands/           # Slash command definitions
@@ -139,7 +135,6 @@ get-shit-done/
 ├── tests/             # Test files
 ├── package.json       # Project manifest
 └── README.md          # User documentation
-
 ```
 
 ## Directory Purposes
@@ -221,7 +216,7 @@ get-shit-done/
 
 **New Workflow:**
 - Implementation: `get-shit-done/workflows/{name}.md`
-- Usage: Reference from command with `@./.claude/get-shit-done/workflows/{name}.md`
+- Usage: Reference from command with `@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/{name}.md`
 
 **New Reference Document:**
 - Implementation: `get-shit-done/references/{name}.md`
@@ -234,12 +229,12 @@ get-shit-done/
 ## Special Directories
 
 **get-shit-done/**
-- Purpose: Resources installed to ./.claude/
+- Purpose: Resources installed to /Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/
 - Source: Copied by bin/install.js during installation
 - Committed: Yes (source of truth)
 
 **commands/**
-- Purpose: Slash commands installed to ./.claude/commands/
+- Purpose: Slash commands installed to /Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/commands/
 - Source: Copied by bin/install.js during installation
 - Committed: Yes (source of truth)
 
@@ -248,7 +243,6 @@ get-shit-done/
 *Structure analysis: 2025-01-20*
 *Update when directory structure changes*
 ```
-
 </good_examples>
 
 <guidelines>
@@ -261,14 +255,12 @@ get-shit-done/
 - Special/generated directories
 
 **What does NOT belong here:**
-
 - Conceptual architecture (that's ARCHITECTURE.md)
 - Technology stack (that's STACK.md)
 - Code implementation details (defer to code reading)
 - Every single file (focus on directories and key files)
 
 **When filling this template:**
-
 - Use `tree -L 2` or similar to visualize structure
 - Identify top-level directories and their purposes
 - Note naming patterns by observing existing files
@@ -276,7 +268,6 @@ get-shit-done/
 - Keep directory tree concise (max 2-3 levels)
 
 **Tree format (ASCII box-drawing characters for structure only):**
-
 ```
 root/
 ├── dir1/           # Purpose
@@ -287,7 +278,6 @@ root/
 ```
 
 **Useful for phase planning when:**
-
 - Adding new features (where should files go?)
 - Understanding project organization
 - Finding where specific logic lives

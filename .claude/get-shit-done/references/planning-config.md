@@ -3,7 +3,6 @@
 Configuration options for `.planning/` directory behavior.
 
 <config_schema>
-
 ```json
 "planning": {
   "commit_docs": true,
@@ -28,13 +27,11 @@ Configuration options for `.planning/` directory behavior.
 <commit_docs_behavior>
 
 **When `commit_docs: true` (default):**
-
 - Planning files committed normally
 - SUMMARY.md, STATE.md, ROADMAP.md tracked in git
 - Full history of planning decisions preserved
 
 **When `commit_docs: false`:**
-
 - Skip all `git add`/`git commit` for `.planning/` files
 - User must add `.planning/` to `.gitignore`
 - Useful for: OSS contributions, client projects, keeping planning private
@@ -43,15 +40,15 @@ Configuration options for `.planning/` directory behavior.
 
 ```bash
 # Commit with automatic commit_docs + gitignore checks:
-node "./.claude/get-shit-done/bin/gsd-tools.cjs" commit "docs: update state" --files .planning/STATE.md
+node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" commit "docs: update state" --files .planning/STATE.md
 
 # Load config via state load (returns JSON):
-INIT=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" state load)
+INIT=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" state load)
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 # commit_docs is available in the JSON output
 
 # Or use init commands which include commit_docs:
-INIT=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" init execute-phase "1")
+INIT=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" init execute-phase "1")
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 # commit_docs is included in all init command outputs
 ```
@@ -61,7 +58,7 @@ if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 **Commit via CLI (handles checks automatically):**
 
 ```bash
-node "./.claude/get-shit-done/bin/gsd-tools.cjs" commit "docs: update state" --files .planning/STATE.md
+node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" commit "docs: update state" --files .planning/STATE.md
 ```
 
 The CLI checks `commit_docs` config and gitignore status internally — no manual conditionals needed.
@@ -71,13 +68,11 @@ The CLI checks `commit_docs` config and gitignore status internally — no manua
 <search_behavior>
 
 **When `search_gitignored: false` (default):**
-
 - Standard rg behavior (respects .gitignore)
 - Direct path searches work: `rg "pattern" .planning/` finds files
 - Broad searches skip gitignored: `rg "pattern"` skips `.planning/`
 
 **When `search_gitignored: true`:**
-
 - Add `--no-ignore` to broad rg searches that should include `.planning/`
 - Only needed when searching entire repo and expecting `.planning/` matches
 
@@ -90,7 +85,6 @@ The CLI checks `commit_docs` config and gitignore status internally — no manua
 To use uncommitted mode:
 
 1. **Set config:**
-
    ```json
    "planning": {
      "commit_docs": false,
@@ -99,13 +93,11 @@ To use uncommitted mode:
    ```
 
 2. **Add to .gitignore:**
-
    ```
    .planning/
    ```
 
 3. **Existing tracked files:** If `.planning/` was previously tracked:
-
    ```bash
    git rm -r --cached .planning/
    git commit -m "chore: stop tracking planning docs"
@@ -126,12 +118,10 @@ To use uncommitted mode:
 | `milestone` | At first `execute-phase` of milestone | Entire milestone | At `complete-milestone` |
 
 **When `git.branching_strategy: "none"` (default):**
-
 - All work commits to current branch
 - Standard GSD behavior
 
 **When `git.branching_strategy: "phase"`:**
-
 - `execute-phase` creates/switches to a branch before execution
 - Branch name from `phase_branch_template` (e.g., `gsd/phase-03-authentication`)
 - All plan commits go to that branch
@@ -139,7 +129,6 @@ To use uncommitted mode:
 - `complete-milestone` offers to merge all phase branches
 
 **When `git.branching_strategy: "milestone"`:**
-
 - First `execute-phase` of milestone creates the milestone branch
 - Branch name from `milestone_branch_template` (e.g., `gsd/v1.0-mvp`)
 - All phases in milestone commit to same branch
@@ -156,17 +145,15 @@ To use uncommitted mode:
 **Checking the config:**
 
 Use `init execute-phase` which returns all config as JSON:
-
 ```bash
-INIT=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" init execute-phase "1")
+INIT=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" init execute-phase "1")
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 # JSON output includes: branching_strategy, phase_branch_template, milestone_branch_template
 ```
 
 Or use `state load` for the config values:
-
 ```bash
-INIT=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" state load)
+INIT=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" state load)
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 # Parse branching_strategy, phase_branch_template, milestone_branch_template from JSON
 ```

@@ -6,7 +6,6 @@ description: Show available GSD commands and usage guide
 Display the complete GSD command reference.
 
 Output ONLY the reference content below. Do NOT add:
-
 - Project-specific analysis
 - Git status or file context
 - Next-step suggestions
@@ -14,10 +13,10 @@ Output ONLY the reference content below. Do NOT add:
 </objective>
 
 <execution_context>
-@./.claude/get-shit-done/workflows/help.md
+@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/help.md
 </execution_context>
 
 <process>
-Output the complete GSD command reference from @./.claude/get-shit-done/workflows/help.md.
+Output the complete GSD command reference from @/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/help.md.
 Display the reference content directly — no additions or modifications.
 </process>

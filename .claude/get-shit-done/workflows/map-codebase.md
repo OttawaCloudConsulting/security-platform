@@ -26,7 +26,7 @@ Documents are reference material for Claude when planning/executing. Always incl
 Load codebase mapping context:
 
 ```bash
-INIT=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" init map-codebase)
+INIT=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" init map-codebase)
 if [[ "$INIT" == @file:* ]]; then INIT=$(cat "${INIT#@file:}"); fi
 ```
 
@@ -37,7 +37,6 @@ Extract from init JSON: `mapper_model`, `commit_docs`, `codebase_dir`, `existing
 Check if .planning/codebase/ already exists using `has_maps` from init context.
 
 If `codebase_dir_exists` is true:
-
 ```bash
 ls -la .planning/codebase/
 ```
@@ -72,7 +71,6 @@ mkdir -p .planning/codebase
 ```
 
 **Expected output files:**
-
 - STACK.md (from tech mapper)
 - INTEGRATIONS.md (from tech mapper)
 - ARCHITECTURE.md (from arch mapper)
@@ -179,7 +177,6 @@ Wait for all 4 agents to complete.
 Read each agent's output file to collect confirmations.
 
 **Expected confirmation format from each agent:**
-
 ```
 ## Mapping Complete
 
@@ -207,7 +204,6 @@ wc -l .planning/codebase/*.md
 ```
 
 **Verification checklist:**
-
 - All 7 documents exist
 - No empty documents (each should have >20 lines)
 
@@ -255,7 +251,7 @@ Continue to commit_codebase_map.
 Commit the codebase map:
 
 ```bash
-node "./.claude/get-shit-done/bin/gsd-tools.cjs" commit "docs: map existing codebase" --files .planning/codebase/*.md
+node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" commit "docs: map existing codebase" --files .planning/codebase/*.md
 ```
 
 Continue to offer_next.
@@ -265,7 +261,6 @@ Continue to offer_next.
 Present completion summary and next steps.
 
 **Get line counts:**
-
 ```bash
 wc -l .planning/codebase/*.md
 ```
@@ -311,7 +306,6 @@ End workflow.
 </process>
 
 <success_criteria>
-
 - .planning/codebase/ directory created
 - 4 parallel gsd-codebase-mapper agents spawned with run_in_background=true
 - Agents write documents directly (orchestrator doesn't receive document contents)

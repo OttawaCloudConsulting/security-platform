@@ -9,8 +9,6 @@ tools:
   - Glob
   - Grep
 color: "#8B5CF6"
-skills:
-  - gsd-nyquist-auditor-workflow
 ---
 
 <role>
@@ -48,10 +46,9 @@ For each gap in `<gaps>`:
 | CLI command | Smoke |
 | DB/filesystem operation | Integration |
 
-1. Map to test file path per project conventions
+4. Map to test file path per project conventions
 
 Action by gap type:
-
 - `no_test_file` → Create test file
 - `test_fails` → Diagnose and fix the test (not impl)
 - `no_automated_command` → Determine command, update map
@@ -166,7 +163,6 @@ Return one of three formats below.
 </structured_returns>
 
 <success_criteria>
-
 - [ ] All `<files_to_read>` loaded before any action
 - [ ] Each gap analyzed with correct test type
 - [ ] Tests follow project conventions

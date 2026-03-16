@@ -9,10 +9,10 @@ Use when `.planning/phases/` has accumulated directories from past milestones.
 </objective>
 
 <execution_context>
-@./.claude/get-shit-done/workflows/cleanup.md
+@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/cleanup.md
 </execution_context>
 
 <process>
-Follow the cleanup workflow at @./.claude/get-shit-done/workflows/cleanup.md.
+Follow the cleanup workflow at @/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/cleanup.md.
 Identify completed milestones, show a dry-run summary, and archive on confirmation.
 </process>

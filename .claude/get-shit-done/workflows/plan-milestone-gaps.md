@@ -16,13 +16,11 @@ ls -t .planning/v*-MILESTONE-AUDIT.md 2>/dev/null | head -1
 ```
 
 Parse YAML frontmatter to extract structured gaps:
-
 - `gaps.requirements` — unsatisfied requirements
 - `gaps.integration` — missing cross-phase connections
 - `gaps.flows` — broken E2E flows
 
 If no audit file exists or has no gaps, error:
-
 ```
 No audit gaps found. Run `/gsd:audit-milestone` first.
 ```
@@ -44,14 +42,12 @@ For integration/flow gaps, infer priority from affected requirements.
 Cluster related gaps into logical phases:
 
 **Grouping rules:**
-
 - Same affected phase → combine into one fix phase
 - Same subsystem (auth, API, UI) → combine
 - Dependency order (fix stubs before wiring)
 - Keep phases focused: 2-4 tasks each
 
 **Example grouping:**
-
 ```
 Gap: DASH-01 unsatisfied (Dashboard doesn't fetch)
 Gap: Integration Phase 1→3 (Auth not passed to API calls)
@@ -67,15 +63,13 @@ Gap: Flow "View dashboard" broken at data fetch
 ## 4. Determine Phase Numbers
 
 Find highest existing phase:
-
 ```bash
 # Get sorted phase list, extract last one
-PHASES=$(node "./.claude/get-shit-done/bin/gsd-tools.cjs" phases list)
+PHASES=$(node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" phases list)
 HIGHEST=$(printf '%s\n' "$PHASES" | jq -r '.directories[-1]')
 ```
 
 New phases continue from there:
-
 - If Phase 5 is highest, gaps become Phase 6, 7, 8...
 
 ## 5. Present Gap Closure Plan
@@ -132,12 +126,10 @@ Add new phases to current milestone:
 ## 7. Update REQUIREMENTS.md Traceability Table (REQUIRED)
 
 For each REQ-ID assigned to a gap closure phase:
-
 - Update the Phase column to reflect the new gap closure phase
 - Reset Status to `Pending`
 
 Reset checked-off requirements the audit found unsatisfied:
-
 - Change `[x]` → `[ ]` for any requirement marked unsatisfied in the audit
 - Update coverage count at top of REQUIREMENTS.md
 
@@ -155,7 +147,7 @@ mkdir -p ".planning/phases/{NN}-{name}"
 ## 9. Commit Roadmap and Requirements Update
 
 ```bash
-node "./.claude/get-shit-done/bin/gsd-tools.cjs" commit "docs(roadmap): add gap closure phases {N}-{M}" --files .planning/ROADMAP.md .planning/REQUIREMENTS.md
+node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" commit "docs(roadmap): add gap closure phases {N}-{M}" --files .planning/ROADMAP.md .planning/REQUIREMENTS.md
 ```
 
 ## 10. Offer Next Steps
@@ -197,7 +189,6 @@ node "./.claude/get-shit-done/bin/gsd-tools.cjs" commit "docs(roadmap): add gap 
 ## How Gaps Become Tasks
 
 **Requirement gap → Tasks:**
-
 ```yaml
 gap:
   id: DASH-01
@@ -226,7 +217,6 @@ tasks:
 ```
 
 **Integration gap → Tasks:**
-
 ```yaml
 gap:
   from_phase: 1
@@ -251,7 +241,6 @@ tasks:
 ```
 
 **Flow gap → Tasks:**
-
 ```yaml
 gap:
   name: "User views dashboard after login"
@@ -271,7 +260,6 @@ becomes:
 </gap_to_phase_mapping>
 
 <success_criteria>
-
 - [ ] MILESTONE-AUDIT.md loaded and gaps parsed
 - [ ] Gaps prioritized (must/should/nice)
 - [ ] Gaps grouped into logical phases

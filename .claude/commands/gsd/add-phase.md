@@ -12,7 +12,6 @@ allowed-tools:
 Add a new integer phase to the end of the current milestone in the roadmap.
 
 Routes to the add-phase workflow which handles:
-
 - Phase number calculation (next sequential integer)
 - Directory creation with slug generation
 - Roadmap structure updates
@@ -20,7 +19,7 @@ Routes to the add-phase workflow which handles:
 </objective>
 
 <execution_context>
-@./.claude/get-shit-done/workflows/add-phase.md
+@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/add-phase.md
 </execution_context>
 
 <context>
@@ -30,10 +29,9 @@ Roadmap and state are resolved in-workflow via `init phase-op` and targeted tool
 </context>
 
 <process>
-**Follow the add-phase workflow** from `@./.claude/get-shit-done/workflows/add-phase.md`.
+**Follow the add-phase workflow** from `@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/add-phase.md`.
 
 The workflow handles all logic including:
-
 1. Argument parsing and validation
 2. Roadmap existence checking
 3. Current milestone identification

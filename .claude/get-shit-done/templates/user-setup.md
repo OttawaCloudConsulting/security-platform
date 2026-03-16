@@ -50,13 +50,11 @@ After completing setup, verify with:
 ```
 
 Expected results:
-
 - [What success looks like]
 
 ---
 
 **Once all items complete:** Mark status as "Complete" at top of file.
-
 ```
 
 ---
@@ -111,7 +109,6 @@ user_setup:
 | Write any code | Retrieve secrets from third-party systems |
 
 **The test:** "Does this require a human in a browser, accessing an account Claude doesn't have credentials for?"
-
 - Yes → USER-SETUP.md
 - No → Claude does it automatically
 
@@ -120,7 +117,6 @@ user_setup:
 ## Service-Specific Examples
 
 <stripe_example>
-
 ```markdown
 # Phase 10: User Setup Required
 
@@ -168,7 +164,6 @@ For local webhook testing:
 ```bash
 stripe listen --forward-to localhost:3000/api/webhooks/stripe
 ```
-
 Use the webhook signing secret from CLI output (starts with `whsec_`).
 
 ## Verification
@@ -193,7 +188,6 @@ Expected: Build passes, webhook returns 400 (signature validation working).
 ---
 
 **Once all items complete:** Mark status as "Complete" at top of file.
-
 ```
 </stripe_example>
 
@@ -248,7 +242,6 @@ npx supabase status
 ---
 
 **Once all items complete:** Mark status as "Complete" at top of file.
-
 ```
 </supabase_example>
 
@@ -304,7 +297,6 @@ curl -X POST http://localhost:3000/api/test-email \
 ---
 
 **Once all items complete:** Mark status as "Complete" at top of file.
-
 ```
 </sendgrid_example>
 

@@ -13,7 +13,6 @@ allowed-tools:
 Capture an idea, task, or issue that surfaces during a GSD session as a structured todo for later work.
 
 Routes to the add-todo workflow which handles:
-
 - Directory structure creation
 - Content extraction from arguments or conversation
 - Area inference from file paths
@@ -24,7 +23,7 @@ Routes to the add-todo workflow which handles:
 </objective>
 
 <execution_context>
-@./.claude/get-shit-done/workflows/add-todo.md
+@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/add-todo.md
 </execution_context>
 
 <context>
@@ -34,10 +33,9 @@ State is resolved in-workflow via `init todos` and targeted reads.
 </context>
 
 <process>
-**Follow the add-todo workflow** from `@./.claude/get-shit-done/workflows/add-todo.md`.
+**Follow the add-todo workflow** from `@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/add-todo.md`.
 
 The workflow handles all logic including:
-
 1. Directory ensuring
 2. Existing area checking
 3. Content extraction (arguments or conversation)

@@ -114,7 +114,6 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
 - Plan count can be "TBD" initially, refined during planning
 
 **Success criteria:**
-
 - 2-5 observable behaviors per phase (from user's perspective)
 - Cross-checked against requirements during roadmap creation
 - Flow downstream to `must_haves` in plan-phase
@@ -122,14 +121,12 @@ Phases execute in numeric order: 2 → 2.1 → 2.2 → 3 → 3.1 → 4
 - Format: "User can [action]" or "[Thing] works/exists"
 
 **After milestones ship:**
-
 - Collapse completed milestones in `<details>` tags
 - Add new milestone sections for upcoming work
 - Keep continuous phase numbering (never restart at 01)
 </guidelines>
 
 <status_values>
-
 - `Not started` - Haven't begun
 - `In progress` - Currently working
 - `Complete` - Done (add completion date)
@@ -198,7 +195,6 @@ Plans:
 ```
 
 **Notes:**
-
 - Milestone emoji: ✅ shipped, 🚧 in progress, 📋 planned
 - Completed milestones collapsed in `<details>` for readability
 - Current/future milestones expanded

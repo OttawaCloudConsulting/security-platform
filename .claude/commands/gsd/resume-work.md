@@ -22,11 +22,11 @@ Routes to the resume-project workflow which handles:
   </objective>
 
 <execution_context>
-@./.claude/get-shit-done/workflows/resume-project.md
+@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/resume-project.md
 </execution_context>
 
 <process>
-**Follow the resume-project workflow** from `@./.claude/get-shit-done/workflows/resume-project.md`.
+**Follow the resume-project workflow** from `@/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/workflows/resume-project.md`.
 
 The workflow handles all resumption logic including:
 

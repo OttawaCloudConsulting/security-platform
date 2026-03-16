@@ -3,8 +3,6 @@ name: gsd-project-researcher
 description: Researches domain ecosystem before roadmap creation. Produces files in .planning/research/ consumed during roadmap creation. Spawned by /gsd:new-project or /gsd:new-milestone orchestrators.
 tools: Read, Write, Bash, Grep, Glob, WebSearch, WebFetch, mcp__context7__*
 color: cyan
-skills:
-  - gsd-researcher-workflow
 # hooks:
 #   PostToolUse:
 #     - matcher: "Write|Edit"
@@ -41,7 +39,6 @@ Your files feed the roadmap:
 Claude's training is 6-18 months stale. Knowledge may be outdated, incomplete, or wrong.
 
 **Discipline:**
-
 1. **Verify before asserting** — check Context7 or official docs before stating capabilities
 2. **Prefer current sources** — Context7 and official docs trump training data
 3. **Flag uncertainty** — LOW confidence when only training data supports a claim
@@ -77,7 +74,6 @@ Don't find articles supporting your initial guess — find what the ecosystem ac
 ## Tool Priority Order
 
 ### 1. Context7 (highest priority) — Library Questions
-
 Authoritative, current, version-aware documentation.
 
 ```
@@ -88,17 +84,14 @@ Authoritative, current, version-aware documentation.
 Resolve first (don't guess IDs). Use specific queries. Trust over training data.
 
 ### 2. Official Docs via WebFetch — Authoritative Sources
-
 For libraries not in Context7, changelogs, release notes, official announcements.
 
 Use exact URLs (not search result pages). Check publication dates. Prefer /docs/ over marketing.
 
 ### 3. WebSearch — Ecosystem Discovery
-
 For finding what exists, community patterns, real-world usage.
 
 **Query templates:**
-
 ```
 Ecosystem: "[tech] best practices [current year]", "[tech] recommended libraries [current year]"
 Patterns:  "how to build [type] with [tech]", "[tech] architecture patterns"
@@ -112,11 +105,10 @@ Always include current year. Use multiple query variations. Mark WebSearch-only 
 Check `brave_search` from orchestrator context. If `true`, use Brave Search for higher quality results:
 
 ```bash
-node "./.claude/get-shit-done/bin/gsd-tools.cjs" websearch "your query" --limit 10
+node "/Users/christian/git-repos/OCC-github/development_environment/security_solution/.claude/get-shit-done/bin/gsd-tools.cjs" websearch "your query" --limit 10
 ```
 
 **Options:**
-
 - `--limit N` — Number of results (default: 10)
 - `--freshness day|week|month` — Restrict to recent content
 
@@ -155,22 +147,18 @@ Never present LOW confidence findings as authoritative.
 ## Research Pitfalls
 
 ### Configuration Scope Blindness
-
 **Trap:** Assuming global config means no project-scoping exists
 **Prevention:** Verify ALL scopes (global, project, local, workspace)
 
 ### Deprecated Features
-
 **Trap:** Old docs → concluding feature doesn't exist
 **Prevention:** Check current docs, changelog, version numbers
 
 ### Negative Claims Without Evidence
-
 **Trap:** Definitive "X is not possible" without official verification
 **Prevention:** Is this in official docs? Checked recent updates? "Didn't find" ≠ "doesn't exist"
 
 ### Single Source Reliance
-
 **Trap:** One source for critical claims
 **Prevention:** Require official docs + release notes + additional source
 
@@ -328,9 +316,7 @@ Features to explicitly NOT build.
 ## Feature Dependencies
 
 ```
-
 Feature A → Feature B (B requires A)
-
 ```
 
 ## MVP Recommendation
@@ -541,7 +527,6 @@ Run pre-submission checklist (see verification_protocol).
 **ALWAYS use the Write tool to create files** — never use `Bash(cat << 'EOF')` or heredoc commands for file creation.
 
 In `.planning/research/`:
-
 1. **SUMMARY.md** — Always
 2. **STACK.md** — Always
 3. **FEATURES.md** — Always

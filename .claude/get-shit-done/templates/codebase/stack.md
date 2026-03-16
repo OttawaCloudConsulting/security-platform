@@ -82,7 +82,6 @@ Template for `.planning/codebase/STACK.md` - captures the technology foundation.
 ```
 
 <good_examples>
-
 ```markdown
 # Technology Stack
 
@@ -155,7 +154,6 @@ Template for `.planning/codebase/STACK.md` - captures the technology foundation.
 *Stack analysis: 2025-01-20*
 *Update after major dependency changes*
 ```
-
 </good_examples>
 
 <guidelines>
@@ -169,21 +167,18 @@ Template for `.planning/codebase/STACK.md` - captures the technology foundation.
 - Platform/deployment requirements
 
 **What does NOT belong here:**
-
 - File structure (that's STRUCTURE.md)
 - Architectural patterns (that's ARCHITECTURE.md)
 - Every dependency in package.json (only critical ones)
 - Implementation details (defer to code)
 
 **When filling this template:**
-
 - Check package.json for dependencies
 - Note runtime version from .nvmrc or package.json engines
 - Include only dependencies that affect understanding (not every utility)
 - Specify versions only when version matters (breaking changes, compatibility)
 
 **Useful for phase planning when:**
-
 - Adding new dependencies (check compatibility)
 - Upgrading frameworks (know what's in use)
 - Choosing implementation approach (must work with existing stack)
