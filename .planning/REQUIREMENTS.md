@@ -7,9 +7,9 @@
 
 ### Pre-commit Framework
 
-- [ ] **PCOM-01**: Developer can install pre-commit framework via `pip install pre-commit` or `brew install pre-commit`
-- [ ] **PCOM-02**: `.pre-commit-config.yaml` is committed to the target repository root with all Tier 1 and Tier 2 hooks configured
-- [ ] **PCOM-03**: `pre-commit install` activates hooks in the target repository
+- [x] **PCOM-01**: Developer can install pre-commit framework via `pip install pre-commit` or `brew install pre-commit`
+- [x] **PCOM-02**: `.pre-commit-config.yaml` is committed to the target repository root with all Tier 1 and Tier 2 hooks configured
+- [x] **PCOM-03**: `pre-commit install` activates hooks in the target repository
 - [ ] **PCOM-04**: `pre-commit run --all-files` passes cleanly (all existing issues resolved or suppressed)
 
 ### Tier 1 — Quality & Linting Hooks
@@ -103,9 +103,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PCOM-01 | Phase 1 | Pending |
-| PCOM-02 | Phase 1 | Pending |
-| PCOM-03 | Phase 1 | Pending |
+| PCOM-01 | Phase 1 | Complete |
+| PCOM-02 | Phase 1 | Complete |
+| PCOM-03 | Phase 1 | Complete |
 | PCOM-04 | Phase 9 | Pending |
 | LINT-01 | Phase 2 | Pending |
 | LINT-02 | Phase 2 | Pending |

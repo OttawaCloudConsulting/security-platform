@@ -12,7 +12,7 @@ M1 delivers the developer workstation security layer: a pre-commit framework wit
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Pre-commit Framework** - Install pre-commit and create the hook configuration file
+- [x] **Phase 1: Pre-commit Framework** - Install pre-commit and create the hook configuration file (completed 2026-03-16)
 - [ ] **Phase 2: Shell and Python Hooks** - ShellCheck and Ruff linting on every commit
 - [ ] **Phase 3: Web and Config Hooks** - ESLint, hadolint, yamllint, and markdownlint on every commit
 - [ ] **Phase 4: Infrastructure Hooks** - npm audit, terraform fmt, and terraform validate on every commit
@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. `pre-commit --version` succeeds and shows a current version
   2. `.pre-commit-config.yaml` exists in the target repository root and is committed to version control
   3. `git commit` triggers pre-commit hooks (verified by a test commit)
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 01-01-PLAN.md — Initialize canonical config in security-platform and deploy to target repo with hook activation
@@ -150,7 +150,7 @@ Note: Phases 2/3/4 depend only on Phase 1 (parallel-eligible). Phases 6/7 have n
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Pre-commit Framework | 0/1 | Not started | - |
+| 1. Pre-commit Framework | 1/1 | Complete   | 2026-03-16 |
 | 2. Shell and Python Hooks | 0/? | Not started | - |
 | 3. Web and Config Hooks | 0/? | Not started | - |
 | 4. Infrastructure Hooks | 0/? | Not started | - |
