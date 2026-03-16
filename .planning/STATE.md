@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-16T20:45:49.516Z"
-last_activity: 2026-03-16 — Phase 5 Plan 2 complete (bypass documentation + SECR-02 verification)
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-16T21:00:50.354Z"
+last_activity: 2026-03-16 — Phase 6 Plan 1 complete (Trivy/Syft/Grype installed and verified)
 progress:
   total_phases: 9
-  completed_phases: 5
-  total_plans: 7
-  completed_plans: 7
+  completed_phases: 6
+  total_plans: 8
+  completed_plans: 8
 ---
 
 # Project State
@@ -20,22 +20,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production — with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 5 complete. Ready for Phase 6.
+**Current focus:** Phase 6 complete. Ready for Phase 7.
 
 ## Current Position
 
-Phase: 5 of 9 (Secrets Detection Gate) -- COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase 5 complete -- all plans done (SECR-01, SECR-02, SECR-03 satisfied)
-Last activity: 2026-03-16 — Phase 5 Plan 2 complete (bypass documentation + SECR-02 verification)
+Phase: 6 of 9 (SCA and Container CLI Tools) -- COMPLETE
+Plan: 1 of 1 in current phase
+Status: Phase 6 complete -- all plans done (TOOL-01, TOOL-02, TOOL-03 satisfied)
+Last activity: 2026-03-16 — Phase 6 Plan 1 complete (Trivy/Syft/Grype installed and verified)
 
-Progress: Phases 1-5 complete, ready for Phase 6
+Progress: Phases 1-6 complete, ready for Phase 7
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 7min
+- Total plans completed: 8
+- Average duration: 6min
 - Total execution time: 0.7 hours
 
 **By Phase:**
@@ -48,13 +48,14 @@ Progress: Phases 1-5 complete, ready for Phase 6
 | Phase 03 P02 | 1 | 5min | 5min |
 | Phase 04 P01 | 1 | 5min | 5min |
 | Phase 05 P01 | 1 | 3min | 3min |
+| Phase 05 P02 | 1 | 2min | 2min |
+| Phase 06 P01 | 1 | 3min | 3min |
 
 **Recent Trend:**
-- Last 5 plans: 2min, 13min, 5min, 5min, 3min
+- Last 5 plans: 13min, 5min, 5min, 3min, 3min
 - Trend: stable
 
 *Updated after each plan completion*
-| Phase 05 P02 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,8 @@ Recent decisions affecting current work:
 - [Phase 05]: 40 baseline false positives in aws-zabbix suppressed (CDK snapshot hashes + TLS bootstrap Lambda)
 - [Phase 05]: All hook revs bumped to latest via autoupdate in security-platform and aws-zabbix
 - [Phase 05]: Used AKIAIOSFODNN7TESTING instead of EXAMPLE key for SECR-02 test (EXAMPLE is in Gitleaks allowlist)
+- [Phase 06]: All three SCA tools installed via Homebrew -- consistent with Phase 5 pattern
+- [Phase 06]: Grype 0.109.1 from Homebrew well above 0.88.0 minimum -- no curl fallback needed
 
 ### Pending Todos
 
@@ -87,10 +90,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Research]: Grype must be >= 0.88.0 (DB schema v5 EOL 2026-03-06) — verify during Phase 6
+None -- Grype version concern resolved (0.109.1 >> 0.88.0 minimum).
 
 ## Session Continuity
 
-Last session: 2026-03-16T20:45:49.505Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-sca-and-container-cli-tools/06-CONTEXT.md
+Last session: 2026-03-16T21:00:17Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: .planning/phases/06-sca-and-container-cli-tools/06-01-SUMMARY.md

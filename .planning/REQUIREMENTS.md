@@ -32,9 +32,9 @@
 
 ### Security CLI Tools
 
-- [ ] **TOOL-01**: Trivy is installed and on `$PATH` (`trivy --version` succeeds), version >= 0.69.2
-- [ ] **TOOL-02**: Syft is installed and on `$PATH` (`syft version` succeeds)
-- [ ] **TOOL-03**: Grype is installed and on `$PATH` (`grype version` succeeds), version >= 0.88.0
+- [x] **TOOL-01**: Trivy is installed and on `$PATH` (`trivy --version` succeeds), version >= 0.69.2
+- [x] **TOOL-02**: Syft is installed and on `$PATH` (`syft version` succeeds)
+- [x] **TOOL-03**: Grype is installed and on `$PATH` (`grype version` succeeds), version >= 0.88.0
 - [ ] **TOOL-04**: Semgrep CE is installed and on `$PATH` (`semgrep --version` succeeds)
 - [ ] **TOOL-05**: Checkov is installed and on `$PATH` (`checkov --version` succeeds)
 - [ ] **TOOL-06**: Gitleaks is installed and on `$PATH` (`gitleaks version` succeeds)
@@ -119,9 +119,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SECR-01 | Phase 5 | Complete |
 | SECR-02 | Phase 5 | Complete |
 | SECR-03 | Phase 5 | Complete |
-| TOOL-01 | Phase 6 | Pending |
-| TOOL-02 | Phase 6 | Pending |
-| TOOL-03 | Phase 6 | Pending |
+| TOOL-01 | Phase 6 | Complete |
+| TOOL-02 | Phase 6 | Complete |
+| TOOL-03 | Phase 6 | Complete |
 | TOOL-04 | Phase 7 | Pending |
 | TOOL-05 | Phase 7 | Pending |
 | TOOL-06 | Phase 7 | Pending |
