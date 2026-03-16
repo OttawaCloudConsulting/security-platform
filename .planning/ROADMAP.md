@@ -126,10 +126,10 @@ Plans:
   1. Each of the 6 tools (Trivy, Syft, Grype, Semgrep, Checkov, Gitleaks) completes a scan against the local repository without errors
   2. Each tool produces a valid JSON report file that can be parsed (needed for M2 CI and M4 DefectDojo import)
   3. JSON output files exist on disk and contain scan results (not empty or error-only output)
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 08-01: TBD
+- [ ] 08-01-PLAN.md — Run all 6 CLI tools against aws-zabbix repo, capture JSON reports, add validation notes to main doc
 
 ### Phase 9: Full Stack Validation
 **Goal**: The entire pre-commit hook suite passes cleanly across the full repository with all existing issues resolved or suppressed
@@ -159,5 +159,5 @@ Note: Phases 2/3/4 depend only on Phase 1 (parallel-eligible). Phases 6/7 have n
 | 5. Secrets Detection Gate | 2/2 | Complete | 2026-03-16 |
 | 6. SCA and Container CLI Tools | 1/1 | Complete | 2026-03-16 |
 | 7. SAST and IaC CLI Tools | 0/1 | Not started | - |
-| 8. CLI Tool Scanning Validation | 0/? | Not started | - |
+| 8. CLI Tool Scanning Validation | 0/1 | Not started | - |
 | 9. Full Stack Validation | 0/? | Not started | - |
