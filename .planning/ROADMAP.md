@@ -86,7 +86,7 @@ Plans:
   1. `git push` triggers Gitleaks in `protect --staged` mode via the pre-push hook
   2. A commit containing a dummy AWS key pattern (`AKIAIOSFODNN7EXAMPLE`) is blocked on push
   3. Developer can articulate that `--no-verify` bypasses the hook and that CI (M2) is the compensating control
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 - [ ] 05-01-PLAN.md — Install Gitleaks, reconfigure pre-push hook in all three repos, baseline scans
@@ -156,7 +156,7 @@ Note: Phases 2/3/4 depend only on Phase 1 (parallel-eligible). Phases 6/7 have n
 | 2. Shell and Python Hooks | 1/1 | Complete    | 2026-03-15 |
 | 3. Web and Config Hooks | 2/2 | Complete    | 2026-03-15 |
 | 4. Infrastructure Hooks | 1/1 | Complete   | 2026-03-16 |
-| 5. Secrets Detection Gate | 0/2 | Planned | - |
+| 5. Secrets Detection Gate | 1/2 | In Progress|  |
 | 6. SCA and Container CLI Tools | 0/? | Not started | - |
 | 7. SAST and IaC CLI Tools | 0/? | Not started | - |
 | 8. CLI Tool Scanning Validation | 0/? | Not started | - |

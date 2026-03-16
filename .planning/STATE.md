@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready for Phase 5 -- discuss or plan next
-stopped_at: Phase 5 context gathered
-last_updated: "2026-03-16T02:48:38.479Z"
-last_activity: 2026-03-16 — Phase 4 complete (Plan 1 Infrastructure Hooks)
+status: Phase 5 in progress -- Plan 1 complete, Plan 2 remaining
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-16T03:07:34Z"
+last_activity: 2026-03-16 — Phase 5 complete (Plan 1 Secrets Detection Gate)
 progress:
   total_phases: 9
   completed_phases: 4
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 6
+  completed_plans: 6
 ---
 
 # Project State
@@ -20,23 +20,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production — with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 5: Secrets Detection Gate
+**Current focus:** Phase 5: Secrets Detection Gate (Plan 2 remaining)
 
 ## Current Position
 
 Phase: 5 of 9 (Secrets Detection Gate)
-Plan: 0 of 0 in current phase (not yet planned)
-Status: Ready for Phase 5 -- discuss or plan next
-Last activity: 2026-03-16 — Phase 4 complete (Plan 1 Infrastructure Hooks)
+Plan: 1 of 2 in current phase
+Status: Phase 5 in progress -- Plan 1 complete, Plan 2 remaining
+Last activity: 2026-03-16 — Phase 5 complete (Plan 1 Secrets Detection Gate)
 
-Progress: Phases 1-4 complete, Phase 5 next
+Progress: Phases 1-4 complete, Phase 5 Plan 1/2 done
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: 7min
-- Total execution time: 0.6 hours
+- Total execution time: 0.7 hours
 
 **By Phase:**
 
@@ -47,9 +47,10 @@ Progress: Phases 1-4 complete, Phase 5 next
 | Phase 03 P01 | 1 | 13min | 13min |
 | Phase 03 P02 | 1 | 5min | 5min |
 | Phase 04 P01 | 1 | 5min | 5min |
+| Phase 05 P01 | 1 | 3min | 3min |
 
 **Recent Trend:**
-- Last 5 plans: 12min, 2min, 13min, 5min, 5min
+- Last 5 plans: 2min, 13min, 5min, 5min, 3min
 - Trend: stable
 
 *Updated after each plan completion*
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 - [Phase 04]: npm audit fix resolved both high vulns -- audit-level stays at high (not downgraded to critical)
 - [Phase 04]: pre-commit-terraform autoupdated from v1.96.0 to v1.105.0
 - [Phase 04]: terraform-pipelines on feature/add-pre-commit branch for consistency
+- [Phase 05]: Gitleaks v8.30.1 pinned via pre-commit autoupdate (normalized across all three repos)
+- [Phase 05]: 40 baseline false positives in aws-zabbix suppressed (CDK snapshot hashes + TLS bootstrap Lambda)
+- [Phase 05]: All hook revs bumped to latest via autoupdate in security-platform and aws-zabbix
 
 ### Pending Todos
 
@@ -85,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T02:48:38.476Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-secrets-detection-gate/05-CONTEXT.md
+Last session: 2026-03-16T03:07:34Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: .planning/phases/05-secrets-detection-gate/05-01-SUMMARY.md
