@@ -45,10 +45,10 @@ Plans:
   1. Committing a shell script with an unquoted variable triggers a ShellCheck warning
   2. Committing a Python file with formatting violations triggers Ruff auto-fix and the file is reformatted
   3. Both hooks appear in `pre-commit run --show-diff-on-failure` output when violations exist
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 02-01: TBD
+- [ ] 02-01-PLAN.md — Fix ShellCheck and Ruff violations so both hooks pass cleanly
 
 ### Phase 3: Web and Config Hooks
 **Goal**: TypeScript/JavaScript, Dockerfiles, YAML manifests, and Markdown files are automatically checked on every commit
