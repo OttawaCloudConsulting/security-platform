@@ -59,10 +59,11 @@ Plans:
   2. Committing a Dockerfile with a best-practice violation triggers a hadolint warning
   3. Committing a YAML file with formatting issues triggers a yamllint error
   4. Committing a Markdown file with style issues triggers a markdownlint error
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
+- [ ] 03-01-PLAN.md — Install ESLint with typescript-eslint, fix all TS violations, verify hook passes
+- [ ] 03-02-PLAN.md — Configure markdownlint, verify yamllint, verify hadolint via temp file test
 
 ### Phase 4: Infrastructure Hooks
 **Goal**: npm dependencies, Terraform formatting, and Terraform syntax are automatically checked on every commit
@@ -152,7 +153,7 @@ Note: Phases 2/3/4 depend only on Phase 1 (parallel-eligible). Phases 6/7 have n
 |-------|----------------|--------|-----------|
 | 1. Pre-commit Framework | 1/1 | Complete    | 2026-03-16 |
 | 2. Shell and Python Hooks | 0/? | Not started | - |
-| 3. Web and Config Hooks | 0/? | Not started | - |
+| 3. Web and Config Hooks | 0/2 | Not started | - |
 | 4. Infrastructure Hooks | 0/? | Not started | - |
 | 5. Secrets Detection Gate | 0/? | Not started | - |
 | 6. SCA and Container CLI Tools | 0/? | Not started | - |
