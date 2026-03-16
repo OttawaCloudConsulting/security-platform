@@ -168,6 +168,7 @@
 ```bash
 # Install
 pip install semgrep --break-system-packages
+# Verified: v1.155.0 (2026-03-16)
 # or
 brew install semgrep
 
@@ -215,6 +216,7 @@ Checkov is a fully open-source IaC scanner. No account, no network dependency be
 
 ```bash
 pip install checkov --break-system-packages
+# Verified: v3.2.396 (2026-03-16)
 
 # Scan Terraform
 checkov -d ./infrastructure/terraform
@@ -366,6 +368,7 @@ Purpose-built secrets scanner. Scans current files and full git history. No acco
 
 ```bash
 brew install gitleaks
+# Verified: v8.30.0 (2026-03-16) — CLI tool; also used as pre-push hook (Phase 5)
 
 # Scan current files
 gitleaks detect --source .
