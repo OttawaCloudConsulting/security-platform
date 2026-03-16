@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 7 context gathered
-last_updated: "2026-03-16T21:23:18.777Z"
-last_activity: 2026-03-16 — Phase 6 Plan 1 complete (Trivy/Syft/Grype installed and verified)
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-03-16T21:37:01.040Z"
+last_activity: 2026-03-16 — Phase 7 Plan 1 complete (Semgrep/Checkov/Gitleaks verified on PATH)
 progress:
   total_phases: 9
-  completed_phases: 6
-  total_plans: 8
-  completed_plans: 8
+  completed_phases: 7
+  total_plans: 9
+  completed_plans: 9
 ---
 
 # Project State
@@ -20,23 +20,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production — with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 6 complete. Ready for Phase 7.
+**Current focus:** Phase 7 complete. Ready for Phase 8.
 
 ## Current Position
 
-Phase: 6 of 9 (SCA and Container CLI Tools) -- COMPLETE
+Phase: 7 of 9 (SAST and IaC CLI Tools) -- COMPLETE
 Plan: 1 of 1 in current phase
-Status: Phase 6 complete -- all plans done (TOOL-01, TOOL-02, TOOL-03 satisfied)
-Last activity: 2026-03-16 — Phase 6 Plan 1 complete (Trivy/Syft/Grype installed and verified)
+Status: Phase 7 complete -- all plans done (TOOL-04, TOOL-05, TOOL-06 satisfied)
+Last activity: 2026-03-16 — Phase 7 Plan 1 complete (Semgrep/Checkov/Gitleaks verified on PATH)
 
-Progress: Phases 1-6 complete, ready for Phase 7
+Progress: Phases 1-7 complete, ready for Phase 8
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 6min
-- Total execution time: 0.7 hours
+- Total plans completed: 9
+- Average duration: 5min
+- Total execution time: 0.8 hours
 
 **By Phase:**
 
@@ -50,9 +50,10 @@ Progress: Phases 1-6 complete, ready for Phase 7
 | Phase 05 P01 | 1 | 3min | 3min |
 | Phase 05 P02 | 1 | 2min | 2min |
 | Phase 06 P01 | 1 | 3min | 3min |
+| Phase 07 P01 | 1 | 2min | 2min |
 
 **Recent Trend:**
-- Last 5 plans: 13min, 5min, 5min, 3min, 3min
+- Last 5 plans: 5min, 5min, 3min, 3min, 2min
 - Trend: stable
 
 *Updated after each plan completion*
@@ -83,6 +84,8 @@ Recent decisions affecting current work:
 - [Phase 05]: Used AKIAIOSFODNN7TESTING instead of EXAMPLE key for SECR-02 test (EXAMPLE is in Gitleaks allowlist)
 - [Phase 06]: All three SCA tools installed via Homebrew -- consistent with Phase 5 pattern
 - [Phase 06]: Grype 0.109.1 from Homebrew well above 0.88.0 minimum -- no curl fallback needed
+- [Phase 07]: Semgrep installed to pyenv Python 3.12 (pip3 resolved there) -- works correctly on PATH
+- [Phase 07]: Checkov kept at v3.2.396 -- conservative choice, no upgrade
 
 ### Pending Todos
 
@@ -94,6 +97,6 @@ None -- Grype version concern resolved (0.109.1 >> 0.88.0 minimum).
 
 ## Session Continuity
 
-Last session: 2026-03-16T21:23:18.767Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-sast-and-iac-cli-tools/07-CONTEXT.md
+Last session: 2026-03-16T21:37:00Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: .planning/phases/07-sast-and-iac-cli-tools/07-01-SUMMARY.md
