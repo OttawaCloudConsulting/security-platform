@@ -73,10 +73,10 @@ Plans:
   1. Committing a changed `package-lock.json` triggers npm audit
   2. Committing an unformatted `.tf` file triggers terraform fmt auto-formatting
   3. Committing a `.tf` file with invalid HCL syntax triggers a terraform validate error
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md — Fix npm audit violations, clone terraform-pipelines, validate terraform_fmt and terraform_validate hooks end-to-end
 
 ### Phase 5: Secrets Detection Gate
 **Goal**: Credentials and secrets are blocked from being pushed to the remote repository
@@ -154,7 +154,7 @@ Note: Phases 2/3/4 depend only on Phase 1 (parallel-eligible). Phases 6/7 have n
 | 1. Pre-commit Framework | 1/1 | Complete    | 2026-03-16 |
 | 2. Shell and Python Hooks | 0/? | Not started | - |
 | 3. Web and Config Hooks | 0/2 | Not started | - |
-| 4. Infrastructure Hooks | 0/? | Not started | - |
+| 4. Infrastructure Hooks | 0/1 | Not started | - |
 | 5. Secrets Detection Gate | 0/? | Not started | - |
 | 6. SCA and Container CLI Tools | 0/? | Not started | - |
 | 7. SAST and IaC CLI Tools | 0/? | Not started | - |
