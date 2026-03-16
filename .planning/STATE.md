@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 8 context gathered
-last_updated: "2026-03-16T23:21:02.849Z"
-last_activity: 2026-03-16 — Phase 7 Plan 1 complete (Semgrep/Checkov/Gitleaks verified on PATH)
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-16T23:43:02.822Z"
+last_activity: 2026-03-16 -- Phase 8 Plan 1 complete (all 6 CLI tools validated with JSON output)
 progress:
   total_phases: 9
-  completed_phases: 7
-  total_plans: 9
-  completed_plans: 9
+  completed_phases: 8
+  total_plans: 10
+  completed_plans: 10
 ---
 
 # Project State
@@ -20,23 +20,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production — with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 7 complete. Ready for Phase 8.
+**Current focus:** Phase 8 complete. Ready for Phase 9.
 
 ## Current Position
 
-Phase: 7 of 9 (SAST and IaC CLI Tools) -- COMPLETE
+Phase: 8 of 9 (CLI Tool Scanning Validation) -- COMPLETE
 Plan: 1 of 1 in current phase
-Status: Phase 7 complete -- all plans done (TOOL-04, TOOL-05, TOOL-06 satisfied)
-Last activity: 2026-03-16 — Phase 7 Plan 1 complete (Semgrep/Checkov/Gitleaks verified on PATH)
+Status: Phase 8 complete -- all plans done (TOOL-07, TOOL-08 satisfied)
+Last activity: 2026-03-16 -- Phase 8 Plan 1 complete (all 6 CLI tools validated with JSON output)
 
-Progress: Phases 1-7 complete, ready for Phase 8
+Progress: Phases 1-8 complete, ready for Phase 9
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 5min
-- Total execution time: 0.8 hours
+- Total execution time: 0.85 hours
 
 **By Phase:**
 
@@ -51,9 +51,10 @@ Progress: Phases 1-7 complete, ready for Phase 8
 | Phase 05 P02 | 1 | 2min | 2min |
 | Phase 06 P01 | 1 | 3min | 3min |
 | Phase 07 P01 | 1 | 2min | 2min |
+| Phase 08 P01 | 1 | 3min | 3min |
 
 **Recent Trend:**
-- Last 5 plans: 5min, 5min, 3min, 3min, 2min
+- Last 5 plans: 3min, 3min, 2min, 3min, 3min
 - Trend: stable
 
 *Updated after each plan completion*
@@ -86,6 +87,7 @@ Recent decisions affecting current work:
 - [Phase 06]: Grype 0.109.1 from Homebrew well above 0.88.0 minimum -- no curl fallback needed
 - [Phase 07]: Semgrep installed to pyenv Python 3.12 (pip3 resolved there) -- works correctly on PATH
 - [Phase 07]: Checkov kept at v3.2.396 -- conservative choice, no upgrade
+- [Phase 08]: Ran Grype against directory (grype dir:.) rather than Syft SBOM -- simpler, no ordering dependency
 
 ### Pending Todos
 
@@ -97,6 +99,6 @@ None -- Grype version concern resolved (0.109.1 >> 0.88.0 minimum).
 
 ## Session Continuity
 
-Last session: 2026-03-16T23:21:02.844Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-cli-tool-scanning-validation/08-CONTEXT.md
+Last session: 2026-03-16T23:43:02.818Z
+Stopped at: Completed 08-01-PLAN.md
+Resume file: None
