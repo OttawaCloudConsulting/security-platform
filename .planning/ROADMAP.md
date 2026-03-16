@@ -113,10 +113,10 @@ Plans:
   1. `semgrep --version` succeeds and shows a current version
   2. `checkov --version` succeeds and shows a current version
   3. `gitleaks version` succeeds and shows a current version
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 07-01: TBD
+- [ ] 07-01-PLAN.md — Install Semgrep via pip, verify all three tools on PATH, update main doc with verified versions
 
 ### Phase 8: CLI Tool Scanning Validation
 **Goal**: Every security CLI tool can run a real scan against the local repository and produce machine-readable JSON output
@@ -158,6 +158,6 @@ Note: Phases 2/3/4 depend only on Phase 1 (parallel-eligible). Phases 6/7 have n
 | 4. Infrastructure Hooks | 1/1 | Complete   | 2026-03-16 |
 | 5. Secrets Detection Gate | 2/2 | Complete | 2026-03-16 |
 | 6. SCA and Container CLI Tools | 1/1 | Complete | 2026-03-16 |
-| 7. SAST and IaC CLI Tools | 0/? | Not started | - |
+| 7. SAST and IaC CLI Tools | 0/1 | Not started | - |
 | 8. CLI Tool Scanning Validation | 0/? | Not started | - |
 | 9. Full Stack Validation | 0/? | Not started | - |
