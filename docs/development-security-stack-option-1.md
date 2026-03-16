@@ -261,6 +261,7 @@ Trivy is a Swiss army knife scanner from Aqua Security. Fully open-source, runs 
 ```bash
 # Install
 brew install trivy
+# Verified: v0.69.3 (2026-03-16) — requires >= 0.69.2
 # or
 curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
   | sh -s -- -b /usr/local/bin
@@ -309,12 +310,14 @@ curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
   | sh -s -- -b /usr/local/bin
 # or
 brew install syft
+# Verified: v1.42.2 (2026-03-16)
 
 # Install Grype
 curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
   | sh -s -- -b /usr/local/bin
 # or
 brew install grype
+# Verified: v0.109.1 (2026-03-16) — requires >= 0.88.0 for DB schema v6
 ```
 
 **Usage:**
