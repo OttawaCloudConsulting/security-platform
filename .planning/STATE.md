@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production — with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 4: Infrastructure Hooks
+**Current focus:** Phase 5: Secrets Detection Gate
 
 ## Current Position
 
-Phase: 4 of 9 (Infrastructure Hooks)
-Plan: 1 of 1 in current phase (COMPLETE)
-Status: Phase 4 complete -- ready for Phase 5
+Phase: 5 of 9 (Secrets Detection Gate)
+Plan: 0 of 0 in current phase (not yet planned)
+Status: Ready for Phase 5 -- discuss or plan next
 Last activity: 2026-03-16 — Phase 4 complete (Plan 1 Infrastructure Hooks)
 
-Progress: [██████████] 100% (Phase 4: 1/1 plans)
+Progress: Phases 1-4 complete, Phase 5 next
 
 ## Performance Metrics
 
