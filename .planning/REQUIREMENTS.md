@@ -27,8 +27,8 @@
 ### Tier 2 — Secrets Gate
 
 - [x] **SECR-01**: Gitleaks hook runs in `protect --staged` mode on every push (pre-push hook)
-- [ ] **SECR-02**: A commit containing a dummy AWS key pattern (e.g., `AKIAIOSFODNN7EXAMPLE`) is blocked by Gitleaks
-- [ ] **SECR-03**: Developer understands `--no-verify` bypass and that CI is the compensating control (per ADR-011)
+- [x] **SECR-02**: A commit containing a dummy AWS key pattern (e.g., `AKIAIOSFODNN7EXAMPLE`) is blocked by Gitleaks
+- [x] **SECR-03**: Developer understands `--no-verify` bypass and that CI is the compensating control (per ADR-011)
 
 ### Security CLI Tools
 
@@ -117,8 +117,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LINT-08 | Phase 4 | Complete |
 | LINT-09 | Phase 4 | Complete |
 | SECR-01 | Phase 5 | Complete |
-| SECR-02 | Phase 5 | Pending |
-| SECR-03 | Phase 5 | Pending |
+| SECR-02 | Phase 5 | Complete |
+| SECR-03 | Phase 5 | Complete |
 | TOOL-01 | Phase 6 | Pending |
 | TOOL-02 | Phase 6 | Pending |
 | TOOL-03 | Phase 6 | Pending |
