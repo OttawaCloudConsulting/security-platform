@@ -32,10 +32,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. `pre-commit --version` succeeds and shows a current version
   2. `.pre-commit-config.yaml` exists in the target repository root and is committed to version control
   3. `git commit` triggers pre-commit hooks (verified by a test commit)
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Initialize canonical config in security-platform and deploy to target repo with hook activation
 
 ### Phase 2: Shell and Python Hooks
 **Goal**: Shell scripts and Python files are automatically checked for quality issues on every commit
@@ -150,7 +150,7 @@ Note: Phases 2/3/4 depend only on Phase 1 (parallel-eligible). Phases 6/7 have n
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Pre-commit Framework | 0/? | Not started | - |
+| 1. Pre-commit Framework | 0/1 | Not started | - |
 | 2. Shell and Python Hooks | 0/? | Not started | - |
 | 3. Web and Config Hooks | 0/? | Not started | - |
 | 4. Infrastructure Hooks | 0/? | Not started | - |
