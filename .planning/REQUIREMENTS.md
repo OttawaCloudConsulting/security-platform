@@ -14,8 +14,8 @@
 
 ### Tier 1 — Quality & Linting Hooks
 
-- [ ] **LINT-01**: ShellCheck hook catches unquoted variables and shell script issues on every commit
-- [ ] **LINT-02**: Ruff hook auto-fixes Python formatting violations and flags linting errors on every commit
+- [x] **LINT-01**: ShellCheck hook catches unquoted variables and shell script issues on every commit
+- [x] **LINT-02**: Ruff hook auto-fixes Python formatting violations and flags linting errors on every commit
 - [ ] **LINT-03**: ESLint hook flags TypeScript/JavaScript linting issues on every commit
 - [ ] **LINT-04**: hadolint hook flags Dockerfile best practice violations on every commit
 - [ ] **LINT-05**: yamllint hook flags YAML/Kubernetes manifest formatting issues on every commit
@@ -107,8 +107,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PCOM-02 | Phase 1 | Complete |
 | PCOM-03 | Phase 1 | Complete |
 | PCOM-04 | Phase 9 | Pending |
-| LINT-01 | Phase 2 | Pending |
-| LINT-02 | Phase 2 | Pending |
+| LINT-01 | Phase 2 | Complete |
+| LINT-02 | Phase 2 | Complete |
 | LINT-03 | Phase 3 | Pending |
 | LINT-04 | Phase 3 | Pending |
 | LINT-05 | Phase 3 | Pending |
