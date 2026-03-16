@@ -169,6 +169,7 @@
 # Install
 pip install semgrep --break-system-packages
 # Verified: v1.155.0 (2026-03-16)
+# Validated: semgrep scan completed, JSON output produced (2026-03-16)
 # or
 brew install semgrep
 
@@ -217,6 +218,7 @@ Checkov is a fully open-source IaC scanner. No account, no network dependency be
 ```bash
 pip install checkov --break-system-packages
 # Verified: v3.2.396 (2026-03-16)
+# Validated: checkov scan completed, JSON output produced (2026-03-16)
 
 # Scan Terraform
 checkov -d ./infrastructure/terraform
@@ -264,6 +266,7 @@ Trivy is a Swiss army knife scanner from Aqua Security. Fully open-source, runs 
 # Install
 brew install trivy
 # Verified: v0.69.3 (2026-03-16) — requires >= 0.69.2
+# Validated: trivy fs scan completed, JSON output produced (2026-03-16)
 # or
 curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
   | sh -s -- -b /usr/local/bin
@@ -313,6 +316,7 @@ curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
 # or
 brew install syft
 # Verified: v1.42.2 (2026-03-16)
+# Validated: syft SBOM generation completed, CycloneDX-JSON output produced (2026-03-16)
 
 # Install Grype
 curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
@@ -320,6 +324,7 @@ curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
 # or
 brew install grype
 # Verified: v0.109.1 (2026-03-16) — requires >= 0.88.0 for DB schema v6
+# Validated: grype scan completed, JSON output produced (2026-03-16)
 ```
 
 **Usage:**
@@ -369,6 +374,7 @@ Purpose-built secrets scanner. Scans current files and full git history. No acco
 ```bash
 brew install gitleaks
 # Verified: v8.30.0 (2026-03-16) — CLI tool; also used as pre-push hook (Phase 5)
+# Validated: gitleaks detect completed, JSON output produced (2026-03-16)
 
 # Scan current files
 gitleaks detect --source .
