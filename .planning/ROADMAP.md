@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Pre-commit Framework** - Install pre-commit and create the hook configuration file (completed 2026-03-16)
 - [x] **Phase 2: Shell and Python Hooks** - ShellCheck and Ruff linting on every commit (completed 2026-03-16)
 - [ ] **Phase 3: Web and Config Hooks** - ESLint, hadolint, yamllint, and markdownlint on every commit
-- [ ] **Phase 4: Infrastructure Hooks** - npm audit, terraform fmt, and terraform validate on every commit
+- [x] **Phase 4: Infrastructure Hooks** - npm audit, terraform fmt, and terraform validate on every commit (completed 2026-03-16)
 - [ ] **Phase 5: Secrets Detection Gate** - Gitleaks pre-push hook blocks leaked credentials
 - [ ] **Phase 6: SCA and Container CLI Tools** - Trivy, Syft, and Grype installed and on PATH
 - [ ] **Phase 7: SAST and IaC CLI Tools** - Semgrep, Checkov, and Gitleaks CLI installed and on PATH
@@ -73,7 +73,7 @@ Plans:
   1. Committing a changed `package-lock.json` triggers npm audit
   2. Committing an unformatted `.tf` file triggers terraform fmt auto-formatting
   3. Committing a `.tf` file with invalid HCL syntax triggers a terraform validate error
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 04-01-PLAN.md — Fix npm audit violations, clone terraform-pipelines, validate terraform_fmt and terraform_validate hooks end-to-end
@@ -154,7 +154,7 @@ Note: Phases 2/3/4 depend only on Phase 1 (parallel-eligible). Phases 6/7 have n
 | 1. Pre-commit Framework | 1/1 | Complete    | 2026-03-16 |
 | 2. Shell and Python Hooks | 0/? | Not started | - |
 | 3. Web and Config Hooks | 0/2 | Not started | - |
-| 4. Infrastructure Hooks | 0/1 | Not started | - |
+| 4. Infrastructure Hooks | 1/1 | Complete   | 2026-03-16 |
 | 5. Secrets Detection Gate | 0/? | Not started | - |
 | 6. SCA and Container CLI Tools | 0/? | Not started | - |
 | 7. SAST and IaC CLI Tools | 0/? | Not started | - |
