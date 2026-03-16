@@ -373,9 +373,11 @@ gitleaks detect --source . --log-opts="--all"
 # Output JSON for DefectDojo
 gitleaks detect --source . --report-path gitleaks-report.json --report-format json
 
-# Protect mode — scan only staged changes (for pre-commit)
+# Protect mode — scan only staged changes (used by the pre-push hook)
 gitleaks protect --staged
 ```
+
+The `protect --staged` mode is what the pre-push hook runs (see the `.pre-commit-config.yaml` Tier 2 section). It scans only staged changes rather than the full history, keeping the hook fast.
 
 ---
 
@@ -1377,11 +1379,27 @@ repos:
 # ─────────────────────────────────────────────────────────────────────────────
 
   # --- Secrets detection: Gitleaks ---
+  # Bypass: git push --no-verify skips this hook — CI is the compensating control (see ADR-011)
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.21.2
+    rev: v8.30.1
     hooks:
       - id: gitleaks
+        stages: [pre-push]
+        args: [protect, --staged]
 ```
+
+#### Bypass and Compensating Controls
+
+> **Warning:** `git push --no-verify` bypasses the Gitleaks pre-push hook entirely. This is a Git feature — no special permissions required.
+
+The pre-commit/pre-push framework is defense-in-depth: it catches secrets before they reach the remote, but it is not the sole enforcement mechanism. The CI/CD pipeline (Milestone 2) runs Gitleaks against the full git history on every pull request and push to protected branches. Because CI runs server-side in GitHub Actions, it cannot be bypassed from the developer workstation.
+
+The enforcement chain:
+1. **Pre-push hook (this section)** — client-side, bypassable with `--no-verify`
+2. **CI/CD Gitleaks scan (M2)** — server-side, non-bypassable
+3. **Branch protection + required status checks** — prevents merge without passing CI
+
+See [ADR-011](docs/adr/adr011-precommit-bypass-warning.md) for the full rationale.
 
 ### Keeping Hooks Current
 
