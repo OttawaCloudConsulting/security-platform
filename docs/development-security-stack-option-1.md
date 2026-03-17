@@ -1315,6 +1315,7 @@ npm audit fix
 
 ```yaml
 # .pre-commit-config.yaml
+# Validated: pre-commit run --all-files passed (aws-zabbix, terraform-pipelines) -- 2026-03-16
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TIER 1: Quality & Linting
@@ -1325,14 +1326,14 @@ repos:
 
   # --- Terraform: formatting and validation ---
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: v1.96.0
+    rev: v1.105.0
     hooks:
       - id: terraform_fmt
       - id: terraform_validate
 
   # --- Python: Ruff (replaces flake8, black, isort) ---
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+    rev: v0.15.6
     hooks:
       - id: ruff
         args: [--fix]
@@ -1348,7 +1349,7 @@ repos:
   - repo: https://github.com/hadolint/hadolint
     rev: v2.12.0
     hooks:
-      - id: hadolint-docker
+      - id: hadolint
 
   # --- YAML / Kubernetes manifests: yamllint ---
   - repo: https://github.com/adrienverge/yamllint
