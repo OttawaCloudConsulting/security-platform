@@ -31,7 +31,8 @@
       "Bash(CLI_ANYTHING_FORCE_INSTALLED=1 python3 -m pytest cli_anything/drawio/tests/test_full_e2e.py -v -s --tb=short 2>&1)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(wc:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(gh repo:*)"
     ]
   }
 }

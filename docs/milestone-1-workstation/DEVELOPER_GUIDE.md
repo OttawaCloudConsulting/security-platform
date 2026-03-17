@@ -13,7 +13,7 @@ The workstation layer is the first of four security boundaries. Each layer catch
 ```
 ┌────────────────────────────────────────────────────────────────────────────┐
 │                         Developer Workstation                              │
-│  IDE (VS Code) + Pre-commit Hooks (Tier 1 & 2) + CLI Tools                │
+│  IDE (VS Code) + Pre-commit Hooks (Tier 1 & 2) + CLI Tools                 │
 │                                                                            │
 │  Pre-commit Tier 1 — Quality & Linting (fast, every commit)                │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐       │

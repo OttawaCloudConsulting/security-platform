@@ -1,16 +1,14 @@
-# Roadmap: M1 — Developer Workstation Foundation
+# Roadmap: Security & Supply Chain Scanning Stack
 
-## Overview
+## Milestones
 
-M1 delivers the developer workstation security layer: a pre-commit framework with 9 language-specific linting hooks and Gitleaks secrets detection, plus 6 security CLI tools installed and validated for local scanning and JSON report generation. This is the dependency-free starting point — no infrastructure required, immediate value on every commit. The roadmap progresses from framework installation through hook categories to CLI tool installation and ends with full-stack validation.
+- **v1.0 M1 Workstation Foundation** - Phases 1-9 (shipped 2026-03-17)
+- **v1.1 Distribution Packaging** - Phases 10-13 (in progress)
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
-
-Decimal phases appear between their surrounding integers in numeric order.
+<details>
+<summary>v1.0 M1 Workstation Foundation (Phases 1-9) - SHIPPED 2026-03-17</summary>
 
 - [x] **Phase 1: Pre-commit Framework** - Install pre-commit and create the hook configuration file (completed 2026-03-16)
 - [x] **Phase 2: Shell and Python Hooks** - ShellCheck and Ruff linting on every commit (completed 2026-03-16)
@@ -21,8 +19,6 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 7: SAST and IaC CLI Tools** - Semgrep, Checkov, and Gitleaks CLI installed and on PATH (completed 2026-03-16)
 - [x] **Phase 8: CLI Tool Scanning Validation** - Every CLI tool runs a real scan and produces JSON output (completed 2026-03-16)
 - [x] **Phase 9: Full Stack Validation** - All hooks pass cleanly across the entire repository (completed 2026-03-17)
-
-## Phase Details
 
 ### Phase 1: Pre-commit Framework
 **Goal**: Developer has a working pre-commit framework with the configuration file committed to the target repository
@@ -35,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 1/1 plans complete
 
 Plans:
-- [x] 01-01-PLAN.md — Initialize canonical config in security-platform and deploy to target repo with hook activation
+- [x] 01-01-PLAN.md -- Initialize canonical config in security-platform and deploy to target repo with hook activation
 
 ### Phase 2: Shell and Python Hooks
 **Goal**: Shell scripts and Python files are automatically checked for quality issues on every commit
@@ -48,7 +44,7 @@ Plans:
 **Plans:** 1/1 plans complete
 
 Plans:
-- [x] 02-01-PLAN.md — Fix ShellCheck and Ruff violations so both hooks pass cleanly
+- [x] 02-01-PLAN.md -- Fix ShellCheck and Ruff violations so both hooks pass cleanly
 
 ### Phase 3: Web and Config Hooks
 **Goal**: TypeScript/JavaScript, Dockerfiles, YAML manifests, and Markdown files are automatically checked on every commit
@@ -62,8 +58,8 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [x] 03-01-PLAN.md — Install ESLint with typescript-eslint, fix all TS violations, verify hook passes
-- [x] 03-02-PLAN.md — Configure markdownlint, verify yamllint, verify hadolint via temp file test
+- [x] 03-01-PLAN.md -- Install ESLint with typescript-eslint, fix all TS violations, verify hook passes
+- [x] 03-02-PLAN.md -- Configure markdownlint, verify yamllint, verify hadolint via temp file test
 
 ### Phase 4: Infrastructure Hooks
 **Goal**: npm dependencies, Terraform formatting, and Terraform syntax are automatically checked on every commit
@@ -76,7 +72,7 @@ Plans:
 **Plans:** 1/1 plans complete
 
 Plans:
-- [x] 04-01-PLAN.md — Fix npm audit violations, clone terraform-pipelines, validate terraform_fmt and terraform_validate hooks end-to-end
+- [x] 04-01-PLAN.md -- Fix npm audit violations, clone terraform-pipelines, validate terraform_fmt and terraform_validate hooks end-to-end
 
 ### Phase 5: Secrets Detection Gate
 **Goal**: Credentials and secrets are blocked from being pushed to the remote repository
@@ -89,8 +85,8 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [x] 05-01-PLAN.md — Install Gitleaks, reconfigure pre-push hook in all three repos, baseline scans
-- [x] 05-02-PLAN.md — End-to-end dummy AWS key test and bypass documentation
+- [x] 05-01-PLAN.md -- Install Gitleaks, reconfigure pre-push hook in all three repos, baseline scans
+- [x] 05-02-PLAN.md -- End-to-end dummy AWS key test and bypass documentation
 
 ### Phase 6: SCA and Container CLI Tools
 **Goal**: The supply chain analysis toolchain (SBOM generation, vulnerability matching, container scanning) is installed and available locally
@@ -103,7 +99,7 @@ Plans:
 **Plans:** 1/1 plans complete
 
 Plans:
-- [x] 06-01-PLAN.md — Install/upgrade Trivy, Syft, Grype via Homebrew and update main doc with verified versions
+- [x] 06-01-PLAN.md -- Install/upgrade Trivy, Syft, Grype via Homebrew and update main doc with verified versions
 
 ### Phase 7: SAST and IaC CLI Tools
 **Goal**: The static analysis and IaC scanning toolchain is installed and available locally alongside the secrets scanner
@@ -116,7 +112,7 @@ Plans:
 **Plans:** 1/1 plans complete
 
 Plans:
-- [x] 07-01-PLAN.md — Install Semgrep via pip, verify all three tools on PATH, update main doc with verified versions
+- [x] 07-01-PLAN.md -- Install Semgrep via pip, verify all three tools on PATH, update main doc with verified versions
 
 ### Phase 8: CLI Tool Scanning Validation
 **Goal**: Every security CLI tool can run a real scan against the local repository and produce machine-readable JSON output
@@ -129,8 +125,8 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [x] 08-01-PLAN.md — Run all 6 CLI tools against aws-zabbix repo, capture JSON reports, add validation notes to main doc
-- [x] 08-02-PLAN.md — (gap closure) Re-run Grype scan with --file flag to fix invalid JSON output
+- [x] 08-01-PLAN.md -- Run all 6 CLI tools against aws-zabbix repo, capture JSON reports, add validation notes to main doc
+- [x] 08-02-PLAN.md -- (gap closure) Re-run Grype scan with --file flag to fix invalid JSON output
 
 ### Phase 9: Full Stack Validation
 **Goal**: The entire pre-commit hook suite passes cleanly across the full repository with all existing issues resolved or suppressed
@@ -143,23 +139,95 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [x] 09-01-PLAN.md — Install native hadolint, switch hook ID from hadolint-docker to hadolint in all repos, add markdownlint config to terraform-pipelines
-- [x] 09-02-PLAN.md — Run pre-commit --all-files in both repos to exit 0, validate Gitleaks separately, add validation stamp to main doc
+- [x] 09-01-PLAN.md -- Install native hadolint, switch hook ID from hadolint-docker to hadolint in all repos, add markdownlint config to terraform-pipelines
+- [x] 09-02-PLAN.md -- Run pre-commit --all-files in both repos to exit 0, validate Gitleaks separately, add validation stamp to main doc
+
+</details>
+
+## v1.1 Distribution Packaging (In Progress)
+
+**Milestone Goal:** Replace Homebrew-based tool installation with cross-platform methods (pip/npm/binary) and create a distribution package that sets up security tooling in any fresh git repo with a single command.
+
+- [ ] **Phase 10: Cross-Platform Install Script** - install.sh installs all security CLI tools on macOS and Linux without Homebrew
+- [ ] **Phase 11: File-Pattern Hook Configuration** - Universal pre-commit config with language-aware filters for selective hook execution
+- [ ] **Phase 12: Repo Setup Script** - setup.sh copies configs and wires hooks in any git repo with one command
+- [ ] **Phase 13: Maintenance and Validation** - Version check, update, and health check commands for installed tools
+
+## Phase Details
+
+### Phase 10: Cross-Platform Install Script
+**Goal**: Developer can install the complete security CLI tool suite on any macOS or Linux machine with a single script, no Homebrew required
+**Depends on**: Nothing (foundation for this milestone)
+**Requirements**: INST-01, INST-02, INST-03, INST-04, INST-05, INST-06, INST-07
+**Success Criteria** (what must be TRUE):
+  1. Running `bash dist/install.sh` on macOS arm64 installs all 8 security CLI tools (pre-commit, Semgrep, Checkov, Trivy, Syft, Grype, Gitleaks, hadolint) and each responds to its version command
+  2. The script reads tool versions from a manifest file and installs those exact versions (not latest)
+  3. Python tools (pre-commit, Semgrep, Checkov) are installed via pipx and isolated from system Python
+  4. Go/Haskell tools (Trivy, Syft, Grype, Gitleaks, hadolint) are installed via official install scripts or direct binary download with OS/arch auto-detection
+  5. After install completes, the script verifies all tool locations are on PATH and warns if any are missing
+**Plans**: TBD
+
+Plans:
+- [ ] 10-01: TBD
+- [ ] 10-02: TBD
+
+### Phase 11: File-Pattern Hook Configuration
+**Goal**: A single universal pre-commit config works correctly across all repos by only running hooks on matching file types
+**Depends on**: Phase 10 (tools must be installable to validate hooks execute correctly)
+**Requirements**: DIST-04
+**Success Criteria** (what must be TRUE):
+  1. Every hook in `.pre-commit-config.yaml` has explicit `types:` or `files:` filters that restrict execution to relevant files
+  2. Running `pre-commit run --all-files` in a Python-only repo skips ESLint, hadolint, terraform, and npm hooks cleanly (exit 0, no errors)
+  3. Running `pre-commit run --all-files` in a Terraform-only repo skips Ruff, ESLint, and npm hooks cleanly
+**Plans**: TBD
+
+Plans:
+- [ ] 11-01: TBD
+
+### Phase 12: Repo Setup Script
+**Goal**: Developer can onboard any git repo with a single command that deploys configs and activates hooks
+**Depends on**: Phase 10, Phase 11 (tools must be installed; config must be finalized before deployment)
+**Requirements**: DIST-01, DIST-02, DIST-03, DIST-05
+**Success Criteria** (what must be TRUE):
+  1. Running `bash dist/setup.sh` in a git repo copies `.pre-commit-config.yaml` and all linting configs into the repo root
+  2. After setup completes, `pre-commit run --all-files` works (hooks are installed for both commit and pre-push)
+  3. Running setup.sh a second time in the same repo produces no errors and does not corrupt existing configs or user-customized files (e.g., `.gitleaksignore`)
+**Plans**: TBD
+
+Plans:
+- [ ] 12-01: TBD
+
+### Phase 13: Maintenance and Validation
+**Goal**: Developer can check tool health, compare installed versions against expected versions, and update outdated tools
+**Depends on**: Phase 10 (install script establishes the version manifest and install paths that maintenance commands operate on)
+**Requirements**: MAINT-01, MAINT-02, MAINT-03
+**Success Criteria** (what must be TRUE):
+  1. Running `bash dist/install.sh --check` shows a table of all tools with installed version vs expected version and highlights any mismatches
+  2. Running `bash dist/install.sh --update` upgrades any outdated tools to the version pinned in the manifest
+  3. Running `bash dist/install.sh --doctor` verifies every tool is on PATH and can execute its version command, reporting pass/fail per tool
+**Plans**: TBD
+
+Plans:
+- [ ] 13-01: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
-Note: Phases 2/3/4 depend only on Phase 1 (parallel-eligible). Phases 6/7 have no dependencies (parallel-eligible with 1-5).
+Phases execute in numeric order: 10 -> 11 -> 12 -> 13
+Note: Phase 11 depends on Phase 10. Phase 12 depends on Phases 10 and 11. Phase 13 depends on Phase 10.
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Pre-commit Framework | 1/1 | Complete    | 2026-03-16 |
-| 2. Shell and Python Hooks | 1/1 | Complete    | 2026-03-15 |
-| 3. Web and Config Hooks | 2/2 | Complete    | 2026-03-15 |
-| 4. Infrastructure Hooks | 1/1 | Complete   | 2026-03-16 |
-| 5. Secrets Detection Gate | 2/2 | Complete | 2026-03-16 |
-| 6. SCA and Container CLI Tools | 1/1 | Complete | 2026-03-16 |
-| 7. SAST and IaC CLI Tools | 1/1 | Complete | 2026-03-16 |
-| 8. CLI Tool Scanning Validation | 2/2 | Complete | 2026-03-16 |
-| 9. Full Stack Validation | 2/2 | Complete   | 2026-03-17 |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Pre-commit Framework | v1.0 | 1/1 | Complete | 2026-03-16 |
+| 2. Shell and Python Hooks | v1.0 | 1/1 | Complete | 2026-03-16 |
+| 3. Web and Config Hooks | v1.0 | 2/2 | Complete | 2026-03-15 |
+| 4. Infrastructure Hooks | v1.0 | 1/1 | Complete | 2026-03-16 |
+| 5. Secrets Detection Gate | v1.0 | 2/2 | Complete | 2026-03-16 |
+| 6. SCA and Container CLI Tools | v1.0 | 1/1 | Complete | 2026-03-16 |
+| 7. SAST and IaC CLI Tools | v1.0 | 1/1 | Complete | 2026-03-16 |
+| 8. CLI Tool Scanning Validation | v1.0 | 2/2 | Complete | 2026-03-16 |
+| 9. Full Stack Validation | v1.0 | 2/2 | Complete | 2026-03-17 |
+| 10. Cross-Platform Install Script | v1.1 | 0/? | Not started | - |
+| 11. File-Pattern Hook Configuration | v1.1 | 0/? | Not started | - |
+| 12. Repo Setup Script | v1.1 | 0/? | Not started | - |
+| 13. Maintenance and Validation | v1.1 | 0/? | Not started | - |

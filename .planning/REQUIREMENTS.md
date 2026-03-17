@@ -1,7 +1,7 @@
-# Requirements: Security & Supply Chain Scanning Stack — v1.1 Distribution Packaging
+# Requirements: Security & Supply Chain Scanning Stack -- v1.1 Distribution Packaging
 
 **Defined:** 2026-03-16
-**Core Value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production — with zero ongoing cost and zero vendor lock-in.
+**Core Value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
 
 ## v1.1 Requirements
 
@@ -21,7 +21,7 @@
 - [ ] **DIST-02**: Setup command drops all linting configs (ESLint, markdownlint, yamllint, hadolint, Ruff) into target repository
 - [ ] **DIST-03**: Setup command runs `pre-commit install` and `pre-commit install --hook-type pre-push` to wire hooks
 - [ ] **DIST-04**: All hooks use `types:` or `files:` filters so they only execute when matching files are staged
-- [ ] **DIST-05**: Setup command is idempotent — safe to re-run on repos with existing configs (updates without breaking)
+- [ ] **DIST-05**: Setup command is idempotent -- safe to re-run on repos with existing configs (updates without breaking)
 
 ### Maintenance
 
@@ -41,11 +41,11 @@
 
 ### Future Milestones (M3-M7)
 
-- **NEXS-01–03**: Nexus Repository proxy deployment and workstation routing
-- **DOJO-01–05**: DefectDojo deployment and CI import automation
-- **HARD-01–05**: Infrastructure hardening (NetworkPolicy, TLS, backup, monitoring)
-- **RUNT-01–04**: Runtime security (Trivy Operator, Falco, Cosign, Kyverno)
-- **OPTL-01–03**: Optional enhancements (SonarQube, Harbor, commit signing)
+- **NEXS-01-03**: Nexus Repository proxy deployment and workstation routing
+- **DOJO-01-05**: DefectDojo deployment and CI import automation
+- **HARD-01-05**: Infrastructure hardening (NetworkPolicy, TLS, backup, monitoring)
+- **RUNT-01-04**: Runtime security (Trivy Operator, Falco, Cosign, Kyverno)
+- **OPTL-01-03**: Optional enhancements (SonarQube, Harbor, commit signing)
 
 ## Out of Scope
 
@@ -60,31 +60,29 @@
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INST-01 | — | Pending |
-| INST-02 | — | Pending |
-| INST-03 | — | Pending |
-| INST-04 | — | Pending |
-| INST-05 | — | Pending |
-| INST-06 | — | Pending |
-| INST-07 | — | Pending |
-| DIST-01 | — | Pending |
-| DIST-02 | — | Pending |
-| DIST-03 | — | Pending |
-| DIST-04 | — | Pending |
-| DIST-05 | — | Pending |
-| MAINT-01 | — | Pending |
-| MAINT-02 | — | Pending |
-| MAINT-03 | — | Pending |
+| INST-01 | Phase 10 | Pending |
+| INST-02 | Phase 10 | Pending |
+| INST-03 | Phase 10 | Pending |
+| INST-04 | Phase 10 | Pending |
+| INST-05 | Phase 10 | Pending |
+| INST-06 | Phase 10 | Pending |
+| INST-07 | Phase 10 | Pending |
+| DIST-01 | Phase 12 | Pending |
+| DIST-02 | Phase 12 | Pending |
+| DIST-03 | Phase 12 | Pending |
+| DIST-04 | Phase 11 | Pending |
+| DIST-05 | Phase 12 | Pending |
+| MAINT-01 | Phase 13 | Pending |
+| MAINT-02 | Phase 13 | Pending |
+| MAINT-03 | Phase 13 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-16 after initial definition*
+*Last updated: 2026-03-16 after roadmap creation*

@@ -5,9 +5,9 @@ milestone_name: Distribution Packaging
 status: active
 stopped_at: null
 last_updated: "2026-03-16T00:00:00.000Z"
-last_activity: 2026-03-16 -- Milestone v1.1 started
+last_activity: 2026-03-16 -- Roadmap created for v1.1 (Phases 10-13)
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -19,15 +19,17 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-03-16)
 
-**Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production — with zero ongoing cost and zero vendor lock-in.
-**Current focus:** v1.1 Distribution Packaging — cross-platform install + repo onboarding package
+**Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
+**Current focus:** Phase 10 — Cross-Platform Install Script
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-16 — Milestone v1.1 started
+Phase: 10 of 13 (Cross-Platform Install Script)
+Plan: -- (not yet planned)
+Status: Ready to plan
+Last activity: 2026-03-16 -- Roadmap created for v1.1 Distribution Packaging
+
+Progress: [=============░░░░░░░░░░░░░░] 69% (9/13 phases complete across all milestones)
 
 ## Performance Metrics
 
@@ -67,33 +69,11 @@ Last activity: 2026-03-16 — Milestone v1.1 started
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- [Roadmap]: 9 phases derived from 24 requirements at fine granularity; hook categories split by language ecosystem; CLI tools split from hooks
-- [Roadmap]: Phases 2/3/4 are parallel-eligible (all depend only on Phase 1); Phases 6/7 have no dependencies on hook phases
-- [Phase 01]: Canonical config lives in security-platform repo; target repos receive identical copies
-- [Phase 02]: SC2034 suppressed with inline comment for intentional AWS_PROFILE_FLAG pattern
-- [Phase 02]: Added import json to Python snippet -- genuine missing import fix
-- [Phase 03]: Disabled MD024, MD036, MD040, MD049 in addition to MD013/MD033/MD041 -- systematic false positives
-- [Phase 03]: Added agents/ to .markdownlintignore -- working memory, not project docs
-- [Phase 03]: hadolint-docker requires Docker daemon -- documented as requirement
-- [Phase 03]: CfnResource type alias for CloudFormation template inspection in tests (avoids 28 inline suppresses)
-- [Phase 03]: .gitleaksignore created for CDK asset hash false positives in snapshot files
-- [Phase 04]: npm audit fix resolved both high vulns -- audit-level stays at high (not downgraded to critical)
-- [Phase 04]: pre-commit-terraform autoupdated from v1.96.0 to v1.105.0
-- [Phase 04]: terraform-pipelines on feature/add-pre-commit branch for consistency
-- [Phase 05]: Gitleaks v8.30.1 pinned via pre-commit autoupdate (normalized across all three repos)
-- [Phase 05]: 40 baseline false positives in aws-zabbix suppressed (CDK snapshot hashes + TLS bootstrap Lambda)
-- [Phase 05]: All hook revs bumped to latest via autoupdate in security-platform and aws-zabbix
-- [Phase 05]: Used AKIAIOSFODNN7TESTING instead of EXAMPLE key for SECR-02 test (EXAMPLE is in Gitleaks allowlist)
-- [Phase 06]: All three SCA tools installed via Homebrew -- consistent with Phase 5 pattern
-- [Phase 06]: Grype 0.109.1 from Homebrew well above 0.88.0 minimum -- no curl fallback needed
-- [Phase 07]: Semgrep installed to pyenv Python 3.12 (pip3 resolved there) -- works correctly on PATH
-- [Phase 07]: Checkov kept at v3.2.396 -- conservative choice, no upgrade
-- [Phase 08]: Ran Grype against directory (grype dir:.) rather than Syft SBOM -- simpler, no ordering dependency
-- [Phase 08]: Used grype --file flag instead of stdout redirect to avoid WARN log line contamination in JSON output
-- [Phase 09]: Switched from hadolint-docker to native hadolint -- removes Docker daemon dependency for pre-commit
-- [Phase 09]: Disabled MD060 (table-column-style) in both repos -- systematic false positives on standard tables
-- [Phase 09]: Disabled MD032 (blanks-around-lists) in terraform-pipelines -- systematic false positives in docs
-- [Phase 09]: Gitleaks validated via detect mode (protect --staged incompatible with --all-files)
+- [v1.1 Roadmap]: 4 phases (10-13) derived from 15 requirements; install script is foundation, hook config before setup script, maintenance last
+- [v1.1 Roadmap]: Two-script architecture: install.sh (machine-level) and setup.sh (per-repo)
+- [v1.1 Roadmap]: pipx for Python tools, official scripts/binary for Go tools, bash 3.2 compatibility required
+- [v1.1 Research]: Version manifest as foundational data structure; idempotent re-runs required
+- [v1.1 Research]: Grype >= 0.88.0 mandatory (DB schema v5 EOL 2026-03-06)
 
 ### Pending Todos
 
@@ -101,10 +81,12 @@ None yet.
 
 ### Blockers/Concerns
 
-None -- Grype version concern resolved (0.109.1 >> 0.88.0 minimum).
+- Semgrep placement decision needed: local install vs CI-only (affects install time by 2-5 min)
+- GitHub API rate limiting strategy for --check command (60 req/hr unauthenticated)
+- hadolint checksum verification: no standard checksums.txt in releases
 
 ## Session Continuity
 
-Last session: 2026-03-17T00:40:16Z
-Stopped at: Completed 09-02-PLAN.md
-Resume file: .planning/phases/09-full-stack-validation/09-02-SUMMARY.md
+Last session: 2026-03-16
+Stopped at: Roadmap created for v1.1
+Resume file: None
