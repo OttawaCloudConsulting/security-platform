@@ -18,8 +18,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Infrastructure Hooks** - npm audit, terraform fmt, and terraform validate on every commit (completed 2026-03-16)
 - [x] **Phase 5: Secrets Detection Gate** - Gitleaks pre-push hook blocks leaked credentials (completed 2026-03-16)
 - [x] **Phase 6: SCA and Container CLI Tools** - Trivy, Syft, and Grype installed and on PATH (completed 2026-03-16)
-- [ ] **Phase 7: SAST and IaC CLI Tools** - Semgrep, Checkov, and Gitleaks CLI installed and on PATH
-- [ ] **Phase 8: CLI Tool Scanning Validation** - Every CLI tool runs a real scan and produces JSON output
+- [x] **Phase 7: SAST and IaC CLI Tools** - Semgrep, Checkov, and Gitleaks CLI installed and on PATH (completed 2026-03-16)
+- [x] **Phase 8: CLI Tool Scanning Validation** - Every CLI tool runs a real scan and produces JSON output (completed 2026-03-16)
 - [x] **Phase 9: Full Stack Validation** - All hooks pass cleanly across the entire repository (completed 2026-03-17)
 
 ## Phase Details
@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 01-01-PLAN.md — Initialize canonical config in security-platform and deploy to target repo with hook activation
+- [x] 01-01-PLAN.md — Initialize canonical config in security-platform and deploy to target repo with hook activation
 
 ### Phase 2: Shell and Python Hooks
 **Goal**: Shell scripts and Python files are automatically checked for quality issues on every commit
@@ -48,7 +48,7 @@ Plans:
 **Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 02-01-PLAN.md — Fix ShellCheck and Ruff violations so both hooks pass cleanly
+- [x] 02-01-PLAN.md — Fix ShellCheck and Ruff violations so both hooks pass cleanly
 
 ### Phase 3: Web and Config Hooks
 **Goal**: TypeScript/JavaScript, Dockerfiles, YAML manifests, and Markdown files are automatically checked on every commit
@@ -62,8 +62,8 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 03-01-PLAN.md — Install ESLint with typescript-eslint, fix all TS violations, verify hook passes
-- [ ] 03-02-PLAN.md — Configure markdownlint, verify yamllint, verify hadolint via temp file test
+- [x] 03-01-PLAN.md — Install ESLint with typescript-eslint, fix all TS violations, verify hook passes
+- [x] 03-02-PLAN.md — Configure markdownlint, verify yamllint, verify hadolint via temp file test
 
 ### Phase 4: Infrastructure Hooks
 **Goal**: npm dependencies, Terraform formatting, and Terraform syntax are automatically checked on every commit
@@ -76,7 +76,7 @@ Plans:
 **Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 04-01-PLAN.md — Fix npm audit violations, clone terraform-pipelines, validate terraform_fmt and terraform_validate hooks end-to-end
+- [x] 04-01-PLAN.md — Fix npm audit violations, clone terraform-pipelines, validate terraform_fmt and terraform_validate hooks end-to-end
 
 ### Phase 5: Secrets Detection Gate
 **Goal**: Credentials and secrets are blocked from being pushed to the remote repository
@@ -113,10 +113,10 @@ Plans:
   1. `semgrep --version` succeeds and shows a current version
   2. `checkov --version` succeeds and shows a current version
   3. `gitleaks version` succeeds and shows a current version
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 07-01-PLAN.md — Install Semgrep via pip, verify all three tools on PATH, update main doc with verified versions
+- [x] 07-01-PLAN.md — Install Semgrep via pip, verify all three tools on PATH, update main doc with verified versions
 
 ### Phase 8: CLI Tool Scanning Validation
 **Goal**: Every security CLI tool can run a real scan against the local repository and produce machine-readable JSON output
@@ -126,11 +126,11 @@ Plans:
   1. Each of the 6 tools (Trivy, Syft, Grype, Semgrep, Checkov, Gitleaks) completes a scan against the local repository without errors
   2. Each tool produces a valid JSON report file that can be parsed (needed for M2 CI and M4 DefectDojo import)
   3. JSON output files exist on disk and contain scan results (not empty or error-only output)
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 08-01-PLAN.md — Run all 6 CLI tools against aws-zabbix repo, capture JSON reports, add validation notes to main doc
-- [ ] 08-02-PLAN.md — (gap closure) Re-run Grype scan with --file flag to fix invalid JSON output
+- [x] 08-02-PLAN.md — (gap closure) Re-run Grype scan with --file flag to fix invalid JSON output
 
 ### Phase 9: Full Stack Validation
 **Goal**: The entire pre-commit hook suite passes cleanly across the full repository with all existing issues resolved or suppressed
@@ -143,8 +143,8 @@ Plans:
 **Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 09-01-PLAN.md — Install native hadolint, switch hook ID from hadolint-docker to hadolint in all repos, add markdownlint config to terraform-pipelines
-- [ ] 09-02-PLAN.md — Run pre-commit --all-files in both repos to exit 0, validate Gitleaks separately, add validation stamp to main doc
+- [x] 09-01-PLAN.md — Install native hadolint, switch hook ID from hadolint-docker to hadolint in all repos, add markdownlint config to terraform-pipelines
+- [x] 09-02-PLAN.md — Run pre-commit --all-files in both repos to exit 0, validate Gitleaks separately, add validation stamp to main doc
 
 ## Progress
 
@@ -160,6 +160,6 @@ Note: Phases 2/3/4 depend only on Phase 1 (parallel-eligible). Phases 6/7 have n
 | 4. Infrastructure Hooks | 1/1 | Complete   | 2026-03-16 |
 | 5. Secrets Detection Gate | 2/2 | Complete | 2026-03-16 |
 | 6. SCA and Container CLI Tools | 1/1 | Complete | 2026-03-16 |
-| 7. SAST and IaC CLI Tools | 0/1 | Not started | - |
-| 8. CLI Tool Scanning Validation | 1/2 | In progress | - |
+| 7. SAST and IaC CLI Tools | 1/1 | Complete | 2026-03-16 |
+| 8. CLI Tool Scanning Validation | 2/2 | Complete | 2026-03-16 |
 | 9. Full Stack Validation | 2/2 | Complete   | 2026-03-17 |

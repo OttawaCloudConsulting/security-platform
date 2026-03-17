@@ -12,13 +12,12 @@ Every code change is automatically scanned for security issues, secrets, and sup
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Pre-commit Tier 1: quality and linting hooks (ShellCheck, Ruff, ESLint, hadolint, yamllint, markdownlint, npm audit, terraform fmt/validate) on every commit
+- [x] Pre-commit Tier 2: Gitleaks secrets detection on every push
+- [x] Security CLI tool suite: Trivy, Syft, Grype, Semgrep CE, Checkov, Gitleaks installed and functional
 
 ### Active
 
-- [ ] Pre-commit Tier 1: quality and linting hooks (ShellCheck, Ruff, ESLint, hadolint, yamllint, markdownlint, npm audit, terraform fmt/validate) on every commit
-- [ ] Pre-commit Tier 2: Gitleaks secrets detection on every push
-- [ ] Security CLI tool suite: Trivy, Syft, Grype, Semgrep CE, Checkov, Gitleaks installed and functional
 - [ ] GitHub Actions security workflow: 5 parallel scan jobs (SAST, IaC, SCA, container, secrets) on every PR
 - [ ] SARIF upload to GitHub Security tab for PR visibility
 - [ ] JSON artifact retention for downstream DefectDojo import
@@ -72,10 +71,10 @@ Every code change is automatically scanned for security issues, secrets, and sup
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| One GSD milestone per implementation milestone | Keeps focus tight; each milestone produces a usable capability increment | -- Pending |
-| Start with one repo, then roll out | Validate the tooling works before applying to all repos | -- Pending |
-| Milestone verification checks as done criteria | The milestone docs already have thorough verification sections | -- Pending |
+| One GSD milestone per implementation milestone | Keeps focus tight; each milestone produces a usable capability increment | Validated (M1 complete) |
+| Start with one repo, then roll out | Validate the tooling works before applying to all repos | Validated (M1 complete) |
+| Milestone verification checks as done criteria | The milestone docs already have thorough verification sections | Validated (M1 complete) |
 | M7 features (SonarQube, Harbor, commit signing) deferred | Optional enhancements, not required for core security program | -- Pending |
 
 ---
-*Last updated: 2026-03-15 after initialization*
+*Last updated: 2026-03-17 after M1 completion*
