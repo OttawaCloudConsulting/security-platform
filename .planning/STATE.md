@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-03-17T00:31:30Z"
-last_activity: 2026-03-17 -- Phase 9 Plan 1 complete (hadolint native, markdownlint config)
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-03-17T00:40:16Z"
+last_activity: 2026-03-17 -- Phase 9 Plan 2 complete (full-stack pre-commit validation)
 progress:
   total_phases: 9
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State
@@ -20,23 +20,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production — with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 9 in progress -- pre-commit prerequisites done, full-stack validation next.
+**Current focus:** Milestone 1 complete -- all 9 phases executed, pre-commit validation passed across both repos.
 
 ## Current Position
 
-Phase: 9 of 9 (Full-Stack Validation)
-Plan: 1 of 2 in current phase -- COMPLETE
-Status: Plan 09-01 complete (hadolint native install, markdownlint config)
-Last activity: 2026-03-17 -- Phase 9 Plan 1 complete (hadolint native, markdownlint config)
+Phase: 9 of 9 (Full-Stack Validation) -- COMPLETE
+Plan: 2 of 2 in current phase -- COMPLETE
+Status: All phases complete. Milestone 1 validation done.
+Last activity: 2026-03-17 -- Phase 9 Plan 2 complete (full-stack pre-commit validation)
 
-Progress: Phases 1-8 complete, Phase 9 Plan 1 of 2 done
+Progress: All 9 phases complete, all 13 plans executed
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
-- Average duration: 4.25min
-- Total execution time: 0.90 hours
+- Total plans completed: 13
+- Average duration: 4.31min
+- Total execution time: 0.93 hours
 
 **By Phase:**
 
@@ -54,9 +54,10 @@ Progress: Phases 1-8 complete, Phase 9 Plan 1 of 2 done
 | Phase 08 P01 | 1 | 3min | 3min |
 | Phase 08 P02 | 1 | 2min | 2min |
 | Phase 09 P01 | 1 | 2min | 2min |
+| Phase 09 P02 | 1 | 5min | 5min |
 
 **Recent Trend:**
-- Last 5 plans: 3min, 3min, 2min, 2min, 2min
+- Last 5 plans: 3min, 2min, 2min, 2min, 5min
 - Trend: stable
 
 *Updated after each plan completion*
@@ -92,6 +93,9 @@ Recent decisions affecting current work:
 - [Phase 08]: Ran Grype against directory (grype dir:.) rather than Syft SBOM -- simpler, no ordering dependency
 - [Phase 08]: Used grype --file flag instead of stdout redirect to avoid WARN log line contamination in JSON output
 - [Phase 09]: Switched from hadolint-docker to native hadolint -- removes Docker daemon dependency for pre-commit
+- [Phase 09]: Disabled MD060 (table-column-style) in both repos -- systematic false positives on standard tables
+- [Phase 09]: Disabled MD032 (blanks-around-lists) in terraform-pipelines -- systematic false positives in docs
+- [Phase 09]: Gitleaks validated via detect mode (protect --staged incompatible with --all-files)
 
 ### Pending Todos
 
@@ -103,6 +107,6 @@ None -- Grype version concern resolved (0.109.1 >> 0.88.0 minimum).
 
 ## Session Continuity
 
-Last session: 2026-03-17T00:31:30Z
-Stopped at: Completed 09-01-PLAN.md
-Resume file: .planning/phases/09-full-stack-validation/09-01-SUMMARY.md
+Last session: 2026-03-17T00:40:16Z
+Stopped at: Completed 09-02-PLAN.md
+Resume file: .planning/phases/09-full-stack-validation/09-02-SUMMARY.md

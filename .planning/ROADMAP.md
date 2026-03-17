@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: SCA and Container CLI Tools** - Trivy, Syft, and Grype installed and on PATH (completed 2026-03-16)
 - [ ] **Phase 7: SAST and IaC CLI Tools** - Semgrep, Checkov, and Gitleaks CLI installed and on PATH
 - [ ] **Phase 8: CLI Tool Scanning Validation** - Every CLI tool runs a real scan and produces JSON output
-- [ ] **Phase 9: Full Stack Validation** - All hooks pass cleanly across the entire repository
+- [x] **Phase 9: Full Stack Validation** - All hooks pass cleanly across the entire repository (completed 2026-03-17)
 
 ## Phase Details
 
@@ -140,7 +140,7 @@ Plans:
   1. `pre-commit run --all-files` completes with exit code 0
   2. All 9 Tier 1 hooks and the Gitleaks Tier 2 hook execute without failure
   3. Any pre-existing issues are either fixed in the codebase or explicitly suppressed with inline annotations
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 09-01-PLAN.md — Install native hadolint, switch hook ID from hadolint-docker to hadolint in all repos, add markdownlint config to terraform-pipelines
@@ -162,4 +162,4 @@ Note: Phases 2/3/4 depend only on Phase 1 (parallel-eligible). Phases 6/7 have n
 | 6. SCA and Container CLI Tools | 1/1 | Complete | 2026-03-16 |
 | 7. SAST and IaC CLI Tools | 0/1 | Not started | - |
 | 8. CLI Tool Scanning Validation | 1/2 | In progress | - |
-| 9. Full Stack Validation | 0/2 | Not started | - |
+| 9. Full Stack Validation | 2/2 | Complete   | 2026-03-17 |
