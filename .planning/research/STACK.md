@@ -1,195 +1,266 @@
-# Stack Research
+# Stack Research: Cross-Platform Installation & Distribution Packaging
 
-**Domain:** Zero-cost, self-hosted developer security and supply chain scanning toolchain
-**Researched:** 2026-03-15
+**Domain:** Cross-platform tool distribution for developer security scanning stack
+**Researched:** 2026-03-16
 **Confidence:** HIGH
 
-## Recommended Stack
+## Scope
 
-The reference document (`docs/development-security-stack-option-1.md`) already contains well-researched, opinionated tool selections. This research validates those choices against current 2026 ecosystem state, confirms versions, and flags any changes since the document was written.
+This research covers ONLY what's needed for v1.1 Distribution Packaging milestone:
+1. Replacing Homebrew-only tool installation with cross-platform methods (macOS + Linux)
+2. Distribution mechanism for onboarding fresh git repos with a single command
+3. Project-scoped vs system-wide installation decisions per tool
 
-### Core Security Scanners
+Tools themselves are already validated (M1 complete). This is about HOW to install and distribute them.
 
-| Technology | Version | Purpose | Why Recommended | Confidence |
-|------------|---------|---------|-----------------|------------|
-| **Semgrep CE** | 1.155.0 | SAST (static application security testing) | Pattern-based, fast, 3x faster with multicore (Fall 2025 release). LGPL-2.1, no account needed. Covers Python, TS/JS, HCL, YAML, Dockerfile. Intra-file dataflow analysis is sufficient for single-dev practice. | HIGH |
-| **Checkov** | 3.2.508 | IaC scanning (Terraform, CFN, CDK, K8s, Dockerfile, GHA workflows) | 1,000+ built-in policies with graph-based cross-resource analysis. Apache 2.0. Baseline workflow suppresses pre-existing findings. Owned by Palo Alto/Prisma Cloud but remains fully open-source. | HIGH |
-| **Trivy** | 0.69.3 | Container image scanning, filesystem vuln scanning, IaC misconfiguration, secrets, SBOM generation | Swiss army knife from Aqua Security. Absorbed tfsec. Apache 2.0. Single binary covers container + filesystem + IaC + secrets. Offline mode available. | HIGH |
-| **Syft** | 1.42.2 | SBOM generation (CycloneDX, SPDX) | Purpose-built SBOM generator from Anchore. Covers 30+ packaging ecosystems. Apache 2.0. Richer SBOM output than Trivy alone. | HIGH |
-| **Grype** | 0.109.1 | SCA vulnerability scanning | Scans SBOMs or targets directly. Now includes CISA KEV and EPSS data for prioritization. DB schema v6 (v5 EOL was March 6, 2026 -- must use Grype >= 0.88.0). Apache 2.0. | HIGH |
-| **Gitleaks** | 8.24+ | Secrets detection (current files + full git history) | MIT. Purpose-built, fast. v8.28+ adds composite rules for better accuracy. Runs as pre-push hook and in CI. | HIGH |
+---
 
-### Kubernetes-Hosted Services
+## Tool Installation Methods (Replacing Homebrew)
 
-| Technology | Version | Purpose | Why Recommended | Confidence |
-|------------|---------|---------|-----------------|------------|
-| **DefectDojo** | 2.x (latest stable) | Unified vulnerability management dashboard | 200+ scanner parsers, cross-tool deduplication, finding lifecycle, SLA tracking, REST API for CI import. BSD-3. The aggregation layer that makes multi-scanner output actionable. | HIGH |
-| **Nexus Repository CE** | 3.90.x | Universal artifact proxy/cache (npm, PyPI, Docker, Helm) | EPL-1.0. Since v3.77.0, CE gained Docker/npm/PyPI format support and K8s PostgreSQL deployment. Single audit point for all upstream package traffic. Note: CE has 40K component / 100K request daily limits -- sufficient for single-dev. | HIGH |
-| **Trivy Operator** | 0.32.x (Helm chart) | Continuous K8s workload vulnerability scanning | Produces VulnerabilityReports and ConfigAuditReports as K8s CRDs. Results exportable to DefectDojo. Apache 2.0. | HIGH |
-| **Falco CE** | 0.43.0 | Runtime anomaly detection (eBPF-based syscall monitoring) | CNCF Graduated. Detects container escapes, unexpected process execution, privilege escalation. Legacy eBPF probe deprecated in 0.43 -- use modern eBPF driver. Apache 2.0. | HIGH |
-| **FalcoSidekick** | latest | Alert routing for Falco (Slack, webhook, web UI) | Decouples Falco detection from alerting. Web UI at port 2802 for visual review. Deployed via Falco Helm chart. | HIGH |
-| **Kyverno** | 1.17.1 | Kubernetes admission control (image signature verification) | CNCF project. CEL engine promoted to v1 in 1.17. ClusterPolicy deprecated (still functional) in favor of CEL-based policies. Enforces Cosign-signed images. Apache 2.0. | HIGH |
+### Per-Tool Install Method Matrix
 
-### Infrastructure Support
+| Tool | Current (M1) | Recommended (v1.1) | Scoping | Rationale |
+|------|--------------|---------------------|---------|-----------|
+| **pre-commit** | `pip install` | `pipx install pre-commit` | System-wide | CLI tool, not a library. pipx isolates deps. Already works cross-platform. |
+| **Semgrep CE** | `pip install` | `pipx install semgrep` | System-wide | Large dep tree, isolating via pipx prevents conflicts. Already works cross-platform via PyPI. |
+| **Checkov** | `pip install` | `pipx install checkov` | System-wide | Same rationale as Semgrep. Large dep tree, benefits from pipx isolation. |
+| **Trivy** | `brew install` | Curl install script | System-wide | Go binary, no deps. Official: `curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \| sh -s -- -b /usr/local/bin` |
+| **Syft** | `brew install` | Curl install script | System-wide | Go binary. Official: `curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \| sh -s -- -b /usr/local/bin` |
+| **Grype** | `brew install` | Curl install script | System-wide | Go binary. Official: `curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \| sh -s -- -b /usr/local/bin` |
+| **Gitleaks** | `brew install` | Curl install script | System-wide | Go binary. Official: `curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/scripts/install.sh \| sh -s -- -b /usr/local/bin` |
+| **hadolint** | `brew install` | Direct binary download from GitHub Releases | System-wide | Haskell binary, no install script. Download platform-specific binary, place in PATH. |
+| **Ruff** | pre-commit (auto) | pre-commit (auto) | Project-scoped (via pre-commit cache) | No change needed. pre-commit manages Ruff's environment per-hook. |
+| **ShellCheck** | pre-commit (auto) | pre-commit (auto) | Project-scoped (via pre-commit cache) | No change needed. pre-commit downloads and caches the binary. |
+| **yamllint** | pre-commit (auto) | pre-commit (auto) | Project-scoped (via pre-commit cache) | No change needed. |
+| **markdownlint** | pre-commit (auto) | pre-commit (auto) | Project-scoped (via pre-commit cache) | No change needed. |
+| **ESLint** | `npm install --save-dev` | `npm install --save-dev` | Project-scoped (node_modules) | No change needed. Remains per-project via package.json. |
 
-| Technology | Version | Purpose | Why Recommended | Confidence |
-|------------|---------|---------|-----------------|------------|
-| **cert-manager** | 1.20.0 | Automated TLS certificate management in K8s | CNCF project. Automates Let's Encrypt or self-signed CA cert issuance. Required for TLS between security services. | HIGH |
-| **kube-prometheus-stack** | 82.10.x (Helm) | Monitoring and alerting (Prometheus + Grafana + Alertmanager) | Community Helm chart. Includes Grafana dashboards, Prometheus rules, and Alertmanager. The standard K8s monitoring stack. | HIGH |
-| **Cosign** | 3.0.5 | Keyless container image signing (Sigstore) | v3 makes standardized bundle format and OCI 1.1 referring artifacts default. Keyless via GitHub OIDC -- no key management. Apache 2.0. | HIGH |
+### Category Summary
 
-### Pre-commit Linting Layer
+**Go binaries (Trivy, Syft, Grype, Gitleaks):** All four provide official curl-pipe-sh install scripts that detect OS and architecture automatically. These are the canonical cross-platform install method. Each script downloads a platform-specific binary and verifies checksums. System-wide installation to `/usr/local/bin` (or a user-chosen bin directory).
 
-| Tool | Version | Purpose | Why Recommended | Confidence |
-|------|---------|---------|-----------------|------------|
-| **pre-commit** | 4.5.x | Hook orchestration framework | Python-based, multi-language hook runner. MIT. Dependabot now supports pre-commit hooks (March 2026). | HIGH |
-| **Ruff** | 0.15.x | Python linting + formatting | Replaces flake8, black, isort, pylint. 10-100x faster (Rust). 800+ rules. 2026 style guide support in 0.15.0. MIT. | HIGH |
-| **ESLint** | 9.x | TypeScript/JavaScript linting | Flat config format (eslint.config.mjs) is now the default. Used for CDK TypeScript projects. MIT. | HIGH |
-| **ShellCheck** | 0.10.x | Bash/shell script static analysis | The authoritative shell linter. GPL-3.0. Covers quoting bugs, deprecated constructs, unsafe patterns. | HIGH |
-| **hadolint** | 2.12.0 | Dockerfile linting | ShellCheck-powered RUN instruction analysis + Docker best practices. GPL-3.0. | MEDIUM |
-| **yamllint** | 1.35.x | YAML syntax and style validation | Covers K8s manifests, Helm values, GHA workflows. MIT. | HIGH |
-| **markdownlint-cli** | 0.43.x | Markdown style linting | MIT. Style tool, not security. | HIGH |
+**Python CLIs (pre-commit, Semgrep, Checkov):** Use `pipx install` instead of bare `pip install`. pipx creates isolated virtual environments per tool, preventing dependency conflicts between tools (Semgrep and Checkov have large, overlapping dep trees). pipx itself installs via `pip install --user pipx` or `brew install pipx` or `apt install pipx`.
 
-### CI/CD Platform
+**Haskell binary (hadolint):** No install script available. Must download the correct platform binary from GitHub Releases manually. The install script should handle this: detect OS+arch, construct download URL, fetch, verify, place in PATH.
 
-| Technology | Purpose | Why Recommended | Confidence |
-|------------|---------|-----------------|------------|
-| **GitHub Actions** | Primary CI/CD runner | 5 parallel scan jobs (SAST, IaC, SCA, container, secrets). SARIF upload to Security tab. SHA-pinned actions with Dependabot updates. Free tier sufficient for single-dev. | HIGH |
-| **Dependabot** | GitHub Actions SHA digest updates | Automates keeping pinned action SHAs current. Monthly schedule. | HIGH |
+**Pre-commit managed (Ruff, ShellCheck, yamllint, markdownlint):** No action needed. pre-commit clones repos and creates isolated environments in `~/.cache/pre-commit/`. These are already cross-platform and project-scoped by design.
 
-## Installation
+**npm project-local (ESLint):** No change needed. Stays as `npm install --save-dev` per-project. The pre-commit hook uses `npx eslint` which resolves to the project's version.
+
+---
+
+## Project-Scoped vs System-Wide Decision
+
+**Decision: System-wide for CLI tools, project-scoped for linters.**
+
+| Scope | Tools | Why |
+|-------|-------|-----|
+| System-wide | Trivy, Syft, Grype, Gitleaks, hadolint, Semgrep, Checkov, pre-commit | These are standalone CLI tools invoked from the command line or CI. They don't have project-specific versions. A single developer wants one version on the machine. |
+| Project-scoped (pre-commit cache) | Ruff, ShellCheck, yamllint, markdownlint | Pre-commit manages their environments. Version pinned in `.pre-commit-config.yaml` per repo. |
+| Project-scoped (node_modules) | ESLint, typescript-eslint | JS/TS tools belong in the project's devDependencies. |
+
+**Why NOT project-scoped for CLI tools:** Trivy, Grype, etc. are Go binaries with no dependency isolation mechanism (no virtualenv, no node_modules). Project-scoping would mean downloading ~50MB+ of binaries per repo. For a single developer with 6+ repos, this wastes disk and adds complexity for zero benefit. A single system-wide install is the correct pattern.
+
+---
+
+## Distribution Mechanism
+
+### Recommendation: Standalone Bash Install Script
+
+**Use a single `install.sh` bash script. Not npx. Not pip package. Not Makefile.**
+
+| Mechanism | Verdict | Why |
+|-----------|---------|-----|
+| **Standalone bash script** | **USE THIS** | Zero dependencies beyond bash + curl (present on all macOS/Linux). No npm/pip/node required to bootstrap. Can install pipx, then Python tools, then Go binaries. Self-contained. |
+| npx create-* package | Reject | Requires Node.js pre-installed. Adds npm registry dependency. Over-engineered for config file distribution. |
+| pip package | Reject | Requires Python pre-installed. Packaging a bash installer as a Python package is awkward. pip is for libraries. |
+| Makefile | Reject | Make is available everywhere but Makefiles have poor error handling, no OS detection, no progress reporting. Bash is more expressive for installer logic. |
+| Docker container | Reject | Running security tools inside Docker isolates them from the repo they need to scan. Adds Docker dependency. Wrong abstraction. |
+| Ansible/Terraform | Reject | Configuration management tools are overkill for "install 10 tools and drop 5 config files." |
+
+### Distribution Script Architecture
+
+The install script should have two modes:
+
+**1. `install.sh tools` -- Install all security CLI tools (run once per machine)**
+
+```
+Detect OS (Darwin/Linux) and architecture (amd64/arm64)
+Check prerequisites: bash, curl, python3, pip, git
+Install pipx if not present
+pipx install pre-commit semgrep checkov
+curl-install Trivy, Syft, Grype, Gitleaks (official scripts)
+Download hadolint binary for platform
+Verify all tools accessible: tool --version for each
+```
+
+**2. `install.sh repo` -- Set up a git repo with security tooling (run once per repo)**
+
+```
+Verify in a git repo root
+Drop config files: .pre-commit-config.yaml, .markdownlint.json, .markdownlintignore, .gitleaksignore
+If package.json exists and has TS/JS: suggest ESLint setup
+pre-commit install (commit hooks)
+pre-commit install --hook-type pre-push (push hooks)
+pre-commit run --all-files (validate)
+```
+
+### Version Checking
+
+The script should support `install.sh check` to verify installed tool versions against expected minimums and report which need updating. This replaces ad-hoc `tool --version` checks.
+
+---
+
+## Core Technologies for the Install Script
+
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| **Bash** | 3.2+ (macOS default) | Install script language | Universal on macOS and Linux. macOS ships bash 3.2 (GPLv2); Linux ships 5.x. Script MUST be compatible with bash 3.2 (no associative arrays, no `readarray`, no `${var,,}` lowercase). |
+| **curl** | any | HTTP downloads | Present on all macOS/Linux systems. Preferred over wget (macOS has curl but not wget by default). |
+| **pipx** | 1.7+ | Python CLI tool isolation | Installed as prerequisite. Provides `pipx install` for Semgrep, Checkov, pre-commit. |
+| **sha256sum / shasum** | system | Checksum verification | macOS uses `shasum -a 256`, Linux uses `sha256sum`. Script must handle both. |
+
+## Supporting Libraries
+
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| **jq** | 1.7+ | JSON parsing in shell | Optional. For parsing GitHub API responses to find latest release URLs. Can be avoided by hardcoding version numbers. |
+
+---
+
+## Installation Commands (Cross-Platform)
 
 ```bash
-# === Workstation CLI Tools (macOS via Homebrew) ===
-brew install trivy syft grype gitleaks shellcheck hadolint cosign
+# === Prerequisites ===
+# Python 3.10+ and pip must be pre-installed
+# Node.js 18+ and npm 9+ must be pre-installed (for ESLint in TS/JS repos)
+# Git 2.30+ must be pre-installed
 
-# Python tools
-pip install semgrep checkov ruff yamllint pre-commit --break-system-packages
+# === Step 1: Install pipx ===
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
 
-# Node tools (project-local)
-npm install --save-dev eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
-npm install -g markdownlint-cli
+# === Step 2: Python CLI tools via pipx ===
+pipx install pre-commit
+pipx install semgrep
+pipx install checkov
 
-# Pre-commit setup
+# === Step 3: Go binaries via official install scripts ===
+# Trivy
+curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.69.3
+
+# Syft
+curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+# Grype
+curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
+# Gitleaks
+curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/scripts/install.sh | sh -s -- -b /usr/local/bin
+
+# === Step 4: hadolint (platform-specific binary) ===
+# macOS (Apple Silicon)
+curl -sL https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-Darwin-arm64 -o /usr/local/bin/hadolint
+# macOS (Intel)
+# curl -sL https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-Darwin-x86_64 -o /usr/local/bin/hadolint
+# Linux (x86_64)
+# curl -sL https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-Linux-x86_64 -o /usr/local/bin/hadolint
+chmod +x /usr/local/bin/hadolint
+
+# === Step 5: Per-repo setup ===
+cd /path/to/repo
+# (copy .pre-commit-config.yaml and linter configs here)
 pre-commit install
+pre-commit install --hook-type pre-push
 pre-commit run --all-files
-
-# === Kubernetes Services (Helm) ===
-# Add chart repos
-helm repo add defectdojo https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/helm-charts
-helm repo add sonatype https://sonatype.github.io/helm3-charts/
-helm repo add aqua https://aquasecurity.github.io/helm-charts/
-helm repo add falco https://falcosecurity.github.io/charts
-helm repo add kyverno https://kyverno.github.io/kyverno/
-helm repo add jetstack https://charts.jetstack.io
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-
-# Install services (each into its own namespace)
-helm install nexus sonatype/nexus-repository-manager --namespace nexus --create-namespace
-helm install defectdojo defectdojo/defectdojo --namespace defectdojo --create-namespace -f defectdojo-values.yaml
-helm install trivy-operator aqua/trivy-operator --namespace trivy-system --create-namespace
-helm install falco falco/falco --namespace falco-system --create-namespace -f falco-values.yaml
-helm install kyverno kyverno/kyverno --namespace kyverno --create-namespace -f kyverno-values.yaml
-helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set crds.enabled=true
-helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
 ```
+
+---
 
 ## Alternatives Considered
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| Semgrep CE | CodeQL | CodeQL is more powerful for deep dataflow analysis but requires GitHub Advanced Security (paid for private repos) or complex self-hosted setup. Use CodeQL if you later need inter-file taint tracking. |
-| Checkov | tfsec | tfsec was absorbed into Trivy. Checkov has deeper graph-based analysis. No reason to use standalone tfsec in 2026. |
-| Grype + Syft | Snyk Open Source | Snyk has scan limits on free tier and requires account. Grype now includes KEV + EPSS data. Use Snyk only if mandated by client compliance. |
-| Gitleaks | TruffleHog | TruffleHog CE is viable but Gitleaks has simpler pre-commit integration and MIT license. TruffleHog has stronger verified secrets feature in paid tier. |
-| DefectDojo | Dependency-Track | Dependency-Track is SCA-focused only (SBOM ingestion). DefectDojo aggregates all scanner types (200+ parsers). Use Dependency-Track only if you need SBOM-centric workflow exclusively. |
-| Nexus CE | JFrog Artifactory OSS | Artifactory OSS supports fewer formats. Nexus CE since v3.77.0 covers Docker/npm/PyPI. Use Artifactory only if you need Maven-centric advanced features. |
-| Falco | Tetragon | Tetragon (Cilium/Isovalent) is eBPF-based like Falco but more network-flow focused. Falco is CNCF Graduated with richer syscall rule ecosystem. Use Tetragon if already running Cilium CNI. |
-| Kyverno | OPA Gatekeeper | Gatekeeper uses Rego (steeper learning curve). Kyverno uses YAML/CEL policies (simpler). Kyverno 1.17 CEL engine is production-ready. Use Gatekeeper only if you already have Rego policies. |
-| Cosign (keyless) | Notation (CNCF) | Notation is the CNCF signing standard but has less ecosystem adoption than Sigstore/Cosign. Kyverno supports both. Use Notation if mandated by enterprise policy. |
-| kube-prometheus-stack | Datadog/New Relic | Paid SaaS -- violates zero-cost constraint. kube-prometheus-stack is the community standard for self-hosted K8s monitoring. |
+| pipx for Python CLIs | pip install --break-system-packages | Only if pipx cannot be installed (extremely constrained environments). pip works but risks dependency conflicts between Semgrep and Checkov. |
+| pipx for Python CLIs | pip install in dedicated venv | If the user wants manual control over venv locations. pipx is just automated venv management, so this is equivalent but more manual. |
+| Bash install script | Makefile | If the team already uses Make extensively and prefers Makefile-driven workflows. Make lacks OS detection and error handling compared to bash. |
+| Bash install script | npx setup tool | Only if all target users already have Node.js. Adds npm registry dependency for no benefit. |
+| Curl install scripts for Go tools | go install github.com/... | Only if Go is installed on the target system. Requires Go toolchain + adds compile time. Binary downloads are faster and don't need Go. |
+| Hardcoded versions in script | GitHub API latest release lookup | Only if you want always-latest behavior. Hardcoded versions are more predictable and verifiable. The `check` subcommand can report when updates are available. |
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| **tfsec (standalone)** | Absorbed into Trivy in 2024. No longer maintained separately. | Checkov (primary IaC) + Trivy config (secondary) |
-| **Snyk (free tier)** | Requires account, has scan limits, telemetry. Paid tier creep. Violates zero-cost/no-account constraint. | Semgrep CE + Grype + Trivy |
-| **flake8 / black / isort** | Ruff replaces all three in a single tool, 10-100x faster. | Ruff |
-| **pylint** | Slow, complex configuration. Ruff covers most pylint rules. | Ruff with `select = ["PL"]` |
-| **Grype < 0.88.0** | DB schema v5 reached EOL on March 6, 2026. No more vulnerability database updates. | Grype >= 0.88.0 (current: 0.109.1) |
-| **SonarQube (as sole SAST)** | Heavy service (2Gi+ RAM). Community Build is single-branch only, no PR decoration. | Semgrep CE for SAST + DefectDojo for aggregation. SonarQube optional for code quality metrics only. |
-| **Harbor (as primary registry)** | OCI-only -- no npm/PyPI/Helm proxy. Heavy resource footprint. | Nexus CE for universal proxy. Harbor optional for scan-on-push container workflow (M7). |
-| **Kyverno ClusterPolicy (YAML-based)** | Deprecated in v1.17. Still functional but removal scheduled. | Kyverno CEL-based ValidatingPolicy (v1 in 1.17) |
-| **Falco kernel module driver** | Legacy eBPF probe deprecated in 0.43. Kernel module requires host-level privileges. | Falco modern eBPF driver (`driver.kind: modern_ebpf`) |
-| **Docker Compose for K8s services** | Reference document includes Docker Compose as fallback, but all services target K8s. Docker Compose adds operational divergence. | Helm charts for all K8s services -- single deployment method. |
+| **Homebrew as sole install method** | Not available on Linux without Linuxbrew (which is awkward). Adds unnecessary dependency. | Curl install scripts (Go tools) + pipx (Python tools) |
+| **Docker-based tool wrappers** | Adds Docker dependency, complicates PATH, makes tool output harder to capture, breaks file permission assumptions. | Native binary installation |
+| **npm for non-JS security tools** | Semgrep and Checkov are Python tools. Wrapping them in npm adds fragile shims. | pipx for Python tools |
+| **snap/flatpak** | Not available on macOS. Not standard for developer CLI tools. | Direct binary downloads |
+| **asdf/mise version manager** | Adds another tool to install before you can install tools. Good for teams with complex version requirements, overkill for single-developer. | Direct installation with version pinning in the script |
+| **pip install --break-system-packages** | Fragile. Conflicts between system Python packages and tool dependencies. macOS Sonoma+ and Ubuntu 23.04+ enforce PEP 668 (externally-managed-environment). | pipx (respects PEP 668 automatically) |
+| **Global npm install for markdownlint** | M1 used `npm install -g markdownlint-cli`. Unnecessary -- pre-commit manages markdownlint via its own cache. | pre-commit-managed markdownlint hook |
 
-## Stack Patterns by Variant
+---
 
-**If deploying to a resource-constrained cluster (< 8 Gi RAM):**
-- Deploy Nexus + DefectDojo first (M3, M4) -- they are the highest-value K8s services
-- Defer Falco (DaemonSet overhead per node) and kube-prometheus-stack to M5/M6
-- Use Trivy Operator with `--set operator.scanJobTTL=5m` to limit concurrent scan pod memory
+## Shell Script Portability Concerns
 
-**If Nexus CE hits the 40K component limit:**
-- This is unlikely for a single-dev practice with < 10 repositories
-- If hit, Nexus CE pauses new component additions but continues serving cached content
-- Mitigation: prune old cached components via Nexus cleanup policies (Admin > System > Cleanup Policies)
-- Escalation: Nexus Pro or switch container proxy to Harbor (which has no component limit for OCI artifacts)
+| Concern | macOS Behavior | Linux Behavior | Mitigation |
+|---------|---------------|----------------|------------|
+| Bash version | 3.2 (GPLv2, Apple won't ship GPLv3) | 5.x | Script MUST target bash 3.2. No associative arrays (`declare -A`), no `readarray`/`mapfile`, no `${var,,}` lowercase, no `\|&` pipe. |
+| `sed -i` | Requires `sed -i ''` (empty string backup extension) | Uses `sed -i` (no backup arg) | Avoid `sed -i`. Use `sed 's/x/y/' file > tmp && mv tmp file` pattern instead. |
+| `sha256sum` | Not present. Use `shasum -a 256` | Present. | `if command -v sha256sum; then ... else shasum -a 256; fi` |
+| `readlink -f` | Not present on macOS (BSD readlink) | Present (GNU readlink) | Use `cd "$(dirname "$0")" && pwd` pattern for script self-location. |
+| `/usr/local/bin` permissions | Writable by admin user (no sudo on macOS with Homebrew-prepared systems) | Requires sudo | Use `$HOME/.local/bin` as default, fall back to `/usr/local/bin` with sudo. |
+| `mktemp` | `mktemp -d -t prefix` (macOS requires -t) | `mktemp -d` works | Use `mktemp -d "${TMPDIR:-/tmp}/prefix.XXXXXX"` |
+| Color output | Terminal.app and iTerm2 support ANSI | Most terminals support ANSI | Use `tput` or check `$TERM` before emitting colors. |
 
-**If the K8s cluster uses Cilium CNI:**
-- Kyverno still works normally alongside Cilium
-- Consider Tetragon for runtime security instead of Falco (same eBPF foundation, tighter Cilium integration)
-- NetworkPolicies should use CiliumNetworkPolicy CRDs for L7 filtering
+---
 
-**If you later need multi-repo rollout (6+ repos):**
-- Pre-commit config: create a shared `.pre-commit-config.yaml` in a template repo, then symlink or copy
-- GHA workflow: use a reusable workflow in a `.github` org-level repo
-- DefectDojo: one Product per repo, one Engagement per CI run, auto-create via API
+## Version Pinning Strategy
+
+Pin specific versions in the install script for reproducibility. The script should contain a version block:
+
+```bash
+TRIVY_VERSION="0.69.3"
+SYFT_VERSION="1.42.2"
+GRYPE_VERSION="0.109.1"
+GITLEAKS_VERSION="8.30.1"
+HADOLINT_VERSION="2.14.0"
+# Python tools: pipx installs latest by default
+# Pin with: pipx install semgrep==1.155.0
+```
+
+The `install.sh check` subcommand compares installed versions against these minimums and reports deltas.
+
+---
 
 ## Version Compatibility
 
 | Package | Compatible With | Notes |
 |---------|-----------------|-------|
-| Grype >= 0.88.0 | DB schema v6 | v5 EOL was 2026-03-06. Older Grype versions stop receiving vuln DB updates. |
-| Kyverno 1.17.x | Cosign v2 and v3 attestations | Cosign v3 support coming in next Kyverno release; v2 keyless works now. |
-| Trivy 0.69.x | Trivy Operator 0.32.x | Operator embeds Trivy scanner. Operator version must match or trail Trivy version. |
-| Checkov 3.x | checkov-action v12 | GHA action wraps pip-installed Checkov. Pin action to specific SHA. |
-| Semgrep 1.155.x | Pre-commit via pip | Semgrep pre-commit hook exists but is deliberately NOT used (runs in CI instead). |
-| Falco 0.43.x | FalcoSidekick (bundled in Helm) | Use `falcosidekick.enabled: true` in Falco Helm values. |
-| cert-manager 1.20.x | Kubernetes 1.26+ | Check cert-manager supported K8s version matrix before upgrading. |
-| kube-prometheus-stack 82.x | Kubernetes 1.26+ | Includes Prometheus 3.x, Grafana 11.x, Alertmanager 0.28.x. |
-| pre-commit 4.5.x | Python 3.9+ | Requires Python 3.9+. Uses `pre-commit autoupdate` for hook version bumps. |
+| pipx 1.7+ | Python 3.10+ | pipx requires Python 3.8+, but Semgrep requires 3.10+, so 3.10 is the effective floor. |
+| Grype >= 0.88.0 | DB schema v6 | CRITICAL: v5 EOL was 2026-03-06. Must not install older versions. |
+| pre-commit 4.5.x | Python 3.9+ | pipx will create a 3.9+ venv automatically. |
+| hadolint 2.14.0 | macOS arm64 / x86_64, Linux x86_64 | No Linux arm64 binary available from upstream. ARM Linux users must use Docker variant. |
+| Bash 3.2 | macOS default | All script features must work on bash 3.2. Test on macOS before releasing. |
 
-## Key Version Warnings
-
-1. **Grype DB v5 EOL (2026-03-06):** If any CI runner or workstation has Grype < 0.88.0, it silently stops receiving vulnerability updates. Update immediately.
-2. **Kyverno ClusterPolicy deprecation (1.17):** Existing YAML-based ClusterPolicies still work but plan migration to CEL-based ValidatingPolicy before Kyverno 1.18+.
-3. **Trivy security incident (2026-03-01):** GitHub Actions supply chain attack affected Trivy. Resolved in v0.69.2+. Pin to v0.69.3 or later. Always SHA-pin the `aquasecurity/trivy-action` in workflows.
-4. **Nexus CE component limits:** 40K components / 100K daily requests. Monitor usage via Nexus System > Status. Sufficient for single-dev but worth knowing.
+---
 
 ## Sources
 
-- [Trivy GitHub Releases](https://github.com/aquasecurity/trivy/releases) -- v0.69.3 confirmed, security incident noted (HIGH confidence)
-- [Semgrep PyPI](https://pypi.org/project/semgrep/) -- v1.155.0 confirmed (HIGH confidence)
-- [Semgrep CE Fall 2025 Release](https://semgrep.dev/blog/2025/semgrep-community-edition-fall-release-2025/) -- multicore support, Windows native (HIGH confidence)
-- [Checkov GitHub Releases](https://github.com/bridgecrewio/checkov/releases) -- v3.2.508 confirmed (HIGH confidence)
-- [Grype GitHub Releases](https://github.com/anchore/grype/releases) -- v0.109.1 confirmed, DB v5 EOL noted (HIGH confidence)
-- [Grype DB Schema EOL Announcement](https://anchorecommunity.discourse.group/t/grype-db-schema-v5-will-be-eol-on-march-6-2026/591) -- v5 EOL 2026-03-06 (HIGH confidence)
-- [Syft GitHub Releases](https://github.com/anchore/syft/releases) -- v1.42.2 confirmed (HIGH confidence)
-- [Gitleaks GitHub Releases](https://github.com/gitleaks/gitleaks/releases) -- v8.24+ confirmed, composite rules in v8.28 (MEDIUM confidence)
-- [DefectDojo GitHub](https://github.com/DefectDojo/django-DefectDojo/releases) -- active development, MCP support added (HIGH confidence)
-- [Nexus Repository CE](https://help.sonatype.com/en/download.html) -- v3.90.x confirmed, CE limits documented (HIGH confidence)
-- [Kyverno 1.17 Release Blog](https://kyverno.io/blog/2026/02/02/announcing-kyverno-release-1.17/) -- CEL v1, ClusterPolicy deprecated (HIGH confidence)
-- [Falco GitHub Releases](https://github.com/falcosecurity/falco/releases) -- v0.43.0 confirmed (HIGH confidence)
-- [Cosign GitHub Releases](https://github.com/sigstore/cosign/releases) -- v3.0.5 confirmed (HIGH confidence)
-- [cert-manager Releases](https://github.com/cert-manager/cert-manager/releases) -- v1.20.0 confirmed (HIGH confidence)
-- [kube-prometheus-stack ArtifactHub](https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack) -- v82.10.3 confirmed (HIGH confidence)
-- [Trivy Operator Releases](https://github.com/aquasecurity/trivy-operator/releases) -- v0.32.x confirmed (HIGH confidence)
-- [Ruff GitHub Releases](https://github.com/astral-sh/ruff/releases) -- v0.15.x confirmed, 2026 style guide (HIGH confidence)
-- [pre-commit PyPI](https://pypi.org/project/pre-commit/) -- v4.5.x confirmed, Dependabot support added 2026-03-10 (HIGH confidence)
+- [Trivy Installation Docs](https://trivy.dev/docs/latest/getting-started/installation/) -- official install script method confirmed (HIGH confidence)
+- [Anchore Grype Installation](https://oss.anchore.com/docs/installation/grype/) -- curl install script confirmed (HIGH confidence)
+- [Anchore Syft Installation](https://oss.anchore.com/docs/installation/syft/) -- curl install script confirmed (HIGH confidence)
+- [Gitleaks GitHub](https://github.com/gitleaks/gitleaks) -- install script path confirmed (HIGH confidence)
+- [hadolint GitHub](https://github.com/hadolint/hadolint) -- binary download only, no install script (HIGH confidence)
+- [Checkov Installation](https://www.checkov.io/2.Basics/Installing%20Checkov.html) -- pip/pipx confirmed (HIGH confidence)
+- [Semgrep PyPI](https://pypi.org/project/semgrep/) -- pip/pipx confirmed, v1.155.0 current (HIGH confidence)
+- [pipx GitHub](https://github.com/pypa/pipx) -- isolation benefits documented (HIGH confidence)
+- [pip vs pipx Guide](https://betterstack.com/community/guides/scaling-python/pip-vs-pipx/) -- best practices for CLI tools (MEDIUM confidence)
+- [Grype DB v5 EOL](https://anchorecommunity.discourse.group/t/grype-db-schema-v5-will-be-eol-on-march-6-2026/591) -- v5 EOL confirmed 2026-03-06 (HIGH confidence)
+- [pre-commit docs](https://pre-commit.com/) -- hook environment isolation documented (HIGH confidence)
+- [Apple Shell Scripting Portability](https://developer.apple.com/library/archive/documentation/OpenSource/Conceptual/ShellScripting/PortingScriptstoMacOSX/PortingScriptstoMacOSX.html) -- macOS bash/BSD differences (HIGH confidence)
 
 ---
-*Stack research for: zero-cost developer security and supply chain scanning toolchain*
-*Researched: 2026-03-15*
+*Stack research for: cross-platform tool installation and distribution packaging (v1.1)*
+*Researched: 2026-03-16*
