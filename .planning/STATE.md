@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 9 context gathered
-last_updated: "2026-03-17T00:11:58.915Z"
-last_activity: 2026-03-16 -- Phase 8 Plan 2 complete (grype JSON fix, all 6 tools fully validated)
+status: in-progress
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-03-17T00:31:30Z"
+last_activity: 2026-03-17 -- Phase 9 Plan 1 complete (hadolint native, markdownlint config)
 progress:
   total_phases: 9
   completed_phases: 8
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 13
+  completed_plans: 12
 ---
 
 # Project State
@@ -20,23 +20,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-15)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production — with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 8 complete (including gap closure). Ready for Phase 9.
+**Current focus:** Phase 9 in progress -- pre-commit prerequisites done, full-stack validation next.
 
 ## Current Position
 
-Phase: 8 of 9 (CLI Tool Scanning Validation) -- COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase 8 complete -- all plans done (TOOL-07, TOOL-08 fully satisfied)
-Last activity: 2026-03-16 -- Phase 8 Plan 2 complete (grype JSON fix, all 6 tools fully validated)
+Phase: 9 of 9 (Full-Stack Validation)
+Plan: 1 of 2 in current phase -- COMPLETE
+Status: Plan 09-01 complete (hadolint native install, markdownlint config)
+Last activity: 2026-03-17 -- Phase 9 Plan 1 complete (hadolint native, markdownlint config)
 
-Progress: Phases 1-8 complete, ready for Phase 9
+Progress: Phases 1-8 complete, Phase 9 Plan 1 of 2 done
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
-- Average duration: 4.5min
-- Total execution time: 0.88 hours
+- Total plans completed: 12
+- Average duration: 4.25min
+- Total execution time: 0.90 hours
 
 **By Phase:**
 
@@ -53,9 +53,10 @@ Progress: Phases 1-8 complete, ready for Phase 9
 | Phase 07 P01 | 1 | 2min | 2min |
 | Phase 08 P01 | 1 | 3min | 3min |
 | Phase 08 P02 | 1 | 2min | 2min |
+| Phase 09 P01 | 1 | 2min | 2min |
 
 **Recent Trend:**
-- Last 5 plans: 2min, 3min, 3min, 3min, 2min
+- Last 5 plans: 3min, 3min, 2min, 2min, 2min
 - Trend: stable
 
 *Updated after each plan completion*
@@ -90,6 +91,7 @@ Recent decisions affecting current work:
 - [Phase 07]: Checkov kept at v3.2.396 -- conservative choice, no upgrade
 - [Phase 08]: Ran Grype against directory (grype dir:.) rather than Syft SBOM -- simpler, no ordering dependency
 - [Phase 08]: Used grype --file flag instead of stdout redirect to avoid WARN log line contamination in JSON output
+- [Phase 09]: Switched from hadolint-docker to native hadolint -- removes Docker daemon dependency for pre-commit
 
 ### Pending Todos
 
@@ -101,6 +103,6 @@ None -- Grype version concern resolved (0.109.1 >> 0.88.0 minimum).
 
 ## Session Continuity
 
-Last session: 2026-03-17T00:11:58.911Z
-Stopped at: Phase 9 context gathered
-Resume file: .planning/phases/09-full-stack-validation/09-CONTEXT.md
+Last session: 2026-03-17T00:31:30Z
+Stopped at: Completed 09-01-PLAN.md
+Resume file: .planning/phases/09-full-stack-validation/09-01-SUMMARY.md
