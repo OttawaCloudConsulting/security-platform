@@ -18,6 +18,15 @@ Every code change is automatically scanned for security issues, secrets, and sup
 
 ### Active
 
+- [ ] Cross-platform tool installation script (replaces Homebrew with pip/npm/binary downloads)
+- [ ] Version check and update capability in the install script
+- [ ] Distribution package: low-touch setup command for fresh git repos
+- [ ] Distribution drops all config files (pre-commit, linting, secrets detection)
+- [ ] Hooks use file-pattern matching for selective execution (complete install, language-aware execution)
+- [ ] CLI tools installed project-scoped where possible, system-wide otherwise
+
+### Future (M2+)
+
 - [ ] GitHub Actions security workflow: 5 parallel scan jobs (SAST, IaC, SCA, container, secrets) on every PR
 - [ ] SARIF upload to GitHub Security tab for PR visibility
 - [ ] JSON artifact retention for downstream DefectDojo import
@@ -48,17 +57,27 @@ Every code change is automatically scanned for security issues, secrets, and sup
 - Paid tools or SaaS subscriptions — zero-cost constraint
 - Production Kubernetes workload deployment — this stack secures the development pipeline, not the application runtime
 
+## Current Milestone: v1.1 Distribution Packaging
+
+**Goal:** Replace Homebrew-based tool installation with cross-platform methods (pip/npm/binary) and create a distribution package that sets up security tooling in any fresh git repo with a single command.
+
+**Target features:**
+- Cross-platform install script (macOS + Linux) with version check/update
+- Distribution package: one command to install tools + drop configs + wire hooks
+- Complete config set with file-pattern-based selective hook execution
+- Project-scoped tool installation where possible
+
 ## Context
 
 - **Deployment model:** Single developer, personal AWS cloud practice with 6+ GitHub repositories
 - **Existing infrastructure:** Kubernetes cluster already running (non-EKS), kubectl configured
-- **Current security tooling:** Greenfield — no pre-commit hooks, CI scanning, or security dashboards in place
-- **Rollout strategy:** One repo first for M1, then roll out to remaining repos incrementally
+- **Current security tooling:** M1 complete — pre-commit hooks and CLI tools working on 2 repos via Homebrew
+- **Rollout strategy:** v1.1 produces the distribution package; remaining repos onboard via that package
 - **Reference document:** `docs/development-security-stack-option-1.md` (~2,300 lines) contains all tool configs, architecture diagrams, and copy-pasteable configurations
 - **Milestone plans:** `docs/milestone-plan/` contains 7 detailed milestone documents with 28 features, done criteria, and verification checks
 - **ADRs:** `docs/adr/` contains 14 architectural decision records (ADR-001 through ADR-014)
 - **Languages covered:** Terraform, CDK, CloudFormation, Python, TypeScript/JavaScript, Bash, Kubernetes/YAML, Docker
-- **GSD approach:** One GSD milestone at a time, starting with M1 (Developer Workstation Foundation)
+- **GSD approach:** One GSD milestone at a time
 
 ## Constraints
 
@@ -75,6 +94,8 @@ Every code change is automatically scanned for security issues, secrets, and sup
 | Start with one repo, then roll out | Validate the tooling works before applying to all repos | Validated (M1 complete) |
 | Milestone verification checks as done criteria | The milestone docs already have thorough verification sections | Validated (M1 complete) |
 | M7 features (SonarQube, Harbor, commit signing) deferred | Optional enhancements, not required for core security program | -- Pending |
+| Replace Homebrew with cross-platform install methods | Portability across macOS and Linux; single install path | -- Pending |
+| Distribution package for repo onboarding | Low-touch rollout to remaining 4+ repos | -- Pending |
 
 ---
-*Last updated: 2026-03-17 after M1 completion*
+*Last updated: 2026-03-16 after v1.1 milestone start*
