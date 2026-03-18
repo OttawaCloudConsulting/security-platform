@@ -165,11 +165,11 @@ Plans:
   3. Python tools (pre-commit, Semgrep, Checkov) are installed via pipx and isolated from system Python
   4. Go/Haskell tools (Trivy, Syft, Grype, Gitleaks, hadolint) are installed via official install scripts or direct binary download with OS/arch auto-detection
   5. After install completes, the script verifies all tool locations are on PATH and warns if any are missing
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 10-01: TBD
-- [ ] 10-02: TBD
+- [ ] 10-01-PLAN.md -- Version manifest and install script framework with pipx/pre-commit installer
+- [ ] 10-02-PLAN.md -- Binary tool installers (Trivy, Syft, Grype, Gitleaks, hadolint) and ROADMAP update
 
 ### Phase 11: File-Pattern Hook Configuration
 **Goal**: A single universal pre-commit config works correctly across all repos by only running hooks on matching file types
@@ -227,7 +227,7 @@ Note: Phase 11 depends on Phase 10. Phase 12 depends on Phases 10 and 11. Phase 
 | 7. SAST and IaC CLI Tools | v1.0 | 1/1 | Complete | 2026-03-16 |
 | 8. CLI Tool Scanning Validation | v1.0 | 2/2 | Complete | 2026-03-16 |
 | 9. Full Stack Validation | v1.0 | 2/2 | Complete | 2026-03-17 |
-| 10. Cross-Platform Install Script | v1.1 | 0/? | Not started | - |
+| 10. Cross-Platform Install Script | v1.1 | 0/2 | Not started | - |
 | 11. File-Pattern Hook Configuration | v1.1 | 0/? | Not started | - |
 | 12. Repo Setup Script | v1.1 | 0/? | Not started | - |
 | 13. Maintenance and Validation | v1.1 | 0/? | Not started | - |
