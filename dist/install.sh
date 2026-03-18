@@ -232,12 +232,191 @@ install_precommit() {
   fi
 }
 
-# Stub functions for binary tools (Plan 02 fills these in)
-install_trivy()    { log "Trivy install: see Plan 02"; }
-install_syft()     { log "Syft install: see Plan 02"; }
-install_grype()    { log "Grype install: see Plan 02"; }
-install_gitleaks() { log "Gitleaks install: see Plan 02"; }
-install_hadolint() { log "hadolint install: see Plan 02"; }
+install_trivy() {
+  if is_installed trivy "$TRIVY_VERSION"; then
+    log "trivy $TRIVY_VERSION already installed"
+    add_result "trivy" "$TRIVY_VERSION" "skipped"
+    return
+  fi
+
+  log "Installing trivy $TRIVY_VERSION via official script..."
+  if [[ "$VERBOSE" = true ]]; then
+    if curl -sfL "$TRIVY_INSTALL_URL" | sh -s -- -b "$INSTALL_DIR" "v${TRIVY_VERSION}"; then
+      add_result "trivy" "$TRIVY_VERSION" "installed"
+    else
+      err "Failed to install trivy $TRIVY_VERSION"
+      add_result "trivy" "$TRIVY_VERSION" "FAILED"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
+  else
+    if curl -sfL "$TRIVY_INSTALL_URL" | sh -s -- -b "$INSTALL_DIR" "v${TRIVY_VERSION}" > /dev/null 2>&1; then
+      add_result "trivy" "$TRIVY_VERSION" "installed"
+    else
+      err "Failed to install trivy $TRIVY_VERSION"
+      add_result "trivy" "$TRIVY_VERSION" "FAILED"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
+  fi
+}
+
+install_syft() {
+  if is_installed syft "$SYFT_VERSION"; then
+    log "syft $SYFT_VERSION already installed"
+    add_result "syft" "$SYFT_VERSION" "skipped"
+    return
+  fi
+
+  log "Installing syft $SYFT_VERSION via official script..."
+  if [[ "$VERBOSE" = true ]]; then
+    if curl -sSfL "$SYFT_INSTALL_URL" | sh -s -- -b "$INSTALL_DIR" "v${SYFT_VERSION}"; then
+      add_result "syft" "$SYFT_VERSION" "installed"
+    else
+      err "Failed to install syft $SYFT_VERSION"
+      add_result "syft" "$SYFT_VERSION" "FAILED"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
+  else
+    if curl -sSfL "$SYFT_INSTALL_URL" | sh -s -- -b "$INSTALL_DIR" "v${SYFT_VERSION}" > /dev/null 2>&1; then
+      add_result "syft" "$SYFT_VERSION" "installed"
+    else
+      err "Failed to install syft $SYFT_VERSION"
+      add_result "syft" "$SYFT_VERSION" "FAILED"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
+  fi
+}
+
+install_grype() {
+  if is_installed grype "$GRYPE_VERSION"; then
+    log "grype $GRYPE_VERSION already installed"
+    add_result "grype" "$GRYPE_VERSION" "skipped"
+    return
+  fi
+
+  log "Installing grype $GRYPE_VERSION via official script..."
+  if [[ "$VERBOSE" = true ]]; then
+    if curl -sSfL "$GRYPE_INSTALL_URL" | sh -s -- -b "$INSTALL_DIR" "v${GRYPE_VERSION}"; then
+      add_result "grype" "$GRYPE_VERSION" "installed"
+    else
+      err "Failed to install grype $GRYPE_VERSION"
+      add_result "grype" "$GRYPE_VERSION" "FAILED"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
+  else
+    if curl -sSfL "$GRYPE_INSTALL_URL" | sh -s -- -b "$INSTALL_DIR" "v${GRYPE_VERSION}" > /dev/null 2>&1; then
+      add_result "grype" "$GRYPE_VERSION" "installed"
+    else
+      err "Failed to install grype $GRYPE_VERSION"
+      add_result "grype" "$GRYPE_VERSION" "FAILED"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
+  fi
+}
+
+install_gitleaks() {
+  if is_installed gitleaks "$GITLEAKS_VERSION"; then
+    log "gitleaks $GITLEAKS_VERSION already installed"
+    add_result "gitleaks" "$GITLEAKS_VERSION" "skipped"
+    return
+  fi
+
+  local os arch url checksums_url tmpdir expected_hash
+  os="$(get_gitleaks_os)"
+  arch="$(get_gitleaks_arch)"
+
+  url="$GITLEAKS_URL"
+  url="${url//\{VERSION\}/$GITLEAKS_VERSION}"
+  url="${url//\{OS\}/$os}"
+  url="${url//\{ARCH\}/$arch}"
+
+  checksums_url="$GITLEAKS_CHECKSUMS_URL"
+  checksums_url="${checksums_url//\{VERSION\}/$GITLEAKS_VERSION}"
+
+  tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/gitleaks.XXXXXX")"
+
+  log "Installing gitleaks $GITLEAKS_VERSION (${os}/${arch})..."
+  if curl -sfL -o "$tmpdir/gitleaks.tar.gz" "$url" && \
+     curl -sfL -o "$tmpdir/checksums.txt" "$checksums_url"; then
+
+    expected_hash="$(grep "gitleaks_${GITLEAKS_VERSION}_${os}_${arch}.tar.gz" "$tmpdir/checksums.txt" | cut -d' ' -f1)"
+    if [[ -z "$expected_hash" ]]; then
+      err "Could not find checksum for gitleaks_${GITLEAKS_VERSION}_${os}_${arch}.tar.gz"
+      add_result "gitleaks" "$GITLEAKS_VERSION" "FAILED"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+      rm -rf "$tmpdir"
+      return
+    fi
+
+    if verify_sha256 "$tmpdir/gitleaks.tar.gz" "$expected_hash"; then
+      tar -xzf "$tmpdir/gitleaks.tar.gz" -C "$tmpdir"
+      mv "$tmpdir/gitleaks" "$INSTALL_DIR/gitleaks"
+      chmod +x "$INSTALL_DIR/gitleaks"
+      add_result "gitleaks" "$GITLEAKS_VERSION" "installed"
+    else
+      add_result "gitleaks" "$GITLEAKS_VERSION" "FAILED"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
+  else
+    err "Failed to download gitleaks $GITLEAKS_VERSION"
+    add_result "gitleaks" "$GITLEAKS_VERSION" "FAILED"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+
+  rm -rf "$tmpdir"
+}
+
+install_hadolint() {
+  if is_installed hadolint "$HADOLINT_VERSION"; then
+    log "hadolint $HADOLINT_VERSION already installed"
+    add_result "hadolint" "$HADOLINT_VERSION" "skipped"
+    return
+  fi
+
+  local os arch url checksum_url tmpdir expected_hash
+  os="$(get_hadolint_os)"
+  arch="$(get_hadolint_arch)"
+
+  url="$HADOLINT_URL"
+  url="${url//\{VERSION\}/$HADOLINT_VERSION}"
+  url="${url//\{OS\}/$os}"
+  url="${url//\{ARCH\}/$arch}"
+
+  checksum_url="$HADOLINT_CHECKSUM_URL"
+  checksum_url="${checksum_url//\{VERSION\}/$HADOLINT_VERSION}"
+  checksum_url="${checksum_url//\{OS\}/$os}"
+  checksum_url="${checksum_url//\{ARCH\}/$arch}"
+
+  tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/hadolint.XXXXXX")"
+
+  log "Installing hadolint $HADOLINT_VERSION (${os}/${arch})..."
+  if curl -sfL -o "$tmpdir/hadolint" "$url" && \
+     curl -sfL -o "$tmpdir/hadolint.sha256" "$checksum_url"; then
+
+    expected_hash="$(cut -d' ' -f1 < "$tmpdir/hadolint.sha256")"
+    if [[ -z "$expected_hash" ]]; then
+      err "Could not read checksum for hadolint"
+      add_result "hadolint" "$HADOLINT_VERSION" "FAILED"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+      rm -rf "$tmpdir"
+      return
+    fi
+
+    if verify_sha256 "$tmpdir/hadolint" "$expected_hash"; then
+      chmod +x "$tmpdir/hadolint"
+      mv "$tmpdir/hadolint" "$INSTALL_DIR/hadolint"
+      add_result "hadolint" "$HADOLINT_VERSION" "installed"
+    else
+      add_result "hadolint" "$HADOLINT_VERSION" "FAILED"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
+  else
+    err "Failed to download hadolint $HADOLINT_VERSION"
+    add_result "hadolint" "$HADOLINT_VERSION" "FAILED"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+
+  rm -rf "$tmpdir"
+}
 
 # ---------------------------------------------------------------------------
 # PATH verification
