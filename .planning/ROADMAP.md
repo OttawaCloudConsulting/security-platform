@@ -160,12 +160,12 @@ Plans:
 **Depends on**: Nothing (foundation for this milestone)
 **Requirements**: INST-01, INST-02, INST-03, INST-04, INST-05, INST-06, INST-07
 **Success Criteria** (what must be TRUE):
-  1. Running `bash dist/install.sh` on macOS arm64 installs all 8 security CLI tools (pre-commit, Semgrep, Checkov, Trivy, Syft, Grype, Gitleaks, hadolint) and each responds to its version command
+  1. Running `bash dist/install.sh` on macOS arm64 installs all 6 security CLI tools (pre-commit, Trivy, Syft, Grype, Gitleaks, hadolint) and each responds to its version command
   2. The script reads tool versions from a manifest file and installs those exact versions (not latest)
-  3. Python tools (pre-commit, Semgrep, Checkov) are installed via pipx and isolated from system Python
+  3. pre-commit is installed via pipx and isolated from system Python (Semgrep and Checkov deferred to CI-only in M2)
   4. Go/Haskell tools (Trivy, Syft, Grype, Gitleaks, hadolint) are installed via official install scripts or direct binary download with OS/arch auto-detection
   5. After install completes, the script verifies all tool locations are on PATH and warns if any are missing
-**Plans:** 1/2 plans executed
+**Plans:** 2 plans
 
 Plans:
 - [ ] 10-01-PLAN.md -- Version manifest and install script framework with pipx/pre-commit installer
