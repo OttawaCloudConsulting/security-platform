@@ -12,8 +12,8 @@
 - [x] **INST-03**: Tool versions are pinned in a manifest file and install script installs those exact versions
 - [x] **INST-04**: Install script verifies PATH includes tool install locations and warns if not configured
 - [x] **INST-05**: Python CLI tools (pre-commit, Semgrep, Checkov) install via pipx for dependency isolation
-- [ ] **INST-06**: Go binary tools (Trivy, Syft, Grype, Gitleaks) install via official install scripts or direct binary download
-- [ ] **INST-07**: hadolint installs via direct binary download from GitHub releases
+- [x] **INST-06**: Go binary tools (Trivy, Syft, Grype, Gitleaks) install via official install scripts or direct binary download
+- [x] **INST-07**: hadolint installs via direct binary download from GitHub releases
 
 ### Config Distribution
 
@@ -67,8 +67,8 @@
 | INST-03 | Phase 10 | Complete |
 | INST-04 | Phase 10 | Complete |
 | INST-05 | Phase 10 | Complete |
-| INST-06 | Phase 10 | Pending |
-| INST-07 | Phase 10 | Pending |
+| INST-06 | Phase 10 | Complete |
+| INST-07 | Phase 10 | Complete |
 | DIST-01 | Phase 12 | Pending |
 | DIST-02 | Phase 12 | Pending |
 | DIST-03 | Phase 12 | Pending |

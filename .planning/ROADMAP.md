@@ -148,7 +148,7 @@ Plans:
 
 **Milestone Goal:** Replace Homebrew-based tool installation with cross-platform methods (pip/npm/binary) and create a distribution package that sets up security tooling in any fresh git repo with a single command.
 
-- [ ] **Phase 10: Cross-Platform Install Script** - install.sh installs all security CLI tools on macOS and Linux without Homebrew
+- [x] **Phase 10: Cross-Platform Install Script** - install.sh installs all security CLI tools on macOS and Linux without Homebrew (completed 2026-03-18)
 - [ ] **Phase 11: File-Pattern Hook Configuration** - Universal pre-commit config with language-aware filters for selective hook execution
 - [ ] **Phase 12: Repo Setup Script** - setup.sh copies configs and wires hooks in any git repo with one command
 - [ ] **Phase 13: Maintenance and Validation** - Version check, update, and health check commands for installed tools
@@ -165,7 +165,7 @@ Plans:
   3. pre-commit is installed via pipx and isolated from system Python (Semgrep and Checkov deferred to CI-only in M2)
   4. Go/Haskell tools (Trivy, Syft, Grype, Gitleaks, hadolint) are installed via official install scripts or direct binary download with OS/arch auto-detection
   5. After install completes, the script verifies all tool locations are on PATH and warns if any are missing
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 10-01-PLAN.md -- Version manifest and install script framework with pipx/pre-commit installer
@@ -227,7 +227,7 @@ Note: Phase 11 depends on Phase 10. Phase 12 depends on Phases 10 and 11. Phase 
 | 7. SAST and IaC CLI Tools | v1.0 | 1/1 | Complete | 2026-03-16 |
 | 8. CLI Tool Scanning Validation | v1.0 | 2/2 | Complete | 2026-03-16 |
 | 9. Full Stack Validation | v1.0 | 2/2 | Complete | 2026-03-17 |
-| 10. Cross-Platform Install Script | 1/2 | In Progress|  | - |
+| 10. Cross-Platform Install Script | 2/2 | Complete   | 2026-03-18 | - |
 | 11. File-Pattern Hook Configuration | v1.1 | 0/? | Not started | - |
 | 12. Repo Setup Script | v1.1 | 0/? | Not started | - |
 | 13. Maintenance and Validation | v1.1 | 0/? | Not started | - |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Distribution Packaging
 status: executing
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-03-18T00:39:46.206Z"
-last_activity: 2026-03-18 -- Completed 10-01 version manifest and install.sh framework
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-03-18T00:43:00.000Z"
+last_activity: 2026-03-18 -- Completed 10-02 binary tool installers and ROADMAP update
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 50
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 10 of 13 (Cross-Platform Install Script)
-Plan: 1 of 2 (complete)
-Status: Executing
-Last activity: 2026-03-18 -- Completed 10-01 version manifest and install.sh framework
+Plan: 2 of 2 (complete)
+Status: Phase 10 Complete
+Last activity: 2026-03-18 -- Completed 10-02 binary tool installers and ROADMAP update
 
-Progress: [=====-----] 50% (1/2 plans complete in phase 10)
+Progress: [==========] 100% (2/2 plans complete in phase 10)
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [=====-----] 50% (1/2 plans complete in phase 10)
 
 *Updated after each plan completion*
 | Phase 10 P01 | 2min | 2 tasks | 2 files |
+| Phase 10 P02 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,8 @@ Recent decisions affecting current work:
 - [v1.1 Research]: Grype >= 0.88.0 mandatory (DB schema v5 EOL 2026-03-06)
 - [Phase 10]: pipx bootstrap uses pip install --user with PEP 668 fallback (--break-system-packages)
 - [Phase 10]: Per-tool OS/arch normalization functions for bash 3.2 compatibility (no associative arrays)
+- [Phase 10]: Trivy/Syft/Grype use official install scripts; Gitleaks/hadolint use direct binary download with SHA-256 verification
+- [Phase 10]: ROADMAP updated to reflect 6-tool scope (Semgrep/Checkov deferred to CI-only in M2)
 
 ### Pending Todos
 
@@ -85,12 +88,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- Semgrep placement decision needed: local install vs CI-only (affects install time by 2-5 min)
 - GitHub API rate limiting strategy for --check command (60 req/hr unauthenticated)
-- hadolint checksum verification: no standard checksums.txt in releases
 
 ## Session Continuity
 
-Last session: 2026-03-18T00:39:46.204Z
-Stopped at: Completed 10-01-PLAN.md
+Last session: 2026-03-18T00:43:00Z
+Stopped at: Completed 10-02-PLAN.md
 Resume file: None
