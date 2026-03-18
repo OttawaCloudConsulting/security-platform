@@ -7,11 +7,11 @@
 
 ### Tool Installation
 
-- [ ] **INST-01**: Developer can run install script on macOS or Linux to install all security CLI tools without Homebrew
-- [ ] **INST-02**: Install script auto-detects OS (macOS/Linux) and architecture (amd64/arm64) for binary downloads
-- [ ] **INST-03**: Tool versions are pinned in a manifest file and install script installs those exact versions
-- [ ] **INST-04**: Install script verifies PATH includes tool install locations and warns if not configured
-- [ ] **INST-05**: Python CLI tools (pre-commit, Semgrep, Checkov) install via pipx for dependency isolation
+- [x] **INST-01**: Developer can run install script on macOS or Linux to install all security CLI tools without Homebrew
+- [x] **INST-02**: Install script auto-detects OS (macOS/Linux) and architecture (amd64/arm64) for binary downloads
+- [x] **INST-03**: Tool versions are pinned in a manifest file and install script installs those exact versions
+- [x] **INST-04**: Install script verifies PATH includes tool install locations and warns if not configured
+- [x] **INST-05**: Python CLI tools (pre-commit, Semgrep, Checkov) install via pipx for dependency isolation
 - [ ] **INST-06**: Go binary tools (Trivy, Syft, Grype, Gitleaks) install via official install scripts or direct binary download
 - [ ] **INST-07**: hadolint installs via direct binary download from GitHub releases
 
@@ -62,11 +62,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INST-01 | Phase 10 | Pending |
-| INST-02 | Phase 10 | Pending |
-| INST-03 | Phase 10 | Pending |
-| INST-04 | Phase 10 | Pending |
-| INST-05 | Phase 10 | Pending |
+| INST-01 | Phase 10 | Complete |
+| INST-02 | Phase 10 | Complete |
+| INST-03 | Phase 10 | Complete |
+| INST-04 | Phase 10 | Complete |
+| INST-05 | Phase 10 | Complete |
 | INST-06 | Phase 10 | Pending |
 | INST-07 | Phase 10 | Pending |
 | DIST-01 | Phase 12 | Pending |
