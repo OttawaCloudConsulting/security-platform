@@ -21,7 +21,6 @@ set -euo pipefail
 # Constants
 # ---------------------------------------------------------------------------
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR="$HOME/.local/bin"
 VERBOSE=false
 COMMAND="setup"
@@ -118,6 +117,7 @@ print_summary() {
 # Prerequisites check
 # ---------------------------------------------------------------------------
 
+# shellcheck disable=SC2329  # invoked from main case statement
 require_git_repo() {
   if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
     err "Not inside a git repository. Run this from a repo root."
@@ -242,6 +242,7 @@ ensure_versions_conf() {
 # OS/Arch detection
 # ---------------------------------------------------------------------------
 
+# shellcheck disable=SC2329  # invoked by install functions
 detect_os() {
   case "$(uname -s)" in
     Darwin) echo "Darwin" ;;
@@ -250,6 +251,7 @@ detect_os() {
   esac
 }
 
+# shellcheck disable=SC2329  # invoked by install functions
 detect_arch() {
   case "$(uname -m)" in
     x86_64)        echo "x86_64" ;;
@@ -258,24 +260,28 @@ detect_arch() {
   esac
 }
 
+# shellcheck disable=SC2329  # invoked by _install_gitleaks
 get_gitleaks_os() {
   case "$(uname -s)" in
     Darwin) echo "darwin" ;; Linux) echo "linux" ;; *) echo "unsupported" ;;
   esac
 }
 
+# shellcheck disable=SC2329  # invoked by _install_gitleaks
 get_gitleaks_arch() {
   case "$(uname -m)" in
     x86_64) echo "x64" ;; arm64|aarch64) echo "arm64" ;; *) echo "unsupported" ;;
   esac
 }
 
+# shellcheck disable=SC2329  # invoked by _install_hadolint
 get_hadolint_os() {
   case "$(uname -s)" in
     Darwin) echo "macos" ;; Linux) echo "linux" ;; *) echo "unsupported" ;;
   esac
 }
 
+# shellcheck disable=SC2329  # invoked by _install_hadolint
 get_hadolint_arch() {
   case "$(uname -m)" in
     x86_64) echo "x86_64" ;; arm64|aarch64) echo "arm64" ;; *) echo "unsupported" ;;
@@ -322,6 +328,7 @@ get_installed_version() {
   echo "${version:-(unknown)}"
 }
 
+# shellcheck disable=SC2329  # invoked by _install_gitleaks, _install_hadolint
 verify_sha256() {
   local file="$1" expected="$2"
   local actual
@@ -347,6 +354,7 @@ verify_sha256() {
 # pipx bootstrap
 # ---------------------------------------------------------------------------
 
+# shellcheck disable=SC2329  # invoked by _install_precommit
 ensure_pipx() {
   if command -v pipx > /dev/null 2>&1; then
     log "pipx already installed"
@@ -405,23 +413,28 @@ run_installer() {
   fi
 }
 
+# shellcheck disable=SC2329  # invoked indirectly via run_installer
 _install_precommit() {
   ensure_pipx
   pipx install "pre-commit==${PRECOMMIT_VERSION}"
 }
 
+# shellcheck disable=SC2329  # invoked indirectly via run_installer
 _install_trivy() {
   curl -sfL "$TRIVY_INSTALL_URL" | sh -s -- -b "$INSTALL_DIR" "v${TRIVY_VERSION}"
 }
 
+# shellcheck disable=SC2329  # invoked indirectly via run_installer
 _install_syft() {
   curl -sSfL "$SYFT_INSTALL_URL" | sh -s -- -b "$INSTALL_DIR" "v${SYFT_VERSION}"
 }
 
+# shellcheck disable=SC2329  # invoked indirectly via run_installer
 _install_grype() {
   curl -sSfL "$GRYPE_INSTALL_URL" | sh -s -- -b "$INSTALL_DIR" "v${GRYPE_VERSION}"
 }
 
+# shellcheck disable=SC2329  # invoked indirectly via run_installer
 _install_gitleaks() {
   local os arch url checksums_url tmpdir expected_hash
   os="$(get_gitleaks_os)"
@@ -451,6 +464,7 @@ _install_gitleaks() {
   chmod +x "$INSTALL_DIR/gitleaks"
 }
 
+# shellcheck disable=SC2329  # invoked indirectly via run_installer
 _install_hadolint() {
   local os arch url checksum_url tmpdir expected_hash
   os="$(get_hadolint_os)"
@@ -636,12 +650,12 @@ repos:
 
   # --- Secrets detection: Gitleaks ---
   # Bypass: git push --no-verify skips this hook — CI is the compensating control
+  # The hook entry already runs: gitleaks git --pre-commit --redact --staged --verbose
   - repo: https://github.com/gitleaks/gitleaks
     rev: ${HOOK_VER_GITLEAKS}
     hooks:
       - id: gitleaks
         stages: [pre-push]
-        args: [protect, --staged]
 PRECOMMIT
 
   CONFIG_COUNT=$((CONFIG_COUNT + 1))
