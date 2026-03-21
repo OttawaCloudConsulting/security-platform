@@ -140,3 +140,5 @@ All scanners are CLI-based and install via `pip` or `curl` in any runner — no 
 |------|-------------|
 | `ARCHITECTURE.md` | Architecture, design decisions, data flow, enforcement model |
 | `README.md` | This document — deployment guide and scanner reference |
+| `.github/workflows/security.yml` | Security scanning workflow (deploy to target repo root) |
+| `.github/dependabot.yml` | Monthly GitHub Actions SHA digest updates (deploy to target repo root) |

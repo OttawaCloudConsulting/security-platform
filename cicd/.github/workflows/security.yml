@@ -1,0 +1,203 @@
+# .github/workflows/security.yml
+# Security scanning workflow — runs on every PR and push to main.
+# Deploy this file to each target repository at .github/workflows/security.yml
+#
+# All actions are pinned to SHA digests. Dependabot updates them monthly.
+# See .github/dependabot.yml for the update configuration.
+
+name: Security Scans
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write  # Required for SARIF upload to GitHub Security tab
+
+jobs:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SAST — Semgrep CE
+  # Scans source code for security vulnerabilities, injection patterns,
+  # and unsafe constructs using community rules (no account required).
+  # ─────────────────────────────────────────────────────────────────────────
+  sast:
+    name: SAST — Semgrep CE
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - run: pip install semgrep
+
+      - name: Run Semgrep (JSON output for DefectDojo)
+        run: semgrep scan --config auto --error --json --output semgrep-results.json .
+
+      - name: Run Semgrep (SARIF output for GitHub Security tab)
+        if: always()
+        run: semgrep scan --config auto --sarif --output semgrep.sarif . || true
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@ebcb5b36ded6beda4ceefea6a8bc4cc885255bb3  # v3
+        if: always()
+        continue-on-error: true  # SARIF upload failure should not block the PR
+        with:
+          sarif_file: semgrep.sarif
+
+      - name: Upload JSON artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: always()
+        continue-on-error: true  # Artifact upload failure should not block the PR
+        with:
+          name: semgrep-results
+          path: semgrep-results.json
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # IaC — Checkov
+  # Scans infrastructure as code (Terraform, CloudFormation, K8s, Dockerfile,
+  # GitHub Actions workflows) with 1,000+ built-in policies.
+  # ─────────────────────────────────────────────────────────────────────────
+  iac:
+    name: IaC — Checkov
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@2fd3901c8feb52417f27f0d9800259a106c1ec1e  # v12
+        with:
+          directory: .
+          output_format: cli,json,sarif
+          output_file_path: console,checkov-results.json,checkov.sarif
+          quiet: true
+          soft_fail: false  # Any policy violation fails the job
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@ebcb5b36ded6beda4ceefea6a8bc4cc885255bb3  # v3
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: checkov.sarif
+
+      - name: Upload JSON artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: checkov-results
+          path: checkov-results.json
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SCA — Grype
+  # Scans dependencies across all ecosystems (npm, pip, Go, Ruby, Rust,
+  # Java, .NET) for known vulnerabilities.
+  # ─────────────────────────────────────────────────────────────────────────
+  sca:
+    name: SCA — Grype
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Install Grype
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
+            | sh -s -- -b /usr/local/bin
+
+      - name: Run Grype (fails on high/critical findings)
+        run: grype dir:. --fail-on high -o json > grype-results.json
+
+      - name: Upload JSON artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: grype-results
+          path: grype-results.json
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Container — Trivy
+  # Builds the container image and scans it for OS package and language
+  # dependency vulnerabilities. Only runs if a Dockerfile exists.
+  # ─────────────────────────────────────────────────────────────────────────
+  container:
+    name: Container — Trivy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Check for Dockerfile
+        id: dockerfile
+        run: |
+          if [ -f Dockerfile ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No Dockerfile found — skipping container scan"
+          fi
+
+      - name: Build container image
+        if: steps.dockerfile.outputs.exists == 'true'
+        run: docker build -t app:${{ github.sha }} .
+
+      - name: Run Trivy (JSON output for DefectDojo)
+        if: steps.dockerfile.outputs.exists == 'true'
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1  # v0.35.0
+        with:
+          image-ref: 'app:${{ github.sha }}'
+          format: json
+          output: trivy-results.json
+          exit-code: '1'
+          severity: 'HIGH,CRITICAL'
+
+      - name: Run Trivy (SARIF output for GitHub Security tab)
+        if: always() && steps.dockerfile.outputs.exists == 'true'
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1  # v0.35.0
+        with:
+          image-ref: 'app:${{ github.sha }}'
+          format: sarif
+          output: trivy.sarif
+
+      - name: Upload SARIF to GitHub Security tab
+        if: always() && steps.dockerfile.outputs.exists == 'true'
+        uses: github/codeql-action/upload-sarif@ebcb5b36ded6beda4ceefea6a8bc4cc885255bb3  # v3
+        continue-on-error: true
+        with:
+          sarif_file: trivy.sarif
+
+      - name: Upload JSON artifact
+        if: always() && steps.dockerfile.outputs.exists == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        continue-on-error: true
+        with:
+          name: trivy-results
+          path: trivy-results.json
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Secrets — Gitleaks
+  # Scans full git history for hardcoded secrets and credentials.
+  # Server-side compensating control for the bypassable pre-push hook.
+  # ─────────────────────────────────────────────────────────────────────────
+  secrets:
+    name: Secrets — Gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          fetch-depth: 0  # Full history required for comprehensive secret scanning
+
+      - name: Install Gitleaks
+        run: |
+          curl -sSfL \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz \
+            | tar xz -C /usr/local/bin gitleaks
+
+      - name: Run Gitleaks (fails on any secret found)
+        run: gitleaks detect --source . --report-path gitleaks-results.json --report-format json
+
+      - name: Upload JSON artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: gitleaks-results
+          path: gitleaks-results.json

@@ -1,0 +1,16 @@
+# Dependabot configuration for GitHub Actions SHA digest updates.
+# Deploy this file to each target repository at .github/dependabot.yml
+#
+# Dependabot opens PRs monthly to update pinned SHA digests in workflow
+# files when new action versions are released. Review release notes
+# before merging.
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "ci"
+      include: "scope"

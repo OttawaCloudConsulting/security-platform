@@ -227,11 +227,14 @@ Without Layer 3 (branch protection), Layers 1 and 2 are advisory. Branch protect
 cicd/
 ├── ARCHITECTURE.md                          # This document
 ├── README.md                                # Quick start and deployment guide
-└── (workflow and config files — M2 deliverables)
-    .github/
+└── .github/
     ├── workflows/
     │   └── security.yml                     # Security scanning workflow
     └── dependabot.yml                       # Monthly SHA digest updates
 ```
 
-The `.github/` directory is deployed to each target repository root (not inside `cicd/`). The `cicd/` directory in security-platform holds the canonical source and documentation.
+To deploy, copy the `.github/` directory to each target repository root:
+
+```bash
+cp -r cicd/.github/ <target-repo>/.github/
+```
