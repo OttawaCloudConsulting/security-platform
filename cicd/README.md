@@ -1,6 +1,8 @@
 # CI/CD Security Gate
 
-GitHub Actions security scanning workflow for OttawaCloudConsulting repositories. This is Milestone 2 of the security stack — the server-side enforcement layer that cannot be bypassed from a developer workstation.
+Security scanning pipelines for OttawaCloudConsulting repositories. This is Milestone 2 of the security stack — the server-side enforcement layer that cannot be bypassed from a developer workstation.
+
+Pipeline configurations are provided for **GitHub Actions**, **Azure DevOps**, and **GitLab CI/CD**. All three run the same five scanners using the same CLI tools.
 
 ## Architecture
 
@@ -10,86 +12,144 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full design, data flow, scanner c
 
 Five parallel security scanners running on every Pull Request and push to `main`:
 
-| Job | Scanner | What it catches | Output |
-|-----|---------|-----------------|--------|
-| `sast` | Semgrep CE | Code-level vulnerabilities, injection patterns, unsafe constructs | SARIF + JSON |
-| `iac` | Checkov | IaC misconfigurations across Terraform, CloudFormation, K8s, Dockerfile | SARIF + JSON |
-| `sca` | Grype | Known dependency vulnerabilities across all ecosystems | JSON |
-| `container` | Trivy | Container image vulnerabilities and misconfigurations | SARIF + JSON |
-| `secrets` | Gitleaks | Hardcoded secrets and credentials in full git history | JSON |
+| Job | Scanner | What it catches | Failure threshold |
+|-----|---------|-----------------|-------------------|
+| `sast` | Semgrep CE | Code-level vulnerabilities, injection patterns, unsafe constructs | Any finding |
+| `iac` | Checkov | IaC misconfigurations across Terraform, CloudFormation, K8s, Dockerfile | Any policy violation |
+| `sca` | Grype | Known dependency vulnerabilities across all ecosystems | HIGH or CRITICAL |
+| `container` | Trivy | Container image vulnerabilities and misconfigurations | HIGH or CRITICAL |
+| `secrets` | Gitleaks | Hardcoded secrets and credentials in full git history | Any finding |
 
-All scanners execute on GitHub-hosted runners. No infrastructure, accounts, or external services required.
+All scanners install via `pip` or `curl` on each run. No marketplace extensions or external services required.
 
 ## Requirements
 
 | ID | Requirement | Status |
 |---|---|---|
-| CICD-01 | GitHub Actions security workflow with 5 parallel scan jobs | Planned |
-| CICD-02 | SARIF upload to GitHub Security tab | Planned |
+| CICD-01 | Security pipeline with 5 parallel scan jobs | Planned |
+| CICD-02 | SARIF upload to platform security dashboard (where supported) | Planned |
 | CICD-03 | JSON artifact retention for DefectDojo import | Planned |
 | CICD-04 | Branch protection enforcement | Planned |
-| CICD-05 | Renovate for Actions SHA updates | Planned |
+| CICD-05 | Renovate for Actions SHA updates (GitHub) | Planned |
 
 ## Deployment
 
-### 1. Security Workflow
+### GitHub Actions
 
-Deploy `.github/workflows/security.yml` to each target repository. The workflow:
+Deploy to the target repository:
 
-- Triggers on `pull_request` (all branches) and `push` to `main`
-- Runs all five scanners in parallel
-- Uploads SARIF to GitHub Security → Code Scanning tab
-- Stores JSON results as downloadable workflow artifacts
-- Fails the PR check if any scanner finds issues above the configured threshold
+```bash
+cp -r cicd/.github/ <target-repo>/.github/
+cp cicd/renovate.json <target-repo>/renovate.json
+```
 
-All GitHub Actions are pinned to immutable SHA digests. Renovate automates weekly updates.
+**Files deployed:**
 
-### 2. Renovate Configuration
+| File | Location in target repo | Description |
+|------|------------------------|-------------|
+| `.github/workflows/security.yml` | `.github/workflows/security.yml` | Security scanning workflow |
+| `renovate.json` | `renovate.json` | Automated SHA digest updates |
 
-Deploy `renovate.json` to each target repository root. Renovate opens weekly PRs to update GitHub Actions SHA digests when new versions are released. All action updates are grouped into a single PR for easy review.
+**Platform-specific features:**
 
-Renovate can be enabled via:
+- All actions SHA-pinned to immutable digests
+- SARIF upload to GitHub Security → Code Scanning tab (Semgrep, Checkov, Trivy)
+- JSON artifacts downloadable from workflow run page
+- Renovate keeps SHA digests current via weekly PRs
 
-- **Mend Renovate App** (free hosted) — install from the [GitHub Marketplace](https://github.com/apps/renovate), no self-hosting required
-- **Self-hosted Renovate** — run via the `renovatebot/github-action` in a scheduled workflow, or on any CI platform (GitLab, Azure DevOps, Bitbucket)
+**Renovate** can be enabled via:
 
-### 3. Branch Protection
+- **Mend Renovate App** (free hosted) — install from the [GitHub Marketplace](https://github.com/apps/renovate)
+- **Self-hosted Renovate** — run via `renovatebot/github-action` in a scheduled workflow
 
-Configure in GitHub: **Settings → Branches → Branch protection rules → Add rule**
+### Azure DevOps
 
-| Setting | Value |
-|---------|-------|
-| Branch name pattern | `main` |
-| Require a pull request before merging | ✅ |
-| Require status checks to pass before merging | ✅ — add: `sast`, `iac`, `sca`, `container`, `secrets` |
-| Do not allow bypassing the above settings | ✅ |
-| Restrict who can push to matching branches | ✅ |
+Deploy to the target repository:
 
-**Without branch protection, the entire CI security gate is advisory-only.** Scanner failures would not prevent merges.
+```bash
+cp cicd/azure-pipelines/azure-pipelines.yml <target-repo>/azure-pipelines.yml
+```
 
-## Output Destinations
+**Files deployed:**
 
-| Format | Destination | When available |
-|--------|-------------|----------------|
-| **SARIF** | GitHub Security → Code Scanning tab | Immediately after workflow completes |
-| **JSON artifacts** | Actions → Workflow run → Artifacts | Downloadable for 90 days (default retention) |
-| **JSON → DefectDojo** | DefectDojo API import | After M3 deployment (automated import script) |
+| File | Location in target repo | Description |
+|------|------------------------|-------------|
+| `azure-pipelines.yml` | `azure-pipelines.yml` (repo root) | Security scanning pipeline |
+
+**Platform-specific features:**
+
+- Pipeline triggers on PR to any branch and push to `main`
+- SARIF files published as pipeline artifacts (uploadable to Azure DevOps Security tab via extensions)
+- JSON artifacts published as pipeline artifacts
+- Container job sets a variable to gracefully skip when no Dockerfile is present
+
+**Branch policy:** Configure in Azure DevOps: **Repos → Branches → main → Branch policies**
+
+- Require a minimum number of reviewers
+- Check for linked work items
+- Build validation: add the security pipeline as a required build
+
+### GitLab CI/CD
+
+Deploy to the target repository:
+
+```bash
+cp cicd/gitlab-ci/.gitlab-ci.yml <target-repo>/.gitlab-ci.yml
+```
+
+**Files deployed:**
+
+| File | Location in target repo | Description |
+|------|------------------------|-------------|
+| `.gitlab-ci.yml` | `.gitlab-ci.yml` (repo root) | Security scanning pipeline |
+
+**Platform-specific features:**
+
+- Pipeline triggers on merge request events and pushes to the default branch
+- Semgrep outputs native GitLab SAST format (`gl-sast-report.json`) for the Security Dashboard
+- JSON and SARIF artifacts retained per pipeline
+- Container job uses Docker-in-Docker (`docker:dind`) service
+- Full git history fetched for Gitleaks via `GIT_DEPTH: 0`
+
+**Branch protection:** Configure in GitLab: **Settings → Repository → Protected branches**
+
+- Protect `main`: set allowed to merge and allowed to push
+- **Settings → Merge requests**: require pipeline to succeed before merging
+
+### Branch Protection (All Platforms)
+
+Without branch protection, scanner failures are advisory-only. The specific settings per platform:
+
+| Platform | Setting location | Key settings |
+|----------|-----------------|--------------|
+| **GitHub** | Settings → Branches → Branch protection rules | Require status checks (`sast`, `iac`, `sca`, `container`, `secrets`); require PR; do not allow bypassing |
+| **Azure DevOps** | Repos → Branches → main → Branch policies | Build validation (add security pipeline); minimum reviewers |
+| **GitLab** | Settings → Repository → Protected branches + Merge requests | Protect `main`; require pipeline to succeed |
+
+## Output Formats by Platform
+
+| Output | GitHub | Azure DevOps | GitLab |
+|--------|--------|--------------|--------|
+| **SARIF → Security Dashboard** | ✅ Code Scanning tab | Via extensions | Not native (SARIF is artifact-only) |
+| **Native SAST report** | N/A | N/A | ✅ GitLab SAST format (Semgrep) |
+| **JSON artifacts** | ✅ Workflow artifacts | ✅ Pipeline artifacts | ✅ Job artifacts |
+| **DefectDojo import** | ✅ JSON artifacts | ✅ JSON artifacts | ✅ JSON artifacts |
 
 ## Scanner Details
 
 ### Semgrep CE (SAST)
 
-Runs with `--config auto` which fetches community rules from the Semgrep Registry. Covers Python, JavaScript/TypeScript, Go, Java, Ruby, Terraform, YAML, Dockerfile, and more. Intra-file dataflow analysis only (cross-file requires the paid platform).
+Runs with `--config auto` which fetches community rules from the Semgrep Registry. Covers Python, JavaScript/TypeScript, Go, Java, Ruby, Terraform, YAML, Dockerfile, and more.
 
 - Failure mode: `--error` flag — any finding fails the job
-- Outputs: JSON (for DefectDojo) + SARIF (for GitHub)
+- Outputs: JSON + SARIF + GitLab SAST (platform-dependent)
 
 ### Checkov (IaC)
 
 1,000+ built-in policies with graph-based cross-resource relationship analysis. Scans Terraform, CloudFormation, CDK (synthesized), Kubernetes manifests, Helm, Dockerfile, GitHub Actions workflows.
 
 - Failure mode: `soft_fail: false` — any policy violation fails the job
-- Outputs: CLI + JSON (for DefectDojo) + SARIF (for GitHub)
+- Outputs: CLI + JSON + SARIF
 - Baseline support: existing projects can generate `.checkov.baseline` to suppress known findings
 
 ### Grype (SCA)
@@ -97,47 +157,36 @@ Runs with `--config auto` which fetches community rules from the Semgrep Registr
 Scans all dependency ecosystems (npm, pip, Go, Ruby, Rust, Java, .NET). Uses the Anchore vulnerability database.
 
 - Failure mode: `--fail-on high` — HIGH or CRITICAL findings fail the job
-- Outputs: JSON (for DefectDojo)
-- Complements npm audit (which only covers npm and runs locally in pre-commit)
+- Outputs: JSON
 
 ### Trivy (Container)
 
-Scans built container images for OS package and language-specific dependency vulnerabilities. Also detects misconfigurations in the image.
+Scans built container images for OS package and language-specific dependency vulnerabilities.
 
-- Failure mode: `exit-code: 1` with `severity: HIGH,CRITICAL`
-- Outputs: JSON (for DefectDojo) + SARIF (for GitHub)
-- Requires a `Dockerfile` in the repository; builds the image during the workflow
+- Failure mode: `exit-code 1` with `severity HIGH,CRITICAL`
+- Outputs: JSON + SARIF
+- Gracefully skips if no Dockerfile is present
 
 ### Gitleaks (Secrets)
 
-Scans the complete git history (all commits, all branches) for secrets. Uses `fetch-depth: 0` to ensure full history is available.
+Scans the complete git history for secrets. Requires full history checkout (`fetch-depth: 0` / `GIT_DEPTH: 0`).
 
 - Failure mode: any secret found fails the job
-- Outputs: JSON (for DefectDojo)
+- Outputs: JSON
 - Compensating control for the bypassable pre-push hook in M1
 
 ## Validation Checklist
 
-After deploying to a repository:
+After deploying to a repository (any platform):
 
-- [ ] Open a PR with a deliberate IaC misconfiguration (e.g., S3 bucket with public access). Verify Checkov flags it.
-- [ ] Open a PR with a test secret pattern (e.g., `AKIAIOSFODNN7EXAMPLE`). Verify Gitleaks flags it.
-- [ ] Confirm SARIF results appear in GitHub Security → Code Scanning tab after the workflow completes.
-- [ ] Confirm JSON artifacts are downloadable from the workflow run page.
-- [ ] Attempt `git push origin main` directly without a PR. Verify branch protection rejects the push.
-- [ ] Open a PR with a failing required status check. Verify the merge button is blocked.
-- [ ] Confirm Renovate opens a PR updating action SHAs within the configured schedule.
-
-## Cross-Platform CI Compatibility
-
-The primary CI platform is **GitHub Actions**. For repositories hosted on other platforms:
-
-| Platform | Approach |
-|----------|----------|
-| **Azure DevOps** | Install CLI tools via `pip`/`curl` in pipeline steps. Upload SARIF to Azure DevOps Security tab. |
-| **GitLab CI** | Install CLI tools via `pip`/`curl` in pipeline steps. Use `--output gitlab_sast` for native GitLab SAST format (Semgrep, Checkov). |
-
-All scanners are CLI-based and install via `pip` or `curl` in any runner — no GitHub-specific plugins are required for the scanning itself. The GitHub-specific parts are SARIF upload (`codeql-action/upload-sarif`) and branch protection configuration. Renovate works on all these platforms, so SHA digest pinning and automated updates carry over without changes.
+- [ ] Open a PR/MR with a deliberate IaC misconfiguration. Verify Checkov flags it.
+- [ ] Open a PR/MR with a test secret pattern (e.g., `AKIAIOSFODNN7EXAMPLE`). Verify Gitleaks flags it.
+- [ ] Confirm JSON artifacts are downloadable from the pipeline run.
+- [ ] Confirm scanner failures block the merge (requires branch protection).
+- [ ] Attempt a direct push to `main` without a PR/MR. Verify branch protection rejects it.
+- [ ] (GitHub only) Confirm SARIF results appear in Security → Code Scanning tab.
+- [ ] (GitLab only) Confirm SAST results appear in the Security Dashboard.
+- [ ] (GitHub only) Confirm Renovate opens a PR updating action SHAs.
 
 ## Contents
 
@@ -145,5 +194,7 @@ All scanners are CLI-based and install via `pip` or `curl` in any runner — no 
 |------|-------------|
 | `ARCHITECTURE.md` | Architecture, design decisions, data flow, enforcement model |
 | `README.md` | This document — deployment guide and scanner reference |
-| `.github/workflows/security.yml` | Security scanning workflow (deploy to target repo root) |
-| `renovate.json` | Renovate config for automated SHA updates (deploy to target repo root) |
+| `renovate.json` | Renovate config for GitHub Actions SHA updates (deploy to target repo root) |
+| `.github/workflows/security.yml` | GitHub Actions security workflow |
+| `azure-pipelines/azure-pipelines.yml` | Azure DevOps security pipeline |
+| `gitlab-ci/.gitlab-ci.yml` | GitLab CI/CD security pipeline |

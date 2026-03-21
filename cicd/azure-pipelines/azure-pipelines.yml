@@ -1,0 +1,158 @@
+# azure-pipelines.yml
+# Security scanning pipeline for Azure DevOps Repos.
+# Deploy this file to the target repository root.
+#
+# All scanners are installed via pip or curl on each run.
+# No marketplace extensions or external services required.
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - '*'
+
+stages:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Security Scanning Stage — all jobs run in parallel
+  # ─────────────────────────────────────────────────────────────────────────
+  - stage: Security
+    displayName: Security Scans
+    jobs:
+
+      # ─── SAST — Semgrep CE ───────────────────────────────────────────
+      - job: sast
+        displayName: 'SAST — Semgrep CE'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - checkout: self
+
+          - script: pip install semgrep
+            displayName: 'Install Semgrep'
+
+          - script: semgrep scan --config auto --error --json --output $(Build.ArtifactStagingDirectory)/semgrep-results.json .
+            displayName: 'Run Semgrep (JSON)'
+
+          - script: semgrep scan --config auto --sarif --output $(Build.ArtifactStagingDirectory)/semgrep.sarif . || true
+            displayName: 'Run Semgrep (SARIF)'
+            condition: always()
+
+          - publish: $(Build.ArtifactStagingDirectory)
+            artifact: semgrep-results
+            displayName: 'Publish Semgrep artifacts'
+            condition: always()
+
+      # ─── IaC — Checkov ───────────────────────────────────────────────
+      - job: iac
+        displayName: 'IaC — Checkov'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - checkout: self
+
+          - script: pip install checkov
+            displayName: 'Install Checkov'
+
+          - script: |
+              checkov -d . \
+                -o cli -o json -o sarif \
+                --output-file-path console,$(Build.ArtifactStagingDirectory)/checkov-results.json,$(Build.ArtifactStagingDirectory)/checkov.sarif \
+                --quiet
+            displayName: 'Run Checkov'
+
+          - publish: $(Build.ArtifactStagingDirectory)
+            artifact: checkov-results
+            displayName: 'Publish Checkov artifacts'
+            condition: always()
+
+      # ─── SCA — Grype ─────────────────────────────────────────────────
+      - job: sca
+        displayName: 'SCA — Grype'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - checkout: self
+
+          - script: |
+              curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
+                | sh -s -- -b /usr/local/bin
+            displayName: 'Install Grype'
+
+          - script: grype dir:. --fail-on high -o json > $(Build.ArtifactStagingDirectory)/grype-results.json
+            displayName: 'Run Grype'
+
+          - publish: $(Build.ArtifactStagingDirectory)
+            artifact: grype-results
+            displayName: 'Publish Grype artifacts'
+            condition: always()
+
+      # ─── Container — Trivy ───────────────────────────────────────────
+      - job: container
+        displayName: 'Container — Trivy'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - checkout: self
+
+          - script: |
+              if [ ! -f Dockerfile ]; then
+                echo "No Dockerfile found — skipping container scan"
+                echo "##vso[task.setvariable variable=skipContainer]true"
+              fi
+            displayName: 'Check for Dockerfile'
+
+          - script: docker build -t app:$(Build.SourceVersion) .
+            displayName: 'Build container image'
+            condition: ne(variables['skipContainer'], 'true')
+
+          - script: |
+              curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+                | sh -s -- -b /usr/local/bin
+            displayName: 'Install Trivy'
+            condition: ne(variables['skipContainer'], 'true')
+
+          - script: |
+              trivy image --format json --output $(Build.ArtifactStagingDirectory)/trivy-results.json \
+                --exit-code 1 --severity HIGH,CRITICAL \
+                app:$(Build.SourceVersion)
+            displayName: 'Run Trivy (JSON)'
+            condition: ne(variables['skipContainer'], 'true')
+
+          - script: |
+              trivy image --format sarif --output $(Build.ArtifactStagingDirectory)/trivy.sarif \
+                app:$(Build.SourceVersion) || true
+            displayName: 'Run Trivy (SARIF)'
+            condition: and(always(), ne(variables['skipContainer'], 'true'))
+
+          - publish: $(Build.ArtifactStagingDirectory)
+            artifact: trivy-results
+            displayName: 'Publish Trivy artifacts'
+            condition: and(always(), ne(variables['skipContainer'], 'true'))
+
+      # ─── Secrets — Gitleaks ──────────────────────────────────────────
+      - job: secrets
+        displayName: 'Secrets — Gitleaks'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - checkout: self
+            fetchDepth: 0
+
+          - script: |
+              curl -sSfL \
+                https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz \
+                | tar xz -C /usr/local/bin gitleaks
+            displayName: 'Install Gitleaks'
+
+          - script: gitleaks detect --source . --report-path $(Build.ArtifactStagingDirectory)/gitleaks-results.json --report-format json
+            displayName: 'Run Gitleaks'
+
+          - publish: $(Build.ArtifactStagingDirectory)
+            artifact: gitleaks-results
+            displayName: 'Publish Gitleaks artifacts'
+            condition: always()

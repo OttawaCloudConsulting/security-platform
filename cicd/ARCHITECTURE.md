@@ -4,9 +4,17 @@ Architecture and design reference for the CI/CD security gate layer (Milestone 2
 
 ## Overview
 
-The CI/CD layer is the **server-side enforcement point** for code security. It runs five parallel security scanners on every Pull Request and on direct pushes to `main`, producing findings in the GitHub Security tab and downloadable JSON artifacts. Combined with branch protection, it is the mechanism that cannot be bypassed from a developer workstation.
+The CI/CD layer is the **server-side enforcement point** for code security. It runs five parallel security scanners on every Pull Request and on direct pushes to `main`, producing findings as downloadable artifacts and (where supported) in the platform's native security dashboard. Combined with branch protection, it is the mechanism that cannot be bypassed from a developer workstation.
 
-No infrastructure is required — all scanners execute on GitHub-hosted runners. No accounts, logins, or external services are needed beyond the existing GitHub repository.
+Pipeline configurations are provided for three platforms:
+
+| Platform | Pipeline file | Deploy to |
+|---|---|---|
+| **GitHub Actions** | `.github/workflows/security.yml` | `<repo>/.github/workflows/security.yml` |
+| **Azure DevOps** | `azure-pipelines/azure-pipelines.yml` | `<repo>/azure-pipelines.yml` |
+| **GitLab CI/CD** | `gitlab-ci/.gitlab-ci.yml` | `<repo>/.gitlab-ci.yml` |
+
+All scanners are CLI-based tools installed via `pip` or `curl` on each run. No marketplace extensions, plugins, or platform-specific integrations are required for the scanning itself. Platform-specific features (SARIF upload, native SAST reports) are used where available.
 
 **Total cost: $0. External accounts required: 0.** (GitHub Actions free tier: 2,000 minutes/month for private repos, unlimited for public repos.)
 
@@ -228,17 +236,28 @@ Without Layer 3 (branch protection), Layers 1 and 2 are advisory. Branch protect
 
 ```
 cicd/
-├── ARCHITECTURE.md                          # This document
-├── README.md                                # Quick start and deployment guide
-├── renovate.json                            # Renovate config (deploy to target repo root)
-└── .github/
-    └── workflows/
-        └── security.yml                     # Security scanning workflow
+├── ARCHITECTURE.md                              # This document
+├── README.md                                    # Deployment guide and scanner reference
+├── renovate.json                                # Renovate config (deploy to target repo root)
+├── .github/                                     # GitHub Actions
+│   └── workflows/
+│       └── security.yml                         # GitHub security workflow
+├── azure-pipelines/                             # Azure DevOps
+│   └── azure-pipelines.yml                      # Azure Pipelines security pipeline
+└── gitlab-ci/                                   # GitLab CI/CD
+    └── .gitlab-ci.yml                           # GitLab security pipeline
 ```
 
-To deploy, copy the `.github/` directory and `renovate.json` to each target repository root:
+To deploy, copy the pipeline file for your platform to the target repository root:
 
 ```bash
+# GitHub
 cp -r cicd/.github/ <target-repo>/.github/
 cp cicd/renovate.json <target-repo>/renovate.json
+
+# Azure DevOps
+cp cicd/azure-pipelines/azure-pipelines.yml <target-repo>/azure-pipelines.yml
+
+# GitLab
+cp cicd/gitlab-ci/.gitlab-ci.yml <target-repo>/.gitlab-ci.yml
 ```
