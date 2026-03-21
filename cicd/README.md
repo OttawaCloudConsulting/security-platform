@@ -28,7 +28,7 @@ All scanners execute on GitHub-hosted runners. No infrastructure, accounts, or e
 | CICD-02 | SARIF upload to GitHub Security tab | Planned |
 | CICD-03 | JSON artifact retention for DefectDojo import | Planned |
 | CICD-04 | Branch protection enforcement | Planned |
-| CICD-05 | Dependabot for Actions SHA updates | Planned |
+| CICD-05 | Renovate for Actions SHA updates | Planned |
 
 ## Deployment
 
@@ -42,11 +42,16 @@ Deploy `.github/workflows/security.yml` to each target repository. The workflow:
 - Stores JSON results as downloadable workflow artifacts
 - Fails the PR check if any scanner finds issues above the configured threshold
 
-All GitHub Actions are pinned to immutable SHA digests. Dependabot automates monthly updates.
+All GitHub Actions are pinned to immutable SHA digests. Renovate automates weekly updates.
 
-### 2. Dependabot Configuration
+### 2. Renovate Configuration
 
-Deploy `.github/dependabot.yml` to each target repository. This creates monthly PRs to update action SHA digests when new versions are released.
+Deploy `renovate.json` to each target repository root. Renovate opens weekly PRs to update GitHub Actions SHA digests when new versions are released. All action updates are grouped into a single PR for easy review.
+
+Renovate can be enabled via:
+
+- **Mend Renovate App** (free hosted) — install from the [GitHub Marketplace](https://github.com/apps/renovate), no self-hosting required
+- **Self-hosted Renovate** — run via the `renovatebot/github-action` in a scheduled workflow, or on any CI platform (GitLab, Azure DevOps, Bitbucket)
 
 ### 3. Branch Protection
 
@@ -121,7 +126,7 @@ After deploying to a repository:
 - [ ] Confirm JSON artifacts are downloadable from the workflow run page.
 - [ ] Attempt `git push origin main` directly without a PR. Verify branch protection rejects the push.
 - [ ] Open a PR with a failing required status check. Verify the merge button is blocked.
-- [ ] Confirm Dependabot creates a PR updating action SHAs within the configured schedule.
+- [ ] Confirm Renovate opens a PR updating action SHAs within the configured schedule.
 
 ## Cross-Platform CI Compatibility
 
@@ -132,7 +137,7 @@ The primary CI platform is **GitHub Actions**. For repositories hosted on other 
 | **Azure DevOps** | Install CLI tools via `pip`/`curl` in pipeline steps. Upload SARIF to Azure DevOps Security tab. |
 | **GitLab CI** | Install CLI tools via `pip`/`curl` in pipeline steps. Use `--output gitlab_sast` for native GitLab SAST format (Semgrep, Checkov). |
 
-All scanners are CLI-based and install via `pip` or `curl` in any runner — no GitHub-specific plugins are required for the scanning itself. The GitHub-specific parts are SARIF upload (`codeql-action/upload-sarif`) and branch protection configuration.
+All scanners are CLI-based and install via `pip` or `curl` in any runner — no GitHub-specific plugins are required for the scanning itself. The GitHub-specific parts are SARIF upload (`codeql-action/upload-sarif`) and branch protection configuration. Renovate works on all these platforms, so SHA digest pinning and automated updates carry over without changes.
 
 ## Contents
 
@@ -141,4 +146,4 @@ All scanners are CLI-based and install via `pip` or `curl` in any runner — no 
 | `ARCHITECTURE.md` | Architecture, design decisions, data flow, enforcement model |
 | `README.md` | This document — deployment guide and scanner reference |
 | `.github/workflows/security.yml` | Security scanning workflow (deploy to target repo root) |
-| `.github/dependabot.yml` | Monthly GitHub Actions SHA digest updates (deploy to target repo root) |
+| `renovate.json` | Renovate config for automated SHA updates (deploy to target repo root) |

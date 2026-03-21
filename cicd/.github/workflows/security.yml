@@ -2,8 +2,8 @@
 # Security scanning workflow — runs on every PR and push to main.
 # Deploy this file to each target repository at .github/workflows/security.yml
 #
-# All actions are pinned to SHA digests. Dependabot updates them monthly.
-# See .github/dependabot.yml for the update configuration.
+# All actions are pinned to SHA digests. Renovate updates them automatically.
+# See renovate.json for the update configuration.
 
 name: Security Scans
 

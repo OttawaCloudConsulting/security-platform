@@ -15,8 +15,8 @@ No infrastructure is required — all scanners execute on GitHub-hosted runners.
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    Developer Workstation (M1)                           │
-│  Pre-commit Tier 1 (linting) + Tier 2 (secrets gate)                   │
-│  Bypassable: git commit/push --no-verify                               │
+│  Pre-commit Tier 1 (linting) + Tier 2 (secrets gate)                    │
+│  Bypassable: git commit/push --no-verify                                │
 └────────────────────────────┬────────────────────────────────────────────┘
                              │ git push
                              ▼
@@ -29,20 +29,20 @@ No infrastructure is required — all scanners execute on GitHub-hosted runners.
 │  ┌───────────────────────────────────────────────────────────────────┐  │
 │  │           GitHub Actions: security.yml                            │  │
 │  │                                                                   │  │
-│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │  │
-│  │  │  SAST   │ │   IaC   │ │   SCA   │ │Container│ │ Secrets │   │  │
-│  │  │ Semgrep │ │ Checkov │ │  Grype  │ │  Trivy  │ │Gitleaks │   │  │
-│  │  │   CE    │ │         │ │         │ │         │ │         │   │  │
-│  │  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘   │  │
-│  │       │           │           │           │           │         │  │
-│  │       ▼           ▼           ▼           ▼           ▼         │  │
-│  │  ┌─────────────────────────────────────────────────────────┐    │  │
-│  │  │              Output Destinations                         │    │  │
-│  │  │                                                         │    │  │
-│  │  │  SARIF ──► GitHub Security Tab (Code Scanning)          │    │  │
-│  │  │  JSON  ──► Workflow Artifacts (downloadable)            │    │  │
-│  │  │  JSON  ──► DefectDojo API import (M3)                   │    │  │
-│  │  └─────────────────────────────────────────────────────────┘    │  │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐      │  │
+│  │  │  SAST   │ │   IaC   │ │   SCA   │ │Container│ │ Secrets │      │  │
+│  │  │ Semgrep │ │ Checkov │ │  Grype  │ │  Trivy  │ │Gitleaks │      │  │
+│  │  │   CE    │ │         │ │         │ │         │ │         │      │  │
+│  │  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘      │  │
+│  │       │           │           │           │           │           │  │
+│  │       ▼           ▼           ▼           ▼           ▼           │  │
+│  │  ┌─────────────────────────────────────────────────────────┐      │  │
+│  │  │              Output Destinations                        │      │  │
+│  │  │                                                         │      │  │
+│  │  │  SARIF ──► GitHub Security Tab (Code Scanning)          │      │  │
+│  │  │  JSON  ──► Workflow Artifacts (downloadable)            │      │  │
+│  │  │  JSON  ──► DefectDojo API import (M3)                   │      │  │
+│  │  └─────────────────────────────────────────────────────────┘      │  │
 │  └───────────────────────────────────────────────────────────────────┘  │
 │                                                                         │
 │  ┌───────────────────────────────────────────────────────────────────┐  │
@@ -57,10 +57,11 @@ No infrastructure is required — all scanners execute on GitHub-hosted runners.
 │  └───────────────────────────────────────────────────────────────────┘  │
 │                                                                         │
 │  ┌───────────────────────────────────────────────────────────────────┐  │
-│  │           Dependabot (.github/dependabot.yml)                     │  │
+│  │           Renovate Bot (renovate.json)                            │  │
 │  │                                                                   │  │
-│  │  Monthly PRs updating GitHub Actions SHA digests                  │  │
+│  │  Weekly PRs updating GitHub Actions SHA digests                   │  │
 │  │  Prevents version rot in pinned action references                 │  │
+│  │  Platform-agnostic: works on GitHub, GitLab, Azure DevOps         │  │
 │  └───────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -94,7 +95,9 @@ The Pull Request is the meaningful enforcement point — code is asserting it is
 
 All actions are pinned to immutable SHA digests rather than mutable version tags (`@v4`, `@master`). Mutable tags can be silently updated by the action maintainer — intentionally or after a supply-chain compromise — and the workflow executes the changed code without notice.
 
-SHA pinning ensures you run exactly the code you reviewed. Dependabot automates SHA updates via monthly PRs.
+SHA pinning ensures you run exactly the code you reviewed. Renovate Bot automates SHA updates via weekly PRs, grouping all GitHub Actions changes into a single PR for easy review.
+
+**Why Renovate over Dependabot:** Dependabot is GitHub-only — it cannot run on GitLab, Azure DevOps, or Bitbucket. Renovate is open source (Apache 2.0), supports all major platforms, and offers richer configuration: grouped PRs, shared presets across repositories, and the `helpers:pinGitHubActionDigests` preset that specifically handles SHA digest pinning. For a stack that documents cross-platform CI compatibility, Renovate is the consistent choice.
 
 **To find the current SHA for any action:**
 
@@ -227,14 +230,15 @@ Without Layer 3 (branch protection), Layers 1 and 2 are advisory. Branch protect
 cicd/
 ├── ARCHITECTURE.md                          # This document
 ├── README.md                                # Quick start and deployment guide
+├── renovate.json                            # Renovate config (deploy to target repo root)
 └── .github/
-    ├── workflows/
-    │   └── security.yml                     # Security scanning workflow
-    └── dependabot.yml                       # Monthly SHA digest updates
+    └── workflows/
+        └── security.yml                     # Security scanning workflow
 ```
 
-To deploy, copy the `.github/` directory to each target repository root:
+To deploy, copy the `.github/` directory and `renovate.json` to each target repository root:
 
 ```bash
 cp -r cicd/.github/ <target-repo>/.github/
+cp cicd/renovate.json <target-repo>/renovate.json
 ```
