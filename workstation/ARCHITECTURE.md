@@ -123,7 +123,7 @@ Remote hook  →   pre-commit clones repo,     Underlying binary
 
 ### CLI Tool Installation Strategy
 
-The `dist/install.sh` installer uses three installation methods based on tool type:
+The `setup.sh` script uses three installation methods based on tool type:
 
 | Method | Tools | Rationale |
 |--------|-------|-----------|
@@ -133,7 +133,13 @@ The `dist/install.sh` installer uses three installation methods based on tool ty
 
 All tools install to `~/.local/bin`. The installer is idempotent — re-running skips tools already at the pinned version.
 
-**Why not Homebrew?** Homebrew is macOS-only and adds a dependency on Homebrew itself. The install script supports both macOS and Linux with no package manager dependency beyond `curl` and `python3`.
+**Why not Homebrew?** Homebrew is macOS-only and adds a dependency on Homebrew itself. The setup script supports both macOS and Linux with no package manager dependency beyond `curl` and `python3`.
+
+### Version Resolution
+
+On first run, `setup.sh` resolves the latest release version for each tool and hook from the GitHub Releases API. These versions are written to `versions.conf` (for CLI tools) and embedded in `.pre-commit-config.yaml` (for hook `rev:` fields). If `versions.conf` already exists, the script uses the pinned versions without re-resolving — giving the developer control over when to uptake new versions.
+
+Fallback versions are hardcoded in the script for environments where the GitHub API is unreachable (e.g., air-gapped networks or rate-limited CI runners).
 
 ### What the Workstation Does NOT Install
 
@@ -222,20 +228,20 @@ The workstation layer catches issues early and reduces CI feedback latency. The 
 
 ```
 workstation/
-├── .pre-commit-config.yaml           # Hook configuration (Tier 1 + Tier 2)
-├── .gitleaksignore                    # Gitleaks false-positive suppressions
-├── .markdownlint-cli2.yaml           # markdownlint-cli2 rule config
+├── setup.sh                              # Bootstrap script — install, configure, activate
+├── ARCHITECTURE.md                       # This document
+├── README.md                             # Quick start and usage guide
+└── cicd/
+    ├── lint-markdown.sh                  # Three-tier markdown linting script
+    └── pre-commit.sh                     # Pre-commit hook for staged .md files
+
+Generated in each target repository by setup.sh:
+├── versions.conf                         # Pinned tool versions (latest at time of generation)
+├── .pre-commit-config.yaml               # Hook configuration (Tier 1 + Tier 2)
+├── .gitleaksignore                       # Gitleaks false-positive suppressions
+├── .markdownlint-cli2.yaml               # markdownlint-cli2 rule config
 ├── .markdownlint-fix.markdownlint.jsonc  # Auto-fixable rules
-├── .markdownlint.jsonc               # Enforced lint rules
-├── dist/
-│   ├── install.sh                    # Cross-platform tool installer
-│   ├── versions.conf                 # Pinned versions and download URLs
-│   └── README.md                     # Installer documentation
-├── cicd/
-│   ├── lint-markdown.sh              # Three-tier markdown linting script
-│   └── pre-commit.sh                 # Pre-commit hook for staged .md files
-├── ARCHITECTURE.md                   # This document
-└── README.md                         # Quick start and usage guide
+└── .markdownlint.jsonc                   # Enforced lint rules
 ```
 
 ## Version Pinning Strategy
@@ -244,8 +250,10 @@ All tools are pinned to exact versions for reproducible installations:
 
 | Pinning mechanism | Scope | Update method |
 |---|---|---|
-| `dist/versions.conf` | CLI tools installed by `install.sh` | Edit version numbers manually |
+| `versions.conf` (in repo root) | CLI tools installed by `setup.sh` | Delete and re-run `setup.sh install`, or edit manually |
 | `rev:` fields in `.pre-commit-config.yaml` | Pre-commit hook tool versions | `pre-commit autoupdate` |
+
+On first run, `setup.sh` resolves latest versions from GitHub. Subsequent runs use the existing `versions.conf` — delete it to force re-resolution.
 
 Run `pre-commit autoupdate` monthly to bump hook versions, then `pre-commit run --all-files` to validate.
 

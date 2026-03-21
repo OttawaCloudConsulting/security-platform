@@ -6,42 +6,44 @@ Canonical security tooling and configuration for OttawaCloudConsulting developer
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full workstation architecture, design decisions, and tool interaction model.
 
-## Contents
+## Quick Start
 
-| Path | Description |
-|------|-------------|
-| `.pre-commit-config.yaml` | Pre-commit hook configuration (Tier 1 quality + Tier 2 secrets) |
-| `.gitleaksignore` | Gitleaks false-positive suppressions |
-| `.markdownlint-cli2.yaml` | markdownlint-cli2 rule configuration |
-| `.markdownlint-fix.markdownlint.jsonc` | Auto-fixable markdownlint rules |
-| `.markdownlint.jsonc` | Enforced markdownlint rules |
-| `dist/install.sh` | Cross-platform security tool installer |
-| `dist/versions.conf` | Pinned tool versions and download URLs |
-| `cicd/lint-markdown.sh` | Three-tier markdown linting script |
-| `cicd/pre-commit.sh` | Pre-commit hook for staged markdown files |
+Run `setup.sh` from inside any git repository:
+
+```bash
+# Full setup: install tools + generate configs + activate hooks
+bash setup.sh
+
+# Or run individual steps:
+bash setup.sh install       # install security CLI tools only
+bash setup.sh configure     # generate config files only
+bash setup.sh check         # show installed vs expected versions
+```
+
+On first run, `setup.sh`:
+
+1. Creates `versions.conf` in the repo root with the **latest** pinned versions (resolved from GitHub)
+2. Installs six security CLI tools to `~/.local/bin`
+3. Generates all configuration files (`.pre-commit-config.yaml`, linting configs, `.gitleaksignore`)
+4. Activates pre-commit and pre-push hooks
+
+Every step is **idempotent** — re-running skips tools already at the pinned version and skips config files that already exist.
 
 ## Prerequisites
 
-Before running the installer or activating hooks, the workstation must have:
+Before running `setup.sh`, the workstation must have:
 
 | Prerequisite | Required by | Install |
 |---|---|---|
 | **git** | Everything — hooks, gitleaks, the entire workflow | OS package manager |
 | **python3** | pipx bootstrap (which installs pre-commit) | OS package manager or `brew install python` |
-| **curl** | `install.sh` binary downloads | OS package manager |
+| **curl** | `setup.sh` binary downloads and version resolution | OS package manager |
 | **Node.js / npm / npx** | ESLint and npm audit pre-commit hooks | `brew install node` or [nodejs.org](https://nodejs.org) |
 | **Terraform** | `terraform_fmt` and `terraform_validate` hooks | `brew install terraform` or [terraform.io](https://developer.hashicorp.com/terraform/install) |
 
-## Quick Start
+## What Gets Installed
 
-### 1. Install Security CLI Tools
-
-```bash
-bash dist/install.sh              # standard install
-bash dist/install.sh -v           # verbose output
-```
-
-This installs six tools to `~/.local/bin`:
+### Security CLI Tools (installed to `~/.local/bin`)
 
 | Tool | Purpose | Install Method |
 |------|---------|----------------|
@@ -52,34 +54,20 @@ This installs six tools to `~/.local/bin`:
 | Gitleaks | Secret detection | Binary download + SHA-256 checksum |
 | hadolint | Dockerfile linter | Binary download + SHA-256 checksum |
 
-The installer is idempotent — re-running skips tools already at the pinned version.
+### Generated Configuration Files (in repo root)
 
-### 2. Deploy to a Target Repository
+| File | Description |
+|------|-------------|
+| `versions.conf` | Pinned tool versions and download URLs |
+| `.pre-commit-config.yaml` | Pre-commit hook configuration (Tier 1 quality + Tier 2 secrets) |
+| `.gitleaksignore` | Gitleaks false-positive suppressions |
+| `.markdownlint.jsonc` | Enforced markdownlint rules |
+| `.markdownlint-fix.markdownlint.jsonc` | Auto-fixable markdownlint rules |
+| `.markdownlint-cli2.yaml` | markdownlint-cli2 configuration |
 
-Copy the configuration files into the target repository root:
+### Per-Project npm Tooling (JS/TS Repos Only)
 
-```bash
-TARGET=<path-to-your-repo>
-
-# Core hook configuration
-cp .pre-commit-config.yaml "$TARGET/"
-cp .gitleaksignore "$TARGET/"
-
-# Markdown linting configs (if the repo has .md files)
-cp .markdownlint-cli2.yaml "$TARGET/"
-cp .markdownlint-fix.markdownlint.jsonc "$TARGET/"
-cp .markdownlint.jsonc "$TARGET/"
-
-# Activate hooks
-cd "$TARGET"
-pre-commit install
-pre-commit install --hook-type pre-push
-pre-commit run --all-files
-```
-
-### 3. Per-Project npm Tooling (JS/TS Repos Only)
-
-For repositories with JavaScript or TypeScript:
+For repositories with JavaScript or TypeScript, install ESLint manually:
 
 ```bash
 cd <target-repo>
@@ -148,7 +136,7 @@ Gitleaks runs as a **pre-push hook** — it scans staged changes for credentials
 
 ## On-Demand Security CLI Tools
 
-The six tools installed by `dist/install.sh` are available for direct CLI use beyond what the pre-commit hooks automate:
+The six tools installed by `setup.sh install` are available for direct CLI use beyond what the pre-commit hooks automate:
 
 | Tool | Example usage |
 |------|---------------|
@@ -161,15 +149,32 @@ The six tools installed by `dist/install.sh` are available for direct CLI use be
 | `gitleaks detect --source .` | Scan current files for secrets |
 | `gitleaks detect --source . --log-opts="--all"` | Scan full git history |
 
-Semgrep CE and Checkov are **not** installed by the workstation installer. They run at the Pull Request gate in GitHub Actions (Milestone 2) where full-repository analysis is appropriate. See [ARCHITECTURE.md](ARCHITECTURE.md) for the rationale.
+Semgrep CE and Checkov are **not** installed by the workstation setup. They run at the Pull Request gate in GitHub Actions (Milestone 2) where full-repository analysis is appropriate. See [ARCHITECTURE.md](ARCHITECTURE.md) for the rationale.
 
-## Updating Versions
+## Version Management
 
-Edit `dist/versions.conf` to bump a tool version. For Gitleaks and hadolint, the URL templates use `{VERSION}` placeholders — no URL changes needed for version bumps.
+### Tool Versions (`versions.conf`)
 
-To update pre-commit hook versions:
+`setup.sh` creates `versions.conf` in the repo root on first run, populated with the latest versions from GitHub. To update:
+
+1. Delete `versions.conf` and re-run `bash setup.sh install` to resolve fresh latest versions
+2. Or edit `versions.conf` manually to pin a specific version, then `bash setup.sh install`
+
+### Hook Versions (`.pre-commit-config.yaml`)
+
+Hook versions in `.pre-commit-config.yaml` are resolved from GitHub at generation time. To update:
 
 ```bash
 pre-commit autoupdate
 pre-commit run --all-files   # validate nothing broke
 ```
+
+## Contents
+
+| File | Description |
+|------|-------------|
+| `setup.sh` | Workstation bootstrap script — installs tools, generates configs, activates hooks |
+| `ARCHITECTURE.md` | Architecture, design decisions, tool model, coverage matrix |
+| `README.md` | This document |
+| `cicd/lint-markdown.sh` | Three-tier markdown linting script (auto-fix + enforce) |
+| `cicd/pre-commit.sh` | Pre-commit hook for staged markdown files |

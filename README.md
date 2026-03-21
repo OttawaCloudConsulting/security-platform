@@ -29,4 +29,10 @@ security-platform/
 
 ## Getting Started
 
-See [`workstation/README.md`](workstation/README.md) for the developer workstation setup.
+From inside any git repository, run the workstation setup:
+
+```bash
+bash path/to/security-platform/workstation/setup.sh
+```
+
+See [`workstation/README.md`](workstation/README.md) for the full guide.
