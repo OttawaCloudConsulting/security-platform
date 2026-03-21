@@ -9,11 +9,12 @@ security-platform/
 ├── workstation/          # Developer workstation security (Milestone 1)
 │   ├── ARCHITECTURE.md   # Architecture, design decisions, tool model
 │   ├── README.md         # Quick start and usage guide
-│   ├── dist/             # Cross-platform tool installer
-│   ├── cicd/             # CI helper scripts
-│   └── (config files)    # Pre-commit, linting, and secrets configs
+│   ├── setup.sh          # Workstation bootstrap script
+│   └── cicd/             # CI helper scripts (markdown linting)
+├── cicd/                 # CI/CD security gate (Milestone 2)
+│   ├── ARCHITECTURE.md   # Architecture, data flow, enforcement model
+│   └── README.md         # Deployment guide and scanner reference
 └── (future milestones)
-    ├── cicd/             # M2: GitHub Actions security workflows
     ├── infrastructure/   # M3: Nexus, DefectDojo, Helm values
     └── runtime/          # M4: Trivy Operator, Falco, Kyverno
 ```
@@ -22,8 +23,8 @@ security-platform/
 
 | Directory | Milestone | Status | Description |
 |---|---|---|---|
-| `workstation/` | M1 — Workstation Foundation | In progress | Pre-commit hooks, linting configs, CLI tool installer |
-| `cicd/` | M2 — CI/CD Security Gate | Planned | GitHub Actions workflows for PR-level security scanning |
+| `workstation/` | M1 — Workstation Foundation | Complete | Pre-commit hooks, linting configs, CLI tool installer |
+| `cicd/` | M2 — CI/CD Security Gate | In progress | GitHub Actions workflows for PR-level security scanning |
 | `infrastructure/` | M3 — Self-Hosted Services | Planned | Nexus, DefectDojo, Helm values, K8s manifests |
 | `runtime/` | M4 — Runtime Security | Planned | Trivy Operator, Falco, Cosign, Kyverno policies |
 
