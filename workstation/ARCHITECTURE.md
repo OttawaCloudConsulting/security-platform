@@ -16,51 +16,51 @@ The workstation layer is designed for a single-developer AWS cloud practice work
 ## Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        Developer Workstation                            │
-│                                                                         │
-│  ┌───────────────────────────────────────────────────────────────────┐  │
-│  │ Pre-commit Tier 1 — Quality & Linting (every commit)             │  │
-│  │                                                                   │  │
-│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐     │  │
-│  │  │ ShellCheck │ │   Ruff     │ │  ESLint *  │ │  hadolint  │     │  │
-│  │  │  (sh/bash) │ │  (Python)  │ │  (TS/JS)   │ │(Dockerfile)│     │  │
-│  │  └────────────┘ └────────────┘ └────────────┘ └────────────┘     │  │
-│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────┐  │  │
-│  │  │  yamllint  │ │markdown-   │ │ npm audit *│ │ tf fmt/val ^ │  │  │
-│  │  │ (K8s/YAML) │ │  lint (.md)│ │ (fast dep) │ │ (Terraform)  │  │  │
-│  │  └────────────┘ └────────────┘ └────────────┘ └──────────────┘  │  │
-│  │                                                                   │  │
-│  │  * = local hook (requires system Node.js/npm)                     │  │
-│  │  ^ = remote hook but delegates to system Terraform binary         │  │
-│  │  All others = fully managed by pre-commit (isolated environments) │  │
-│  └───────────────────────────────────────────────────────────────────┘  │
-│                                                                         │
-│  ┌───────────────────────────────────────────────────────────────────┐  │
-│  │ Pre-push Tier 2 — Secrets Gate (before push)                     │  │
-│  │                                                                   │  │
-│  │  ┌────────────┐                                                   │  │
-│  │  │  Gitleaks  │  Scans staged changes for credentials/secrets     │  │
-│  │  │ (Secrets)  │  Bypassable: git push --no-verify                 │  │
-│  │  └────────────┘  Compensating control: CI re-scans server-side    │  │
-│  └───────────────────────────────────────────────────────────────────┘  │
-│                                                                         │
-│  ┌───────────────────────────────────────────────────────────────────┐  │
-│  │ CLI Tools — On-Demand (installed by dist/install.sh)             │  │
-│  │                                                                   │  │
-│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐                    │  │
-│  │  │   Trivy    │ │    Syft    │ │   Grype    │                    │  │
-│  │  │(Multi-scan)│ │   (SBOM)   │ │   (SCA)    │                    │  │
-│  │  └────────────┘ └────────────┘ └────────────┘                    │  │
-│  │                                                                   │  │
-│  │  Trivy: container, filesystem, IaC, and secrets scanning          │  │
-│  │  Syft:  SBOM generation (CycloneDX, SPDX)                        │  │
-│  │  Grype: dependency vulnerability scanning against SBOM or dir     │  │
-│  └───────────────────────────────────────────────────────────────────┘  │
-│                                                                         │
-│  git push ──► CI/CD (Milestone 2: Semgrep, Checkov, Trivy, Grype,      │
-│               Gitleaks full-history — runs server-side in GitHub Actions)│
-└─────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│                        Developer Workstation                              │
+│                                                                           │
+│  ┌───────────────────────────────────────────────────────────────────┐    │
+│  │ Pre-commit Tier 1 — Quality & Linting (every commit)              │    │
+│  │                                                                   │    │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐      │    │
+│  │  │ ShellCheck │ │   Ruff     │ │  ESLint *  │ │  hadolint  │      │    │
+│  │  │  (sh/bash) │ │  (Python)  │ │  (TS/JS)   │ │(Dockerfile)│      │    │
+│  │  └────────────┘ └────────────┘ └────────────┘ └────────────┘      │    │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────┐    │    │
+│  │  │  yamllint  │ │markdown-   │ │ npm audit *│ │ tf fmt/val ^ │    │    │
+│  │  │ (K8s/YAML) │ │  lint (.md)│ │ (fast dep) │ │ (Terraform)  │    │    │
+│  │  └────────────┘ └────────────┘ └────────────┘ └──────────────┘    │    │
+│  │                                                                   │    │
+│  │  * = local hook (requires system Node.js/npm)                     │    │
+│  │  ^ = remote hook but delegates to system Terraform binary         │    │
+│  │  All others = fully managed by pre-commit (isolated environments) │    │
+│  └───────────────────────────────────────────────────────────────────┘    │
+│                                                                           │
+│  ┌───────────────────────────────────────────────────────────────────┐    │
+│  │ Pre-push Tier 2 — Secrets Gate (before push)                      │    │
+│  │                                                                   │    │
+│  │  ┌────────────┐                                                   │    │
+│  │  │  Gitleaks  │  Scans staged changes for credentials/secrets     │    │
+│  │  │ (Secrets)  │  Bypassable: git push --no-verify                 │    │
+│  │  └────────────┘  Compensating control: CI re-scans server-side    │    │
+│  └───────────────────────────────────────────────────────────────────┘    │
+│                                                                           │
+│  ┌───────────────────────────────────────────────────────────────────┐    │
+│  │ CLI Tools — On-Demand (installed by dist/install.sh)              │    │
+│  │                                                                   │    │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐                     │    │
+│  │  │   Trivy    │ │    Syft    │ │   Grype    │                     │    │
+│  │  │(Multi-scan)│ │   (SBOM)   │ │   (SCA)    │                     │    │
+│  │  └────────────┘ └────────────┘ └────────────┘                     │    │
+│  │                                                                   │    │
+│  │  Trivy: container, filesystem, IaC, and secrets scanning          │    │
+│  │  Syft:  SBOM generation (CycloneDX, SPDX)                         │    │
+│  │  Grype: dependency vulnerability scanning against SBOM or dir     │    │
+│  └───────────────────────────────────────────────────────────────────┘    │
+│                                                                           │
+│  git push ──► CI/CD (Milestone 2: Semgrep, Checkov, Trivy, Grype,         │
+│               Gitleaks full-history — runs server-side in GitHub Actions) │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Design Decisions
