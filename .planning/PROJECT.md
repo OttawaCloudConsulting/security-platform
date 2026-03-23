@@ -18,12 +18,15 @@ Every code change is automatically scanned for security issues, secrets, and sup
 
 ### Active
 
-- [ ] Cross-platform tool installation script (replaces Homebrew with pip/npm/binary downloads)
-- [ ] Version check and update capability in the install script
-- [ ] Distribution package: low-touch setup command for fresh git repos
-- [ ] Distribution drops all config files (pre-commit, linting, secrets detection)
-- [ ] Hooks use file-pattern matching for selective execution (complete install, language-aware execution)
-- [ ] CLI tools installed project-scoped where possible, system-wide otherwise
+- [ ] Version check and update capability (`--check`, `--update`, `--doctor` commands)
+
+### Validated (v1.1)
+
+- [x] Cross-platform tool installation script (replaces Homebrew with pipx/binary downloads)
+- [x] Distribution package: setup.sh command for fresh git repos (install + configure + activate)
+- [x] Distribution drops all config files (pre-commit, linting, secrets detection)
+- [x] Hooks use file-pattern matching for selective execution (universal config, language-aware)
+- [x] Setup script is idempotent and bash 3.2 compatible (macOS stock bash)
 
 ### Future (M2+)
 
@@ -61,11 +64,15 @@ Every code change is automatically scanned for security issues, secrets, and sup
 
 **Goal:** Replace Homebrew-based tool installation with cross-platform methods (pip/npm/binary) and create a distribution package that sets up security tooling in any fresh git repo with a single command.
 
-**Target features:**
-- Cross-platform install script (macOS + Linux) with version check/update
-- Distribution package: one command to install tools + drop configs + wire hooks
-- Complete config set with file-pattern-based selective hook execution
-- Project-scoped tool installation where possible
+**Status:** 75% complete (3 of 4 phases done)
+
+**Completed:**
+- [x] Cross-platform install script — macOS + Linux, no Homebrew, version-pinned via manifest
+- [x] File-pattern hook configuration — explicit `types:`/`files:` filters on every hook for universal config
+- [x] Repo setup script — `setup.sh` copies configs + wires hooks in any git repo, idempotent, bash 3.2 compatible
+
+**Remaining:**
+- [ ] Maintenance and validation — `--check`, `--update`, and `--doctor` commands for installed tools
 
 ## Context
 
@@ -94,8 +101,10 @@ Every code change is automatically scanned for security issues, secrets, and sup
 | Start with one repo, then roll out | Validate the tooling works before applying to all repos | Validated (M1 complete) |
 | Milestone verification checks as done criteria | The milestone docs already have thorough verification sections | Validated (M1 complete) |
 | M7 features (SonarQube, Harbor, commit signing) deferred | Optional enhancements, not required for core security program | -- Pending |
-| Replace Homebrew with cross-platform install methods | Portability across macOS and Linux; single install path | -- Pending |
-| Distribution package for repo onboarding | Low-touch rollout to remaining 4+ repos | -- Pending |
+| Replace Homebrew with cross-platform install methods | Portability across macOS and Linux; single install path | Validated (Phase 10) |
+| Distribution package for repo onboarding | Low-touch rollout to remaining 4+ repos | Validated (Phase 12) |
+| Explicit type/file filters on all hooks | Universal config works across all repo types | Validated (Phase 11) |
+| Bash 3.2 compatibility | macOS ships bash 3.2 permanently (GPLv3 licensing) | Validated (Phase 12) |
 
 ---
-*Last updated: 2026-03-16 after v1.1 milestone start*
+*Last updated: 2026-03-22 after Phase 12 completion*
