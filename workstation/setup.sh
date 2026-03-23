@@ -542,14 +542,13 @@ resolve_hook_versions() {
   HOOK_VER_GITLEAKS=$(resolve_latest_version "$HOOK_REPO_GITLEAKS") || HOOK_VER_GITLEAKS="v8.30.0"
 
   # Ensure v prefix
-  # shellcheck disable=SC2154  # variables are assigned by resolve_latest_version above
-  for var in HOOK_VER_PRECOMMIT_TERRAFORM HOOK_VER_RUFF HOOK_VER_SHELLCHECK \
-             HOOK_VER_HADOLINT HOOK_VER_YAMLLINT HOOK_VER_MARKDOWNLINT HOOK_VER_GITLEAKS; do
-    eval "val=\$$var"
-    if [[ "$val" != v* ]]; then
-      eval "$var=v\${val}"
-    fi
-  done
+  [[ "$HOOK_VER_PRECOMMIT_TERRAFORM" != v* ]] && HOOK_VER_PRECOMMIT_TERRAFORM="v${HOOK_VER_PRECOMMIT_TERRAFORM}"
+  [[ "$HOOK_VER_RUFF" != v* ]] && HOOK_VER_RUFF="v${HOOK_VER_RUFF}"
+  [[ "$HOOK_VER_SHELLCHECK" != v* ]] && HOOK_VER_SHELLCHECK="v${HOOK_VER_SHELLCHECK}"
+  [[ "$HOOK_VER_HADOLINT" != v* ]] && HOOK_VER_HADOLINT="v${HOOK_VER_HADOLINT}"
+  [[ "$HOOK_VER_YAMLLINT" != v* ]] && HOOK_VER_YAMLLINT="v${HOOK_VER_YAMLLINT}"
+  [[ "$HOOK_VER_MARKDOWNLINT" != v* ]] && HOOK_VER_MARKDOWNLINT="v${HOOK_VER_MARKDOWNLINT}"
+  [[ "$HOOK_VER_GITLEAKS" != v* ]] && HOOK_VER_GITLEAKS="v${HOOK_VER_GITLEAKS}"
 
   log "  pre-commit-terraform=${HOOK_VER_PRECOMMIT_TERRAFORM}"
   log "  ruff=${HOOK_VER_RUFF} shellcheck=${HOOK_VER_SHELLCHECK}"
@@ -855,28 +854,30 @@ for arg in "$@"; do
   esac
 done
 
-# Determine repo root
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-
 check_prerequisites
-
-# Ensure versions.conf exists (creates with latest versions if missing)
-ensure_versions_conf "$REPO_ROOT"
 
 case "$COMMAND" in
   install)
+    REPO_ROOT="$(pwd)"
+    ensure_versions_conf "$REPO_ROOT"
     install_all_tools
     print_summary
     ;;
   configure)
     require_git_repo
+    REPO_ROOT="$(git rev-parse --show-toplevel)"
+    ensure_versions_conf "$REPO_ROOT"
     generate_all_configs "$REPO_ROOT"
     ;;
   check)
+    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+    ensure_versions_conf "$REPO_ROOT"
     run_check
     ;;
   setup)
     require_git_repo
+    REPO_ROOT="$(git rev-parse --show-toplevel)"
+    ensure_versions_conf "$REPO_ROOT"
     install_all_tools
     print_summary
     generate_all_configs "$REPO_ROOT"
