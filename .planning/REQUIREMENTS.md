@@ -17,11 +17,11 @@
 
 ### Config Distribution
 
-- [ ] **DIST-01**: Setup command drops `.pre-commit-config.yaml` into target repository
-- [ ] **DIST-02**: Setup command drops all linting configs (ESLint, markdownlint, yamllint, hadolint, Ruff) into target repository
-- [ ] **DIST-03**: Setup command runs `pre-commit install` and `pre-commit install --hook-type pre-push` to wire hooks
-- [ ] **DIST-04**: All hooks use `types:` or `files:` filters so they only execute when matching files are staged
-- [ ] **DIST-05**: Setup command is idempotent -- safe to re-run on repos with existing configs (updates without breaking)
+- [x] **DIST-01**: Setup command drops `.pre-commit-config.yaml` into target repository
+- [x] **DIST-02**: Setup command drops all linting configs (ESLint, markdownlint, yamllint, hadolint, Ruff) into target repository
+- [x] **DIST-03**: Setup command runs `pre-commit install` and `pre-commit install --hook-type pre-push` to wire hooks
+- [x] **DIST-04**: All hooks use `types:` or `files:` filters so they only execute when matching files are staged
+- [x] **DIST-05**: Setup command is idempotent -- safe to re-run on repos with existing configs (updates without breaking)
 
 ### Maintenance
 
@@ -69,11 +69,11 @@
 | INST-05 | Phase 10 | Complete |
 | INST-06 | Phase 10 | Complete |
 | INST-07 | Phase 10 | Complete |
-| DIST-01 | Phase 12 | Pending |
-| DIST-02 | Phase 12 | Pending |
-| DIST-03 | Phase 12 | Pending |
-| DIST-04 | Phase 11 | Pending |
-| DIST-05 | Phase 12 | Pending |
+| DIST-01 | Phase 12 | Complete |
+| DIST-02 | Phase 12 | Complete |
+| DIST-03 | Phase 12 | Complete |
+| DIST-04 | Phase 11 | Complete |
+| DIST-05 | Phase 12 | Complete |
 | MAINT-01 | Phase 13 | Pending |
 | MAINT-02 | Phase 13 | Pending |
 | MAINT-03 | Phase 13 | Pending |

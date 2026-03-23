@@ -149,8 +149,8 @@ Plans:
 **Milestone Goal:** Replace Homebrew-based tool installation with cross-platform methods (pip/npm/binary) and create a distribution package that sets up security tooling in any fresh git repo with a single command.
 
 - [x] **Phase 10: Cross-Platform Install Script** - install.sh installs all security CLI tools on macOS and Linux without Homebrew (completed 2026-03-18)
-- [ ] **Phase 11: File-Pattern Hook Configuration** - Universal pre-commit config with language-aware filters for selective hook execution
-- [ ] **Phase 12: Repo Setup Script** - setup.sh copies configs and wires hooks in any git repo with one command
+- [x] **Phase 11: File-Pattern Hook Configuration** - Universal pre-commit config with language-aware filters for selective hook execution (completed 2026-03-22)
+- [x] **Phase 12: Repo Setup Script** - setup.sh copies configs and wires hooks in any git repo with one command (completed 2026-03-22)
 - [ ] **Phase 13: Maintenance and Validation** - Version check, update, and health check commands for installed tools
 
 ## Phase Details
@@ -179,23 +179,23 @@ Plans:
   1. Every hook in `.pre-commit-config.yaml` has explicit `types:` or `files:` filters that restrict execution to relevant files
   2. Running `pre-commit run --all-files` in a Python-only repo skips ESLint, hadolint, terraform, and npm hooks cleanly (exit 0, no errors)
   3. Running `pre-commit run --all-files` in a Terraform-only repo skips Ruff, ESLint, and npm hooks cleanly
-**Plans**: TBD
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 11-01: TBD
+- [x] 11-01-PLAN.md -- Add explicit type/file filters to all hooks, validate across three repo types
 
 ### Phase 12: Repo Setup Script
-**Goal**: Developer can onboard any git repo with a single command that deploys configs and activates hooks
+**Goal**: Validate and fix the existing setup.sh so it reliably onboards any git repo with a single command
 **Depends on**: Phase 10, Phase 11 (tools must be installed; config must be finalized before deployment)
 **Requirements**: DIST-01, DIST-02, DIST-03, DIST-05
 **Success Criteria** (what must be TRUE):
-  1. Running `bash dist/setup.sh` in a git repo copies `.pre-commit-config.yaml` and all linting configs into the repo root
+  1. Running `bash setup.sh` in a git repo copies `.pre-commit-config.yaml` and all linting configs into the repo root
   2. After setup completes, `pre-commit run --all-files` works (hooks are installed for both commit and pre-push)
   3. Running setup.sh a second time in the same repo produces no errors and does not corrupt existing configs or user-customized files (e.g., `.gitleaksignore`)
-**Plans**: TBD
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 12-01: TBD
+- [x] 12-01-PLAN.md -- Fix bash 3.2 compat, add require_git_repo call, add .markdownlintignore generation
 
 ### Phase 13: Maintenance and Validation
 **Goal**: Developer can check tool health, compare installed versions against expected versions, and update outdated tools
@@ -228,6 +228,6 @@ Note: Phase 11 depends on Phase 10. Phase 12 depends on Phases 10 and 11. Phase 
 | 8. CLI Tool Scanning Validation | v1.0 | 2/2 | Complete | 2026-03-16 |
 | 9. Full Stack Validation | v1.0 | 2/2 | Complete | 2026-03-17 |
 | 10. Cross-Platform Install Script | 2/2 | Complete   | 2026-03-18 | - |
-| 11. File-Pattern Hook Configuration | v1.1 | 0/? | Not started | - |
-| 12. Repo Setup Script | v1.1 | 0/? | Not started | - |
+| 11. File-Pattern Hook Configuration | v1.1 | 1/1 | Complete | 2026-03-22 |
+| 12. Repo Setup Script | v1.1 | 1/1 | Complete | 2026-03-22 |
 | 13. Maintenance and Validation | v1.1 | 0/? | Not started | - |

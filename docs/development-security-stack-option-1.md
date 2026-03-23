@@ -1315,7 +1315,10 @@ npm audit fix
 
 ```yaml
 # .pre-commit-config.yaml
-# Validated: pre-commit run --all-files passed (aws-zabbix, terraform-pipelines) -- 2026-03-16
+# Validated: pre-commit run --all-files passed across all repo types -- 2026-03-22
+#
+# Every hook has an explicit types: or files: filter so this universal config
+# works across all repo types. Hooks auto-skip when no matching files are staged.
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TIER 1: Quality & Linting
@@ -1329,7 +1332,9 @@ repos:
     rev: v1.105.0
     hooks:
       - id: terraform_fmt
+        types: [terraform]
       - id: terraform_validate
+        types: [terraform]
 
   # --- Python: Ruff (replaces flake8, black, isort) ---
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -1337,32 +1342,38 @@ repos:
     hooks:
       - id: ruff
         args: [--fix]
+        types_or: [python, pyi]
       - id: ruff-format
+        types_or: [python, pyi]
 
   # --- Bash / Shell: ShellCheck ---
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.10.0.1
+    rev: v0.11.0.1
     hooks:
       - id: shellcheck
+        types: [shell]
 
   # --- Dockerfile: hadolint ---
   - repo: https://github.com/hadolint/hadolint
-    rev: v2.12.0
+    rev: v2.14.0
     hooks:
       - id: hadolint
+        types: [dockerfile]
 
   # --- YAML / Kubernetes manifests: yamllint ---
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.35.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
         args: [-d, relaxed]
+        types: [yaml]
 
   # --- Markdown: markdownlint ---
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.43.0
+    rev: v0.48.0
     hooks:
       - id: markdownlint
+        types: [markdown]
 
   # --- TypeScript / JavaScript: ESLint (local — requires eslint in project) ---
   - repo: local
@@ -1371,6 +1382,7 @@ repos:
         name: eslint
         entry: npx eslint
         language: system
+        types_or: [javascript, jsx, ts, tsx]
         files: \.(js|jsx|ts|tsx)$
         pass_filenames: true
 
@@ -1426,14 +1438,15 @@ pre-commit run --all-files   # validate nothing broke after the update
 Commit the resulting changes to `.pre-commit-config.yaml` as a routine maintenance commit. For GitHub Actions SHA digests, Dependabot or Renovate automates the equivalent process — configure either tool with a monthly schedule (see the SHA pinning note in the workflow file) so action versions track upstream releases without manual monitoring across 20+ components.
 
 ```bash
-pip install pre-commit --break-system-packages
+# Install pre-commit (via pipx for PEP 668 compliance, or via setup.sh)
+pipx install pre-commit
 pre-commit install
 
 # Run all hooks manually against all files (useful for first-time setup)
 pre-commit run --all-files
 
 # Run only Tier 1 hooks (by stage, if configured)
-pre-commit run --all-files terraform_fmt ruff shellcheck hadolint-docker yamllint markdownlint eslint npm-audit
+pre-commit run --all-files terraform_fmt ruff shellcheck hadolint yamllint markdownlint eslint npm-audit
 ```
 
 ---
@@ -1934,28 +1947,32 @@ The stack is organized into four phases. The first two phases require no infrast
 **Components:** pre-commit, ShellCheck, Ruff, ESLint, hadolint, yamllint, markdownlint-cli, npm audit, Gitleaks, and the full security CLI suite (available locally on demand).
 
 **Deliverables at completion:**
-- `.pre-commit-config.yaml` committed to each repository root
+- `.pre-commit-config.yaml` committed to each repository root, with explicit `types:` and `files:` filters for language-aware hook execution
 - All Tier 1 linting hooks passing cleanly (`pre-commit run --all-files`)
 - Gitleaks secrets gate active on every push
 - Semgrep CE, Checkov, Trivy, Grype, and Gitleaks available locally for on-demand scanning
 
 ```bash
-# 1. Install linting tools
-pip install pre-commit ruff yamllint shellcheck-py --break-system-packages
-brew install shellcheck hadolint
+# 1. Install all security CLI tools (cross-platform, no Homebrew required)
+#    Installs: pre-commit (via pipx), Trivy, Syft, Grype, Gitleaks, hadolint
+#    Reads pinned versions from versions.conf; auto-detects OS and architecture
+bash setup.sh install
 
-# 2. Install per-project npm tooling (in each repo)
+# 2. Set up a repository (copies configs, activates hooks)
+#    Deploys: .pre-commit-config.yaml, .markdownlint.jsonc, .gitleaksignore, etc.
+#    Runs: pre-commit install + pre-commit install --hook-type pre-push
+cd <repo-root>
+bash setup.sh configure
+
+# 3. Install per-project npm tooling (in repos with TypeScript/JavaScript)
 npm install --save-dev eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
-npm install -g markdownlint-cli
 
-# 3. Install security CLI tools (on-demand use + CI preparation)
-pip install semgrep checkov --break-system-packages
-brew install trivy gitleaks syft grype
+# 4. Install CI-only security tools (not needed locally — run in GitHub Actions)
+#    Semgrep CE and Checkov are CI-only tools (Phase 2)
+#    pip install semgrep checkov  # optional: only if you want local on-demand scanning
 
-# 4. Activate pre-commit in each repository
-cp .pre-commit-config.yaml <repo-root>/
-pre-commit install
-pre-commit run --all-files   # baseline run — fix any existing issues before going live
+# 5. Validate all hooks pass
+pre-commit run --all-files   # hooks auto-skip for irrelevant file types
 ```
 
 **Validation:** Make a test commit that introduces a secrets pattern (e.g., a dummy AWS key string). Gitleaks should block it. Introduce a shell script with an unquoted variable. ShellCheck should flag it.
