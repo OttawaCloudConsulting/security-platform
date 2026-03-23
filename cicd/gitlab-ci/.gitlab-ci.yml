@@ -1,0 +1,129 @@
+# .gitlab-ci.yml
+# Security scanning pipeline for GitLab CI/CD.
+# Deploy this file to the target repository root.
+#
+# All scanners are installed via pip or curl on each run.
+# No GitLab-specific integrations or marketplace components required.
+# For native GitLab SAST format, Semgrep and Checkov support --output gitlab_sast.
+
+stages:
+  - security
+
+variables:
+  GITLEAKS_VERSION: "8.30.0"
+
+# ─────────────────────────────────────────────────────────────────────────
+# SAST — Semgrep CE
+# ─────────────────────────────────────────────────────────────────────────
+sast:
+  stage: security
+  image: python:3.12-slim
+  script:
+    - pip install --quiet semgrep
+    - semgrep scan --config auto --error --json --output semgrep-results.json .
+    - semgrep scan --config auto --sarif --output semgrep.sarif . || true
+    - semgrep scan --config auto --output gl-sast-report.json --gitlab-sast . || true
+  artifacts:
+    paths:
+      - semgrep-results.json
+      - semgrep.sarif
+    reports:
+      sast: gl-sast-report.json
+    when: always
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ─────────────────────────────────────────────────────────────────────────
+# IaC — Checkov
+# ─────────────────────────────────────────────────────────────────────────
+iac:
+  stage: security
+  image: python:3.12-slim
+  script:
+    - pip install --quiet checkov
+    - checkov -d . -o cli -o json -o sarif
+        --output-file-path console,checkov-results.json,checkov.sarif
+        --quiet
+  artifacts:
+    paths:
+      - checkov-results.json
+      - checkov.sarif
+    when: always
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ─────────────────────────────────────────────────────────────────────────
+# SCA — Grype
+# ─────────────────────────────────────────────────────────────────────────
+sca:
+  stage: security
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq curl > /dev/null
+  script:
+    - curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+    - grype dir:. --fail-on high -o json > grype-results.json
+  artifacts:
+    paths:
+      - grype-results.json
+    when: always
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ─────────────────────────────────────────────────────────────────────────
+# Container — Trivy
+# ─────────────────────────────────────────────────────────────────────────
+container:
+  stage: security
+  image: docker:24
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - |
+      if [ ! -f Dockerfile ]; then
+        echo "No Dockerfile found — skipping container scan"
+        exit 0
+      fi
+    - docker build -t app:${CI_COMMIT_SHA} .
+    - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    - trivy image --format json --output trivy-results.json --exit-code 1 --severity HIGH,CRITICAL app:${CI_COMMIT_SHA}
+    - trivy image --format sarif --output trivy.sarif app:${CI_COMMIT_SHA} || true
+  artifacts:
+    paths:
+      - trivy-results.json
+      - trivy.sarif
+    when: always
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ─────────────────────────────────────────────────────────────────────────
+# Secrets — Gitleaks
+# ─────────────────────────────────────────────────────────────────────────
+secrets:
+  stage: security
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq curl git > /dev/null
+  variables:
+    GIT_DEPTH: 0
+  script:
+    - |
+      curl -sSfL \
+        https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz \
+        | tar xz -C /usr/local/bin gitleaks
+    - gitleaks detect --source . --report-path gitleaks-results.json --report-format json
+  artifacts:
+    paths:
+      - gitleaks-results.json
+    when: always
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
