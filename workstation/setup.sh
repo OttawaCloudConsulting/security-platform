@@ -31,25 +31,22 @@ CONFIG_COUNT=0
 GITHUB_API="https://api.github.com/repos"
 
 # Tool GitHub repositories (for version resolution)
-declare -A TOOL_REPOS=(
-  [PRECOMMIT]="pre-commit/pre-commit"
-  [TRIVY]="aquasecurity/trivy"
-  [SYFT]="anchore/syft"
-  [GRYPE]="anchore/grype"
-  [GITLEAKS]="gitleaks/gitleaks"
-  [HADOLINT]="hadolint/hadolint"
-)
+# Plain variables for bash 3.2 compatibility (no associative arrays)
+REPO_PRECOMMIT="pre-commit/pre-commit"
+REPO_TRIVY="aquasecurity/trivy"
+REPO_SYFT="anchore/syft"
+REPO_GRYPE="anchore/grype"
+REPO_GITLEAKS="gitleaks/gitleaks"
+REPO_HADOLINT="hadolint/hadolint"
 
 # Hook GitHub repositories (for pre-commit config version resolution)
-declare -A HOOK_REPOS=(
-  [PRECOMMIT_TERRAFORM]="antonbabenko/pre-commit-terraform"
-  [RUFF]="astral-sh/ruff-pre-commit"
-  [SHELLCHECK]="shellcheck-py/shellcheck-py"
-  [HADOLINT_HOOK]="hadolint/hadolint"
-  [YAMLLINT]="adrienverge/yamllint"
-  [MARKDOWNLINT]="igorshubovych/markdownlint-cli"
-  [GITLEAKS_HOOK]="gitleaks/gitleaks"
-)
+HOOK_REPO_PRECOMMIT_TERRAFORM="antonbabenko/pre-commit-terraform"
+HOOK_REPO_RUFF="astral-sh/ruff-pre-commit"
+HOOK_REPO_SHELLCHECK="shellcheck-py/shellcheck-py"
+HOOK_REPO_HADOLINT="hadolint/hadolint"
+HOOK_REPO_YAMLLINT="adrienverge/yamllint"
+HOOK_REPO_MARKDOWNLINT="igorshubovych/markdownlint-cli"
+HOOK_REPO_GITLEAKS="gitleaks/gitleaks"
 
 # ---------------------------------------------------------------------------
 # Helper functions
@@ -187,12 +184,12 @@ generate_versions_conf() {
   info "Resolving latest tool versions from GitHub..."
 
   local precommit_ver trivy_ver syft_ver grype_ver gitleaks_ver hadolint_ver
-  precommit_ver=$(resolve_latest_version "${TOOL_REPOS[PRECOMMIT]}") || precommit_ver="4.2.0"
-  trivy_ver=$(resolve_latest_version "${TOOL_REPOS[TRIVY]}") || trivy_ver="0.69.3"
-  syft_ver=$(resolve_latest_version "${TOOL_REPOS[SYFT]}") || syft_ver="1.42.2"
-  grype_ver=$(resolve_latest_version "${TOOL_REPOS[GRYPE]}") || grype_ver="0.109.1"
-  gitleaks_ver=$(resolve_latest_version "${TOOL_REPOS[GITLEAKS]}") || gitleaks_ver="8.30.0"
-  hadolint_ver=$(resolve_latest_version "${TOOL_REPOS[HADOLINT]}") || hadolint_ver="2.14.0"
+  precommit_ver=$(resolve_latest_version "$REPO_PRECOMMIT") || precommit_ver="4.2.0"
+  trivy_ver=$(resolve_latest_version "$REPO_TRIVY") || trivy_ver="0.69.3"
+  syft_ver=$(resolve_latest_version "$REPO_SYFT") || syft_ver="1.42.2"
+  grype_ver=$(resolve_latest_version "$REPO_GRYPE") || grype_ver="0.109.1"
+  gitleaks_ver=$(resolve_latest_version "$REPO_GITLEAKS") || gitleaks_ver="8.30.0"
+  hadolint_ver=$(resolve_latest_version "$REPO_HADOLINT") || hadolint_ver="2.14.0"
 
   cat > "$target" <<VERSIONS
 # versions.conf — Pinned security tool versions
@@ -536,20 +533,21 @@ write_config() {
 resolve_hook_versions() {
   info "Resolving latest hook versions from GitHub..."
 
-  HOOK_VER_PRECOMMIT_TERRAFORM=$(resolve_latest_version "${HOOK_REPOS[PRECOMMIT_TERRAFORM]}") || HOOK_VER_PRECOMMIT_TERRAFORM="v1.105.0"
-  HOOK_VER_RUFF=$(resolve_latest_version "${HOOK_REPOS[RUFF]}") || HOOK_VER_RUFF="v0.15.6"
-  HOOK_VER_SHELLCHECK=$(resolve_latest_version "${HOOK_REPOS[SHELLCHECK]}") || HOOK_VER_SHELLCHECK="v0.11.0.1"
-  HOOK_VER_HADOLINT=$(resolve_latest_version "${HOOK_REPOS[HADOLINT_HOOK]}") || HOOK_VER_HADOLINT="v2.14.0"
-  HOOK_VER_YAMLLINT=$(resolve_latest_version "${HOOK_REPOS[YAMLLINT]}") || HOOK_VER_YAMLLINT="v1.38.0"
-  HOOK_VER_MARKDOWNLINT=$(resolve_latest_version "${HOOK_REPOS[MARKDOWNLINT]}") || HOOK_VER_MARKDOWNLINT="v0.48.0"
-  HOOK_VER_GITLEAKS=$(resolve_latest_version "${HOOK_REPOS[GITLEAKS_HOOK]}") || HOOK_VER_GITLEAKS="v8.30.0"
+  HOOK_VER_PRECOMMIT_TERRAFORM=$(resolve_latest_version "$HOOK_REPO_PRECOMMIT_TERRAFORM") || HOOK_VER_PRECOMMIT_TERRAFORM="v1.105.0"
+  HOOK_VER_RUFF=$(resolve_latest_version "$HOOK_REPO_RUFF") || HOOK_VER_RUFF="v0.15.6"
+  HOOK_VER_SHELLCHECK=$(resolve_latest_version "$HOOK_REPO_SHELLCHECK") || HOOK_VER_SHELLCHECK="v0.11.0.1"
+  HOOK_VER_HADOLINT=$(resolve_latest_version "$HOOK_REPO_HADOLINT") || HOOK_VER_HADOLINT="v2.14.0"
+  HOOK_VER_YAMLLINT=$(resolve_latest_version "$HOOK_REPO_YAMLLINT") || HOOK_VER_YAMLLINT="v1.38.0"
+  HOOK_VER_MARKDOWNLINT=$(resolve_latest_version "$HOOK_REPO_MARKDOWNLINT") || HOOK_VER_MARKDOWNLINT="v0.48.0"
+  HOOK_VER_GITLEAKS=$(resolve_latest_version "$HOOK_REPO_GITLEAKS") || HOOK_VER_GITLEAKS="v8.30.0"
 
   # Ensure v prefix
+  # shellcheck disable=SC2154  # variables are assigned by resolve_latest_version above
   for var in HOOK_VER_PRECOMMIT_TERRAFORM HOOK_VER_RUFF HOOK_VER_SHELLCHECK \
              HOOK_VER_HADOLINT HOOK_VER_YAMLLINT HOOK_VER_MARKDOWNLINT HOOK_VER_GITLEAKS; do
-    local val="${!var}"
+    eval "val=\$$var"
     if [[ "$val" != v* ]]; then
-      eval "$var=v${val}"
+      eval "$var=v\${val}"
     fi
   done
 
@@ -735,6 +733,20 @@ config:
 MDLINTCLI2
 }
 
+generate_markdownlintignore() {
+  local target="$1"
+
+  write_config "$target" "markdownlint directory excludes" <<'MDLINTIGNORE'
+# .markdownlintignore — directories excluded from markdownlint
+# Add project-specific paths below
+node_modules/
+.terraform/
+.planning/
+.claude/
+cdk.out/
+MDLINTIGNORE
+}
+
 generate_all_configs() {
   local repo_root="$1"
 
@@ -745,6 +757,7 @@ generate_all_configs() {
   generate_markdownlint_config     "${repo_root}/.markdownlint.jsonc"
   generate_markdownlint_fix_config "${repo_root}/.markdownlint-fix.markdownlint.jsonc"
   generate_markdownlint_cli2_config "${repo_root}/.markdownlint-cli2.yaml"
+  generate_markdownlintignore      "${repo_root}/.markdownlintignore"
 
   if [[ "$CONFIG_COUNT" -eq 0 ]]; then
     info "All configuration files already exist — no changes made"
@@ -856,12 +869,14 @@ case "$COMMAND" in
     print_summary
     ;;
   configure)
+    require_git_repo
     generate_all_configs "$REPO_ROOT"
     ;;
   check)
     run_check
     ;;
   setup)
+    require_git_repo
     install_all_tools
     print_summary
     generate_all_configs "$REPO_ROOT"
