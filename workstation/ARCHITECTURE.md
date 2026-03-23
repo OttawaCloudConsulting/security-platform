@@ -46,7 +46,7 @@ The workstation layer is designed for a single-developer AWS cloud practice work
 │  └───────────────────────────────────────────────────────────────────┘    │
 │                                                                           │
 │  ┌───────────────────────────────────────────────────────────────────┐    │
-│  │ CLI Tools — On-Demand (installed by dist/install.sh)              │    │
+│  │ CLI Tools — On-Demand (installed by setup.sh)                      │    │
 │  │                                                                   │    │
 │  │  ┌────────────┐ ┌────────────┐ ┌────────────┐                     │    │
 │  │  │   Trivy    │ │    Syft    │ │   Grype    │                     │    │
@@ -237,11 +237,12 @@ workstation/
 
 Generated in each target repository by setup.sh:
 ├── versions.conf                         # Pinned tool versions (latest at time of generation)
-├── .pre-commit-config.yaml               # Hook configuration (Tier 1 + Tier 2)
+├── .pre-commit-config.yaml               # Hook configuration (Tier 1 + Tier 2, with type filters)
 ├── .gitleaksignore                       # Gitleaks false-positive suppressions
 ├── .markdownlint-cli2.yaml               # markdownlint-cli2 rule config
 ├── .markdownlint-fix.markdownlint.jsonc  # Auto-fixable rules
-└── .markdownlint.jsonc                   # Enforced lint rules
+├── .markdownlint.jsonc                   # Enforced lint rules
+└── .markdownlintignore                   # Directories excluded from markdownlint
 ```
 
 ## Version Pinning Strategy

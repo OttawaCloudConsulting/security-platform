@@ -64,6 +64,7 @@ Before running `setup.sh`, the workstation must have:
 | `.markdownlint.jsonc` | Enforced markdownlint rules |
 | `.markdownlint-fix.markdownlint.jsonc` | Auto-fixable markdownlint rules |
 | `.markdownlint-cli2.yaml` | markdownlint-cli2 configuration |
+| `.markdownlintignore` | Directories excluded from markdownlint |
 
 ### Per-Project npm Tooling (JS/TS Repos Only)
 
