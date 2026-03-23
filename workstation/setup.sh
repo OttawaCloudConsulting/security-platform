@@ -479,7 +479,7 @@ _install_hadolint() {
   checksum_url="${checksum_url//\{ARCH\}/$arch}"
 
   tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/hadolint.XXXXXX")"
-  trap 'rm -rf "$tmpdir"' RETURN
+  trap 'rm -rf "${tmpdir:-}"' RETURN
 
   curl -sfL -o "$tmpdir/hadolint" "$url"
   curl -sfL -o "$tmpdir/hadolint.sha256" "$checksum_url"
