@@ -260,8 +260,10 @@ setup.sh
     run_check                           # D-06 auto-recheck
     ;;
   doctor)
-    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-    ensure_versions_conf "$REPO_ROOT"
+    # NOTE: deliberately does NOT call ensure_versions_conf. Doctor needs tool
+    # NAMES, not versions — and ensure_versions_conf fires 6 GitHub API calls
+    # when versions.conf is absent, inside the one subcommand that must stay
+    # fully offline. Hardcode the six tool names in run_doctor.
     run_doctor                          # deliberately does NOT export PATH
     ;;
 ```
@@ -277,9 +279,9 @@ Note the dispatcher is a `for arg in "$@"` loop with last-wins semantics — `se
 # Returns 0 if $tool is at $version AFTER the attempt, 1 otherwise.
 attempt_install() {
   local tool="$1" version="$2" var_name="$3" installer="$4"
-  local saved
-  saved="$(eval "printf '%s' \"\${${var_name}}\"")"   # bash 3.2: no namerefs
 
+  # No save/restore needed: verified under /bin/bash 3.2.57 that an
+  # assignment-prefix on a function call does not persist past the call.
   # Run the installer with the version global temporarily overridden.
   # VERIFIED under /bin/bash 3.2.57: assignment-prefix on a function call is
   # visible inside the function and does NOT persist after it returns.
@@ -420,6 +422,8 @@ The same message and exit 0 occur for *any* version spec, including one pointing
 
 **Warning signs:** `check` shows `MISMATCH` immediately after `update` reported `installed`. D-06's auto-recheck will surface this — which is a strong argument for D-06 being load-bearing rather than cosmetic.
 
+**Related defect on the same code path:** `ensure_pipx` calls `exit 1` (L371) when pipx bootstrap fails. `_install_precommit` calls `ensure_pipx` (L415), so inside `update` a pipx bootstrap failure terminates the entire run — directly violating D-03 ("continue updating the remaining tools"). Change it to `return 1` and let the caller's `|| true` + `is_installed` verification record the failure normally. Note this also changes `install`'s behaviour from hard-abort to recorded-failure, which is consistent with how every other tool is already handled there.
+
 ### Pitfall 2: GitHub returns compact JSON for some repos — CRITICAL
 
 **What goes wrong:** `resolve_latest_version`'s `/tags` fallback, and any new resolver copying its regex, return an empty string for certain repositories. Empty triggers the `|| "hardcoded-default"` path in `generate_versions_conf` (L187-192) and `resolve_hook_versions` (L536-542), so `versions.conf` is silently written with stale hardcoded versions and no error is shown.
@@ -464,7 +468,11 @@ Hello
 $ echo $?      # → 141 ; "SURVIVED" never printed
 ```
 
-`head -1` closes the pipe, upstream `grep` receives SIGPIPE (128+13=141), `pipefail` propagates it as the pipeline status, `set -e` exits. `resolve_latest_version` gets away with this today **only** because every one of its call sites is `x=$(resolve_latest_version ...) || x="default"` — `set -e` is suppressed for all but the last command of an `||` list, and that suppression propagates into the function body.
+`head -1` closes the pipe, upstream `grep` receives SIGPIPE (128+13=141), `pipefail` propagates it as the pipeline status, `set -e` exits.
+
+**Two distinct failure modes, one fix.** SIGPIPE is the dramatic one, but on the *actual* GitHub pipelines it is rarely the trigger — `grep -o` output for a 100-release body is only ~2.5 KB, which fits the pipe buffer, so `grep` exits before `head` ever closes anything. The mode that really fires in production is simpler: **`grep` exits 1 when it matches nothing**, which is exactly what an empty 403 rate-limit body or a changed JSON shape (Pitfall 2) produces. Under `pipefail` that is a non-zero pipeline, and under `set -e` it is fatal. Both modes are neutralised by the same rule below.
+
+`resolve_latest_version` gets away with this today **only** because every one of its call sites is `x=$(resolve_latest_version ...) || x="default"` — `set -e` is suppressed for all but the last command of an `||` list, and that suppression propagates into the function body.
 
 **How to avoid, two independent rules — apply both:**
 1. In `resolve_latest_in_major`, terminate with `sort ... | tail -1`, which consumes the entire stream and never signals upstream. (My live probes used exactly this shape and none produced 141.)
@@ -586,6 +594,16 @@ update_one_tool() {
   local tool="$1" pinned="$2" ver_var="$3" repo_var="$4" installer="$5"
   local repo major fallback
 
+  # ---- Short-circuit: already at the pinned version -------------------------
+  # MAINT-02 is "update OUTDATED tools". Without this, a fully current system
+  # re-downloads all six binaries and rebuilds the pipx venv on every run.
+  # Mirrors run_installer's guard at L387.
+  if is_installed "$tool" "$pinned"; then
+    log "${tool} ${pinned} already current"
+    add_result "$tool" "$pinned" "ok"
+    return 0
+  fi
+
   # ---- Attempt 1: exact pinned version -------------------------------------
   info "Updating ${tool} -> ${pinned}"
   if attempt_install "$tool" "$pinned" "$ver_var" "$installer"; then
@@ -662,7 +680,7 @@ resolve_latest_version() {
 }
 ```
 
-Two changes from the original: whitespace-tolerant patterns (Pitfall 2), and `head -1` moved to the *end* of the pipeline where its SIGPIPE has no upstream `grep` to kill. Behaviour is otherwise identical, and all seven existing `|| fallback` call sites (L187-192, L536-542) continue to work unchanged.
+Two changes from the original: whitespace-tolerant patterns (Pitfall 2), and an explicit `|| version=""` on each assignment so a no-match `grep` (the real Pitfall 3 trigger — empty 403 body) cannot kill the script regardless of how the caller invokes it. Behaviour is otherwise identical, and all thirteen existing `|| fallback` call sites (L187-192, L536-542) continue to work unchanged.
 
 ## State of the Art
 
