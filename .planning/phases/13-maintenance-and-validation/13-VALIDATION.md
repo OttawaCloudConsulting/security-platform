@@ -61,6 +61,41 @@ instead of `BROKEN`, silently asserting the wrong thing.
 **Token-hygiene tests use the literal `NOT-A-REAL-TOKEN-TEST`**, never a realistically-shaped
 `ghp_`-prefixed string, because the repo's own gitleaks pre-commit hook scans `tests/`.
 
+### Four mandatory harness rules (encoded in `tests/run-tests.sh`'s header by plan 01)
+
+1. **Never call an assert helper inside a subshell.** Counter increments inside `( ... )` or `$( ... )`
+   are discarded when it exits — the suite prints `FAIL` lines while the counter stays 0 and exits 0.
+   That false green would make every `<automated>` verify in plans 02-05 meaningless. Subshells
+   **emit**; the parent **asserts**.
+2. **Subshells communicate by echoing.** Capture with
+   `out=$( ( source "$SETUP_SH"; set +e; <stubs>; <call>; echo "rc=$?"; echo "$RESULTS" ) 2>&1 )`,
+   then assert in the parent against `$out`.
+3. **`set +e` immediately after sourcing inside a test subshell.** Sourcing imports `setup.sh`'s
+   `set -euo pipefail`; without this, a function returning 1 — the *expected* outcome in most of
+   these tests — kills the subshell before it echoes anything.
+4. **Test `set -e` safety separately**, as its own process:
+   `/bin/bash -euo pipefail -c 'source "$SETUP_SH"; <stubs>; <call> || true; echo SURVIVED'`.
+   Do not try to prove errexit-safety from inside a `set +e` subshell.
+
+**Counter names:** the runner uses `TESTS_PASSED` / `TESTS_FAILED`. It must **not** use `FAIL_COUNT`,
+`PASS_COUNT`, or `RESULTS` — `setup.sh` declares `FAIL_COUNT` and `RESULTS` at file scope, so a case
+file that sources it would silently reset the runner's own counter.
+
+**Main-guard form:** `if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then main "$@"; fi`, never the
+`[[ ... ]] && main "$@"` one-liner — the latter returns 1 when sourced, which makes
+`/bin/bash -c 'source setup.sh'` exit non-zero and breaks every test case.
+
+**Negative control:** plan 01 requires proving the suite actually exits 1 when a deliberate failure is
+added. A suite that cannot fail is not a suite.
+
+### Working-directory hazard
+
+Run any subcommand that reads `versions.conf` from inside `repos/security-platform/`:
+`(cd repos/security-platform && bash workstation/setup.sh check)`. From the documentation repo's root
+`REPO_ROOT` resolves there, `versions.conf` is absent, and `ensure_versions_conf` fires six GitHub API
+calls against a 60/hr budget while dropping an untracked file into the wrong repo. `--help`, `doctor`,
+and unknown-argument runs are safe from anywhere.
+
 ---
 
 ## Per-Task Verification Map
