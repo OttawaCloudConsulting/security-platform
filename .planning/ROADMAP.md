@@ -202,13 +202,26 @@ Plans:
 **Depends on**: Phase 10 (install script establishes the version manifest and install paths that maintenance commands operate on)
 **Requirements**: MAINT-01, MAINT-02, MAINT-03
 **Success Criteria** (what must be TRUE):
-  1. Running `bash dist/install.sh --check` shows a table of all tools with installed version vs expected version and highlights any mismatches
-  2. Running `bash dist/install.sh --update` upgrades any outdated tools to the version pinned in the manifest
-  3. Running `bash dist/install.sh --doctor` verifies every tool is on PATH and can execute its version command, reporting pass/fail per tool
-**Plans**: TBD
+  1. Running `bash repos/security-platform/workstation/setup.sh check` shows a table of all tools with installed version vs expected version, highlights any mismatches, and exits non-zero when any tool is missing or mismatched
+  2. Running `bash repos/security-platform/workstation/setup.sh update` upgrades any outdated tool to the version pinned in `versions.conf`, continues past individual failures, falls back to the latest release within the pinned major when the exact pin is unavailable, logs anything it could not fix, and exits non-zero only when a tool failed both attempts
+  3. Running `bash repos/security-platform/workstation/setup.sh doctor` verifies every tool is on PATH and can execute its version command, reporting `OK` / `NOT_ON_PATH` / `BROKEN` / `UNPARSEABLE` per tool plus PATH and prerequisite health, and exits non-zero on any problem
+
+> **Path correction (see 13-CONTEXT.md D-01):** earlier drafts of these criteria referenced
+> `bash dist/install.sh --check/--update/--doctor`. That path and flag style are stale. The real
+> target is `repos/security-platform/workstation/setup.sh` (a sibling checkout), using subcommand
+> style to match the existing `install|configure|setup|check` dispatcher. No `dist/install.sh` is
+> created by this phase.
+
+**Plans**: 7 plans
 
 Plans:
-- [ ] 13-01: TBD
+- [ ] 13-01-PLAN.md -- Main-guard for sourceability + plain-bash test harness and GitHub JSON fixtures (Nyquist Wave 0)
+- [ ] 13-02-PLAN.md -- Authenticated gh_api_get, whitespace-tolerant JSON parsing, resolve_latest_in_major
+- [ ] 13-03-PLAN.md -- pipx --force / ensure_pipx fixes, attempt_install, failure-log writer
+- [ ] 13-04-PLAN.md -- update subcommand: two-attempt fallback loop, downgrade guard, selective per-tool targeting
+- [ ] 13-05-PLAN.md -- doctor subcommand, tool_health probe, check/doctor exit-code contract
+- [ ] 13-06-PLAN.md -- README and ARCHITECTURE documentation, failure-log gitignore rule
+- [ ] 13-07-PLAN.md -- Human-verified pre-commit downgrade/upgrade round trip and doctor sanity check
 
 ## Progress
 
@@ -230,4 +243,4 @@ Note: Phase 11 depends on Phase 10. Phase 12 depends on Phases 10 and 11. Phase 
 | 10. Cross-Platform Install Script | 2/2 | Complete   | 2026-03-18 | - |
 | 11. File-Pattern Hook Configuration | v1.1 | 1/1 | Complete | 2026-03-22 |
 | 12. Repo Setup Script | v1.1 | 1/1 | Complete | 2026-03-22 |
-| 13. Maintenance and Validation | v1.1 | 0/? | Not started | - |
+| 13. Maintenance and Validation | v1.1 | 0/7 | Planned | - |
