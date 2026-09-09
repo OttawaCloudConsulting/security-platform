@@ -717,9 +717,11 @@ The convention is consistent and maps cleanly onto this phase's requirements: **
 | A5 | `update-failures.log` at `$REPO_ROOT` will be picked up by the repo's gitleaks/markdownlint hooks unless ignored | Code Example 4 | Low — worth a one-line `.gitignore` decision during planning either way |
 | A6 | GitHub's `releases` list is returned newest-first | Pattern 3 | None — the recommended pattern sorts explicitly and does not rely on API ordering |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 ### 1. D-04 attempt-2 success conflicts with D-06 and D-08 — needs a planner decision
+
+RESOLVED: see plan 13-04
 
 **What we know:** D-04 step 2 can succeed at a version that is *not* the `versions.conf` pin (verified: every one of the six tools has a newer release within its pinned major — e.g. trivy pinned 0.69.3, latest 0.x is 0.74.0). D-06 then runs `run_check`, which compares against the pin and prints `MISMATCH`. D-08 says `update` exits non-zero if a tool "failed to reach its pinned version" — which, read literally, a successful attempt 2 did not.
 
@@ -728,6 +730,8 @@ The convention is consistent and maps cleanly onto this phase's requirements: **
 **Recommendation:** Report `fallback` as a distinct third status in `print_summary` (neither `ok` nor `FAILED`), do **not** increment `FAIL_COUNT` for it, do **not** silently rewrite `versions.conf`, and print an explicit follow-up line after the D-06 recheck: `NOTE: trivy installed at 0.74.0 (pinned 0.69.3 unavailable). Update versions.conf to adopt this version.` This keeps `versions.conf` an intentional, user-owned artifact — consistent with its header comment "Edit versions here, then re-run" — while making the MISMATCH self-explanatory. The alternative (auto-writing the resolved version back) is defensible but silently mutates a pinned manifest, which undercuts the whole point of pinning (INST-03).
 
 ### 2. Should `check` (and `doctor`) exit non-zero on problems?
+
+RESOLVED: see plan 13-05
 
 **What we know:** `run_check` currently always exits 0. `brew doctor` deliberately exits non-zero on warnings so CI can gate. D-08 establishes that `FAIL_COUNT` drives the exit code, and the tail gate at L890 is global.
 
@@ -739,15 +743,21 @@ Suggested contract: `check` → 0 all `ok`, 1 any MISMATCH/MISSING. `doctor` →
 
 ### 3. Selective per-tool update
 
+RESOLVED: see plan 13-04
+
 **What we know:** CONTEXT.md leaves this open. The dispatcher's `*)` catch-all (L853) currently rejects any unrecognised token.
 
 **Recommendation:** Support it — `bash setup.sh update trivy`. It is a small change to the existing `for arg` loop (accept a bare tool name into an `UPDATE_TARGETS` list, validated against the known tool set), and it directly addresses Pitfall 7: after a partial failure, retrying one tool costs one API call instead of six against a 60/hr budget. Default (no tool named) remains all six.
 
 ### 4. `.gitignore` for the failure log
 
+RESOLVED: see plan 13-06
+
 D-07 places `update-failures.log` at the root of the user's repo. Should `configure`/`setup` add it to `.gitignore`, or should the log go somewhere already ignored? Low stakes, but it should be a conscious decision — otherwise every user of this tooling gets an untracked file in `git status` after any failed update.
 
 ### 5. Fix `install`'s pre-commit upgrade bug in this phase?
+
+RESOLVED: see plan 13-03
 
 Pitfall 1 is a pre-existing defect in `install`, not strictly in Phase 13's scope. Recommendation: **yes, fix it here** — `update` depends on `_install_precommit` and cannot work correctly without the fix, so the change is unavoidable; the only question is whether it is framed as in-scope. It is a one-flag change with a direct correctness justification.
 
