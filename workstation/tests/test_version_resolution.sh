@@ -154,3 +154,99 @@ bare_rc=$?
 assert_contains "$bare_out" "rate-limited" "a bare (unguarded) call still emits the rate-limit warning"
 assert_not_contains "$bare_out" "UNREACHABLE" "the function's own return 1 stops execution at the call site as expected"
 assert_status 1 "$bare_rc" "a bare call to resolve_latest_version on an empty body exits the process with status 1, not a pipefail SIGPIPE crash"
+
+describe "resolve_latest_in_major: hadolint compact fixture"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    unset GITHUB_TOKEN GH_TOKEN
+    # shellcheck disable=SC2329  # stub redefines gh_api_get's token-resolution dependency
+    gh() { return 1; }
+    # shellcheck disable=SC2329  # tripwire: fails the test loudly if a live network call is attempted
+    curl() { echo "LIVE CURL ATTEMPTED" >&2; return 22; }
+    # shellcheck disable=SC2329  # stub replaces the network boundary with a fixture read
+    gh_api_get() { cat "$FIXTURES_DIR/hadolint-releases-compact.json"; }
+    v2=$(resolve_latest_in_major "hadolint/hadolint" 2)
+    rc2=$?
+    v1=$(resolve_latest_in_major "hadolint/hadolint" 1)
+    rc1=$?
+    v9=$(resolve_latest_in_major "hadolint/hadolint" 9)
+    rc9=$?
+    echo "v2=$v2 rc2=$rc2"
+    echo "v1=$v1 rc1=$rc1"
+    echo "v9=[$v9] rc9=$rc9"
+  ) 2>&1
+)
+assert_contains "$out" "v2=2.15.1 rc2=0" "resolve_latest_in_major hadolint/hadolint 2 returns the highest 2.x release, not a prerelease"
+assert_contains "$out" "v1=1.23.0 rc1=0" "resolve_latest_in_major hadolint/hadolint 1 returns 1.23.0"
+assert_contains "$out" "v9=[] rc9=1" "resolve_latest_in_major returns exit 1 and empty stdout when the major is absent from the body"
+assert_not_contains "$out" "2.12.1-beta" "resolve_latest_in_major never returns a prerelease tag"
+assert_not_contains "$out" "LIVE CURL ATTEMPTED" "resolve_latest_in_major never calls curl directly"
+
+describe "resolve_latest_in_major: gitleaks spaced fixture, numeric not lexical ordering"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    unset GITHUB_TOKEN GH_TOKEN
+    # shellcheck disable=SC2329  # stub redefines gh_api_get's token-resolution dependency
+    gh() { return 1; }
+    # shellcheck disable=SC2329  # tripwire: fails the test loudly if a live network call is attempted
+    curl() { echo "LIVE CURL ATTEMPTED" >&2; return 22; }
+    # shellcheck disable=SC2329  # stub replaces the network boundary with a fixture read
+    gh_api_get() { cat "$FIXTURES_DIR/gitleaks-releases-spaced.json"; }
+    v8=$(resolve_latest_in_major "gitleaks/gitleaks" 8)
+    echo "v8=$v8"
+  ) 2>&1
+)
+assert_contains "$out" "v8=8.30.1" "resolve_latest_in_major orders 8.2.0/8.10.0/8.30.1 numerically and picks 8.30.1, not lexically"
+
+describe "resolve_latest_in_major: empty API body is a visible, non-fatal failure"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    unset GITHUB_TOKEN GH_TOKEN
+    # shellcheck disable=SC2329  # stub redefines gh_api_get's token-resolution dependency
+    gh() { return 1; }
+    # shellcheck disable=SC2329  # tripwire: fails the test loudly if a live network call is attempted
+    curl() { echo "LIVE CURL ATTEMPTED" >&2; return 22; }
+    # shellcheck disable=SC2329  # stub simulates an empty/rate-limited API body
+    gh_api_get() { printf ''; }
+    v=$(resolve_latest_in_major "any/repo" 9)
+    echo "rc=$?"
+    echo "v=[$v]"
+    echo "SURVIVED"
+  ) 2>&1
+)
+assert_contains "$out" "rc=1" "resolve_latest_in_major returns exit status 1 on an empty body"
+assert_contains "$out" "v=[]" "resolve_latest_in_major echoes nothing on an empty body"
+assert_contains "$out" "rate-limited" "resolve_latest_in_major warns about rate limiting on an empty body"
+assert_contains "$out" "SURVIVED" "the calling shell survives an empty-body resolve_latest_in_major failure"
+
+describe "resolve_latest_in_major: single API call per invocation"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    unset GITHUB_TOKEN GH_TOKEN
+    # shellcheck disable=SC2329  # stub redefines gh_api_get's token-resolution dependency
+    gh() { return 1; }
+    # shellcheck disable=SC2329  # tripwire: fails the test loudly if a live network call is attempted
+    curl() { echo "LIVE CURL ATTEMPTED" >&2; return 22; }
+    call_count=0
+    # shellcheck disable=SC2329  # stub counts invocations to assert a single-call pipeline
+    gh_api_get() {
+      call_count=$((call_count + 1))
+      cat "$FIXTURES_DIR/hadolint-releases-compact.json"
+    }
+    resolve_latest_in_major "hadolint/hadolint" 2 > /dev/null
+    echo "calls=$call_count"
+  ) 2>&1
+)
+assert_contains "$out" "calls=1" "resolve_latest_in_major makes exactly one gh_api_get call per invocation"
