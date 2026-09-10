@@ -141,6 +141,24 @@ On first run, `setup.sh` resolves the latest release version for each tool and h
 
 Fallback versions are hardcoded in the script for environments where the GitHub API is unreachable (e.g., air-gapped networks or rate-limited CI runners).
 
+All GitHub API calls route through a single `gh_api_get` wrapper, which adds an
+`X-GitHub-Api-Version` header and, when a token is available from `GITHUB_TOKEN`,
+`GH_TOKEN`, or `gh auth token`, an `Authorization: Bearer` header. The token is resolved
+lazily on first use — sourcing the script has no side effects — and is never placed in a
+URL or written to any log.
+
+JSON parsing is whitespace-tolerant, because GitHub serves compact JSON for some
+repositories (hadolint) and spaced JSON for others (gitleaks). This is a deliberate
+accommodation for that inconsistency, not an oversight — do not "simplify" the pattern
+back to a single fixed-whitespace form.
+
+`resolve_latest_version` resolves the newest release for a repo. `resolve_latest_in_major`
+resolves the newest non-prerelease release within a given major version, using a strict
+`^major.N.N$` filter and a numeric field sort. That strict filter is itself a security
+control: it is what prevents an arbitrary upstream tag string from reaching a download URL
+or a `pipx install` spec. `resolve_latest_in_major` is called only on the `update`
+fallback path, at most once per tool that failed its first install attempt.
+
 ### What the Workstation Does NOT Install
 
 | Tool | Where it runs | Rationale |
@@ -153,6 +171,29 @@ Both tools can be installed manually for ad-hoc local use (`pip install semgrep 
 1. They are not wired into any pre-commit hook
 2. Their primary enforcement point is the CI/CD pipeline
 3. Adding them to the installer increases install time and maintenance surface without adding automated enforcement
+
+### `check` / `update` / `doctor` Split
+
+Three commands answer three different questions about the same six tools, and each
+decision below exists because collapsing them into one command or one column loses
+information a maintainer needs.
+
+- **`doctor` is separate from `check`** because `get_installed_version` discards the
+  version command's own exit status (`|| true`), which is precisely what a health check
+  must report. A tool that is present but broken (`BROKEN`) looks identical to one that's
+  simply on an unrecognised version string (`UNPARSEABLE`) unless the exit status is kept.
+  This also mirrors ecosystem convention — `npm doctor`/`npm outdated` and `brew
+  doctor`/`brew outdated` map cleanly onto "does my environment work" versus "am I on the
+  right version".
+- **Update success is determined by re-probing the installed version, never by the
+  installer's exit code**, because `pipx install` exits 0 while doing nothing when the
+  package name is already present at a different version. Trusting the installer's exit
+  code would silently report a no-op as a successful update.
+- **A successful same-major fallback is reported as its own `fallback` status and never
+  rewrites `versions.conf`.** This keeps the pinned manifest an intentional, user-owned
+  artifact: `update` can get a tool working again without ever changing what "correct"
+  means for that repo — that decision is left to the developer, made visible by the
+  `NOTE:` line `print_fallback_notes` prints after the recheck.
 
 ## Tool Coverage Matrix
 
@@ -231,9 +272,15 @@ workstation/
 ├── setup.sh                              # Bootstrap script — install, configure, activate
 ├── ARCHITECTURE.md                       # This document
 ├── README.md                             # Quick start and usage guide
-└── cicd/
-    ├── lint-markdown.sh                  # Three-tier markdown linting script
-    └── pre-commit.sh                     # Pre-commit hook for staged .md files
+├── cicd/
+│   ├── lint-markdown.sh                  # Three-tier markdown linting script
+│   └── pre-commit.sh                     # Pre-commit hook for staged .md files
+└── tests/                                # Plain-bash test suite for setup.sh
+    ├── run-tests.sh                      # Runner — glob-sources every test_*.sh, no edit needed to add a case file
+    ├── test_*.sh                         # Test case files (smoke, version resolution, update fallback, doctor, ...)
+    └── fixtures/                         # Recorded GitHub API JSON, both formatting styles
+        ├── *-releases-compact.json       #   compact JSON, e.g. hadolint
+        └── *-releases-spaced.json        #   spaced JSON, e.g. gitleaks
 
 Generated in each target repository by setup.sh:
 ├── versions.conf                         # Pinned tool versions (latest at time of generation)
@@ -251,7 +298,7 @@ All tools are pinned to exact versions for reproducible installations:
 
 | Pinning mechanism | Scope | Update method |
 |---|---|---|
-| `versions.conf` (in repo root) | CLI tools installed by `setup.sh` | Delete and re-run `setup.sh install`, or edit manually |
+| `versions.conf` (in repo root) | CLI tools installed by `setup.sh` | `bash setup.sh update` (preferred — updates outdated tools without rewriting the pins), or delete and re-run `setup.sh install`, or edit manually |
 | `rev:` fields in `.pre-commit-config.yaml` | Pre-commit hook tool versions | `pre-commit autoupdate` |
 
 On first run, `setup.sh` resolves latest versions from GitHub. Subsequent runs use the existing `versions.conf` — delete it to force re-resolution.
