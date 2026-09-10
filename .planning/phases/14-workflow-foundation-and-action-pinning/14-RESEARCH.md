@@ -549,27 +549,23 @@ Alternative if the user prefers pinning latest immediately: accept a successful 
 | A6 | Homebrew `actionlint` 1.7.12 works on this Darwin 25.6 / arm64 machine | Environment Availability | Low — fallback is push-and-observe |
 | A7 | Dependabot determines an action's current version by resolving the pinned SHA back to its tag (not by parsing the trailing `# v7` comment) | Validation Architecture, Open Question 3 | The deliberate v7.0.0 pin would produce no bump PR and criterion #4 stays unwitnessed. Mitigated by the three-way job-log branch above — the phase still passes via the "inferred" path, it just doesn't get the stronger evidence |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Version comment granularity: `# v7` (D-02) vs `# v7.0.0` (ADR-004's `# v4.x.y` pattern)?**
+1. **Version comment granularity: `# v7` (D-02) vs `# v7.0.0` (ADR-004's `# v4.x.y` pattern)?** — RESOLVED
    - What we know: D-02 is a locked user decision specifying `# v<N>`. ADR-004 (Accepted, append-only) shows `# v4.x.y`. The existing reference workflow uses `# v4`. Dependabot rewrites the comment correctly in all three forms.
-   - What's unclear: whether the user wants the ADR reconciled. Note that `# v7` alone cannot distinguish v7.0.0 from v7.0.1 by eye — which is precisely what the criterion-#4 strategy relies on Dependabot to change.
-   - Recommendation: **implement D-02 (`# v7`) as locked.** Surface the ADR-004 variance to the user during planning; if they want alignment it needs a *new* ADR (append-only), which is arguably Phase 20 scope.
+   - Resolution: the orchestrator locked `# v7.0.0` during planning (see `14-01-PLAN.md` Task 2/3) — full granularity is required so the pin is distinguishable from v7.0.1, which the criterion-#4 witnessed-proof strategy depends on. Read as the intended D-02 reading, not a deviation (the reference file itself uses `# v0.35.0`-style full versions). ADR-004 reconciliation remains out of scope for Phase 14 and would need a new ADR (append-only) — deferred, arguably Phase 20 scope.
 
-2. **Repository slug mismatch: `OCC-github/security_solution` vs `OttawaCloudConsulting/security-platform`.**
+2. **Repository slug mismatch: `OCC-github/security_solution` vs `OttawaCloudConsulting/security-platform`.** — RESOLVED
    - What we know: REQUIREMENTS DIST-07 and the ROADMAP both write `uses: OCC-github/security_solution/.github/workflows/<name>.yml@ref`. The actual git remote is `https://github.com/OttawaCloudConsulting/security-platform.git` `[VERIFIED: git remote -v, gh repo view]`. `OCC-github` appears to be a local directory-path segment, not the GitHub org (`gh api /orgs/OCC-github` → 404, though the token lacks `admin:org` so this is not conclusive).
-   - What's unclear: whether DIST-07's string is aspirational (a planned repo move) or simply an error.
-   - Recommendation: **does not block Phase 14** — the caller uses a local relative reference with no org/repo in it. Instruct the executor **not** to hardcode `OCC-github/security_solution` in any workflow header comment or doc string. Resolve before Phase 20, which publishes the string for real.
+   - Resolution: does not block Phase 14 — the caller uses a local relative reference with no org/repo in it. All three PLAN.md files explicitly forbid hardcoding either slug and resolve the actual slug at runtime via `git remote get-url`. Still open for a future phase: resolve the DIST-07 string before Phase 20, which publishes it for real.
 
-3. **Should criterion #4 be witnessed (deliberate v7.0.0 pin) or inferred (pin latest, accept a clean Dependabot job log)?**
+3. **Should criterion #4 be witnessed (deliberate v7.0.0 pin) or inferred (pin latest, accept a clean Dependabot job log)?** — RESOLVED
    - What we know: both satisfy the letter of CICD-05; only the first satisfies "Dependabot opens a pull request... when a pinned action publishes a newer release" as an *observed* fact.
-   - What's unclear: whether the witnessed path actually fires — see **A7**; the strategy depends on Dependabot resolving SHA→tag rather than reading the version comment.
-   - Recommendation: witnessed — pin v7.0.0 `9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0`, let Dependabot produce the v7.0.1 bump, merge it. Confirm with the user during planning; it is a visible, slightly unusual choice that deserves an explicit yes. The plan must carry the A7 fallback so a null result is diagnosed, not misread as failure.
+   - Resolution: user confirmed witnessed strategy during plan-phase (explicit yes to pinning v7.0.0 deliberately). `14-03-PLAN.md` Task 3 carries the full A7 branch logic (witnessed / inferred / broken classification, with a fix applied post-plan-check to prevent a stale "up to date" log from being misread as proof when a newer upstream release actually exists).
 
-4. **Any org-level Actions governance that could conflict?**
+4. **Any org-level Actions governance that could conflict?** — RESOLVED
    - What we know: repo-level is permissive — `enabled: true`, `allowed_actions: "all"`, `sha_pinning_required: false` `[VERIFIED: gh api …/actions/permissions]`. Branch governance on `main` is an active ruleset (`Default`, id 14243983) enforcing only `deletion` and `non_fast_forward` — no required status checks, so nothing this phase adds can block a merge `[VERIFIED: gh api …/rules/branches/main]`. Note this also means **`main` cannot be force-pushed**, which is fine for a normal PR merge. STATE.md flags "confirm no org-level workflow governance conflicts before authoring."
-   - What's unclear: org-level policy — the current token lacks `admin:org` scope, so it could not be read this session.
-   - Recommendation: repo-level permissiveness plus the fact that `actions/*` is always allowed makes a conflict very unlikely. Proceed; if the first run is blocked by policy the error message will name the policy.
+   - Resolution: recommendation was "proceed" — no outstanding decision. Org-level policy (token lacks `admin:org` scope) was the only unverifiable piece; if a real conflict exists, the first workflow run's error message will name the blocking policy, and that's an execution-time signal, not a planning blocker.
 
 ## Sources
 
