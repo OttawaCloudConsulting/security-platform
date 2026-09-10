@@ -264,3 +264,223 @@ out=$(
   ' 2>&1
 )
 assert_contains "$out" "SURVIVED" "a fully-failed update_one_tool does not terminate the calling shell under set -euo pipefail"
+
+# ---------------------------------------------------------------------------
+# update_all_tools() and update-aware summary output
+# ---------------------------------------------------------------------------
+#
+# attempt_install() (not the real _install_* functions) is stubbed directly
+# in every test below — it is already unit-tested in plan 03, and it is the
+# cleanest network boundary: update_one_tool calls it by name, so stubbing
+# here guarantees zero curl/pipx/network calls no matter what the record
+# array contains. All six pinned *_VERSION globals are set explicitly (not
+# sourced from a real versions.conf) because sourcing setup.sh does not
+# source versions.conf, and set -u (inherited from setup.sh) would otherwise
+# kill the subshell on first reference.
+
+describe "update_all_tools: default run processes all six tools in the install order"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    # shellcheck disable=SC2034  # PRECOMMIT_VERSION read by update_all_tools' record array in the sourced setup.sh
+    PRECOMMIT_VERSION="4.2.0"
+    # shellcheck disable=SC2034  # TRIVY_VERSION read by update_all_tools' record array in the sourced setup.sh
+    TRIVY_VERSION="0.69.3"
+    # shellcheck disable=SC2034  # SYFT_VERSION read by update_all_tools' record array in the sourced setup.sh
+    SYFT_VERSION="1.42.2"
+    # shellcheck disable=SC2034  # GRYPE_VERSION read by update_all_tools' record array in the sourced setup.sh
+    GRYPE_VERSION="0.109.1"
+    # shellcheck disable=SC2034  # GITLEAKS_VERSION read by update_all_tools' record array in the sourced setup.sh
+    GITLEAKS_VERSION="8.30.0"
+    # shellcheck disable=SC2034  # HADOLINT_VERSION read by update_all_tools' record array in the sourced setup.sh
+    HADOLINT_VERSION="2.14.0"
+    # shellcheck disable=SC2034  # read by update_all_tools in the sourced setup.sh
+    UPDATE_TARGETS=""
+    RESULTS=""
+    FAIL_COUNT=0
+    REPO_ROOT="$(mktemp -d)"
+    INSTALL_DIR="$(mktemp -d)"
+    trap 'rm -rf "$REPO_ROOT" "$INSTALL_DIR"' RETURN
+    # shellcheck disable=SC2329  # controllable verifier stub: nothing pre-installed
+    is_installed() { return 1; }
+    # shellcheck disable=SC2329  # stub: every tool's attempt 1 succeeds, no network
+    attempt_install() { return 0; }
+    update_all_tools
+    tool_order=$(printf "%b" "$RESULTS" | awk -F'|' 'NF{print $1}' | tr '\n' ',')
+    echo "ORDER:$tool_order"
+  ) 2>&1
+)
+assert_contains "$out" "ORDER:pre-commit,trivy,syft,grype,gitleaks,hadolint," "update_all_tools processes all six tools in install_all_tools order"
+
+describe "update_all_tools: selective targeting via UPDATE_TARGETS"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    # shellcheck disable=SC2034  # PRECOMMIT_VERSION read by update_all_tools' record array in the sourced setup.sh
+    PRECOMMIT_VERSION="4.2.0"
+    # shellcheck disable=SC2034  # TRIVY_VERSION read by update_all_tools' record array in the sourced setup.sh
+    TRIVY_VERSION="0.69.3"
+    # shellcheck disable=SC2034  # SYFT_VERSION read by update_all_tools' record array in the sourced setup.sh
+    SYFT_VERSION="1.42.2"
+    # shellcheck disable=SC2034  # GRYPE_VERSION read by update_all_tools' record array in the sourced setup.sh
+    GRYPE_VERSION="0.109.1"
+    # shellcheck disable=SC2034  # GITLEAKS_VERSION read by update_all_tools' record array in the sourced setup.sh
+    GITLEAKS_VERSION="8.30.0"
+    # shellcheck disable=SC2034  # HADOLINT_VERSION read by update_all_tools' record array in the sourced setup.sh
+    HADOLINT_VERSION="2.14.0"
+    # shellcheck disable=SC2034  # read by update_all_tools in the sourced setup.sh
+    UPDATE_TARGETS="trivy"
+    RESULTS=""
+    FAIL_COUNT=0
+    REPO_ROOT="$(mktemp -d)"
+    INSTALL_DIR="$(mktemp -d)"
+    trap 'rm -rf "$REPO_ROOT" "$INSTALL_DIR"' RETURN
+    # shellcheck disable=SC2329  # controllable verifier stub
+    is_installed() { return 1; }
+    # shellcheck disable=SC2329  # stub: no network
+    attempt_install() { return 0; }
+    update_all_tools
+    tool_order=$(printf "%b" "$RESULTS" | awk -F'|' 'NF{print $1}' | tr '\n' ',')
+    echo "ORDER:$tool_order"
+  ) 2>&1
+)
+assert_contains "$out" "ORDER:trivy," "UPDATE_TARGETS=trivy processes only the trivy record, not the other five"
+
+describe "update_all_tools: a failing tool does not stop later tools in the list"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    # shellcheck disable=SC2034  # PRECOMMIT_VERSION read by update_all_tools' record array in the sourced setup.sh
+    PRECOMMIT_VERSION="4.2.0"
+    # shellcheck disable=SC2034  # TRIVY_VERSION read by update_all_tools' record array in the sourced setup.sh
+    TRIVY_VERSION="0.69.3"
+    # shellcheck disable=SC2034  # SYFT_VERSION read by update_all_tools' record array in the sourced setup.sh
+    SYFT_VERSION="1.42.2"
+    # shellcheck disable=SC2034  # GRYPE_VERSION read by update_all_tools' record array in the sourced setup.sh
+    GRYPE_VERSION="0.109.1"
+    # shellcheck disable=SC2034  # GITLEAKS_VERSION read by update_all_tools' record array in the sourced setup.sh
+    GITLEAKS_VERSION="8.30.0"
+    # shellcheck disable=SC2034  # HADOLINT_VERSION read by update_all_tools' record array in the sourced setup.sh
+    HADOLINT_VERSION="2.14.0"
+    # shellcheck disable=SC2034  # read by update_all_tools in the sourced setup.sh
+    UPDATE_TARGETS="trivy syft"
+    RESULTS=""
+    FAIL_COUNT=0
+    REPO_ROOT="$(mktemp -d)"
+    INSTALL_DIR="$(mktemp -d)"
+    trap 'rm -rf "$REPO_ROOT" "$INSTALL_DIR"' RETURN
+    # shellcheck disable=SC2329  # controllable verifier stub
+    is_installed() { return 1; }
+    # shellcheck disable=SC2329  # stub: trivy always fails (both attempts), syft always succeeds
+    attempt_install() { [[ "$1" = "trivy" ]] && return 1; return 0; }
+    # shellcheck disable=SC2329  # stub: valid same-major fallback for trivy, still rejected by the always-failing installer
+    resolve_latest_in_major() { echo "0.69.4"; }
+    update_all_tools
+    echo "RESULTS:$RESULTS"
+    echo "FAIL_COUNT:$FAIL_COUNT"
+    tool_order=$(printf "%b" "$RESULTS" | awk -F'|' 'NF{print $1}' | tr '\n' ',')
+    echo "ORDER:$tool_order"
+  ) 2>&1
+)
+assert_contains "$out" "ORDER:trivy,syft," "both tools appear in RESULTS even though trivy failed"
+assert_contains "$out" "trivy|0.69.3|FAILED" "trivy is recorded as FAILED"
+assert_contains "$out" "syft|1.42.2|installed" "syft still updates after trivy's failure"
+assert_contains "$out" "FAIL_COUNT:1" "only the one genuinely failing tool contributes to FAIL_COUNT"
+
+describe "update_all_tools: exports INSTALL_DIR onto PATH for the duration of the loop"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    # shellcheck disable=SC2034  # PRECOMMIT_VERSION read by update_all_tools' record array in the sourced setup.sh
+    PRECOMMIT_VERSION="4.2.0"
+    # shellcheck disable=SC2034  # TRIVY_VERSION read by update_all_tools' record array in the sourced setup.sh
+    TRIVY_VERSION="0.69.3"
+    # shellcheck disable=SC2034  # SYFT_VERSION read by update_all_tools' record array in the sourced setup.sh
+    SYFT_VERSION="1.42.2"
+    # shellcheck disable=SC2034  # GRYPE_VERSION read by update_all_tools' record array in the sourced setup.sh
+    GRYPE_VERSION="0.109.1"
+    # shellcheck disable=SC2034  # GITLEAKS_VERSION read by update_all_tools' record array in the sourced setup.sh
+    GITLEAKS_VERSION="8.30.0"
+    # shellcheck disable=SC2034  # HADOLINT_VERSION read by update_all_tools' record array in the sourced setup.sh
+    HADOLINT_VERSION="2.14.0"
+    # shellcheck disable=SC2034  # read by update_all_tools in the sourced setup.sh
+    UPDATE_TARGETS="trivy"
+    RESULTS=""
+    FAIL_COUNT=0
+    REPO_ROOT="$(mktemp -d)"
+    INSTALL_DIR="$(mktemp -d)"
+    trap 'rm -rf "$REPO_ROOT" "$INSTALL_DIR"' RETURN
+    # shellcheck disable=SC2329  # controllable verifier stub
+    is_installed() { return 1; }
+    # shellcheck disable=SC2329  # stub: no network
+    attempt_install() { return 0; }
+    update_all_tools
+    if [[ ":$PATH:" == *":$INSTALL_DIR:"* ]]; then
+      echo "ONPATH:yes"
+    else
+      echo "ONPATH:no"
+    fi
+  ) 2>&1
+)
+assert_contains "$out" "ONPATH:yes" "update_all_tools exports INSTALL_DIR onto PATH"
+
+describe "print_summary: optional noun/verb arguments default to existing install wording"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    RESULTS=""
+    FAIL_COUNT=1
+    add_result "stub" "1.0.0" "FAILED"
+    print_summary
+  ) 2>&1
+)
+assert_contains "$out" "Security Tool Installation Summary" "print_summary with no argument keeps the existing install-time title"
+assert_contains "$out" "failed to install" "print_summary with no argument keeps the existing install-time warning wording"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    RESULTS=""
+    FAIL_COUNT=1
+    add_result "stub" "1.0.0" "FAILED"
+    print_summary "Update" "update"
+  ) 2>&1
+)
+assert_contains "$out" "Security Tool Update Summary" "print_summary accepts a custom noun for the update run"
+assert_contains "$out" "failed to update" "print_summary accepts a custom verb for the update run"
+
+describe "print_fallback_notes: prints one NOTE line per accumulated fallback, nothing when empty"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    FALLBACK_NOTES="trivy|0.70.0|0.69.3\n"
+    print_fallback_notes
+  ) 2>&1
+)
+assert_contains "$out" "NOTE:" "print_fallback_notes emits a NOTE: line when FALLBACK_NOTES is non-empty"
+assert_contains "$out" "trivy" "print_fallback_notes names the tool"
+assert_contains "$out" "0.70.0" "print_fallback_notes names the installed fallback version"
+assert_contains "$out" "0.69.3" "print_fallback_notes names the pinned version"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    FALLBACK_NOTES=""
+    print_fallback_notes
+  ) 2>&1
+)
+assert_eq "" "$out" "print_fallback_notes prints nothing when FALLBACK_NOTES is empty"
