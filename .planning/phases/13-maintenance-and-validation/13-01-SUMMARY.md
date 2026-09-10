@@ -74,10 +74,16 @@ at the end of the file. Used the `if` form (not `[[ ... ]] && main "$@"`) specif
 
 ## Deviations from Plan
 
-None — plan executed exactly as written. Two adjustments made during self-verification, both within Rule 1 (auto-fix) scope:
+Plan tasks executed exactly as written. Three adjustments made during self-verification and state-update:
 
 1. **[Rule 1 - Bug] Fixture JSON was single-line, breaking `grep -c` line-count acceptance criteria.** The plan's acceptance criteria (`grep -c '"tag_name":"'` returning 4+) assumes one match per line; my first draft of `hadolint-releases-compact.json` was a single JSON line, so `grep -c` counted 1 line instead of 6 occurrences. Fixed by placing each release object on its own line (still compact style, no space after colons) — commit `e022bc0`.
 2. **[Rule 1 - Bug] Header comments in `run-tests.sh` literally contained the strings `RESULTS` and `FAIL_COUNT`** (as illustrative examples of setup.sh's own globals), which caused the acceptance criterion `grep -cw 'FAIL_COUNT\|PASS_COUNT\|RESULTS'` to return 2 instead of the required 0. Reworded the comments to describe the collision risk generically instead of naming the exact identifiers — commit `e022bc0`.
+3. **[State-update correction, not a plan deviation] Did not mark MAINT-01/02/03 complete in REQUIREMENTS.md**, despite this plan's frontmatter listing them under `requirements:`. Checking the other six plans in this phase (`13-02` through `13-07`) shows each also lists a subset of MAINT-01/02/03 — the field means "this plan contributes to this requirement," not "this plan completes it." No `--check`/`--update`/`--doctor` functionality exists yet (that's plans 02-05). Running `requirements.mark-complete` here would have written false completion state for the verifier and later executors to read. Reverted the SDK's initial mark-complete call (`git checkout -- .planning/REQUIREMENTS.md`) and documented the correct completion trigger (last plan touching each requirement) in `STATE.md` under Blockers/Concerns.
+
+### Environmental notes (SDK behavior, not plan or code deviations)
+
+- `gsd-sdk query state.advance-plan` computed against a stale Current Position (it still read "Phase 12 of 13, 1 of 1 plan," which predated this plan's execution), returning `reason: "last_plan"` and an incorrect `status: verifying`. Corrected manually to `status: executing`, `Phase 13 of 13, Plan 1 of 7`, `Resume file: 13-02-PLAN.md`.
+- `gsd-sdk query state.record-metric` returned `"Performance Metrics section not found"` because STATE.md's Performance Metrics section uses a narrative Velocity/Recent-Trend format, not the table format the handler pattern-matches. Added the Phase 13 P01 duration to the existing "Recent Trend" list manually instead.
 
 ## Known Stubs
 
