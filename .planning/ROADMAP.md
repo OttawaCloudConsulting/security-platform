@@ -187,7 +187,7 @@ Plans:
 - [x] **Phase 10: Cross-Platform Install Script** - install.sh installs all security CLI tools on macOS and Linux without Homebrew (completed 2026-03-18)
 - [x] **Phase 11: File-Pattern Hook Configuration** - Universal pre-commit config with language-aware filters for selective hook execution (completed 2026-03-22)
 - [x] **Phase 12: Repo Setup Script** - setup.sh copies configs and wires hooks in any git repo with one command (completed 2026-03-22)
-- [ ] **Phase 13: Maintenance and Validation** - Version check, update, and health check commands for installed tools
+- [x] **Phase 13: Maintenance and Validation** - Version check, update, and health check commands for installed tools (completed 2026-09-10)
 
 ## Phase Details
 
@@ -291,7 +291,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 13-07-PLAN.md -- Human-verified pre-commit downgrade/upgrade round trip and doctor sanity check
+- [x] 13-07-PLAN.md -- Human-verified pre-commit downgrade/upgrade round trip and doctor sanity check
 
 ## Progress
 
@@ -313,4 +313,4 @@ Note: Phase 11 depends on Phase 10. Phase 12 depends on Phases 10 and 11. Phase 
 | 10. Cross-Platform Install Script | 2/2 | Complete   | 2026-03-18 | - |
 | 11. File-Pattern Hook Configuration | v1.1 | 1/1 | Complete | 2026-03-22 |
 | 12. Repo Setup Script | v1.1 | 1/1 | Complete | 2026-03-22 |
-| 13. Maintenance and Validation | v1.1 | 6/7 | In Progress|  |
+| 13. Maintenance and Validation | v1.1 | 7/7 | Complete   | 2026-09-10 |

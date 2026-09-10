@@ -26,8 +26,8 @@
 ### Maintenance
 
 - [x] **MAINT-01**: Developer can run a check command to see installed vs expected versions for all tools
-- [ ] **MAINT-02**: Check command can update outdated tools to the pinned version
-- [ ] **MAINT-03**: Health check verifies all tools are on PATH and can execute their version command
+- [x] **MAINT-02**: Check command can update outdated tools to the pinned version
+- [x] **MAINT-03**: Health check verifies all tools are on PATH and can execute their version command
 
 ## v2 Requirements
 
@@ -75,8 +75,8 @@
 | DIST-04 | Phase 11 | Complete |
 | DIST-05 | Phase 12 | Complete |
 | MAINT-01 | Phase 13 | Complete |
-| MAINT-02 | Phase 13 | Pending |
-| MAINT-03 | Phase 13 | Pending |
+| MAINT-02 | Phase 13 | Complete |
+| MAINT-03 | Phase 13 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 15 total
