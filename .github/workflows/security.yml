@@ -1,0 +1,20 @@
+---
+# Callable security scanning workflow.
+# Invoked by repo-local callers (see pr-security.yml) and, from Phase 20,
+# by external repositories as a reusable workflow.
+# All third-party actions are pinned to full commit SHAs (ADR-004).
+
+name: Security Scans
+
+on:
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  placeholder:
+    name: Placeholder
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
