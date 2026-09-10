@@ -44,6 +44,11 @@ PROBLEM_COUNT=0
 # shellcheck disable=SC2034  # consumed by the update orchestrator (plan 04)
 FALLBACK_NOTES=""
 
+# Space-separated list of tool names to restrict `update` to (populated by
+# the argument parser's `*)` catch-all when COMMAND is already "update").
+# Empty means "update all tools". Declared here because set -u requires it.
+UPDATE_TARGETS=""
+
 # Lazily-resolved GitHub auth token. Plain variables for bash 3.2
 # compatibility (no associative arrays). Resolved on first gh_api_get() call,
 # not at file scope, so sourcing this script for tests has no side effects.
@@ -116,9 +121,15 @@ add_result() {
   RESULTS="${RESULTS}${tool}|${version}|${status}\n"
 }
 
+# print_summary [noun] [verb]
+#
+# noun/verb default to the original "Installation"/"install" wording so the
+# existing install/setup call sites are unchanged. The update dispatcher
+# branch passes "Update"/"update".
 print_summary() {
+  local noun="${1:-Installation}" verb="${2:-install}"
   echo ""
-  echo "Security Tool Installation Summary"
+  echo "Security Tool ${noun} Summary"
   echo "-----------------------------------"
   printf "%-14s %-12s %s\n" "Tool" "Version" "Status"
   printf "%-14s %-12s %s\n" "----" "-------" "------"
@@ -128,8 +139,24 @@ print_summary() {
   done
   echo ""
   if [[ "$FAIL_COUNT" -gt 0 ]]; then
-    warn "$FAIL_COUNT tool(s) failed to install"
+    warn "$FAIL_COUNT tool(s) failed to ${verb}"
   fi
+}
+
+# print_fallback_notes
+#
+# Prints one NOTE: line per accumulated FALLBACK_NOTES entry (D-04/Open Q1):
+# a tool installed at a same-major fallback because its pinned version could
+# not be installed. Printed after the post-update recheck so the MISMATCH
+# row the user just saw in run_check is explained, not alarming. Prints
+# nothing when FALLBACK_NOTES is empty.
+# shellcheck disable=SC2329  # invoked from the update dispatcher branch
+print_fallback_notes() {
+  [[ -z "$FALLBACK_NOTES" ]] && return
+  printf "%b" "$FALLBACK_NOTES" | while IFS='|' read -r tool installed pinned; do
+    [[ -z "$tool" ]] && continue
+    echo "NOTE: $tool is installed at $installed because the pinned version $pinned was unavailable. Edit versions.conf to adopt $installed, or re-run 'bash setup.sh update $tool' later."
+  done
 }
 
 # ---------------------------------------------------------------------------
@@ -748,6 +775,54 @@ install_all_tools() {
   run_installer "grype"      "$GRYPE_VERSION"       _install_grype
   run_installer "gitleaks"   "$GITLEAKS_VERSION"    _install_gitleaks
   run_installer "hadolint"   "$HADOLINT_VERSION"    _install_hadolint
+
+  # PATH verification
+  case ":$PATH:" in
+    *":$INSTALL_DIR:"*) ;;
+    *)
+      warn "$INSTALL_DIR is not in your PATH. Add to your shell profile:"
+      warn "  export PATH=\"$INSTALL_DIR:\$PATH\""
+      ;;
+  esac
+}
+
+# update_all_tools
+#
+# Runs update_one_tool for each of the six tools (or, when UPDATE_TARGETS is
+# non-empty, only the named subset), in the same order install_all_tools
+# uses. A failing tool never stops the loop: update_one_tool returns 1
+# rather than exiting, and the `|| true` below is required because a bare
+# call would abort this loop under set -e.
+# shellcheck disable=SC2329  # invoked from the update dispatcher branch
+update_all_tools() {
+  mkdir -p "$INSTALL_DIR"
+  export PATH="$INSTALL_DIR:$PATH"
+
+  info "Updating security tools in $INSTALL_DIR"
+
+  # 5-field records: tool:pinned_version:VERSION_VAR_NAME:REPO_VAR_NAME:installer_fn_name
+  local records=(
+    "pre-commit:${PRECOMMIT_VERSION}:PRECOMMIT_VERSION:REPO_PRECOMMIT:_install_precommit"
+    "trivy:${TRIVY_VERSION}:TRIVY_VERSION:REPO_TRIVY:_install_trivy"
+    "syft:${SYFT_VERSION}:SYFT_VERSION:REPO_SYFT:_install_syft"
+    "grype:${GRYPE_VERSION}:GRYPE_VERSION:REPO_GRYPE:_install_grype"
+    "gitleaks:${GITLEAKS_VERSION}:GITLEAKS_VERSION:REPO_GITLEAKS:_install_gitleaks"
+    "hadolint:${HADOLINT_VERSION}:HADOLINT_VERSION:REPO_HADOLINT:_install_hadolint"
+  )
+
+  for entry in "${records[@]}"; do
+    local tool ver ver_var repo_var fn
+    IFS=':' read -r tool ver ver_var repo_var fn <<< "$entry"
+
+    if [[ -n "$UPDATE_TARGETS" ]]; then
+      case " $UPDATE_TARGETS " in
+        *" $tool "*) ;;
+        *) continue ;;
+      esac
+    fi
+
+    update_one_tool "$tool" "$ver" "$ver_var" "$repo_var" "$fn" || true
+  done
 
   # PATH verification
   case ":$PATH:" in
