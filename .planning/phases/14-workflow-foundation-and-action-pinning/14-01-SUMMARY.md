@@ -84,7 +84,8 @@ Commits are in the **product repo** (`git -C repos/security-platform log`):
 2. **Task 2: Author the callable workflow and the thin pull_request caller** — `f1588d5` (feat)
 3. **Task 3: Author the Dependabot config, run the full static gate, and commit** — `b09d06a` (feat)
 
-Plan metadata commit (outer documentation repo) is recorded separately below.
+**Plan metadata:** `30cd414` (docs, outer documentation repo — SUMMARY + STATE + ROADMAP + REQUIREMENTS).
+Note the outer repo sits on its own pre-existing branch `feature/phase-12-repo-setup-script`; no branch switching was performed there.
 
 ## Files Created
 
