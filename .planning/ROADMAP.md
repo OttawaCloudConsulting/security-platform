@@ -58,7 +58,10 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
   2. The scanning workflow is defined with `on: workflow_call` and is invoked by a thin `pull_request` caller workflow in this repo, so the same file is callable from another repo without restructuring later.
   3. Every `uses:` reference in the workflows is pinned to a full commit SHA with a human-readable version comment.
   4. Dependabot opens a pull request against this repo when a pinned action publishes a newer release.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 14-01-PLAN.md — Create `.github/` tree: callable `security.yml`, `pull_request` caller `pr-security.yml`, `dependabot.yml`, `.yamllint`; static gate
+- [ ] 14-02-PLAN.md — Push branch, open PR, observe the green PR-triggered run and capture the check-run name (criteria 1-2)
+- [ ] 14-03-PLAN.md — Human-confirmed merge to `main`, then observe and classify Dependabot's first run (criterion 4 / CICD-05)
 
 ### Phase 15: Five Parallel Scan Jobs
 **Goal**: Every pull request is scanned by five independent security tools running in parallel, each reporting what it finds without blocking the merge.
