@@ -38,7 +38,9 @@ patterns-established:
   - "Pattern: poll `gh run list --branch <br> --json ...` and filter on `workflowName==\"PR Security\" and event==\"pull_request\"` — the branch also carries a `Copilot` run with event `dynamic`"
   - "Pattern: prove a run is not hollow by grepping `gh run view --log` for `Uses: <repo>/.github/workflows/<file>@refs/pull/<N>/merge` plus the checkout command lines"
 
-requirements-completed: []
+requirements-completed: []  # CICD-05 (this plan's frontmatter requirement) was already
+  # marked Complete by Plan 01, which authored dependabot.yml. Re-running
+  # `requirements.mark-complete CICD-05` here returned `already_complete`.
 
 # Metrics
 duration: 7min
