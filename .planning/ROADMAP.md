@@ -39,7 +39,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 
 **Milestone Goal:** Ship reusable/copy-paste GitHub Actions security scanning templates, proven in this repo and ready to adopt across all 6+ org repos.
 
-- [ ] **Phase 14: Workflow Foundation and Action Pinning** - Callable security workflow triggers on PRs with SHA-pinned actions kept current by Dependabot
+- [x] **Phase 14: Workflow Foundation and Action Pinning** - Callable security workflow triggers on PRs with SHA-pinned actions kept current by Dependabot (completed 2026-09-10)
 - [ ] **Phase 15: Five Parallel Scan Jobs** - SAST, IaC, SCA, container, and secrets scans run concurrently on every PR in report-only mode
 - [ ] **Phase 16: SCA Ecosystem Coverage** - SCA job audits npm, Python, and Terraform dependencies alongside the generic filesystem sweep
 - [ ] **Phase 17: SARIF Upload and Artifact Retention** - Findings reach the GitHub Security tab and persist as JSON artifacts
@@ -61,7 +61,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 **Plans**: 3 plans
 - [x] 14-01-PLAN.md — Create root `.github/` tree in `repos/security-platform/`: callable `security.yml`, `pull_request` caller `pr-security.yml`, `dependabot.yml`; static gate
 - [x] 14-02-PLAN.md — Push the product-repo branch, open PR, observe the green PR-triggered run and capture the check-run name (criteria 1-2)
-- [ ] 14-03-PLAN.md — Human-confirmed merge to `main`, then observe and classify Dependabot's first run (criterion 4 / CICD-05)
+- [x] 14-03-PLAN.md — Human-confirmed merge to `main`, then observe and classify Dependabot's first run (criterion 4 / CICD-05)
 
 ### Phase 15: Five Parallel Scan Jobs
 **Goal**: Every pull request is scanned by five independent security tools running in parallel, each reporting what it finds without blocking the merge.
@@ -150,7 +150,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 11. File-Pattern Hook Configuration | v1.1 | 1/1 | Complete | 2026-03-22 |
 | 12. Repo Setup Script | v1.1 | 1/1 | Complete | 2026-03-22 |
 | 13. Maintenance and Validation | v1.1 | 8/8 | Complete | 2026-09-10 |
-| 14. Workflow Foundation and Action Pinning | v2.0 | 2/3 | In Progress|  |
+| 14. Workflow Foundation and Action Pinning | v2.0 | 3/3 | Complete   | 2026-09-10 |
 | 15. Five Parallel Scan Jobs | v2.0 | 0/? | Not started | - |
 | 16. SCA Ecosystem Coverage | v2.0 | 0/? | Not started | - |
 | 17. SARIF Upload and Artifact Retention | v2.0 | 0/? | Not started | - |
