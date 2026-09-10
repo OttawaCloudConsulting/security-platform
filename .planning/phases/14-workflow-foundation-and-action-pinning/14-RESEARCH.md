@@ -38,6 +38,8 @@
 | CICD-05 | Dependabot configured to keep GitHub Actions SHA pins updated | §Standard Stack (dependabot.yml schema, verified against `docs.github.com` source); §Pitfall 1 (Dependabot *does* update SHA pins and the trailing version comment — primary-source quote); §Pitfall 2 (default-branch-only requirement); §Pitfall 3 (locally-referenced workflows are ignored — by design here); §Validation Architecture (how to observe a Dependabot PR without waiting for an upstream release) |
 
 **Phase 14 covers CICD-05 only.** ROADMAP success criteria 1-3 (PR triggers a run, `workflow_call` + thin caller structure, every `uses:` SHA-pinned) are structural prerequisites for CICD-01/CICD-06/DIST-07 in later phases and are not separately requirement-tagged.
+
+> **Interpretation the verifier must apply to criterion #3.** "Every `uses:` reference is pinned to a full commit SHA" applies to **action** references. The caller's local reusable-workflow reference `uses: ./.github/workflows/security.yml` takes no `@ref` **by platform rule** — the relative form is only valid without one, and it resolves to the caller's own commit. That is strictly more immutable than a SHA pin (it cannot drift at all), so it satisfies the intent of criterion #3 and must not be flagged as an unpinned reference.
 </phase_requirements>
 
 ## Summary
@@ -157,7 +159,9 @@ Fork-verification is the relevant control here, per GitHub's own guidance: *"Whe
   └───────────────────────────────────────────────────────────────┘
               │
               ▼
-  Check run surfaces on the PR as  "security / placeholder"
+  Check run surfaces on the PR as  "security / Placeholder"
+  (caller job `name:` / called job `name:` — CONFIRM the exact string on the
+   first live run and record it; Phase 18 needs it verbatim. See A3.)
   Run appears in Actions tab under the CALLER's name: "PR Security"
   Merge is NOT blocked (no branch protection required checks yet — Phase 18)
 
@@ -296,7 +300,7 @@ Optional keys supported for `github-actions`, all deferred as out of scope for D
 ### Pitfall 2: Dependabot silently does nothing until the config is on the default branch
 
 **What goes wrong:** `.github/dependabot.yml` is added in the phase PR, the PR sits open, and no Dependabot activity ever appears — the phase looks broken.
-**Why it happens:** Dependabot reads its configuration from the repository's **default branch** only (`main` here `[VERIFIED: gh repo view --json defaultBranchRef]`). An unmerged config is inert.
+**Why it happens:** Dependabot reads its configuration and scans manifests on the repository's **default branch** only unless `target-branch` overrides it `[CITED: dependabot-options-reference, `target-branch` — "By default, Dependabot checks for manifest files on the default branch"]`. This repo's default branch is `main` `[VERIFIED: gh repo view --json defaultBranchRef]`. An unmerged config is inert.
 **How to avoid:** Plan the phase in two observable stages — (1) open PR, observe the workflow run for criteria 1-3; (2) merge to `main`, then observe the Dependabot job for criterion #4. The planner must model this merge as an explicit, sequenced step, and per the project's irreversible-action rules it should be a confirm-with-user checkpoint rather than an autonomous action.
 **Warning signs:** A plan whose final verification step assumes everything is provable from a single open PR.
 
@@ -381,10 +385,21 @@ gh run view --log                   # confirm the checkout step actually execute
 
 ```bash
 gh pr view <N> --json mergeable,mergeStateStatus,statusCheckRollup
-# Expect mergeable: MERGEABLE — no required checks configured (Phase 18 adds those)
+# Expect mergeable: MERGEABLE — no required status checks configured (Phase 18 adds those)
+
+# Classic branch protection — currently 404 "Branch not protected".
+# DO NOT stop here: a 404 is a FALSE NEGATIVE when rulesets are in use.
 gh api repos/OttawaCloudConsulting/security-platform/branches/main/protection 2>&1
-# Expect 404 "Branch not protected" — confirms nothing can block the merge today
+
+# Rulesets — the authoritative check on this repo:
+gh api repos/OttawaCloudConsulting/security-platform/rules/branches/main
+# Verified 2026-09-10: an active repository ruleset "Default" (id 14243983) applies to `main`
+# with exactly two rules — `deletion` and `non_fast_forward`. There is NO
+# `required_status_checks` rule, so no check can block a merge today.
+# Pass condition: no object with "type":"required_status_checks" in the array.
 ```
+
+`[VERIFIED: gh api …/rules/branches/main and …/rulesets, 2026-09-10]`
 
 ## State of the Art
 
@@ -447,6 +462,25 @@ Do **not** introduce pytest/jest here. A test framework would be scaffolding wit
 Dependabot version-update runs cannot be triggered through the REST API; the only manual trigger is the **"Check for updates"** button under Insights → Dependency graph → Dependabot `[ASSUMED — no trigger endpoint found in the REST surface this session; not exhaustively verified]`. Combined with the default-branch-only rule (Pitfall 2), this means: if `actions/checkout` is pinned to the newest SHA (v7.0.1), Dependabot's first run finds nothing and opens **no PR** — criterion #4 becomes unobservable and can only be inferred.
 
 **Recommended plan design:** pin the initial commit to the **v7.0.0** SHA `9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7`. It is a real, canonical, tagged release commit, so every static check above passes. After the phase PR merges to `main`, Dependabot's first run has a genuine v7.0.1 upgrade available and opens a real bump PR. **That PR is the direct evidence for criterion #4**, and merging it leaves the repo on the current SHA — the intended end state — with the wiring demonstrably proven rather than assumed.
+
+**Known weakness in this strategy (A7).** It assumes Dependabot determines the *current* version by resolving the pinned SHA back to its tag (`9c091bb…` → `v7.0.0`) and then compares against the latest release. The docs caveat about untagged commits (*"If the commit you use is not associated with any tag, Dependabot will update the Actions to the latest commit"*) strongly implies that SHA→tag mechanism, but it is **not stated explicitly and was not verified this session**. If Dependabot instead reads the trailing `# v7` comment as the current version, it may conclude "v7 is latest" and open nothing.
+
+**Therefore the criterion-#4 verification step must branch, not just look for a PR:**
+
+```bash
+# 1. Did a PR appear?
+gh pr list --author "app/dependabot" --json number,title,files
+
+# 2. If NO PR: do NOT conclude failure. Read the Dependabot job log
+#    (Insights → Dependency graph → Dependabot → last update job) and classify:
+#      "up to date / no updates needed"  → wiring PROVEN, no upgrade was available
+#                                          (re-check that the pin really is v7.0.0)
+#      any error / config parse failure  → wiring BROKEN — stop and report per the
+#                                          project's STOP → REPORT → WAIT rule
+#      no job ran at all                 → config not on the default branch (Pitfall 2)
+```
+
+Distinguishing these three outcomes is what turns a null result into information. A missing PR alone proves nothing either way.
 
 Alternative if the user prefers pinning latest immediately: accept a successful Dependabot job log showing "up to date, no updates needed" as proof of wiring, and record criterion #4 as *inferred, not witnessed*. Flag this tradeoff to the user; do not choose silently.
 
@@ -513,6 +547,7 @@ Alternative if the user prefers pinning latest immediately: accept a successful 
 | A4 | Dependabot-authored PRs receive a read-only `GITHUB_TOKEN` with no secret access | Pitfall 9 | Forward-looking only; affects Phase 17, not Phase 14 |
 | A5 | `.yamllint`-less default yamllint flags `truthy` on the `on:` key and `document-start` | Pitfall 5 | Low — the recommended override is harmless if unnecessary |
 | A6 | Homebrew `actionlint` 1.7.12 works on this Darwin 25.6 / arm64 machine | Environment Availability | Low — fallback is push-and-observe |
+| A7 | Dependabot determines an action's current version by resolving the pinned SHA back to its tag (not by parsing the trailing `# v7` comment) | Validation Architecture, Open Question 3 | The deliberate v7.0.0 pin would produce no bump PR and criterion #4 stays unwitnessed. Mitigated by the three-way job-log branch above — the phase still passes via the "inferred" path, it just doesn't get the stronger evidence |
 
 ## Open Questions
 
@@ -528,10 +563,11 @@ Alternative if the user prefers pinning latest immediately: accept a successful 
 
 3. **Should criterion #4 be witnessed (deliberate v7.0.0 pin) or inferred (pin latest, accept a clean Dependabot job log)?**
    - What we know: both satisfy the letter of CICD-05; only the first satisfies "Dependabot opens a pull request... when a pinned action publishes a newer release" as an *observed* fact.
-   - Recommendation: witnessed — pin v7.0.0 `9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0`, let Dependabot produce the v7.0.1 bump, merge it. Confirm with the user during planning; it is a visible, slightly unusual choice that deserves an explicit yes.
+   - What's unclear: whether the witnessed path actually fires — see **A7**; the strategy depends on Dependabot resolving SHA→tag rather than reading the version comment.
+   - Recommendation: witnessed — pin v7.0.0 `9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0`, let Dependabot produce the v7.0.1 bump, merge it. Confirm with the user during planning; it is a visible, slightly unusual choice that deserves an explicit yes. The plan must carry the A7 fallback so a null result is diagnosed, not misread as failure.
 
 4. **Any org-level Actions governance that could conflict?**
-   - What we know: repo-level is permissive — `enabled: true`, `allowed_actions: "all"`, `sha_pinning_required: false` `[VERIFIED: gh api …/actions/permissions]`. STATE.md flags "confirm no org-level workflow governance conflicts before authoring."
+   - What we know: repo-level is permissive — `enabled: true`, `allowed_actions: "all"`, `sha_pinning_required: false` `[VERIFIED: gh api …/actions/permissions]`. Branch governance on `main` is an active ruleset (`Default`, id 14243983) enforcing only `deletion` and `non_fast_forward` — no required status checks, so nothing this phase adds can block a merge `[VERIFIED: gh api …/rules/branches/main]`. Note this also means **`main` cannot be force-pushed**, which is fine for a normal PR merge. STATE.md flags "confirm no org-level workflow governance conflicts before authoring."
    - What's unclear: org-level policy — the current token lacks `admin:org` scope, so it could not be read this session.
    - Recommendation: repo-level permissiveness plus the fact that `actions/*` is always allowed makes a conflict very unlikely. Proceed; if the first run is blocked by policy the error message will name the policy.
 
