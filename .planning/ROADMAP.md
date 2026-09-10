@@ -271,7 +271,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 13-02-PLAN.md -- Authenticated gh_api_get, whitespace-tolerant JSON parsing, resolve_latest_in_major
+- [x] 13-02-PLAN.md -- Authenticated gh_api_get, whitespace-tolerant JSON parsing, resolve_latest_in_major
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -313,4 +313,4 @@ Note: Phase 11 depends on Phase 10. Phase 12 depends on Phases 10 and 11. Phase 
 | 10. Cross-Platform Install Script | 2/2 | Complete   | 2026-03-18 | - |
 | 11. File-Pattern Hook Configuration | v1.1 | 1/1 | Complete | 2026-03-22 |
 | 12. Repo Setup Script | v1.1 | 1/1 | Complete | 2026-03-22 |
-| 13. Maintenance and Validation | v1.1 | 1/7 | In Progress | - |
+| 13. Maintenance and Validation | v1.1 | 2/7 | In Progress|  |
