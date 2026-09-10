@@ -625,6 +625,46 @@ attempt_install() {
   is_installed "$tool" "$version"
 }
 
+# Set once log_update_failure() has warned the user, so the "here's where
+# the log is" notice is emitted once per run, not once per failed tool.
+_UPDATE_LOG_WARNED=false
+
+# log_update_failure <tool> <pinned> [fallback]
+#
+# Appends one plain-text line to $REPO_ROOT/$UPDATE_LOG_NAME recording a
+# failed update attempt. $REPO_ROOT is the repo the user ran `update` in,
+# not this script's own checkout (D-07).
+#
+# Unlike write_config, this function ALWAYS appends — it never skips
+# because the target already exists; that is the one behaviour that must
+# differ from write_config's "exists, skipping" guard.
+#
+# The log's entire content is a UTC timestamp, tool name, and version
+# strings. It must NEVER contain a token, an Authorization header, a curl
+# command, or an environment dump.
+# shellcheck disable=SC2329  # invoked by the update loop added in a later plan
+log_update_failure() {
+  local tool="$1" pinned="$2" fallback="${3:-}"
+  local logfile="${REPO_ROOT}/${UPDATE_LOG_NAME}"
+  local fallback_field installed_field
+
+  if [[ -n "$fallback" ]]; then
+    fallback_field="fallback=${fallback}"
+  else
+    fallback_field="fallback=(unresolved)"
+  fi
+  installed_field="installed=$(get_installed_version "$tool")"
+
+  printf "%s %-14s pinned=%-12s %s %s\n" \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$tool" "$pinned" "$fallback_field" "$installed_field" \
+    >> "$logfile"
+
+  if [[ "$_UPDATE_LOG_WARNED" = false ]]; then
+    _UPDATE_LOG_WARNED=true
+    warn "One or more tools failed to update. See ${logfile}"
+  fi
+}
+
 install_all_tools() {
   mkdir -p "$INSTALL_DIR"
   export PATH="$INSTALL_DIR:$PATH"
