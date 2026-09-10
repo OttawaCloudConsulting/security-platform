@@ -59,8 +59,8 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
   3. Every `uses:` reference in the workflows is pinned to a full commit SHA with a human-readable version comment.
   4. Dependabot opens a pull request against this repo when a pinned action publishes a newer release.
 **Plans**: 3 plans
-- [ ] 14-01-PLAN.md — Create `.github/` tree: callable `security.yml`, `pull_request` caller `pr-security.yml`, `dependabot.yml`, `.yamllint`; static gate
-- [ ] 14-02-PLAN.md — Push branch, open PR, observe the green PR-triggered run and capture the check-run name (criteria 1-2)
+- [ ] 14-01-PLAN.md — Create root `.github/` tree in `repos/security-platform/`: callable `security.yml`, `pull_request` caller `pr-security.yml`, `dependabot.yml`; static gate
+- [ ] 14-02-PLAN.md — Push the product-repo branch, open PR, observe the green PR-triggered run and capture the check-run name (criteria 1-2)
 - [ ] 14-03-PLAN.md — Human-confirmed merge to `main`, then observe and classify Dependabot's first run (criterion 4 / CICD-05)
 
 ### Phase 15: Five Parallel Scan Jobs
