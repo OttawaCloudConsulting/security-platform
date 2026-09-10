@@ -15,6 +15,7 @@ set -euo pipefail
 #   bash setup.sh configure           # generate config files only (no install)
 #   bash setup.sh check               # show installed vs expected versions
 #   bash setup.sh update [tool]       # update outdated tools (or a single named tool)
+#   bash setup.sh doctor              # verify every tool is on PATH and can execute its version command
 #   bash setup.sh --verbose           # verbose output
 #   bash setup.sh --help              # show help
 
@@ -96,6 +97,8 @@ Commands:
   update <tool>
               Update only the named tool (must immediately follow "update"),
               e.g. bash setup.sh update trivy
+  doctor      Verify every tool is on PATH and can execute its version
+              command (offline; does not check pinned versions)
 
 Options:
   -v, --verbose    Show detailed progress output
@@ -452,6 +455,69 @@ get_installed_version() {
   fi
 
   echo "${version:-(unknown)}"
+}
+
+# tool_health <tool>
+#
+# Answers MAINT-03 directly: is this tool on PATH, and can it execute its
+# version command? Echoes a single pipe-delimited record STATUS|DETAIL|VALUE
+# on stdout and always returns 0 -- the caller interprets the record.
+#
+# Deliberately does NOT reuse is_installed/get_installed_version: both
+# discard the version command's own exit status via `|| true`, which
+# structurally cannot distinguish "broken" from "output format changed".
+# That discarded exit status is exactly what this function exists to keep.
+#
+# The capture happens in an `if`/`else` around the command substitution
+# (not a set +e/set -e bracket, which would leave -e disabled if anything
+# returns in between) so `$?` inside the else branch is the tool's own exit
+# status, captured before any pipe -- piping into head/grep would make `$?`
+# belong to the last pipeline element instead.
+# shellcheck disable=SC2329  # invoked from run_doctor
+tool_health() {
+  local tool="$1"
+
+  if ! command -v "$tool" > /dev/null 2>&1; then
+    echo "NOT_ON_PATH||"
+    return 0
+  fi
+
+  local out rc
+  if [[ "$tool" = "gitleaks" ]]; then
+    if out="$(gitleaks version 2>&1 < /dev/null)"; then
+      rc=0
+    else
+      rc=$?
+    fi
+  else
+    if out="$("$tool" --version 2>&1 < /dev/null)"; then
+      rc=0
+    else
+      rc=$?
+    fi
+  fi
+
+  local first_line
+  first_line="$(printf '%s' "$out" | head -1)"
+  # Sanitise: a tool's first output line could itself contain a `|`, which
+  # would corrupt the STATUS|DETAIL|VALUE record for the caller.
+  first_line="${first_line//|/ }"
+  first_line="${first_line:0:60}"
+
+  if [[ "$rc" -ne 0 ]]; then
+    echo "BROKEN|exit ${rc}: ${first_line}|"
+    return 0
+  fi
+
+  local ver
+  ver="$(printf '%s' "$first_line" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)" || ver=""
+
+  if [[ -z "$ver" ]]; then
+    echo "UNPARSEABLE|${first_line}|"
+    return 0
+  fi
+
+  echo "OK|${first_line}|${ver}"
 }
 
 # shellcheck disable=SC2329  # invoked by _install_gitleaks, _install_hadolint
@@ -1141,10 +1207,12 @@ run_check() {
     local status
     if [[ "$installed" = "(not found)" ]]; then
       status="MISSING"
+      PROBLEM_COUNT=$((PROBLEM_COUNT + 1))
     elif [[ "$installed" = "$expected" ]]; then
       status="ok"
     else
       status="MISMATCH"
+      PROBLEM_COUNT=$((PROBLEM_COUNT + 1))
     fi
 
     printf "%-14s %-14s %-14s %s\n" "$tool" "$expected" "$installed" "$status"
@@ -1167,6 +1235,91 @@ run_check() {
   echo ""
 }
 
+# run_doctor
+#
+# Answers "does my environment work", not "am I on the right version" (that
+# is run_check's job). Reports, per tool, whether it is on PATH and whether
+# its version command executes and produces parseable output -- MAINT-03.
+#
+# Three mandatory deltas from run_check, despite the copied table shape:
+#   1. Hardcodes the six tool names -- doctor needs names, not pinned
+#      versions, and must never call ensure_versions_conf (six GitHub API
+#      calls when versions.conf is absent; doctor must stay fully offline).
+#   2. Does NOT export PATH="$INSTALL_DIR:$PATH". Doing so would mask the
+#      exact failure MAINT-03 exists to detect -- doctor must see the user's
+#      real PATH, untouched. Do not "fix" this later.
+#   3. Status vocabulary is NOT_ON_PATH/BROKEN/UNPARSEABLE/OK, distinct from
+#      check's MISSING/ok/MISMATCH.
+# shellcheck disable=SC2329  # invoked from the doctor dispatcher branch
+run_doctor() {
+  echo ""
+  echo "Security Tool Health Check"
+  echo "---------------------------"
+  printf "%-14s %-14s %s\n" "Tool" "Status" "Detail"
+  printf "%-14s %-14s %s\n" "----" "------" "------"
+
+  local tools=(pre-commit trivy syft grype gitleaks hadolint)
+  local tool record status detail value
+
+  for tool in "${tools[@]}"; do
+    record="$(tool_health "$tool")"
+    IFS='|' read -r status detail value <<< "$record"
+
+    case "$status" in
+      OK)
+        printf "%-14s %-14s %s\n" "$tool" "$status" "${value} (${detail})"
+        ;;
+      *)
+        printf "%-14s %-14s %s\n" "$tool" "$status" "$detail"
+        PROBLEM_COUNT=$((PROBLEM_COUNT + 1))
+        ;;
+    esac
+  done
+
+  echo ""
+
+  # PATH health. Deliberately does not modify the caller's PATH here -- see
+  # the function comment above. This is what "doctor" answers that "check"
+  # cannot: is
+  # $INSTALL_DIR actually on the user's real PATH, not just on the PATH this
+  # script happens to construct for itself.
+  echo "PATH"
+  echo "----"
+  if [[ -d "$INSTALL_DIR" ]]; then
+    printf "%-14s %s\n" "$INSTALL_DIR" "exists"
+  else
+    printf "%-14s %s\n" "$INSTALL_DIR" "does not exist"
+    PROBLEM_COUNT=$((PROBLEM_COUNT + 1))
+  fi
+
+  if [[ ":$PATH:" == *":$INSTALL_DIR:"* ]]; then
+    printf "%-14s %s\n" "on PATH" "yes"
+  else
+    printf "%-14s %s\n" "on PATH" "no"
+    warn "$INSTALL_DIR is not in your PATH. Add to your shell profile:"
+    warn "  export PATH=\"$INSTALL_DIR:\$PATH\""
+    PROBLEM_COUNT=$((PROBLEM_COUNT + 1))
+  fi
+
+  echo ""
+
+  # Prerequisites, reported rather than gated -- check_prerequisites is
+  # skipped for doctor so this table is what tells the user what's missing,
+  # instead of the process aborting before printing anything (T-13-20).
+  echo "Prerequisites"
+  echo "-------------"
+  local prereq
+  for prereq in git curl python3; do
+    if command -v "$prereq" > /dev/null 2>&1; then
+      printf "%-14s %s\n" "$prereq" "found"
+    else
+      printf "%-14s %s\n" "$prereq" "not found"
+      PROBLEM_COUNT=$((PROBLEM_COUNT + 1))
+    fi
+  done
+  echo ""
+}
+
 # ---------------------------------------------------------------------------
 # Main execution
 # ---------------------------------------------------------------------------
@@ -1176,7 +1329,7 @@ main() {
   # Parse arguments
   for arg in "$@"; do
     case "$arg" in
-      install|configure|setup|check|update) COMMAND="$arg" ;;
+      install|configure|setup|check|update|doctor) COMMAND="$arg" ;;
       -v|--verbose) VERBOSE=true ;;
       -h|--help)    usage; exit 0 ;;
       pre-commit|trivy|syft|grype|gitleaks|hadolint)
@@ -1194,7 +1347,13 @@ main() {
     esac
   done
 
-  check_prerequisites
+  # doctor is a health check, not a version check: it must report missing
+  # prerequisites in its own table (T-13-20) rather than aborting silently
+  # before printing anything, which is what check_prerequisites' hard exit
+  # would otherwise do. Every other command keeps the existing hard gate.
+  if [[ "$COMMAND" != "doctor" ]]; then
+    check_prerequisites
+  fi
 
   case "$COMMAND" in
     install)
@@ -1212,7 +1371,21 @@ main() {
     check)
       REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
       ensure_versions_conf "$REPO_ROOT"
+      # check answers "am I on the right version", so (unlike doctor) it
+      # looks where the tools are actually installed. Without this export, a
+      # user whose shell profile lacks $INSTALL_DIR gets an all-MISSING
+      # table and a spurious exit 1 even on a fully up-to-date machine.
+      export PATH="$INSTALL_DIR:$PATH"
       run_check
+      FAIL_COUNT=$((FAIL_COUNT + PROBLEM_COUNT))
+      ;;
+    doctor)
+      # No REPO_ROOT, no ensure_versions_conf: doctor must stay fully
+      # offline (T-13-05) and needs tool names, not pinned versions. Does
+      # NOT export PATH -- see run_doctor's own comment; doing so here would
+      # mask the exact failure MAINT-03 exists to detect.
+      run_doctor
+      FAIL_COUNT=$((FAIL_COUNT + PROBLEM_COUNT))
       ;;
     update)
       # Tolerant form, matching check) — the failure log goes to the repo
