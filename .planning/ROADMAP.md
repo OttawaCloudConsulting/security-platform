@@ -73,7 +73,12 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
   3. The SCA job runs a Trivy/Grype filesystem scan across the repo and reports the packages and vulnerabilities it detects, with no per-ecosystem configuration required.
   4. Each job writes its machine-readable output (SARIF and/or JSON) to a file on the runner, even though nothing consumes those files yet.
   5. A job that reports findings still leaves the pull request mergeable.
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 15-01-PLAN.md — Cut the phase branch, scope four pre-commit hooks away from `fixtures/`, and author the fixture tree (Dockerfile, main.tf, package.json + generated lock, README)
+- [ ] 15-02-PLAN.md — Author and run `scripts/smoke-scans.sh`, a local pass/fail gate proving all five scanner invocations yield real, non-empty results
+- [ ] 15-03-PLAN.md — Replace the `placeholder` job with five SHA-pinned, `needs:`-free, step-tolerated scan jobs in `security.yml`; validate statically
+- [ ] 15-04-PLAN.md — Push, open the PR, and collect live evidence: five concurrent `security / *` checks, all green, PR MERGEABLE
+- [ ] 15-05-PLAN.md — Human sign-off on concurrency and report-only behaviour, then merge to `main` and close out the phase's open questions
 
 ### Phase 16: SCA Ecosystem Coverage
 **Goal**: The SCA job audits each dependency ecosystem this practice actually uses, rather than relying on the generic filesystem sweep alone.
@@ -151,7 +156,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 12. Repo Setup Script | v1.1 | 1/1 | Complete | 2026-03-22 |
 | 13. Maintenance and Validation | v1.1 | 8/8 | Complete | 2026-09-10 |
 | 14. Workflow Foundation and Action Pinning | v2.0 | 3/3 | Complete   | 2026-09-10 |
-| 15. Five Parallel Scan Jobs | v2.0 | 0/? | Not started | - |
+| 15. Five Parallel Scan Jobs | v2.0 | 0/5 | Planned | - |
 | 16. SCA Ecosystem Coverage | v2.0 | 0/? | Not started | - |
 | 17. SARIF Upload and Artifact Retention | v2.0 | 0/? | Not started | - |
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 0/? | Not started | - |
