@@ -450,7 +450,7 @@ ensure_pipx() {
       log "pipx installed with --break-system-packages"
     else
       err "Failed to install pipx. Install manually: https://pipx.pypa.io/stable/installation/"
-      exit 1
+      return 1
     fi
   fi
 
@@ -493,8 +493,8 @@ run_installer() {
 
 # shellcheck disable=SC2329  # invoked indirectly via run_installer
 _install_precommit() {
-  ensure_pipx
-  pipx install "pre-commit==${PRECOMMIT_VERSION}"
+  ensure_pipx || return 1
+  pipx install --force "pre-commit==${PRECOMMIT_VERSION}"
 }
 
 # shellcheck disable=SC2329  # invoked indirectly via run_installer
@@ -589,7 +589,10 @@ install_all_tools() {
   # PATH verification
   case ":$PATH:" in
     *":$INSTALL_DIR:"*) ;;
-    *) warn "$INSTALL_DIR is not in your PATH. Add to your shell profile:" ;;
+    *)
+      warn "$INSTALL_DIR is not in your PATH. Add to your shell profile:"
+      warn "  export PATH=\"$INSTALL_DIR:\$PATH\""
+      ;;
   esac
 }
 
