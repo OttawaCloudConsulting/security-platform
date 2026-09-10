@@ -844,51 +844,62 @@ run_check() {
 # Main execution
 # ---------------------------------------------------------------------------
 
-# Parse arguments
-for arg in "$@"; do
-  case "$arg" in
-    install|configure|setup|check) COMMAND="$arg" ;;
-    -v|--verbose) VERBOSE=true ;;
-    -h|--help)    usage; exit 0 ;;
-    *)            err "Unknown argument: $arg"; usage; exit 1 ;;
+# shellcheck disable=SC2329  # invoked from the main-guard at end of file
+main() {
+  # Parse arguments
+  for arg in "$@"; do
+    case "$arg" in
+      install|configure|setup|check) COMMAND="$arg" ;;
+      -v|--verbose) VERBOSE=true ;;
+      -h|--help)    usage; exit 0 ;;
+      *)            err "Unknown argument: $arg"; usage; exit 1 ;;
+    esac
+  done
+
+  check_prerequisites
+
+  case "$COMMAND" in
+    install)
+      REPO_ROOT="$(pwd)"
+      ensure_versions_conf "$REPO_ROOT"
+      install_all_tools
+      print_summary
+      ;;
+    configure)
+      require_git_repo
+      REPO_ROOT="$(git rev-parse --show-toplevel)"
+      ensure_versions_conf "$REPO_ROOT"
+      generate_all_configs "$REPO_ROOT"
+      ;;
+    check)
+      REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+      ensure_versions_conf "$REPO_ROOT"
+      run_check
+      ;;
+    setup)
+      require_git_repo
+      REPO_ROOT="$(git rev-parse --show-toplevel)"
+      ensure_versions_conf "$REPO_ROOT"
+      install_all_tools
+      print_summary
+      generate_all_configs "$REPO_ROOT"
+      activate_hooks "$REPO_ROOT"
+      echo ""
+      info "Setup complete. Run 'pre-commit run --all-files' to validate."
+      ;;
   esac
-done
 
-check_prerequisites
+  if [[ "$FAIL_COUNT" -gt 0 ]]; then
+    exit 1
+  fi
 
-case "$COMMAND" in
-  install)
-    REPO_ROOT="$(pwd)"
-    ensure_versions_conf "$REPO_ROOT"
-    install_all_tools
-    print_summary
-    ;;
-  configure)
-    require_git_repo
-    REPO_ROOT="$(git rev-parse --show-toplevel)"
-    ensure_versions_conf "$REPO_ROOT"
-    generate_all_configs "$REPO_ROOT"
-    ;;
-  check)
-    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-    ensure_versions_conf "$REPO_ROOT"
-    run_check
-    ;;
-  setup)
-    require_git_repo
-    REPO_ROOT="$(git rev-parse --show-toplevel)"
-    ensure_versions_conf "$REPO_ROOT"
-    install_all_tools
-    print_summary
-    generate_all_configs "$REPO_ROOT"
-    activate_hooks "$REPO_ROOT"
-    echo ""
-    info "Setup complete. Run 'pre-commit run --all-files' to validate."
-    ;;
-esac
+  exit 0
+}
 
-if [[ "$FAIL_COUNT" -gt 0 ]]; then
-  exit 1
+# ---------------------------------------------------------------------------
+# Main-guard: only dispatch when executed, not when sourced (for testing)
+# ---------------------------------------------------------------------------
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
 fi
-
-exit 0
