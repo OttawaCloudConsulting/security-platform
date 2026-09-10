@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Distribution Packaging
 status: executing
-stopped_at: Phase 13 Plan 03 complete
-last_updated: "2026-09-10T01:51:27.778Z"
+stopped_at: Phase 13 Plan 04 complete
+last_updated: "2026-09-10T02:09:50.157Z"
 last_activity: 2026-09-10
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 11
-  completed_plans: 7
-  percent: 64
+  completed_plans: 8
+  percent: 73
 ---
 
 # Project State
@@ -26,18 +26,18 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 13 of 13 (Maintenance and Validation)
-Plan: 3 of 7 (complete)
-Status: Executing — Plan 03 complete, Plan 04 next
+Plan: 4 of 7 (complete)
+Status: Executing — Plan 04 complete, Plan 05 next
 Last activity: 2026-09-10
 
-Progress: [██████░░░░] 64%
+Progress: [███████░░░] 73%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 17
-- Total execution time: ~2h 0min
+- Total plans completed: 18
+- Total execution time: ~2h 40min
 
 **Recent Trend:**
 
@@ -46,6 +46,7 @@ Progress: [██████░░░░] 64%
 - Phase 13 P01: ~25min
 - Phase 13 P02: ~35min
 - Phase 13 P03: ~25min
+- Phase 13 P04: ~40min
 
 ## Accumulated Context
 
@@ -64,6 +65,9 @@ Progress: [██████░░░░] 64%
 - [Phase 13]: Empty API body (rate-limited) and major-absent-from-body are distinct failure paths in resolve_latest_in_major — only the former warns
 - [Phase 13]: attempt_install decides success solely via is_installed re-probe, discarding the installer exit code (verified pipx exit-0-no-op)
 - [Phase 13]: log_update_failure always appends, never skips on an existing file, diverging deliberately from write_config's exists-skip pattern
+- [Phase 13]: update_one_tool's three pre-attempt-2 guards (empty fallback, identical-to-pin, downgrade) converge on one give-up path so FAIL_COUNT/FAILED are recorded exactly once
+- [Phase 13]: A successful attempt-2 fallback is reported as a distinct `fallback` status — does not increment FAIL_COUNT and never rewrites versions.conf
+- [Phase 13]: update)'s dispatcher branch deliberately does not map PROBLEM_COUNT (plan 05) into FAIL_COUNT, since a successful fallback legitimately shows MISMATCH in the post-update recheck
 
 ### Pending Todos
 
@@ -80,6 +84,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-09-10T01:49:24.046Z
-Stopped at: Phase 13 Plan 03 complete
-Resume file: .planning/phases/13-maintenance-and-validation/13-04-PLAN.md
+Last session: 2026-09-10T02:09:50.157Z
+Stopped at: Phase 13 Plan 04 complete
+Resume file: .planning/phases/13-maintenance-and-validation/13-05-PLAN.md
