@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Distribution Packaging
 status: executing
-stopped_at: Phase 13 Plan 04 complete
-last_updated: "2026-09-10T02:09:50.157Z"
+stopped_at: Phase 13 Plan 05 complete
+last_updated: "2026-09-10T02:28:44.169Z"
 last_activity: 2026-09-10
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 11
-  completed_plans: 8
-  percent: 73
+  completed_plans: 9
+  percent: 75
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 13 of 13 (Maintenance and Validation)
-Plan: 4 of 7 (complete)
-Status: Executing — Plan 04 complete, Plan 05 next
+Plan: 5 of 7 (complete)
+Status: Executing — Plan 05 complete, Plan 06 next
 Last activity: 2026-09-10
 
-Progress: [███████░░░] 73%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -47,6 +47,7 @@ Progress: [███████░░░] 73%
 - Phase 13 P02: ~35min
 - Phase 13 P03: ~25min
 - Phase 13 P04: ~40min
+- Phase 13 P05: ~35min
 
 ## Accumulated Context
 
@@ -68,6 +69,9 @@ Progress: [███████░░░] 73%
 - [Phase 13]: update_one_tool's three pre-attempt-2 guards (empty fallback, identical-to-pin, downgrade) converge on one give-up path so FAIL_COUNT/FAILED are recorded exactly once
 - [Phase 13]: A successful attempt-2 fallback is reported as a distinct `fallback` status — does not increment FAIL_COUNT and never rewrites versions.conf
 - [Phase 13]: update)'s dispatcher branch deliberately does not map PROBLEM_COUNT (plan 05) into FAIL_COUNT, since a successful fallback legitimately shows MISMATCH in the post-update recheck
+- [Phase 13]: doctor is a distinct subcommand with its own status vocabulary (NOT_ON_PATH/BROKEN/UNPARSEABLE/OK), not a column on check
+- [Phase 13]: check now exports INSTALL_DIR onto PATH and exits non-zero on MISSING/MISMATCH; doctor deliberately does not export PATH
+- [Phase 13]: PROBLEM_COUNT is incremented in run_check/run_doctor but mapped into FAIL_COUNT only at the check/doctor dispatcher branches, keeping update's post-recheck exit status unaffected
 
 ### Pending Todos
 
@@ -84,6 +88,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-09-10T02:09:50.157Z
+Last session: 2026-09-10T02:25:59.351Z
 Stopped at: Phase 13 Plan 04 complete
-Resume file: .planning/phases/13-maintenance-and-validation/13-05-PLAN.md
+Resume file: None

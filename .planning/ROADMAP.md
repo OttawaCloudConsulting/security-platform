@@ -283,7 +283,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 13-05-PLAN.md -- doctor subcommand, tool_health probe, check/doctor exit-code contract
+- [x] 13-05-PLAN.md -- doctor subcommand, tool_health probe, check/doctor exit-code contract
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -313,4 +313,4 @@ Note: Phase 11 depends on Phase 10. Phase 12 depends on Phases 10 and 11. Phase 
 | 10. Cross-Platform Install Script | 2/2 | Complete   | 2026-03-18 | - |
 | 11. File-Pattern Hook Configuration | v1.1 | 1/1 | Complete | 2026-03-22 |
 | 12. Repo Setup Script | v1.1 | 1/1 | Complete | 2026-03-22 |
-| 13. Maintenance and Validation | v1.1 | 4/7 | In Progress|  |
+| 13. Maintenance and Validation | v1.1 | 5/7 | In Progress|  |
