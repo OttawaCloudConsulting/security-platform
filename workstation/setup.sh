@@ -28,6 +28,12 @@ RESULTS=""
 FAIL_COUNT=0
 CONFIG_COUNT=0
 
+# Lazily-resolved GitHub auth token. Plain variables for bash 3.2
+# compatibility (no associative arrays). Resolved on first gh_api_get() call,
+# not at file scope, so sourcing this script for tests has no side effects.
+GITHUB_TOKEN_VALUE=""
+GITHUB_TOKEN_RESOLVED=false
+
 GITHUB_API="https://api.github.com/repos"
 
 # Tool GitHub repositories (for version resolution)
@@ -148,26 +154,63 @@ check_prerequisites() {
 # Version resolution
 # ---------------------------------------------------------------------------
 
+# gh_api_get <url>
+#
+# Authenticated GitHub REST wrapper. Every GitHub-touching call in this
+# script routes through here so the token is resolved and sent exactly once,
+# in exactly one place.
+#
+# - Resolves a token lazily, on first call only, from (in order):
+#   $GITHUB_TOKEN, $GH_TOKEN, `gh auth token` (if `gh` is installed). Lazy
+#   resolution keeps sourcing this script free of side effects.
+# - Sends the token as an `Authorization: Bearer` header ONLY — never in the
+#   URL, never echoed, never passed to log/info/warn/err. No `set -x` in this
+#   code path.
+# - Always call as `x=$(gh_api_get "...") || x=""` (or inside an `if`) — see
+#   the "set -e-safe call convention" callers below.
+gh_api_get() {
+  local url="$1"
+
+  if [[ "$GITHUB_TOKEN_RESOLVED" = false ]]; then
+    GITHUB_TOKEN_RESOLVED=true
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+      GITHUB_TOKEN_VALUE="$GITHUB_TOKEN"
+    elif [[ -n "${GH_TOKEN:-}" ]]; then
+      GITHUB_TOKEN_VALUE="$GH_TOKEN"
+    elif command -v gh > /dev/null 2>&1; then
+      GITHUB_TOKEN_VALUE="$(gh auth token 2>/dev/null)" || GITHUB_TOKEN_VALUE=""
+    fi
+  fi
+
+  local curl_args=(-sf -H "X-GitHub-Api-Version: 2022-11-28")
+  if [[ -n "$GITHUB_TOKEN_VALUE" ]]; then
+    curl_args+=(-H "Authorization: Bearer ${GITHUB_TOKEN_VALUE}")
+  fi
+
+  curl "${curl_args[@]}" "$url" 2>/dev/null
+}
+
 resolve_latest_version() {
   local repo="$1"
   local version
 
   # Try /releases/latest first (most repos)
-  version=$(curl -sf "${GITHUB_API}/${repo}/releases/latest" 2>/dev/null \
-    | grep -o '"tag_name": "[^"]*"' \
+  version=$(gh_api_get "${GITHUB_API}/${repo}/releases/latest" \
+    | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' \
     | head -1 \
-    | sed 's/"tag_name": "v\{0,1\}\(.*\)"/\1/')
+    | sed 's/.*"v\{0,1\}\([^"]*\)"$/\1/') || version=""
 
   # Fall back to tags (some repos like shellcheck-py don't use releases)
   if [[ -z "$version" ]]; then
-    version=$(curl -sf "${GITHUB_API}/${repo}/tags" 2>/dev/null \
-      | grep -o '"name": "[^"]*"' \
+    version=$(gh_api_get "${GITHUB_API}/${repo}/tags" \
+      | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' \
       | head -1 \
-      | sed 's/"name": "v\{0,1\}\(.*\)"/\1/')
+      | sed 's/.*"v\{0,1\}\([^"]*\)"$/\1/') || version=""
   fi
 
   if [[ -z "$version" ]]; then
     err "Failed to resolve latest version for ${repo}"
+    warn "You may be GitHub rate-limited (60 req/hr unauthenticated). Set GITHUB_TOKEN or GH_TOKEN to raise this to 5000/hr."
     return 1
   fi
 
