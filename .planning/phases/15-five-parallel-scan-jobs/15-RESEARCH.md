@@ -344,6 +344,8 @@ fixtures/
 
 **Follow-up steps must carry `if: always()`** — otherwise a failed (but tolerated) scan step short-circuits SARIF conversion and the evidence step, and Success Criteria #4 fails.
 
+**Corollary — never chain two natively-failing commands in one `run:` block.** GitHub's default shell is `bash -e`. Under D-04 every scanner is *expected* to exit 1, so a two-command `run:` silently drops the second command. This bites Gitleaks specifically, which has no dual-output flag: chaining the SARIF and JSON invocations means the JSON file is never written and the `ls -l` evidence step then fails the job. Split them into two steps, the second carrying `if: always()`. `continue-on-error` tolerates the *step*; it does not disable `-e` *inside* the step.
+
 ### Pattern 3: One scan → both formats
 
 Running each tool twice (as the reference workflow does for Semgrep and Trivy) doubles runtime, re-pulls databases, and risks JSON/SARIF disagreeing. All three tools support single-invocation dual output:
@@ -424,8 +426,9 @@ Covered in full at §Corrections C-1. Warning sign: Trivy logs `This OS version 
 ### Pitfall 7: `severity: HIGH,CRITICAL` filters the report file, not just the exit code
 
 **What goes wrong:** the reference's Trivy container step passes `severity: 'HIGH,CRITICAL'`. That filter applies to the JSON/SARIF **output** too — MEDIUM/LOW findings vanish from the artifact that Phase 17 will feed to DefectDojo.
-**How to avoid:** for the container job, emit the full-severity report and use `--exit-code 1 --severity HIGH,CRITICAL` semantics deliberately, or split: full report for the file, filtered run for the gate. Given report-only + Phase 17 artifact intent, prefer a **full-severity report file**.
-`[CITED: trivy CLI --severity semantics]` `[ASSUMED: that Phase 17/DefectDojo wants full severity — confirm]`
+**Decision taken in the code examples:** keep `--severity HIGH,CRITICAL`. D-04 says preserve the reference workflow's native severity semantics so Phase 18 can flip gating back on unchanged, and the reference passes `severity: 'HIGH,CRITICAL'`. The examples therefore emit *filtered* reports **by design** — this is a deliberate choice, not an oversight.
+**What the planner must carry forward:** Phase 17 (CICD-03, DefectDojo artifacts) has to decide whether DefectDojo wants full-severity data. If it does, the fix is either dropping `--severity` from the report run and moving the threshold to the `--exit-code` gate in Phase 18, or adding a second full-severity report run. Do not "fix" it silently in Phase 15.
+`[CITED: trivy CLI --severity semantics]` — see Assumptions Log A3.
 
 ### Pitfall 8: `needs:` silently serializes the matrix
 
@@ -584,11 +587,18 @@ jobs:
           sudo tar xzf gitleaks.tar.gz -C /usr/local/bin gitleaks
 
       # `detect` is deprecated (absent from --help on 8.30.1); `git` is current.
-      - name: Run Gitleaks
+      # Gitleaks has no dual-output flag, so this is TWO steps, not one chained
+      # `run:` block — see Pattern 2, "never chain two natively-failing commands".
+      - name: Run Gitleaks (SARIF)
         continue-on-error: true          # D-04
         run: |
           gitleaks git . --no-banner --redact \
             --report-format sarif --report-path gitleaks.sarif
+
+      - name: Run Gitleaks (JSON)
+        if: always()                     # previous step exits 1 on findings
+        continue-on-error: true          # D-04
+        run: |
           gitleaks git . --no-banner --redact \
             --report-format json --report-path gitleaks-results.json
 
@@ -685,7 +695,12 @@ Measured: `trivy fs` reports **9 npm vulnerabilities** from this lockfile — in
     hooks:
       - id: hadolint
         types: [dockerfile]
-        exclude: ^fixtures/          # ADD — fixture Dockerfile trips DL3006/DL3007/DL3018
+        exclude: ^fixtures/          # ADD — the recommended digest-pinned debian
+                                     # Dockerfile may pass hadolint clean, but any
+                                     # future fixture edit (adding RUN apk/apt lines,
+                                     # a mutable tag) trips DL3006/DL3007/DL3018.
+                                     # Verified: an `alpine:3.14 + apk add curl`
+                                     # variant exits 1 on DL3018.
 
   - repo: local
     hooks:
@@ -810,7 +825,9 @@ This is a CI-workflow phase; there is no unit-test framework in the target repo.
 | Quick run command | `actionlint repos/security-platform/.github/workflows/*.yml` |
 | Full suite command | `bash` the smoke block below, then `gh api .../check-runs` on the live PR |
 
-Baseline confirmed: `actionlint` exits 0 on the current workflows; `yamllint -d relaxed` emits one line-length warning (81 > 80) and exits 0 (relaxed treats it as a warning). `[VERIFIED: run locally]`
+Baseline confirmed: `actionlint` exits 0 on the current workflows; `yamllint -d relaxed` emits one line-length warning (81 > 80) and exits 0 (relaxed treats it as a warning).
+
+**The proposed workflow in §Code Examples was itself linted**: extracted to a scratch file and run through `actionlint` 1.7.12 (with shellcheck 0.11 integration active) → **exit 0, no findings**; `yamllint -d relaxed` → exit 0 (line-length warnings only, same class as the existing file). Structural assertions also pass: 5 jobs (`sast`, `iac`, `sca`, `container`, `secrets`), **no `needs:` on any job**, `permissions: {contents: read}`. `[VERIFIED: run locally]`
 
 ### Phase Requirements → Test Map
 
@@ -918,6 +935,7 @@ This phase builds security tooling rather than an application, so most ASVS cate
 | A4 | The 9 Gitleaks history findings are fake Phase-05 test strings, not live credentials | C-5, Q1 | If any is a real key, this is an active incident, not CI noise. Strong indirect evidence they are fake (they sit in `05-VERIFICATION.md` / `05-02-SUMMARY.md` from a secrets-detection *test*, and GitGuardian's check on PR #5 passed) — **but not directly confirmed with the user** |
 | A5 | `ubuntu-latest` runners have Docker available for the container job's `docker build` | Code Examples | Standard on GitHub-hosted Ubuntu runners; would fail loudly and immediately if not |
 | A6 | Checkov 3.3.17 (CI, via action) has the same `--output-file-path` comma semantics as 3.2.396 (verified locally) | Pattern 3, C-corrections | Files land under different names; the `ls -l` evidence step catches this on the first PR run |
+| A7 | `pip install semgrep==1.177.0` works on `ubuntu-latest` without hitting PEP 668's externally-managed-environment guard | Installation, Code Examples | SAST job fails at install. The reference workflow uses bare `pip install semgrep` and presumably works, but this was not reproduced here. **Fallback:** `pipx install semgrep==1.177.0` (pipx is preinstalled on GitHub-hosted Ubuntu runners), or `python -m pip install --break-system-packages semgrep==1.177.0` |
 
 Everything else in this document is `[VERIFIED]` by a command run in this session or `[CITED]` to official documentation.
 
