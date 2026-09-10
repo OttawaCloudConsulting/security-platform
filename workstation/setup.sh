@@ -836,6 +836,7 @@ update_one_tool() {
 
 install_all_tools() {
   mkdir -p "$INSTALL_DIR"
+  local orig_path="$PATH"
   export PATH="$INSTALL_DIR:$PATH"
 
   info "Installing security tools to $INSTALL_DIR"
@@ -848,7 +849,7 @@ install_all_tools() {
   run_installer "hadolint"   "$HADOLINT_VERSION"    _install_hadolint
 
   # PATH verification
-  case ":$PATH:" in
+  case ":$orig_path:" in
     *":$INSTALL_DIR:"*) ;;
     *)
       warn "$INSTALL_DIR is not in your PATH. Add to your shell profile:"
@@ -867,6 +868,7 @@ install_all_tools() {
 # shellcheck disable=SC2329  # invoked from the update dispatcher branch
 update_all_tools() {
   mkdir -p "$INSTALL_DIR"
+  local orig_path="$PATH"
   export PATH="$INSTALL_DIR:$PATH"
 
   info "Updating security tools in $INSTALL_DIR"
@@ -896,7 +898,7 @@ update_all_tools() {
   done
 
   # PATH verification
-  case ":$PATH:" in
+  case ":$orig_path:" in
     *":$INSTALL_DIR:"*) ;;
     *)
       warn "$INSTALL_DIR is not in your PATH. Add to your shell profile:"

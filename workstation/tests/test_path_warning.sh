@@ -16,6 +16,18 @@ out=$(
   (
     source "$SETUP_SH"
     set +e
+    # shellcheck disable=SC2034  # PRECOMMIT_VERSION dereferenced as a run_installer argument in the sourced setup.sh
+    PRECOMMIT_VERSION="4.2.0"
+    # shellcheck disable=SC2034  # TRIVY_VERSION dereferenced as a run_installer argument in the sourced setup.sh
+    TRIVY_VERSION="0.69.3"
+    # shellcheck disable=SC2034  # SYFT_VERSION dereferenced as a run_installer argument in the sourced setup.sh
+    SYFT_VERSION="1.42.2"
+    # shellcheck disable=SC2034  # GRYPE_VERSION dereferenced as a run_installer argument in the sourced setup.sh
+    GRYPE_VERSION="0.109.1"
+    # shellcheck disable=SC2034  # GITLEAKS_VERSION dereferenced as a run_installer argument in the sourced setup.sh
+    GITLEAKS_VERSION="8.30.0"
+    # shellcheck disable=SC2034  # HADOLINT_VERSION dereferenced as a run_installer argument in the sourced setup.sh
+    HADOLINT_VERSION="2.14.0"
     INSTALL_DIR="$(mktemp -d)"
     trap 'rm -rf "$INSTALL_DIR"' RETURN
     # shellcheck disable=SC2329  # stub: avoid network installers
@@ -32,6 +44,18 @@ out=$(
   (
     source "$SETUP_SH"
     set +e
+    # shellcheck disable=SC2034  # PRECOMMIT_VERSION dereferenced as a run_installer argument in the sourced setup.sh
+    PRECOMMIT_VERSION="4.2.0"
+    # shellcheck disable=SC2034  # TRIVY_VERSION dereferenced as a run_installer argument in the sourced setup.sh
+    TRIVY_VERSION="0.69.3"
+    # shellcheck disable=SC2034  # SYFT_VERSION dereferenced as a run_installer argument in the sourced setup.sh
+    SYFT_VERSION="1.42.2"
+    # shellcheck disable=SC2034  # GRYPE_VERSION dereferenced as a run_installer argument in the sourced setup.sh
+    GRYPE_VERSION="0.109.1"
+    # shellcheck disable=SC2034  # GITLEAKS_VERSION dereferenced as a run_installer argument in the sourced setup.sh
+    GITLEAKS_VERSION="8.30.0"
+    # shellcheck disable=SC2034  # HADOLINT_VERSION dereferenced as a run_installer argument in the sourced setup.sh
+    HADOLINT_VERSION="2.14.0"
     INSTALL_DIR="$(mktemp -d)"
     trap 'rm -rf "$INSTALL_DIR"' RETURN
     # shellcheck disable=SC2329  # stub: avoid network installers
