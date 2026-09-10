@@ -941,24 +941,24 @@ Everything else in this document is `[VERIFIED]` by a command run in this sessio
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **The 9 Gitleaks findings in the target repo's git history — accept as noise, or baseline them?**
+1. **RESOLVED — accept as noise; human-confirmed at 15-05 Task 1.** The 9 Gitleaks findings in the target repo's git history — accept as noise, or baseline them?
    - What we know: `gitleaks git .` reports 9 findings (8 `aws-access-token`, 1 `discord-api-token`) in `.planning/` files from Phase 05's secrets-detection verification. The files no longer exist in the working tree. Report-only means they don't block anything this phase, and they satisfy SC#2.
    - What's unclear: whether they are confirmed-fake test fixtures (very likely — see A4), and whether the user wants them suppressed now or when Phase 18 turns on gating.
    - Recommendation: **accept them this phase** (they are the secrets job's proof of a real result). Log for Phase 18 that a `--baseline-path` or fingerprint-based `.gitleaksignore` will be needed before gate mode. Ask the user to confirm the strings are fake.
 
-2. **Semgrep `--config auto` (telemetry to semgrep.dev) vs `--config p/default --metrics=off`?**
+2. **RESOLVED — `p/default --metrics=off` embedded in 15-03.** Semgrep `--config auto` (telemetry to semgrep.dev) vs `--config p/default --metrics=off`?
    - What we know: `auto` + `metrics=off` is a hard error. `auto` sends pseudonymous usage metrics on every scan. `p/default` is a fixed registry ruleset that works with metrics disabled.
    - What's unclear: whether the reference blueprint's "no account required" stance also implies "no telemetry," and whether `p/default`'s narrower rule set materially reduces coverage versus `auto`'s language auto-detection.
    - Recommendation: **`p/default --metrics=off`** — it is verified working and telemetry-free, appropriate for a security-stack reference. Surface the coverage trade-off to the user; if `auto` is preferred, document the telemetry explicitly in the blueprint.
 
-3. **Will GitHub Dependabot *alerts* fire on `fixtures/package-lock.json`?**
+3. **RESOLVED — probed post-merge at 15-05 Task 2.** Will GitHub Dependabot *alerts* fire on `fixtures/package-lock.json`?
    - What we know: `dependabot.yml` declares only the `github-actions` ecosystem, so no version-update PRs will target the fixture. But Dependabot **alerts** are a separate repo-level setting driven by the dependency graph.
    - What's unclear: whether alerts are enabled on `OttawaCloudConsulting/security-platform`.
    - Recommendation: add `fixtures/README.md` documenting intent; check `gh api repos/OttawaCloudConsulting/security-platform/vulnerability-alerts` after the fixture merges. If noisy, `fixtures/` can be excluded via `.github/dependabot.yml` `ignore` rules in a later phase.
 
-4. **`fixtures/` at the target-repo root, or nested under an existing directory?**
+4. **RESOLVED — top-level, implemented in 15-01.** `fixtures/` at the target-repo root, or nested under an existing directory?
    - What we know: D-01 says "top-level," and top-level maximizes the chance every scanner finds it with default `.`-rooted invocations (verified: Trivy, Checkov, and Semgrep all traverse from `.`).
    - What's unclear: whether a `fixtures/` directory at the root of a repo that will later be *distributed* as a reusable workflow (Phase 20, DIST-*) is confusing to consumers.
    - Recommendation: **top-level as decided**, with a clear README. Revisit at Phase 20 if distribution packaging changes the layout.

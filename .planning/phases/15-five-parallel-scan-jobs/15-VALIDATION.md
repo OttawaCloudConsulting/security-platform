@@ -2,8 +2,8 @@
 phase: 15
 slug: five-parallel-scan-jobs
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-09-10
 ---
 
@@ -40,14 +40,18 @@ Baseline confirmed this session: `actionlint` exits 0 on current workflows; `yam
 
 ## Per-Task Verification Map
 
-| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 15-01-01 | 01 | 0 | CICD-01 | — | Workflow YAML valid, 5 jobs, no `needs:` | static | `actionlint repos/security-platform/.github/workflows/security.yml && python3 -c "import yaml,sys; w=yaml.safe_load(open('repos/security-platform/.github/workflows/security.yml')); assert len(w['jobs'])==5; assert all('needs' not in j for j in w['jobs'].values())"` | ❌ W0 | ⬜ pending |
-| 15-01-02 | 01 | 0 | CICD-01 | — | Five checks appear concurrently on the PR | integration (live) | `gh api repos/OttawaCloudConsulting/security-platform/commits/$SHA/check-runs --jq '[.check_runs[]\|select(.name\|startswith("security / "))]\|length'` → `5` | ❌ W0 | ⬜ pending |
-| 15-01-03 | 01 | 0 | CICD-01 (SC#5) | — | PR remains mergeable despite findings | integration (live) | `gh pr view <n> --json mergeable,statusCheckRollup` → `MERGEABLE`, all `SUCCESS` | ❌ W0 | ⬜ pending |
-| 15-01-04 | 01 | 0 | CICD-01 (SC#2) | — | Each tool produces a real, non-empty result | smoke (local) | see smoke block — each asserts exit 1 and a non-empty report | ❌ W0 | ⬜ pending |
-| 15-01-05 | 01 | 0 | CICD-01 (SC#4) | — | Each job writes SARIF and/or JSON | smoke (local) + log inspection | `test -s <file>` locally; `ls -l` evidence step in each job | ❌ W0 | ⬜ pending |
-| 15-01-06 | 01 | 0 | SCA-04 | — | Generic Trivy fs scan finds packages, no per-ecosystem config | smoke (local) | `trivy fs fixtures --scanners vuln --format json -o /tmp/t.json; python3 -c "import json;d=json.load(open('/tmp/t.json'));assert any(r.get('Vulnerabilities') for r in d['Results'])"` | ❌ W0 | ⬜ pending |
+| Task ID | Plan | Wave | Requirement | Secure Behavior | Test Type | Automated Command | Status |
+|---------|------|------|-------------|-----------------|-----------|-------------------|--------|
+| 15-01 T1 | 01 | 1 | CICD-01, SCA-04 | Branch cut from `origin/main`; exactly 4 `exclude: ^fixtures/` entries on terraform_fmt/terraform_validate/hadolint/npm-audit; Gitleaks untouched | git/static | branch/ancestor check + `pre-commit validate-config` + `yamllint` + exclude-count + gitleaks-untouched assertions (see 15-01-PLAN.md Task 1 `<verify>`) | ⬜ pending |
+| 15-01 T2 | 01 | 1 | CICD-01, SCA-04 | fixtures/ tree authored; Checkov, `trivy fs`, `trivy image` each produce real non-zero findings; commit passes hooks with no bypass | smoke (local) | Checkov/`trivy fs`/`trivy image` exit-1 + non-empty-findings assertions, `pre-commit run --all-files` exit 0 (see 15-01-PLAN.md Task 2 `<verify>`) | ⬜ pending |
+| 15-02 T1 | 02 | 2 | CICD-01, SCA-04 | `scripts/smoke-scans.sh` exists, no executable bit, wraps all five scanners with captured exit codes | static | script-exists + non-executable + shellcheck assertions (see 15-02-PLAN.md Task 1 `<verify>`) | ⬜ pending |
+| 15-02 T2 | 02 | 2 | CICD-01, SCA-04 (SC#2, SC#3) | Running the smoke gate produces real, non-empty results for all five tools including generic Trivy fs SCA | smoke (local) | `bash scripts/smoke-scans.sh` + per-tool non-empty-report assertions (see 15-02-PLAN.md Task 2 `<verify>`) | ⬜ pending |
+| 15-03 T1 | 03 | 3 | CICD-01 (SC#1, SC#5) | `security.yml` defines 5 jobs, no `needs:`, step-level `continue-on-error`, SHA-pinned actions | static | `actionlint` + `yamllint` + Python frontmatter/structure assertions (5 jobs, no needs, permissions read-only) (see 15-03-PLAN.md Task 1 `<verify>`) | ⬜ pending |
+| 15-03 T2 | 03 | 3 | CICD-01 (SC#4) | Workflow re-verified against smoke gate; each job's SARIF/JSON evidence step present | static + smoke (local) | re-run smoke gate + `ls -l`-style evidence-step presence assertions (see 15-03-PLAN.md Task 2 `<verify>`) | ⬜ pending |
+| 15-04 T1 | 04 | 4 | CICD-01 (SC#1) | PR opened from the phase branch against the target repo; run identified | integration (live) | `gh pr create` / `gh pr view` + run-id capture assertions (see 15-04-PLAN.md Task 1 `<verify>`) | ⬜ pending |
+| 15-04 T2 | 04 | 4 | CICD-01 (SC#1, SC#5) | 5 concurrent `security / *` checks; PR remains `MERGEABLE` with all checks `SUCCESS` | integration (live) | `gh api .../check-runs` → count=5 + `gh pr view --json mergeable,statusCheckRollup` assertions (see 15-04-PLAN.md Task 2 `<verify>`) | ⬜ pending |
+| 15-05 T1 | 05 | 5 | CICD-01 | Human confirms concurrency + report-only behavior from live evidence before merge (blocking checkpoint, `autonomous: false`) | manual + integration (live) | human sign-off gate (see 15-05-PLAN.md Task 1) | ⬜ pending |
+| 15-05 T2 | 05 | 5 | CICD-01 | Merge on approval; `main` reflects the merge; open questions from RESEARCH.md closed | integration (live) | merge + `main` HEAD assertion (see 15-05-PLAN.md Task 2 `<verify>`) | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
