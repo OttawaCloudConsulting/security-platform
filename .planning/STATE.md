@@ -99,7 +99,7 @@ Carried forward from v1.1 close:
 
 Last session: 2026-09-10T19:26:18.169Z
 Stopped at: Completed 14-02-PLAN.md
-Resume file: None
+Resume file: .planning/phases/14-workflow-foundation-and-action-pinning/14-03-PLAN.md
 
 ## Operator Next Steps
 
