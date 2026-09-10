@@ -18,7 +18,13 @@ bash setup.sh
 bash setup.sh install       # install security CLI tools only
 bash setup.sh configure     # generate config files only
 bash setup.sh check         # show installed vs expected versions
+bash setup.sh update        # update outdated tools to the pinned versions
+bash setup.sh update trivy  # update a single named tool
+bash setup.sh doctor        # verify every tool is on PATH and can run its version command
 ```
+
+The tool name in `update <tool>` must come *after* the `update` keyword — argument
+parsing is order-sensitive, so `bash setup.sh trivy update` is rejected.
 
 On first run, `setup.sh`:
 
@@ -160,6 +166,8 @@ Semgrep CE and Checkov are **not** installed by the workstation setup. They run 
 
 1. Delete `versions.conf` and re-run `bash setup.sh install` to resolve fresh latest versions
 2. Or edit `versions.conf` manually to pin a specific version, then `bash setup.sh install`
+3. Or run `bash setup.sh update` (preferred) — updates only the tools that are outdated,
+   without touching `versions.conf`. See [Maintenance](#maintenance) below.
 
 ### Hook Versions (`.pre-commit-config.yaml`)
 
@@ -170,6 +178,105 @@ pre-commit autoupdate
 pre-commit run --all-files   # validate nothing broke
 ```
 
+## Maintenance
+
+`check`, `update`, and `doctor` answer three different questions: is my version current, can
+I get to the current version, and does my environment actually work.
+
+### `check` — am I on the right version?
+
+```bash
+bash setup.sh check
+```
+
+Prints installed vs. expected versions for all six tools, plus a prerequisites table
+(git, curl, python3, node, npm, terraform). Searches `~/.local/bin` in addition to the
+rest of `PATH`, because `check` answers "am I on the pinned version", not "is my shell
+configured". **Exits 0** when every tool matches its pin, **exits 1** when any tool is
+missing or mismatched.
+
+### `update` — get current
+
+```bash
+bash setup.sh update         # update every outdated tool
+bash setup.sh update trivy   # update only trivy
+```
+
+Updates every tool whose installed version differs from its pin, or just the named tool.
+Tools already at their pin are skipped — a fully current machine makes no installer calls.
+A tool that fails to update does not stop the others from being attempted.
+
+For each outdated tool, `update` tries the exact pinned version first. If that install
+fails, it resolves the latest release within the *same major version* from GitHub and
+tries that instead — and it refuses a fallback that would move the tool backwards (a
+resolved fallback below the pin is treated as a failure, not silently accepted). It never
+rewrites `versions.conf`. After the run it automatically re-prints the `check` table so
+you can see the result.
+
+**Result statuses** shown in the update summary table:
+
+| Status | Meaning |
+|--------|---------|
+| `ok` | Already at the pinned version — nothing done |
+| `installed` | Updated to the pinned version |
+| `fallback` | Installed at a same-major version because the pin was unavailable — the follow-up `check` table will show `MISMATCH` for this tool, and a `NOTE:` line explains why |
+| `FAILED` | Both attempts failed |
+
+**What to do about a `fallback`:** edit `versions.conf` to adopt the version that
+actually installed, then re-run `bash setup.sh check` to confirm it's clean. This is
+deliberately a manual step — the pinned manifest stays a user-owned, intentional artifact
+that `update` never rewrites on your behalf.
+
+**`update-failures.log`:** written to the root of whatever repo you ran `update` in
+(plain text, one line per tool that failed both attempts, each line containing a UTC
+timestamp, the tool name, the pinned version, the fallback version tried, and the
+version actually installed — never a token, credential, or environment dump). Add it to
+that repo's `.gitignore`:
+
+```gitignore
+update-failures.log
+```
+
+(`repos/security-platform`'s own `.gitignore` already ignores it — see below.)
+
+### `doctor` — does my environment actually work?
+
+```bash
+bash setup.sh doctor
+```
+
+Fully offline — makes zero network calls. Reports, per tool, one of:
+
+| Status | Meaning |
+|--------|---------|
+| `OK` | On PATH, version command ran, output was parseable |
+| `NOT_ON_PATH` | Tool not found via `command -v` |
+| `BROKEN` | Found on PATH, but its version command exited non-zero |
+| `UNPARSEABLE` | Version command exited 0, but produced no recognisable version string |
+
+It also reports whether `~/.local/bin` exists and is on `PATH`, and whether `git`,
+`curl`, and `python3` are present. `doctor` uses your **real** `PATH`, untouched — unlike
+`check`, it does not export `~/.local/bin` onto `PATH` before probing, because doing so
+would mask the exact failure `doctor` exists to detect.
+
+### Exit codes
+
+| Command | Exit 0 | Exit 1 |
+|---------|--------|--------|
+| `check` | every tool matches its pin | any tool `MISSING` or `MISMATCH` |
+| `update` | no tool failed both attempts (a `fallback` is not a failure, and the automatic post-update `check` recheck does not affect this exit status) | one or more tools `FAILED` both attempts |
+| `doctor` | every tool `OK` and all prerequisites present | any non-`OK` finding |
+
+### `GITHUB_TOKEN` — avoiding GitHub rate limits
+
+Set `GITHUB_TOKEN` or `GH_TOKEN` in your environment, or be logged in via `gh auth login`,
+to raise the GitHub API limit from 60 requests/hour (unauthenticated) to **5000**
+requests/hour. The script calls the GitHub API in exactly three places: generating
+`versions.conf` on first run, resolving hook versions for `.pre-commit-config.yaml`, and
+`update`'s same-major fallback resolution. The token is sent only as an `Authorization:
+Bearer` request header — never as a command-line argument, never written to
+`update-failures.log`, and never logged.
+
 ## Contents
 
 | File | Description |
@@ -179,3 +286,4 @@ pre-commit run --all-files   # validate nothing broke
 | `README.md` | This document |
 | `cicd/lint-markdown.sh` | Three-tier markdown linting script (auto-fix + enforce) |
 | `cicd/pre-commit.sh` | Pre-commit hook for staged markdown files |
+| `tests/` | Plain-bash test suite for `setup.sh` — run with `bash tests/run-tests.sh` |
