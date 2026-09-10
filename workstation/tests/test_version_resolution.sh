@@ -230,6 +230,12 @@ assert_contains "$out" "SURVIVED" "the calling shell survives an empty-body reso
 
 describe "resolve_latest_in_major: single API call per invocation"
 
+# gh_api_get is invoked from inside a `$( )` command substitution in
+# resolve_latest_in_major, which forks its own subshell — a plain variable
+# incremented there would not be visible back in this subshell. Count calls
+# via a marker file instead, which survives across subshell boundaries.
+call_marker="$(mktemp "${TMPDIR:-/tmp}/gh_api_get_calls.XXXXXX")"
+rm -f "$call_marker"
 out=$(
   (
     source "$SETUP_SH"
@@ -239,14 +245,15 @@ out=$(
     gh() { return 1; }
     # shellcheck disable=SC2329  # tripwire: fails the test loudly if a live network call is attempted
     curl() { echo "LIVE CURL ATTEMPTED" >&2; return 22; }
-    call_count=0
-    # shellcheck disable=SC2329  # stub counts invocations to assert a single-call pipeline
+    # shellcheck disable=SC2329  # stub counts invocations (via marker file) to assert a single-call pipeline
     gh_api_get() {
-      call_count=$((call_count + 1))
+      echo "x" >> "$call_marker"
       cat "$FIXTURES_DIR/hadolint-releases-compact.json"
     }
     resolve_latest_in_major "hadolint/hadolint" 2 > /dev/null
-    echo "calls=$call_count"
   ) 2>&1
 )
-assert_contains "$out" "calls=1" "resolve_latest_in_major makes exactly one gh_api_get call per invocation"
+call_count=$(wc -l < "$call_marker" 2>/dev/null | tr -d ' ') || call_count=0
+rm -f "$call_marker"
+assert_not_contains "$out" "LIVE CURL ATTEMPTED" "resolve_latest_in_major (call-count test) never calls curl directly"
+assert_eq "1" "$call_count" "resolve_latest_in_major makes exactly one gh_api_get call per invocation"

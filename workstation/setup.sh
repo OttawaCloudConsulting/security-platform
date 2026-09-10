@@ -217,6 +217,44 @@ resolve_latest_version() {
   echo "$version"
 }
 
+# resolve_latest_in_major <owner/repo> <major>
+#
+# Resolves the highest non-prerelease release within a pinned major version
+# from a single GitHub API call (releases?per_page=100). Used by the D-04
+# two-attempt update fallback when the pinned exact version is unavailable.
+#
+# Always call as `v=$(resolve_latest_in_major "$r" "$m") || v=""` — never
+# bare (see the "set -e-safe call convention" on resolve_latest_version
+# above; the same rationale applies here).
+#
+# If the pinned major is more than 100 releases behind, it will not appear
+# on page one and resolution correctly returns empty (D-04 step-3 outcome).
+# This function deliberately does not paginate.
+# shellcheck disable=SC2329  # invoked by the update fallback path added in a later plan
+resolve_latest_in_major() {
+  local repo="$1" major="$2"
+  local body version
+
+  body=$(gh_api_get "${GITHUB_API}/${repo}/releases?per_page=100") || body=""
+
+  if [[ -z "$body" ]]; then
+    warn "You may be GitHub rate-limited (60 req/hr unauthenticated). Set GITHUB_TOKEN or GH_TOKEN to raise this to 5000/hr."
+    return 1
+  fi
+
+  version=$(printf '%s\n' "$body" \
+    | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' \
+    | sed 's/.*"v\{0,1\}\([^"]*\)"$/\1/' \
+    | grep -E "^${major}\.[0-9]+\.[0-9]+$" \
+    | sort -t. -k1,1n -k2,2n -k3,3n \
+    | tail -1) || version=""
+
+  [[ -z "$version" ]] && return 1
+
+  log "resolve_latest_in_major: ${repo} ${major}.x -> ${version}"
+  echo "$version"
+}
+
 # ---------------------------------------------------------------------------
 # versions.conf management
 # ---------------------------------------------------------------------------
