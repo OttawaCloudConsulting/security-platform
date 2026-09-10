@@ -665,6 +665,77 @@ log_update_failure() {
   fi
 }
 
+# update_one_tool <tool> <pinned> <version_var_name> <repo_var_name> <installer_fn_name>
+#
+# Two-attempt update sequence for a single tool (D-04): the exact pin, then
+# (only on failure) the latest release within the pinned major, then give up
+# and log. Never calls exit — returns 1 so the caller (update_all_tools) can
+# continue past a failure. resolve_latest_in_major is the only GitHub API
+# call in this function, and it fires only on the attempt-1 failure path.
+# shellcheck disable=SC2329  # invoked from update_all_tools
+update_one_tool() {
+  local tool="$1" pinned="$2" version_var="$3" repo_var="$4" installer_fn="$5"
+
+  # Already-current short-circuit — mirrors run_installer L387-391. Without
+  # this, a fully current machine re-downloads six binaries on every
+  # `update` run. MAINT-02 is "update *outdated* tools".
+  if is_installed "$tool" "$pinned"; then
+    log "$tool $pinned already current"
+    add_result "$tool" "$pinned" "ok"
+    return 0
+  fi
+
+  # Attempt 1 — the exact pin.
+  info "Updating $tool -> $pinned"
+  if attempt_install "$tool" "$pinned" "$version_var" "$installer_fn"; then
+    add_result "$tool" "$pinned" "installed"
+    return 0
+  fi
+
+  # Resolve the fallback. This is the only API call in the whole update run,
+  # and only on this failure path.
+  warn "$tool: pinned version $pinned failed to install, resolving a same-major fallback"
+  local repo major fallback
+  repo="${!repo_var}"
+  major="${pinned%%.*}"
+  fallback=$(resolve_latest_in_major "$repo" "$major") || fallback=""
+
+  # Three guards before attempting the fallback, each with its own visible
+  # warning. Any guard failure falls through to the single give-up path
+  # below rather than duplicating the FAILED result / FAIL_COUNT increment.
+  local attempt2_ok=true
+  if [[ -z "$fallback" ]]; then
+    warn "$tool: could not resolve a ${major}.x release for $repo. You may be hitting the GitHub rate limit (60 req/hr unauthenticated). Set GITHUB_TOKEN or GH_TOKEN to raise this to 5000/hr."
+    attempt2_ok=false
+  elif [[ "$fallback" = "$pinned" ]]; then
+    log "$tool: fallback resolved to the same version ($fallback) as the pin, not retrying"
+    attempt2_ok=false
+  else
+    # Downgrade guard (T-13-04): a resolved fallback is only installed when
+    # it sorts greater than or equal to the pin. Numeric field sort, not
+    # lexical — 1.10.0 sorts below 1.9.0 lexically.
+    local greater
+    greater=$(printf '%s\n%s\n' "$pinned" "$fallback" | sort -t. -k1,1n -k2,2n -k3,3n | tail -1) || greater=""
+    if [[ "$greater" != "$fallback" ]]; then
+      warn "$tool: resolved fallback $fallback would downgrade below the pin $pinned, refusing"
+      attempt2_ok=false
+    fi
+  fi
+
+  # Attempt 2 — the resolved same-major fallback.
+  if [[ "$attempt2_ok" = true ]] && attempt_install "$tool" "$fallback" "$version_var" "$installer_fn"; then
+    add_result "$tool" "$fallback" "fallback"
+    FALLBACK_NOTES="${FALLBACK_NOTES}${tool}|${fallback}|${pinned}\n"
+    return 0
+  fi
+
+  # Give up.
+  add_result "$tool" "$pinned" "FAILED"
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+  log_update_failure "$tool" "$pinned" "$fallback"
+  return 1
+}
+
 install_all_tools() {
   mkdir -p "$INSTALL_DIR"
   export PATH="$INSTALL_DIR:$PATH"
