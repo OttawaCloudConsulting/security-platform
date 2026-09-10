@@ -262,7 +262,7 @@ Plans:
 > style to match the existing `install|configure|setup|check` dispatcher. No `dist/install.sh` is
 > created by this phase.
 
-**Plans**: 7 plans
+**Plans**: 8 plans
 
 Plans:
 **Wave 1**
@@ -292,6 +292,10 @@ Plans:
 **Wave 7** *(blocked on Wave 6 completion)*
 
 - [x] 13-07-PLAN.md -- Human-verified pre-commit downgrade/upgrade round trip and doctor sanity check
+
+**Wave 8 (gap closure)** *(blocked on Wave 7 completion)*
+
+- [ ] 13-08-PLAN.md -- Fix unreachable PATH-missing warning in install_all_tools/update_all_tools (WR-01 gap closure)
 
 ## Progress
 
