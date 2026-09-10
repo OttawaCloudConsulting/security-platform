@@ -14,6 +14,7 @@ set -euo pipefail
 #   bash setup.sh install             # install CLI tools only
 #   bash setup.sh configure           # generate config files only (no install)
 #   bash setup.sh check               # show installed vs expected versions
+#   bash setup.sh update [tool]       # update outdated tools (or a single named tool)
 #   bash setup.sh --verbose           # verbose output
 #   bash setup.sh --help              # show help
 
@@ -91,6 +92,10 @@ Commands:
   install     Install security CLI tools only
   configure   Generate configuration files only (skip tool installation)
   check       Show installed vs expected versions for all tools
+  update      Update outdated tools to their pinned versions
+  update <tool>
+              Update only the named tool (must immediately follow "update"),
+              e.g. bash setup.sh update trivy
 
 Options:
   -v, --verbose    Show detailed progress output
@@ -1171,9 +1176,20 @@ main() {
   # Parse arguments
   for arg in "$@"; do
     case "$arg" in
-      install|configure|setup|check) COMMAND="$arg" ;;
+      install|configure|setup|check|update) COMMAND="$arg" ;;
       -v|--verbose) VERBOSE=true ;;
       -h|--help)    usage; exit 0 ;;
+      pre-commit|trivy|syft|grype|gitleaks|hadolint)
+        # Only accepted as a per-tool target when the command is already
+        # "update" — the tool name must follow the "update" keyword (this
+        # loop is order-sensitive). Anything else falls through to the
+        # unknown-argument catch-all below.
+        if [[ "$COMMAND" = "update" ]]; then
+          UPDATE_TARGETS="${UPDATE_TARGETS} ${arg}"
+        else
+          err "Unknown argument: $arg"; usage; exit 1
+        fi
+        ;;
       *)            err "Unknown argument: $arg"; usage; exit 1 ;;
     esac
   done
@@ -1197,6 +1213,21 @@ main() {
       REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
       ensure_versions_conf "$REPO_ROOT"
       run_check
+      ;;
+    update)
+      # Tolerant form, matching check) — the failure log goes to the repo
+      # the user ran `update` in, and `update` must still work outside a
+      # git repo.
+      REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+      ensure_versions_conf "$REPO_ROOT"
+      update_all_tools
+      print_summary "Update" "update"
+      run_check
+      print_fallback_notes
+      # Deliberately NOT mapping PROBLEM_COUNT (added by run_check in plan
+      # 05) into FAIL_COUNT here: a successful attempt-2 fallback legitimately
+      # shows as MISMATCH in the recheck, and mapping it would flip a
+      # successful update to exit 1. Do not "fix" this.
       ;;
     setup)
       require_git_repo
