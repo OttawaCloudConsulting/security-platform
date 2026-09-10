@@ -8,8 +8,8 @@
 # `set -e` in this file (see the isolation contract in run-tests.sh).
 #
 # Zero-network / zero-install guarantee: every subshell below redefines the
-# installer boundary with a fake function that never shells out, and never
-# calls pipx, curl, or api.github.com.
+# installer boundary with a fake function that never shells out and never
+# reaches any real package manager or remote host.
 
 describe "attempt_install: success decided solely by is_installed, not installer exit code"
 
@@ -71,6 +71,8 @@ out=$(
     source "$SETUP_SH"
     set +e
     STUB_VERSION="0.0.0"
+    # shellcheck disable=SC2034  # read by attempt_install() in the sourced setup.sh; VERBOSE=true so the installer's own echo below is observable
+    VERBOSE=true
     # shellcheck disable=SC2329  # fake installer: records the version global visible during the attempt
     _install_stub_capture() { echo "SEEN:$STUB_VERSION"; return 0; }
     # shellcheck disable=SC2329  # controllable verifier stub: always reports present

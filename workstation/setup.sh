@@ -28,6 +28,22 @@ RESULTS=""
 FAIL_COUNT=0
 CONFIG_COUNT=0
 
+# D-07 failure log filename, written under $REPO_ROOT (the repo `update` is
+# run in), never under this script's own repo.
+# shellcheck disable=SC2034  # consumed by log_update_failure() (this plan) and later update/doctor plans
+UPDATE_LOG_NAME="update-failures.log"
+
+# Reported-but-not-exit-driving counter for check/doctor, mirroring
+# CONFIG_COUNT. Must be initialised here or set -u kills the first increment.
+# shellcheck disable=SC2034  # consumed by check/doctor plans (04, 05)
+PROBLEM_COUNT=0
+
+# Accumulator for "installed at X, pinned Y" fallback notes printed after
+# the post-update recheck (plan 04). Same pipe/newline accumulation style
+# as RESULTS above.
+# shellcheck disable=SC2034  # consumed by the update orchestrator (plan 04)
+FALLBACK_NOTES=""
+
 # Lazily-resolved GitHub auth token. Plain variables for bash 3.2
 # compatibility (no associative arrays). Resolved on first gh_api_get() call,
 # not at file scope, so sourcing this script for tests has no side effects.
@@ -571,6 +587,42 @@ _install_hadolint() {
   verify_sha256 "$tmpdir/hadolint" "$expected_hash"
   chmod +x "$tmpdir/hadolint"
   mv "$tmpdir/hadolint" "$INSTALL_DIR/hadolint"
+}
+
+# attempt_install <tool> <version> <version_var_name> <installer_fn_name>
+#
+# Runs an installer once at a specific version and decides success solely by
+# re-probing the installed version afterward — never by the installer's own
+# exit code. This is mandatory: `pipx install "pre-commit==X"` on an
+# already-installed pre-commit exits 0 and changes nothing (verified pipx
+# 1.10.1), so a future reader must not "fix" the discarded exit code back.
+#
+# The tool's version global is overridden only for the duration of the
+# installer call via the assignment-prefix form (e.g. the effect of
+# `TRIVY_VERSION="$version" _install_trivy`), which does not persist after
+# the call returns (verified non-persisting under bash 3.2.57) — no manual
+# save/restore is needed. The variable *name* is dynamic per tool, so the
+# assignment requires `eval`; indirect *read* would not.
+#
+# Reproduces run_installer's VERBOSE quiet/loud split. Appends `|| true` to
+# the installer invocation: without it, a failing installer under
+# `set -euo pipefail` would terminate the script and "continue updating the
+# remaining tools" would be impossible. This is the one place `|| true` is
+# correct, because the very next line performs a real, independent
+# verification — it is not a silent fallback.
+# shellcheck disable=SC2329  # invoked by the update loop added in a later plan
+attempt_install() {
+  local tool="$1" version="$2" version_var="$3"
+  # shellcheck disable=SC2034  # read inside the eval string below, not directly referenced
+  local installer_fn="$4"
+
+  if [[ "$VERBOSE" = true ]]; then
+    eval "${version_var}=\"\$version\" \"\$installer_fn\"" || true
+  else
+    eval "${version_var}=\"\$version\" \"\$installer_fn\"" > /dev/null 2>&1 || true
+  fi
+
+  is_installed "$tool" "$version"
 }
 
 install_all_tools() {
