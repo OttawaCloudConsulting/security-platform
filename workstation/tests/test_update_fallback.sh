@@ -484,3 +484,29 @@ out=$(
   ) 2>&1
 )
 assert_eq "" "$out" "print_fallback_notes prints nothing when FALLBACK_NOTES is empty"
+
+# ---------------------------------------------------------------------------
+# Dispatcher, usage(), and the update subcommand's argument parsing
+# ---------------------------------------------------------------------------
+#
+# Process-level tests only — no stubs, no sourcing. These exercise the real
+# main-guard entrypoint (`/bin/bash setup.sh ...`), never calling `update`
+# without a bogus tool name so no real installer or network path is reached.
+
+describe "update subcommand: dispatcher, usage, and argument parsing"
+
+out=$(/bin/bash "$SETUP_SH" --help 2>&1)
+assert_contains "$out" "update" "--help output lists the update command"
+
+out=$(/bin/bash "$SETUP_SH" update bogus-tool 2>&1)
+rc=$?
+assert_status 1 "$rc" "update with an unrecognised tool name exits 1"
+assert_contains "$out" "Unknown argument: bogus-tool" "update with an unrecognised tool name reports the exact bad token"
+
+out=$(/bin/bash "$SETUP_SH" bogus-tool 2>&1)
+rc=$?
+assert_status 1 "$rc" "an unrecognised argument with no update command exits 1"
+assert_contains "$out" "Unknown argument: bogus-tool" "an unrecognised argument with no update command reports the exact bad token"
+
+out=$(/bin/bash "$SETUP_SH" --help 2>&1)
+assert_not_contains "$out" './setup.sh' "help output never uses the ./setup.sh invocation form"
