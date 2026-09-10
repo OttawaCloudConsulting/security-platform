@@ -16,9 +16,24 @@ Every code change is automatically scanned for security issues, secrets, and sup
 - [x] Pre-commit Tier 2: Gitleaks secrets detection on every push
 - [x] Security CLI tool suite: Trivy, Syft, Grype, Semgrep CE, Checkov, Gitleaks installed and functional
 
+## Current Milestone: v2.0 CI/CD Security Pipeline
+
+**Goal:** Ship reusable/copy-paste GitHub Actions security scanning templates, ready to adopt across all repos.
+
+**Target features:**
+- 5 parallel scan jobs on PR: SAST (Semgrep), IaC (Checkov), SCA (npm + Python + Terraform + generic Trivy/Grype), container scan (Trivy/Grype), secrets (Gitleaks)
+- SARIF upload to GitHub Security tab per job
+- JSON artifact retention (for future DefectDojo import — not built this milestone)
+- Configurable gate mode: feature flag toggles blocking (required check) vs report-only per repo
+- Branch protection setup guidance/config for blocking mode
+- Dependabot for Actions SHA pin updates
+- Two consumption modes: (1) copy-paste template into consumer repo, (2) reusable workflow referenced via `uses: OCC-github/security_solution/...@ref`
+- Local validation here via branch-target PRs (no cross-repo test needed)
+- Template packaging + docs for rollout to the other 6+ repos
+
 ### Active
 
-(None yet — define for next milestone via `/gsd:new-milestone`)
+(None yet — defined in REQUIREMENTS.md)
 
 ### Validated (v1.1)
 
@@ -29,13 +44,8 @@ Every code change is automatically scanned for security issues, secrets, and sup
 - [x] Setup script is idempotent and bash 3.2 compatible (macOS stock bash)
 - [x] Version check and update capability (`check`, `update`, `doctor` subcommands) — v1.1
 
-### Future (M2+)
+### Future (M3+)
 
-- [ ] GitHub Actions security workflow: 5 parallel scan jobs (SAST, IaC, SCA, container, secrets) on every PR
-- [ ] SARIF upload to GitHub Security tab for PR visibility
-- [ ] JSON artifact retention for downstream DefectDojo import
-- [ ] Branch protection enforcement: failing scans block merge, direct pushes blocked
-- [ ] Dependabot for GitHub Actions SHA digest updates
 - [ ] Nexus Repository proxy deployment on Kubernetes (npm, PyPI, Docker, Helm)
 - [ ] Workstation package managers routed through Nexus
 - [ ] DefectDojo unified security dashboard on Kubernetes
@@ -69,7 +79,7 @@ Cross-platform install + setup + maintenance tooling now replaces the Homebrew-o
 
 ## Next Milestone Goals
 
-No milestone currently in progress. Candidates from Future (M2+) below — GitHub Actions security workflow (SAST/IaC/SCA/container/secrets scan jobs) is the natural next step per the M1→M2 critical path. Run `/gsd:new-milestone` to define scope.
+In progress: v2.0 CI/CD Security Pipeline (see Current Milestone above).
 
 ## Context
 
@@ -110,5 +120,22 @@ No milestone currently in progress. Candidates from Future (M2+) below — GitHu
 | `trap ... RETURN` in installer helpers must self-clear (`trap - RETURN` inside the handler) | Bash RETURN traps aren't function-scoped — they re-fire on the caller's return, crashing on an out-of-scope local under `set -u`. Found live-testing `setup.sh install` at v1.1 close | Validated (security-platform commit 2a70c97) |
 | npm-audit / ESLint gaps found in aws-zabbix at v1.1 close are target-repo issues, not tooling bugs | Milestone scope is the distribution tooling, not remediating individual repos | Accepted as deferred — ⚠️ Revisit if aws-zabbix work resumes |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-09-10 after v1.1 milestone*
+*Last updated: 2026-09-10 after starting v2.0 milestone*
