@@ -67,8 +67,8 @@ This plan produced no source commits (observation/merge-only). Actions performed
 None in this plan (merge of 14-01's files; PR #5 is Dependabot's own, unmerged, user's call)
 
 ## Decisions Made
-- Criterion #4 verdict: **WITNESSED**. PR #5 (open, unmerged) is direct evidence — bump diff shows the exact SHA and same-line comment rewrite predicted by RESEARCH's deliberate-pin strategy. Assumption A7 (Dependabot resolves SHA→tag) is now confirmed true, not merely assumed.
-- Merging PR #5 is left to the user's discretion — not required for CICD-05 or phase completion, since criterion #4 only requires Dependabot to *open* a PR, which it did.
+- Criterion #4 verdict: **WITNESSED**. PR #5 is direct evidence — bump diff shows the exact SHA and same-line comment rewrite predicted by RESEARCH's deliberate-pin strategy. Assumption A7 (Dependabot resolves SHA→tag) is now confirmed true, not merely assumed.
+- User merged PR #5 (`51714df9ab232738c583b51060d54e9f53f07cfa`) after phase completion. `main` now pins `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1` — the current upstream release, the intended steady-state.
 
 ## Deviations from Plan
 
@@ -94,7 +94,7 @@ None — no external service configuration required.
 - Phase 15 (real scan jobs): must inventory `repos/security-platform` directly (`git ls-files`) — this repo's fixture profile differs from the outer docs repo that STATE.md's blocker note was written against.
 - Phase 18 (check-run consumers): the current check-run name is `security / Placeholder` (called job's `name:`, capital P) — Phase 15 will replace it with five `security / <job-name>` checks when real scan jobs land; Phase 18 must re-read at that time, not hard-code the current name.
 - Phase 20 (repo publication): resolve the REQUIREMENTS DIST-07 slug mismatch (`OCC-github/security_solution` vs actual `OttawaCloudConsulting/security-platform`) before publishing any cross-repo `uses:` reference.
-- PR #5 (Dependabot bump) remains open — user may merge at their discretion in a future session.
+- PR #5 (Dependabot bump) merged by user — `main` now on `actions/checkout@3d3c42e5...  # v7.0.1`.
 
 ---
 *Phase: 14-workflow-foundation-and-action-pinning*
