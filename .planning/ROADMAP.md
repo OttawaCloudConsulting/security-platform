@@ -295,7 +295,7 @@ Plans:
 
 **Wave 8 (gap closure)** *(blocked on Wave 7 completion)*
 
-- [ ] 13-08-PLAN.md -- Fix unreachable PATH-missing warning in install_all_tools/update_all_tools (WR-01 gap closure)
+- [x] 13-08-PLAN.md -- Fix unreachable PATH-missing warning in install_all_tools/update_all_tools (WR-01 gap closure)
 
 ## Progress
 
@@ -317,4 +317,4 @@ Note: Phase 11 depends on Phase 10. Phase 12 depends on Phases 10 and 11. Phase 
 | 10. Cross-Platform Install Script | 2/2 | Complete   | 2026-03-18 | - |
 | 11. File-Pattern Hook Configuration | v1.1 | 1/1 | Complete | 2026-03-22 |
 | 12. Repo Setup Script | v1.1 | 1/1 | Complete | 2026-03-22 |
-| 13. Maintenance and Validation | v1.1 | 7/7 | Complete   | 2026-09-10 |
+| 13. Maintenance and Validation | v1.1 | 8/8 | Complete   | 2026-09-10 |

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Distribution Packaging
-status: executing
-stopped_at: Phase 13 Plan 06 complete
-last_updated: "2026-09-10T03:14:54.128Z"
+status: verifying
+stopped_at: "Completed 13-08-PLAN.md (gap closure: PATH warning fix)"
+last_updated: "2026-09-10T14:40:49.477Z"
 last_activity: 2026-09-10
 progress:
   total_phases: 4
   completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 12
+  completed_plans: 12
   percent: 100
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 
 Phase: 13 of 13 (Maintenance and Validation)
 Plan: 7 of 7 (complete)
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-10
 
-Progress: [█████████░] 91%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [█████████░] 91%
 - [Phase 13]: check now exports INSTALL_DIR onto PATH and exits non-zero on MISSING/MISMATCH; doctor deliberately does not export PATH
 - [Phase 13]: PROBLEM_COUNT is incremented in run_check/run_doctor but mapped into FAIL_COUNT only at the check/doctor dispatcher branches, keeping update's post-recheck exit status unaffected
 - [Phase 13]: check/update/doctor split documented: doctor is a distinct subcommand (not a column on check), update success determined by re-probing not installer exit code, and a successful fallback never rewrites versions.conf
+- [Phase 13]: install_all_tools/update_all_tools snapshot PATH into a local var before exporting INSTALL_DIR onto it, testing the snapshot for the PATH-missing warning — REVIEW.md WR-01 closure: export ran before the membership check, making the warning dead code
 
 ### Pending Todos
 
@@ -90,6 +91,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-09-10T02:37:41.616Z
-Stopped at: Phase 13 Plan 06 complete
+Last session: 2026-09-10T14:40:49.469Z
+Stopped at: Completed 13-08-PLAN.md (gap closure: PATH warning fix)
 Resume file: None
