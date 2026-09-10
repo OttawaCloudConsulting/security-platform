@@ -4,6 +4,7 @@
 
 - ✅ **v1.0 M1 Workstation Foundation** — Phases 1-9 (shipped 2026-03-17)
 - ✅ **v1.1 Distribution Packaging** — Phases 10-13 (shipped 2026-09-10)
+- 🚧 **v2.0 CI/CD Security Pipeline** — Phases 14-20 (in progress)
 
 ## Phases
 
@@ -34,7 +35,102 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 
 </details>
 
+### 🚧 v2.0 CI/CD Security Pipeline (In Progress)
+
+**Milestone Goal:** Ship reusable/copy-paste GitHub Actions security scanning templates, proven in this repo and ready to adopt across all 6+ org repos.
+
+- [ ] **Phase 14: Workflow Foundation and Action Pinning** - Callable security workflow triggers on PRs with SHA-pinned actions kept current by Dependabot
+- [ ] **Phase 15: Five Parallel Scan Jobs** - SAST, IaC, SCA, container, and secrets scans run concurrently on every PR in report-only mode
+- [ ] **Phase 16: SCA Ecosystem Coverage** - SCA job audits npm, Python, and Terraform dependencies alongside the generic filesystem sweep
+- [ ] **Phase 17: SARIF Upload and Artifact Retention** - Findings reach the GitHub Security tab and persist as JSON artifacts
+- [ ] **Phase 18: Configurable Gate Mode and Branch Protection** - Each repo picks block-merge or report-only via a flag, with branch protection guidance
+- [ ] **Phase 19: Pipeline Validation via Branch-Target PRs** - Full pipeline proven end-to-end against seeded findings in this repo
+- [ ] **Phase 20: Template Packaging and Adoption Docs** - Both consumption modes packaged and documented for rollout to the remaining repos
+
+## Phase Details
+
+### Phase 14: Workflow Foundation and Action Pinning
+**Goal**: This repo has a callable security scanning workflow that runs on every pull request, pinned to immutable action SHAs and kept current automatically.
+**Depends on**: Phase 13 (v1.1 shipped)
+**Requirements**: CICD-05
+**Success Criteria** (what must be TRUE):
+  1. Opening a pull request in this repo triggers a security workflow run visible in the Actions tab, and the run completes without blocking the merge.
+  2. The scanning workflow is defined with `on: workflow_call` and is invoked by a thin `pull_request` caller workflow in this repo, so the same file is callable from another repo without restructuring later.
+  3. Every `uses:` reference in the workflows is pinned to a full commit SHA with a human-readable version comment.
+  4. Dependabot opens a pull request against this repo when a pinned action publishes a newer release.
+**Plans**: TBD
+
+### Phase 15: Five Parallel Scan Jobs
+**Goal**: Every pull request is scanned by five independent security tools running in parallel, each reporting what it finds without blocking the merge.
+**Depends on**: Phase 14
+**Requirements**: CICD-01, SCA-04
+**Success Criteria** (what must be TRUE):
+  1. A single pull request shows five separate scan checks — SAST, IaC, SCA, container, secrets — running concurrently rather than one after another.
+  2. Each job's log shows a real result from its tool run against real files in the checkout — repo sources plus the scan fixtures added for the jobs that have nothing to scan otherwise — not a skipped or stubbed step.
+  3. The SCA job runs a Trivy/Grype filesystem scan across the repo and reports the packages and vulnerabilities it detects, with no per-ecosystem configuration required.
+  4. Each job writes its machine-readable output (SARIF and/or JSON) to a file on the runner, even though nothing consumes those files yet.
+  5. A job that reports findings still leaves the pull request mergeable.
+**Plans**: TBD
+
+### Phase 16: SCA Ecosystem Coverage
+**Goal**: The SCA job audits each dependency ecosystem this practice actually uses, rather than relying on the generic filesystem sweep alone.
+**Depends on**: Phase 15
+**Requirements**: SCA-01, SCA-02, SCA-03
+**Success Criteria** (what must be TRUE):
+  1. On a repo containing `package-lock.json`, the SCA job reports npm dependency vulnerabilities with severity levels.
+  2. On a repo containing Python dependency files, the SCA job reports Python advisories via pip-audit or an equivalent tool.
+  3. Terraform provider and module version pinning is checked, and floating or unpinned versions are reported as findings.
+  4. Each sub-scan skips cleanly with a clear log message — no failure, no false pass — when the repo contains no files for that ecosystem.
+**Plans**: TBD
+
+### Phase 17: SARIF Upload and Artifact Retention
+**Goal**: Scan findings surface in GitHub's Security tab and are retained as JSON so a future DefectDojo import has data to consume.
+**Depends on**: Phase 16
+**Requirements**: CICD-02, CICD-03
+**Success Criteria** (what must be TRUE):
+  1. After a workflow run, the repo's Security > Code scanning view shows findings attributed to each scanner separately, so results from one tool do not overwrite another's.
+  2. Findings appear as inline annotations on the pull request diff wherever the tool reports a file and line.
+  3. Every run leaves downloadable JSON artifacts — one per scan job, including the SCA sub-scans — with an explicit retention period.
+  4. A tool without native SARIF output still reaches the Security tab or the artifact set through a documented conversion step.
+**Plans**: TBD
+
+### Phase 18: Configurable Gate Mode and Branch Protection
+**Goal**: Each consuming repo chooses whether security scans block a merge or merely report, without editing workflow YAML.
+**Depends on**: Phase 17
+**Requirements**: CICD-06, CICD-04
+**Success Criteria** (what must be TRUE):
+  1. With the gate flag set to blocking, a pull request carrying a seeded finding fails its check; with the flag set to report-only, the same pull request passes.
+  2. The flag is settable in both consumption modes — as a `workflow_call` input when the workflow is referenced remotely, and as a repo-level variable or env when the template is copy-pasted.
+  3. Switching a repo between blocking and report-only requires no change to workflow YAML.
+  4. Written branch-protection configuration and steps exist for promoting the scan checks to required checks, including which severity threshold triggers a failure.
+**Plans**: TBD
+
+### Phase 19: Pipeline Validation via Branch-Target PRs
+**Goal**: The complete pipeline is proven end-to-end inside this repo against deliberately seeded findings, with no second repo required.
+**Depends on**: Phase 18
+**Requirements**: VAL-01
+**Success Criteria** (what must be TRUE):
+  1. A branch-target pull request carrying seeded findings for all five scan categories produces a detection from each of the five jobs.
+  2. That same pull request is observed failing its checks under blocking mode and passing under report-only mode — both runs witnessed, not inferred.
+  3. A seeded finding is traced from its source file through to both the Security tab entry and the retained JSON artifact.
+  4. A clean pull request with no seeded findings passes all five jobs green.
+**Plans**: TBD
+
+### Phase 20: Template Packaging and Adoption Docs
+**Goal**: Any of the other 6+ org repos can adopt the security pipeline in either consumption mode by following documentation alone.
+**Depends on**: Phase 19
+**Requirements**: DIST-06, DIST-07, DIST-08
+**Success Criteria** (what must be TRUE):
+  1. A copy-paste workflow template exists with every per-repo substitution clearly marked, and dropping it into a repo produces a working scan run.
+  2. Another repo in the org can call the workflow via `uses: OCC-github/security_solution/.github/workflows/<name>.yml@<ref>` against a stable published ref.
+  3. Adoption docs walk through both consumption modes end to end, covering gate-mode selection, branch protection setup, and Dependabot wiring.
+  4. Docs state which scan jobs apply to which repo types and how to disable the ones that do not apply.
+**Plans**: TBD
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -51,3 +147,10 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 | 11. File-Pattern Hook Configuration | v1.1 | 1/1 | Complete | 2026-03-22 |
 | 12. Repo Setup Script | v1.1 | 1/1 | Complete | 2026-03-22 |
 | 13. Maintenance and Validation | v1.1 | 8/8 | Complete | 2026-09-10 |
+| 14. Workflow Foundation and Action Pinning | v2.0 | 0/? | Not started | - |
+| 15. Five Parallel Scan Jobs | v2.0 | 0/? | Not started | - |
+| 16. SCA Ecosystem Coverage | v2.0 | 0/? | Not started | - |
+| 17. SARIF Upload and Artifact Retention | v2.0 | 0/? | Not started | - |
+| 18. Configurable Gate Mode and Branch Protection | v2.0 | 0/? | Not started | - |
+| 19. Pipeline Validation via Branch-Target PRs | v2.0 | 0/? | Not started | - |
+| 20. Template Packaging and Adoption Docs | v2.0 | 0/? | Not started | - |

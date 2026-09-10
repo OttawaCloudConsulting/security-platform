@@ -56,26 +56,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CICD-01 | TBD | Pending |
-| CICD-02 | TBD | Pending |
-| CICD-03 | TBD | Pending |
-| CICD-04 | TBD | Pending |
-| CICD-05 | TBD | Pending |
-| CICD-06 | TBD | Pending |
-| SCA-01 | TBD | Pending |
-| SCA-02 | TBD | Pending |
-| SCA-03 | TBD | Pending |
-| SCA-04 | TBD | Pending |
-| DIST-06 | TBD | Pending |
-| DIST-07 | TBD | Pending |
-| DIST-08 | TBD | Pending |
-| VAL-01 | TBD | Pending |
+| CICD-01 | Phase 15 | Pending |
+| CICD-02 | Phase 17 | Pending |
+| CICD-03 | Phase 17 | Pending |
+| CICD-04 | Phase 18 | Pending |
+| CICD-05 | Phase 14 | Pending |
+| CICD-06 | Phase 18 | Pending |
+| SCA-01 | Phase 16 | Pending |
+| SCA-02 | Phase 16 | Pending |
+| SCA-03 | Phase 16 | Pending |
+| SCA-04 | Phase 15 | Pending |
+| DIST-06 | Phase 20 | Pending |
+| DIST-07 | Phase 20 | Pending |
+| DIST-08 | Phase 20 | Pending |
+| VAL-01 | Phase 19 | Pending |
 
 **Coverage:**
 - v1 requirements: 14 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 14 ⚠️ (resolved by roadmapper)
+- Mapped to phases: 14 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-09-10*
-*Last updated: 2026-09-10 after initial v2.0 definition*
+*Last updated: 2026-09-10 after v2.0 roadmap creation (Phases 14-20)*

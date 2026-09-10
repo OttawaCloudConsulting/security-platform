@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: planning
-last_updated: "2026-09-10T17:08:04.477Z"
+last_updated: "2026-09-10T17:40:02.000Z"
 last_activity: 2026-09-10
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,61 +17,45 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-16)
+See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 13 — Maintenance and Validation
+**Current focus:** Phase 14 — Workflow Foundation and Action Pinning
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-09-10 — Milestone v2.0 started
+Phase: 14 of 20 (Workflow Foundation and Action Pinning) — 1st of 7 in v2.0
+Plan: — of TBD
+Status: Ready to plan
+Last activity: 2026-09-10 — v2.0 roadmap created (Phases 14-20, 14/14 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0% (v2.0)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 18
+- Total plans completed: 18 (v1.0 + v1.1)
 - Total execution time: ~2h 40min
 
 **Recent Trend:**
 
-- Phase 11 P01: ~5min
-- Phase 12 P01: ~10min
-- Phase 13 P01: ~25min
-- Phase 13 P02: ~35min
-- Phase 13 P03: ~25min
 - Phase 13 P04: ~40min
 - Phase 13 P05: ~35min
 - Phase 13 P06: ~30min
+- Trend: Stable
 
 ## Accumulated Context
 
 ### Decisions
 
-- [Phase 10]: pipx bootstrap uses pip install --user with PEP 668 fallback
-- [Phase 10]: Trivy/Syft/Grype use official install scripts; Gitleaks/hadolint use direct binary download with SHA-256 verification
-- [Phase 11]: Explicit types:/files: filters on every hook for self-documenting universal config
-- [Phase 12]: Replaced declare -A with plain variables for bash 3.2 compatibility
-- [Phase 12]: .markdownlintignore with common excludes (node_modules, .terraform, .planning, .claude, cdk.out)
-- [Phase 12]: require_git_repo() called before configure/setup but not install/check
-- [Phase 13]: Plain bash test runner chosen over bats for setup.sh testing (no existing bats dependency; only prior harness in the tree is plain bash)
-- [Phase 13]: if-form BASH_SOURCE guard (not && form) used in setup.sh so sourcing exits 0 under set -e
-- [Phase 13]: Token resolved lazily inside gh_api_get() on first call only, to preserve sourcing-has-no-side-effects
-- [Phase 13]: resolve_latest_in_major terminates with sort | tail -1, not head -1, to avoid SIGPIPE under set -euo pipefail on bash 3.2.57
-- [Phase 13]: Empty API body (rate-limited) and major-absent-from-body are distinct failure paths in resolve_latest_in_major — only the former warns
-- [Phase 13]: attempt_install decides success solely via is_installed re-probe, discarding the installer exit code (verified pipx exit-0-no-op)
-- [Phase 13]: log_update_failure always appends, never skips on an existing file, diverging deliberately from write_config's exists-skip pattern
-- [Phase 13]: update_one_tool's three pre-attempt-2 guards (empty fallback, identical-to-pin, downgrade) converge on one give-up path so FAIL_COUNT/FAILED are recorded exactly once
-- [Phase 13]: A successful attempt-2 fallback is reported as a distinct `fallback` status — does not increment FAIL_COUNT and never rewrites versions.conf
-- [Phase 13]: update)'s dispatcher branch deliberately does not map PROBLEM_COUNT (plan 05) into FAIL_COUNT, since a successful fallback legitimately shows MISMATCH in the post-update recheck
-- [Phase 13]: doctor is a distinct subcommand with its own status vocabulary (NOT_ON_PATH/BROKEN/UNPARSEABLE/OK), not a column on check
-- [Phase 13]: check now exports INSTALL_DIR onto PATH and exits non-zero on MISSING/MISMATCH; doctor deliberately does not export PATH
-- [Phase 13]: PROBLEM_COUNT is incremented in run_check/run_doctor but mapped into FAIL_COUNT only at the check/doctor dispatcher branches, keeping update's post-recheck exit status unaffected
-- [Phase 13]: check/update/doctor split documented: doctor is a distinct subcommand (not a column on check), update success determined by re-probing not installer exit code, and a successful fallback never rewrites versions.conf
-- [Phase 13]: install_all_tools/update_all_tools snapshot PATH into a local var before exporting INSTALL_DIR onto it, testing the snapshot for the PATH-missing warning — REVIEW.md WR-01 closure: export ran before the membership check, making the warning dead code
+Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
+
+- [v2.0 roadmap]: Scanning workflow is authored as `on: workflow_call` from Phase 14, invoked by a thin `pull_request` caller in this repo — so DIST-07 (reusable mode) is a publish step, not a late restructure that would invalidate Phase 19's validation.
+- [v2.0 roadmap]: SCA split across two phases — SCA-04 (generic Trivy/Grype filesystem scan) lands in Phase 15 as the zero-config first cut of the 5th job, so CICD-01 ("5 parallel jobs") is genuinely true there; SCA-01/02/03 ecosystem sub-scans follow in Phase 16.
+- [v2.0 roadmap]: Gate mode (CICD-06) must work as both a `workflow_call` input and a repo variable/env, since the two consumption modes configure differently.
+- [Phase 13]: check/update/doctor split — doctor is a distinct subcommand, update success determined by re-probing not installer exit code, successful fallback never rewrites versions.conf.
+- [Phase 12]: Replaced `dist/install.sh` with `workstation/setup.sh` bootstrapper (install + configure + activate).
 
 ### Pending Todos
 
@@ -79,19 +63,34 @@ None.
 
 ### Blockers/Concerns
 
-- GitHub API rate limiting strategy for --check command (60 req/hr unauthenticated)
-- MAINT-01/02/03 span plans 13-01 through 13-07 (each plan's `requirements:` frontmatter lists the
-  requirements it *contributes to*, not completes). Do not run `requirements.mark-complete` for
-  MAINT-01/02/03 until the last plan touching each requirement lands — 13-01 was scaffolding only
-  (no `--check`/`--update`/`--doctor` functionality yet), and marking them complete now would be
-  false state read by the verifier and later executors.
+- **Scan fixtures are needed from Phase 15, not just Phase 19.** Verified 2026-09-10: `repos/` is gitignored
+  (`.gitignore:1`), so a CI checkout of this repo sees only ~356 `.md`, 13 `.cjs`, 12 `.json`, 2 `.sh`, 1 `.yaml`.
+  `git ls-files` matches **zero** Dockerfiles, lockfiles, `requirements*.txt`, `pyproject.toml`, or `.tf` files.
+  Consequence: the IaC, container, and SCA jobs have nothing real to scan. Only SAST (on `.cjs`/`.sh`) and
+  secrets (any repo) work out of the box. Phase 15 planning must decide the fixture strategy once, for all of
+  15/16/19 — do not rediscover it three times.
+- **This repo's own hooks will block committing those fixtures.** Gitleaks pre-push and npm-audit pre-commit
+  (shipped in v1.0/v1.1) will reject a deliberately vulnerable `package-lock.json` or a seeded secret. Resolve
+  the exemption strategy alongside the fixture decision — scoped `.gitleaksignore` / hook `exclude:` for a
+  fixtures directory is preferred over a blanket bypass, so the repo's own protection stays intact.
+- **No `.github/` directory exists yet** — Phase 14 creates the workflow tree from scratch; confirm no
+  org-level workflow governance conflicts before authoring.
+
+## Deferred Items
+
+Carried forward from v1.1 close:
+
+| Category | Item | Status | Deferred At |
+|----------|------|--------|-------------|
+| Target-repo issue | `aws-zabbix-monitoring-solution` package-lock.json has 16 real npm vulns (1 critical: handlebars, 10 high); npm-audit hook correctly blocks commits | Deferred — target-repo remediation, not tooling | v1.1 close (2026-09-10) |
+| Known gap | ESLint hook uses `language: system`; if eslint is absent and a `.js`/`.ts` file is staged, hook errors rather than skipping | Accepted, not fixed | v1.1 close (2026-09-10) |
 
 ## Session Continuity
 
-Last session: 2026-09-10T14:40:49.469Z
-Stopped at: Completed 13-08-PLAN.md (gap closure: PATH warning fix)
+Last session: 2026-09-10
+Stopped at: v2.0 ROADMAP.md written; REQUIREMENTS.md traceability populated (14/14 mapped)
 Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Plan the first v2.0 phase with `/gsd:plan-phase 14`
