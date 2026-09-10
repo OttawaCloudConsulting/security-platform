@@ -120,3 +120,89 @@ out=$(
   ) 2>&1
 )
 assert_contains "$out" "MARKER_OUTPUT" "installer output appears when VERBOSE is true"
+
+describe "log_update_failure: appends one plain-text line, creating the log if absent"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "$tmpdir"' RETURN
+    REPO_ROOT="$tmpdir"
+    log_update_failure "trivy" "0.69.3" "0.68.0"
+    echo "LINES:$(wc -l < "${tmpdir}/${UPDATE_LOG_NAME}" | tr -d ' ')"
+    echo "FIRSTCHAR:$(head -c1 "${tmpdir}/${UPDATE_LOG_NAME}")"
+    cat "${tmpdir}/${UPDATE_LOG_NAME}"
+  ) 2>&1
+)
+assert_contains "$out" "LINES:1" "after one call, the log file exists and has exactly one line"
+assert_not_contains "$out" "FIRSTCHAR:{" "the log's first character is not { (D-07: plain text, not JSON)"
+assert_not_contains "$out" '":"' "the log content contains no JSON key:value pair"
+assert_contains "$out" "trivy" "the log line contains the tool name"
+assert_contains "$out" "pinned=" "the log line contains a pinned= field"
+assert_contains "$out" "installed=" "the log line contains an installed= field"
+
+describe "log_update_failure: appends, never truncates, never skips on a second call"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "$tmpdir"' RETURN
+    REPO_ROOT="$tmpdir"
+    log_update_failure "trivy" "0.69.3" "0.68.0"
+    log_update_failure "syft" "1.42.2" "1.41.0"
+    echo "LINES:$(wc -l < "${tmpdir}/${UPDATE_LOG_NAME}" | tr -d ' ')"
+  ) 2>&1
+)
+assert_contains "$out" "LINES:2" "a second call appends a second line rather than truncating or skipping"
+
+describe "log_update_failure: no fallback argument produces an (unresolved) marker"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "$tmpdir"' RETURN
+    REPO_ROOT="$tmpdir"
+    log_update_failure "grype" "0.109.1"
+    cat "${tmpdir}/${UPDATE_LOG_NAME}"
+  ) 2>&1
+)
+assert_contains "$out" "(unresolved)" "a call with no fallback argument produces a line containing (unresolved)"
+
+describe "log_update_failure: never writes a token, curl command, or Authorization header"
+
+out=$(
+  (
+    source "$SETUP_SH"
+    set +e
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "$tmpdir"' RETURN
+    REPO_ROOT="$tmpdir"
+    export GITHUB_TOKEN="NOT-A-REAL-TOKEN-TEST"
+    log_update_failure "gitleaks" "8.30.0" "8.29.0"
+    cat "${tmpdir}/${UPDATE_LOG_NAME}"
+  ) 2>&1
+)
+assert_not_contains "$out" "NOT-A-REAL-TOKEN-TEST" "the log content does not contain the test token placeholder"
+assert_not_contains "$out" "curl" "the log content does not contain the string curl"
+assert_not_contains "$out" "Authorization" "the log content does not contain the string Authorization"
+
+describe "log_update_failure: never leaves a stray log outside its mktemp sandbox"
+
+# shellcheck disable=SC2317  # RETURN-trapped cleanup runs on subshell exit, not "unreachable"
+(
+  source "$SETUP_SH"
+  set +e
+  tmpdir="$(mktemp -d)"
+  trap 'rm -rf "$tmpdir"' RETURN
+  # shellcheck disable=SC2034  # read by log_update_failure() in the sourced setup.sh
+  REPO_ROOT="$tmpdir"
+  log_update_failure "hadolint" "2.14.0"
+) > /dev/null 2>&1
+stray=$(find . -name 'update-failures.log' -not -path './node_modules/*' 2>/dev/null)
+assert_eq "" "$stray" "running the log tests leaves no update-failures.log anywhere under the working directory"
