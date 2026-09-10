@@ -1,0 +1,13 @@
+---
+# Dependabot version updates (CICD-05).
+# Keeps the SHA-pinned GitHub Actions in .github/workflows/ current.
+# Note: Dependabot ignores locally referenced reusable workflows by design,
+# so `uses: ./.github/workflows/security.yml` is never proposed for update.
+
+version: 2
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
