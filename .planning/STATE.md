@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
-status: planning
-stopped_at: Phase 14 context gathered
-last_updated: "2026-09-10T17:49:38.059Z"
-last_activity: 2026-09-10 — v2.0 roadmap created (Phases 14-20, 14/14 requirements mapped)
+status: executing
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-09-10T19:15:07.894Z"
+last_activity: 2026-09-10 -- Phase 14 Plan 01 complete (root .github/ tree created in product repo)
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 3
+  completed_plans: 1
+  percent: 33
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 14 — Workflow Foundation and Action Pinning
+**Current focus:** Phase 14 — workflow-foundation-and-action-pinning
 
 ## Current Position
 
-Phase: 14 of 20 (Workflow Foundation and Action Pinning) — 1st of 7 in v2.0
-Plan: — of TBD
-Status: Ready to plan
-Last activity: 2026-09-10 — v2.0 roadmap created (Phases 14-20, 14/14 requirements mapped)
+Phase: 14 (workflow-foundation-and-action-pinning) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-09-10 -- Phase 14 Plan 01 complete
 
-Progress: [░░░░░░░░░░] 0% (v2.0)
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
@@ -57,6 +57,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [v2.0 roadmap]: Gate mode (CICD-06) must work as both a `workflow_call` input and a repo variable/env, since the two consumption modes configure differently.
 - [Phase 13]: check/update/doctor split — doctor is a distinct subcommand, update success determined by re-probing not installer exit code, successful fallback never rewrites versions.conf.
 - [Phase 12]: Replaced `dist/install.sh` with `workstation/setup.sh` bootstrapper (install + configure + activate).
+- [Phase 14-01]: Product repo uses yamllint -d relaxed (its existing pre-commit convention) as the phase gate — no .yamllint added; RESEARCH's truthy+document-start override VERIFIED to error on the 81-char SHA-pin line.
+- [Phase 14-01]: actions/checkout pinned to v7.0.0 (9c091bb2) one patch behind v7.0.1 on purpose, so Dependabot's first run yields an observable bump PR (ROADMAP criterion #4).
 
 ### Pending Todos
 
@@ -76,8 +78,9 @@ None.
   the exemption strategy alongside the fixture decision — scoped `.gitleaksignore` / hook `exclude:` for a
   fixtures directory is preferred over a blanket bypass, so the repo's own protection stays intact.
 
-- **No `.github/` directory exists yet** — Phase 14 creates the workflow tree from scratch; confirm no
-  org-level workflow governance conflicts before authoring.
+- ~~No `.github/` directory exists yet~~ — RESOLVED in Phase 14 Plan 01: the product repo
+  (`repos/security-platform`) now has `.github/workflows/security.yml`, `.github/workflows/pr-security.yml`,
+  and `.github/dependabot.yml` committed on `feature/phase-14-workflow-foundation` (unpushed).
 
 ## Deferred Items
 
@@ -87,13 +90,14 @@ Carried forward from v1.1 close:
 |----------|------|--------|-------------|
 | Target-repo issue | `aws-zabbix-monitoring-solution` package-lock.json has 16 real npm vulns (1 critical: handlebars, 10 high); npm-audit hook correctly blocks commits | Deferred — target-repo remediation, not tooling | v1.1 close (2026-09-10) |
 | Known gap | ESLint hook uses `language: system`; if eslint is absent and a `.js`/`.ts` file is staged, hook errors rather than skipping | Accepted, not fixed | v1.1 close (2026-09-10) |
+| Phase 14 P01 | 12min | 3 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-09-10T17:49:38.052Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-workflow-foundation-and-action-pinning/14-CONTEXT.md
+Last session: 2026-09-10T19:14:49.577Z
+Stopped at: Completed 14-01-PLAN.md
+Resume file: .planning/phases/14-workflow-foundation-and-action-pinning/14-02-PLAN.md
 
 ## Operator Next Steps
 
-- Plan the first v2.0 phase with `/gsd:plan-phase 14`
+- Execute Phase 14 Plan 02 (push `feature/phase-14-workflow-foundation` in `repos/security-platform` and open the PR)

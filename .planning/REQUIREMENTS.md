@@ -11,7 +11,7 @@
 - [ ] **CICD-02**: Each scan job uploads SARIF results to the GitHub Security tab
 - [ ] **CICD-03**: Each scan job retains JSON artifact output for future DefectDojo import (import pipeline itself is out of scope this milestone)
 - [ ] **CICD-04**: Branch protection config/guidance provided so scan checks can be made required (block merge) once enabled
-- [ ] **CICD-05**: Dependabot configured to keep GitHub Actions SHA pins updated
+- [x] **CICD-05**: Dependabot configured to keep GitHub Actions SHA pins updated
 - [ ] **CICD-06**: Gate mode (block merge vs report-only) is configurable per consuming repo via a flag/input, not hardcoded
 
 ### SCA Coverage
@@ -60,7 +60,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CICD-02 | Phase 17 | Pending |
 | CICD-03 | Phase 17 | Pending |
 | CICD-04 | Phase 18 | Pending |
-| CICD-05 | Phase 14 | Pending |
+| CICD-05 | Phase 14 | Complete |
 | CICD-06 | Phase 18 | Pending |
 | SCA-01 | Phase 16 | Pending |
 | SCA-02 | Phase 16 | Pending |

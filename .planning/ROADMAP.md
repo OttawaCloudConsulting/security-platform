@@ -59,7 +59,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
   3. Every `uses:` reference in the workflows is pinned to a full commit SHA with a human-readable version comment.
   4. Dependabot opens a pull request against this repo when a pinned action publishes a newer release.
 **Plans**: 3 plans
-- [ ] 14-01-PLAN.md — Create root `.github/` tree in `repos/security-platform/`: callable `security.yml`, `pull_request` caller `pr-security.yml`, `dependabot.yml`; static gate
+- [x] 14-01-PLAN.md — Create root `.github/` tree in `repos/security-platform/`: callable `security.yml`, `pull_request` caller `pr-security.yml`, `dependabot.yml`; static gate
 - [ ] 14-02-PLAN.md — Push the product-repo branch, open PR, observe the green PR-triggered run and capture the check-run name (criteria 1-2)
 - [ ] 14-03-PLAN.md — Human-confirmed merge to `main`, then observe and classify Dependabot's first run (criterion 4 / CICD-05)
 
@@ -150,7 +150,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 11. File-Pattern Hook Configuration | v1.1 | 1/1 | Complete | 2026-03-22 |
 | 12. Repo Setup Script | v1.1 | 1/1 | Complete | 2026-03-22 |
 | 13. Maintenance and Validation | v1.1 | 8/8 | Complete | 2026-09-10 |
-| 14. Workflow Foundation and Action Pinning | v2.0 | 0/? | Not started | - |
+| 14. Workflow Foundation and Action Pinning | v2.0 | 1/3 | In Progress|  |
 | 15. Five Parallel Scan Jobs | v2.0 | 0/? | Not started | - |
 | 16. SCA Ecosystem Coverage | v2.0 | 0/? | Not started | - |
 | 17. SARIF Upload and Artifact Retention | v2.0 | 0/? | Not started | - |
