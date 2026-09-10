@@ -639,7 +639,7 @@ _install_gitleaks() {
   checksums_url="${GITLEAKS_CHECKSUMS_URL//\{VERSION\}/$GITLEAKS_VERSION}"
 
   tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/gitleaks.XXXXXX")"
-  trap 'rm -rf "$tmpdir"' RETURN
+  trap 'rm -rf "$tmpdir"; trap - RETURN' RETURN
 
   curl -sfL -o "$tmpdir/gitleaks.tar.gz" "$url"
   curl -sfL -o "$tmpdir/checksums.txt" "$checksums_url"
@@ -671,7 +671,7 @@ _install_hadolint() {
   checksum_url="${checksum_url//\{ARCH\}/$arch}"
 
   tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/hadolint.XXXXXX")"
-  trap 'rm -rf "$tmpdir"' RETURN
+  trap 'rm -rf "$tmpdir"; trap - RETURN' RETURN
 
   curl -sfL -o "$tmpdir/hadolint" "$url"
   curl -sfL -o "$tmpdir/hadolint.sha256" "$checksum_url"
