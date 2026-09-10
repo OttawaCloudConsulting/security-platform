@@ -7,7 +7,7 @@
 
 ### CI/CD Pipeline
 
-- [ ] **CICD-01**: GitHub Actions security workflow runs 5 parallel scan jobs (SAST, IaC, SCA, container, secrets) on every PR
+- [x] **CICD-01**: GitHub Actions security workflow runs 5 parallel scan jobs (SAST, IaC, SCA, container, secrets) on every PR
 - [ ] **CICD-02**: Each scan job uploads SARIF results to the GitHub Security tab
 - [ ] **CICD-03**: Each scan job retains JSON artifact output for future DefectDojo import (import pipeline itself is out of scope this milestone)
 - [ ] **CICD-04**: Branch protection config/guidance provided so scan checks can be made required (block merge) once enabled
@@ -19,7 +19,7 @@
 - [ ] **SCA-01**: SCA job audits npm/Node dependencies
 - [ ] **SCA-02**: SCA job audits Python dependencies (pip-audit or equivalent)
 - [ ] **SCA-03**: SCA job checks Terraform provider/module pinning
-- [ ] **SCA-04**: SCA job runs a generic Trivy/Grype filesystem scan as a catch-all for ecosystems not covered above
+- [x] **SCA-04**: SCA job runs a generic Trivy/Grype filesystem scan as a catch-all for ecosystems not covered above
 
 ### Distribution
 
@@ -56,7 +56,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CICD-01 | Phase 15 | Pending |
+| CICD-01 | Phase 15 | Complete |
 | CICD-02 | Phase 17 | Pending |
 | CICD-03 | Phase 17 | Pending |
 | CICD-04 | Phase 18 | Pending |
@@ -65,7 +65,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SCA-01 | Phase 16 | Pending |
 | SCA-02 | Phase 16 | Pending |
 | SCA-03 | Phase 16 | Pending |
-| SCA-04 | Phase 15 | Pending |
+| SCA-04 | Phase 15 | Complete |
 | DIST-06 | Phase 20 | Pending |
 | DIST-07 | Phase 20 | Pending |
 | DIST-08 | Phase 20 | Pending |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Phase 15 context gathered
-last_updated: "2026-09-10T20:15:01.643Z"
-last_activity: "2026-09-10 -- Phase 14 Plan 02 complete (PR #4 open, run 34519772020 green)"
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-09-10T22:30:13.164Z"
+last_activity: 2026-09-10 -- Phase 15 Plan 01 complete (scan fixtures authored and committed, unpushed)
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 8
+  completed_plans: 4
   percent: 14
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 14 — workflow-foundation-and-action-pinning
+**Current focus:** Phase 15 — five-parallel-scan-jobs
 
 ## Current Position
 
-Phase: 14 (workflow-foundation-and-action-pinning) — EXECUTING
-Plan: 3 of 3
-Status: Ready to execute
-Last activity: 2026-09-10 -- Phase 14 Plan 02 complete (PR #4 open, run 34519772020 green)
+Phase: 15 (five-parallel-scan-jobs) — EXECUTING
+Plan: 1 of 5 complete
+Status: Ready to execute Plan 02
+Last activity: 2026-09-10 -- Phase 15 Plan 01 complete (scan fixtures authored and committed, unpushed)
 
-Progress: [███████░░░] 67%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -61,6 +61,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 14-01]: actions/checkout pinned to v7.0.0 (9c091bb2) one patch behind v7.0.1 on purpose, so Dependabot's first run yields an observable bump PR (ROADMAP criterion #4).
 - [Phase 14-02]: Verbatim check-run name for a reusable-workflow call is 'security / Placeholder' (<caller-job-id> / <called-job-name>) — assumption A3 CONFIRMED; Phase 18 must re-read it after Phase 15 replaces the placeholder with five scan jobs.
 - [Phase 14-02]: Merge-blocking evidence on security-platform comes from the rulesets endpoint (rules/branches/main = deletion,non_fast_forward); the 404 on classic branches/main/protection is a false negative and must never be used as evidence.
+- [Phase 15-01]: D-02 corrected: currently-supported debian:12-slim digest pin used instead of EOL distro so Trivy reports real, non-decreasing CVE counts (222 vulns, 4 CRITICAL, 52 HIGH measured)
+- [Phase 15-01]: D-02 corrected: Checkov findings for main.tf come from misconfigured aws_s3_bucket/aws_security_group resources, not the old provider pin, which produces zero findings alone
+- [Phase 15-01]: D-03 corrected: no Gitleaks or .gitleaksignore change made — scoping intent satisfied entirely by four exclude: ^fixtures/ hook entries on terraform_fmt, terraform_validate, hadolint, npm-audit
 
 ### Pending Todos
 
@@ -94,13 +97,14 @@ Carried forward from v1.1 close:
 | Known gap | ESLint hook uses `language: system`; if eslint is absent and a `.js`/`.ts` file is staged, hook errors rather than skipping | Accepted, not fixed | v1.1 close (2026-09-10) |
 | Phase 14 P01 | 12min | 3 tasks | 3 files |
 | Phase 14 P02 | 7min | 2 tasks | 1 files |
+| Phase 15 P01 | 20min | 2 tasks | 6 files |
 
 ## Session Continuity
 
-Last session: 2026-09-10T20:15:01.631Z
-Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-five-parallel-scan-jobs/15-CONTEXT.md
+Last session: 2026-09-10T22:30:13.157Z
+Stopped at: Completed 15-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
-- Execute Phase 14 Plan 02 (push `feature/phase-14-workflow-foundation` in `repos/security-platform` and open the PR)
+- Execute Phase 15 Plan 02 (next plan in `feature/phase-15-five-parallel-scan-jobs`)
