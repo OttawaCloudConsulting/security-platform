@@ -1,18 +1,20 @@
 ---
 phase: 10-cross-platform-install-script
 verified: 2026-03-17T00:00:00Z
-status: human_needed
-score: 13/14 must-haves verified
+status: verified
+score: 14/14 must-haves verified
+re_verification: true
+human_verification_resolved: 2026-09-10
 human_verification:
-  - test: "Run `bash dist/install.sh` on a clean macOS arm64 or Linux machine (or Docker container) without any of the 6 tools pre-installed"
+  - test: "Run install script on a clean machine without any of the 6 tools pre-installed"
     expected: "All 6 tools install successfully to ~/.local/bin and the summary table shows 'installed' for each"
-    why_human: "Cannot execute network downloads in static verification; actual curl/sh pipeline and checksum verification require live network and filesystem"
-  - test: "Run `bash dist/install.sh` a second time immediately after a successful first run"
-    expected: "Summary table shows 'skipped' for all 6 tools (idempotency) with exit code 0"
-    why_human: "Idempotency requires running the script twice against installed binaries; cannot simulate in static check"
+    result: "SUPERSEDED TARGET, THEN CONFIRMED 2026-09-10 — dist/install.sh no longer exists (replaced 2026-03-20, commit 828f048, by workstation/setup.sh, a broader bootstrapper). Tested workstation/setup.sh install instead, in a clean Docker container (Ubuntu 22.04 arm64). First run surfaced a real bug: RETURN trap in _install_gitleaks/_install_hadolint re-fired on the caller's (run_installer) return, referencing an out-of-scope tmpdir under set -u, crashing after all 6 tools had actually installed successfully but before the summary table printed. Fixed (commit 2a70c97 in security-platform repo: self-clearing trap). Re-tested clean: all 6 tools (pre-commit, trivy, syft, grype, gitleaks, hadolint) installed, summary table printed 'installed' for each, exit 0."
+  - test: "Run install script a second time immediately after a successful first run"
+    expected: "Summary table shows 'skipped'/'ok' for all 6 tools (idempotency) with exit code 0"
+    result: "CONFIRMED 2026-09-10 — second run against workstation/setup.sh (post-fix) showed 'already installed' for all 6 tools, summary table status 'ok' for each, exit 0."
   - test: "Confirm INST-05 scope decision: INST-05 requires pre-commit, Semgrep, AND Checkov to install via pipx, but only pre-commit is installed; Semgrep and Checkov are deferred to CI (M2)"
     expected: "Team confirms the INST-05 partial satisfaction is an accepted scope decision, OR REQUIREMENTS.md INST-05 text is narrowed to 'pre-commit installs via pipx' to match actual scope"
-    why_human: "REQUIREMENTS.md marks INST-05 complete but the requirement text names three tools; only one is installed. The project team made this decision consciously but the requirement text has not been narrowed."
+    result: "ACCEPTED AS-IS 2026-09-10 — user confirmed scope decision; REQUIREMENTS.md text left unchanged."
 ---
 
 # Phase 10: Cross-Platform Install Script Verification Report

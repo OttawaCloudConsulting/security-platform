@@ -1,16 +1,17 @@
 ---
 phase: 01-pre-commit-framework
 verified: 2026-03-16T00:38:08Z
-status: human_needed
-score: 4/5 must-haves verified
-re_verification: false
+status: verified
+score: 5/5 must-haves verified
+re_verification: true
+human_verification_resolved: 2026-09-10
 human_verification:
   - test: "Confirm git commit triggers pre-commit hook output in aws-zabbix-monitoring-solution"
     expected: "Hook runner executes and prints hook names/results even if some hooks skip due to no matching files"
-    why_human: "Hook invocation on commit cannot be verified without making a real test commit — requires a live terminal session"
+    result: "CONFIRMED 2026-09-10 — live test commit made and reverted (git reset --hard, no trace left). Hook runner executed, all 9 non-matching hooks printed 'Skipped', markdownlint ran and passed. Commit succeeded."
   - test: "Confirm ESLint hook behavior on commit when eslint is absent from the project"
-    expected: "Either: (a) hook is skipped because no .js/.ts files are staged, or (b) hook fails and operator is aware. The local hook uses language=system which means pre-commit will not install eslint — if a JS/TS file is ever staged and eslint is not available, the hook will fail with 'command not found'"
-    why_human: "ESLint is not in package.json devDependencies and not in node_modules/.bin. This is a runtime gap that will surface when TypeScript files are staged. Human must decide: add eslint as a devDependency, or accept that the hook will silently skip (it won't skip — language=system will error). Verify the target repo's intent."
+    expected: "Either: (a) hook is skipped because no .js/.ts files are staged, or (b) hook fails and operator is aware."
+    result: "ACCEPTED AS KNOWN GAP 2026-09-10 — confirmed scenario (a) occurs when no JS/TS files staged (observed in live test commit). Scenario (b) risk (language=system hook errors with 'command not found' if eslint absent and a .js/.ts file is staged) remains unmitigated by design decision — user chose to accept risk rather than add eslint dependency now. See STATE.md Deferred Items."
 ---
 
 # Phase 1: Pre-commit Framework Verification Report

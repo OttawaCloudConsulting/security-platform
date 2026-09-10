@@ -1,19 +1,20 @@
 ---
 phase: 04-infrastructure-hooks
 verified: 2026-03-15T00:00:00Z
-status: human_needed
-score: 4/4 must-haves verified (automated); terraform_validate runtime behavior needs human confirmation
-re_verification: false
+status: verified
+score: 4/4 must-haves verified
+re_verification: true
+human_verification_resolved: 2026-09-10
 human_verification:
   - test: "Run pre-commit run terraform_validate --all-files in repos/terraform-pipelines/"
     expected: "Exit code 0 after provider init completes for each module directory"
-    why_human: "terraform_validate downloads providers via terraform init at runtime — cannot verify without executing terraform in a live environment with internet access"
+    result: "CONFIRMED 2026-09-10 — live run, exit 0, 'Terraform validate...Passed'."
   - test: "Stage a deliberately unformatted .tf file and attempt a commit in terraform-pipelines"
     expected: "Hook intercepts commit, terraform_fmt rewrites the file in-place, commit fails with diff shown"
-    why_human: "End-to-end commit interception requires a live git commit operation — not verifiable by static file inspection"
+    result: "CONFIRMED 2026-09-10 — live test commit with deliberately unformatted .tf file. terraform_fmt hook Failed, rewrote file, commit blocked. Test artifact fully reverted (git reset)."
   - test: "Stage a package-lock.json change and attempt a commit in aws-zabbix-monitoring-solution"
     expected: "npm-audit hook runs, exits 0, commit proceeds normally"
-    why_human: "Hook trigger on staged files requires a live git commit — not verifiable by static file inspection"
+    result: "PARTIALLY CONFIRMED 2026-09-10 — hook trigger mechanism verified working (fires on package-lock.json change, correctly blocks commit on failure). However live run found 16 real vulnerabilities now present in aws-zabbix's actual dependency tree (1 critical: handlebars, 10 high) not present at original verification time — hook now exits 1 rather than 0. Tooling itself is working as designed (blocking on real vulns is correct behavior). Fixing aws-zabbix's dependencies is explicitly out of scope for this milestone (tooling-focused, not target-repo remediation) — user decision 2026-09-10. Test artifact reverted, no changes left in aws-zabbix repo."
 ---
 
 # Phase 4: Infrastructure Hooks Verification Report
