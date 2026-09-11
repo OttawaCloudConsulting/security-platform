@@ -107,6 +107,35 @@ jobs:
           # populated before wait-for-processing can reject the SARIF.
           echo "sarif-semgrep sarif-id=${{ steps.sarif-semgrep.outputs.sarif-id }}"
 
+      # RETENTION FORMAT — the contract the other four artifact steps share.
+      # Each tool's NATIVE output is retained unchanged; nothing is normalised
+      # to a common schema. 17-RESEARCH measured DefectDojo's parser inventory
+      # directly: dojo/tools/ already ships checkov, gitleaks, npm_audit_7_plus,
+      # pip_audit, sarif, semgrep, tflint and trivy parsers — every tool in this
+      # stack, plus a generic SARIF parser. Normalising would DESTROY import
+      # fidelity for the future DEFECT-01 pipeline this retention exists to
+      # feed. Note the runner's npm is 10.x, so the applicable parser is
+      # npm_audit_7_plus ("NPM Audit v7+ Scan"), not the legacy npm_audit.
+      # SARIF is retained alongside the JSON because tflint emits no JSON in
+      # this workflow at all — without it SCA-03's results would not be kept.
+      - name: Upload SAST reports
+        id: artifact-sast
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: semgrep-results          # unique across the five parallel jobs
+          path: |
+            semgrep-results.json
+            semgrep.sarif
+          # error, not warn: both files are produced unconditionally by the
+          # single Semgrep run above, so a missing one is a real failure.
+          if-no-files-found: error
+          # Explicit, never omitted in favour of the repository default, because
+          # Criterion 3 requires a STATED period. 90 is the documented maximum
+          # "unless changed from the repository settings page".
+          retention-days: 90
+
   # ─────────────────────────────────────────────────────────────────────────
   # IaC — Checkov
   # Scans infrastructure as code (Terraform, CloudFormation, K8s, Dockerfile,
@@ -180,6 +209,24 @@ jobs:
           # Secondary, for the log only — never the sole assertion: sarif-id is
           # populated before wait-for-processing can reject the SARIF.
           echo "sarif-checkov sarif-id=${{ steps.sarif-checkov.outputs.sarif-id }}"
+
+      # Same retention-format contract as `Upload SAST reports` in the sast job.
+      - name: Upload IaC reports
+        id: artifact-iac
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: checkov-results          # unique across the five parallel jobs
+          path: |
+            checkov-results.json
+            checkov.sarif
+          # error, not warn: the single Checkov run writes both files
+          # unconditionally, so a missing one is a real failure.
+          if-no-files-found: error
+          # Explicit — Criterion 3 requires a stated period, and 90 is the
+          # maximum without a repository-settings change. See the sast job.
+          retention-days: 90
 
   # ─────────────────────────────────────────────────────────────────────────
   # SCA — four scanners in ONE job. Adding a sixth job would break three
@@ -554,6 +601,49 @@ jobs:
           # populated before wait-for-processing can reject the SARIF.
           echo "sarif-tflint sarif-id=${{ steps.sarif-tflint.outputs.sarif-id }}"
 
+      # Same retention-format contract as `Upload SAST reports` in the sast job.
+      #
+      # GLOB, NEVER A LITERAL NAME, for the npm and pip reports. Phase 16
+      # hand-forward #1: npm audit operates on a working DIRECTORY and a
+      # consumer repo is not guaranteed a single manifest at its root, so 16-04
+      # numbers those reports per input — npm-audit-1.json, pip-audit-2.json and
+      # so on. Naming one literally would silently retain that one report and
+      # drop every other. That is why the two starred lines below exist, and
+      # this note sits here rather than on them: a `path: |` literal block
+      # scalar has no comment syntax, so a trailing `#` would be swallowed into
+      # the path string itself.
+      #
+      # overwrite, include-hidden-files and archive are left at their defaults
+      # on all five artifact steps, each for its own reason. overwrite: true
+      # would MASK a name collision rather than fix one — the five names are
+      # distinct, so the failing default is the behaviour we want.
+      # include-hidden-files: true would sweep dotfiles into an archive that is
+      # world-downloadable on this PUBLIC repo. archive: false ignores `name`
+      # entirely and fails on a multi-file glob.
+      - name: Upload SCA reports
+        id: artifact-sca
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: sca-results              # unique across the five parallel jobs
+          path: |
+            trivy-fs.json
+            trivy-fs.sarif
+            npm-audit-*.json
+            pip-audit-*.json
+            tflint.sarif
+          # warn, and this is the ONLY job where warn is correct. The npm, pip
+          # and tflint entries are ecosystem-conditional: in a consumer repo
+          # with no package-lock.json the npm glob matches nothing, and `error`
+          # there would turn a clean, correct skip red — re-breaking the
+          # Criterion 4 skip behaviour Phase 16 spent a plan proving.
+          # trivy-fs.json is unconditional, so this artifact is never empty.
+          if-no-files-found: warn
+          # Explicit — Criterion 3 requires a stated period, and 90 is the
+          # maximum without a repository-settings change. See the sast job.
+          retention-days: 90
+
   # ─────────────────────────────────────────────────────────────────────────
   # Container — Trivy Image
   # Builds the fixture image and scans it for OS package and language
@@ -639,6 +729,24 @@ jobs:
           # Secondary, for the log only — never the sole assertion: sarif-id is
           # populated before wait-for-processing can reject the SARIF.
           echo "sarif-trivy-image sarif-id=${{ steps.sarif-trivy-image.outputs.sarif-id }}"
+
+      # Same retention-format contract as `Upload SAST reports` in the sast job.
+      - name: Upload container reports
+        id: artifact-container
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: trivy-image-results      # unique across the five parallel jobs
+          path: |
+            trivy-image.json
+            trivy-image.sarif
+          # error, not warn: the scan writes the JSON and the conversion step
+          # writes the SARIF, both unconditionally, so a missing one is real.
+          if-no-files-found: error
+          # Explicit — Criterion 3 requires a stated period, and 90 is the
+          # maximum without a repository-settings change. See the sast job.
+          retention-days: 90
 
   # ─────────────────────────────────────────────────────────────────────────
   # Secrets — Gitleaks
@@ -730,3 +838,21 @@ jobs:
           # Secondary, for the log only — never the sole assertion: sarif-id is
           # populated before wait-for-processing can reject the SARIF.
           echo "sarif-gitleaks sarif-id=${{ steps.sarif-gitleaks.outputs.sarif-id }}"
+
+      # Same retention-format contract as `Upload SAST reports` in the sast job.
+      - name: Upload secrets reports
+        id: artifact-secrets
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: gitleaks-results         # unique across the five parallel jobs
+          path: |
+            gitleaks-results.json
+            gitleaks.sarif
+          # error, not warn: the two Gitleaks runs above each write one of these
+          # files unconditionally, so a missing one is a real failure.
+          if-no-files-found: error
+          # Explicit — Criterion 3 requires a stated period, and 90 is the
+          # maximum without a repository-settings change. See the sast job.
+          retention-days: 90
