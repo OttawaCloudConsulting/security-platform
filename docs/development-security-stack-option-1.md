@@ -142,6 +142,8 @@
 | **YAML Linting** | **yamllint** | MIT | No | — |
 | **Markdown Linting** | **markdownlint-cli** | MIT | No | — |
 | **Fast npm SCA** | **npm audit** *(retained)* | — | No | — |
+| **Python SCA** | **pip-audit** | Apache-2.0 | No | `safety` (account-gated model — contradicts the zero-account core value) |
+| **Terraform Provider / Module Pin Checking** | **tflint** | MPL-2.0 | No | — *(nothing replaced; closes a gap no existing tool covered)* |
 | **K8s Runtime Anomaly Detection** | **Falco CE** + **FalcoSidekick** | Apache 2.0 | No | — |
 | **Image Signing / SLSA Provenance** | **Cosign** (keyless) + **slsa-github-generator** + **Kyverno** | Apache 2.0 | No | — |
 
@@ -1715,21 +1717,21 @@ For **Azure DevOps** and **GitLab CI** (tertiary use, typically client repositor
 
 ## Language / Framework Coverage Matrix
 
-| Language / Framework | ShellCheck | Ruff | ESLint | hadolint | yamllint | Semgrep CE | Checkov | Trivy | Grype (SCA) | Gitleaks |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Terraform (HCL) | — | — | — | — | — | ✅ | ✅ 1000+ | ✅ tfsec rules | — | ✅ |
-| AWS CDK (TypeScript) | — | — | ✅ | — | — | ✅ TS rules | ✅ synth'd CFN | ✅ npm deps | ✅ npm deps | ✅ |
-| CloudFormation | — | — | — | — | ✅ syntax | ✅ | ✅ | ✅ | — | ✅ |
-| Python | — | ✅ lint+fmt | — | — | — | ✅ | — | ✅ pip/poetry | ✅ pip/poetry | ✅ |
-| JavaScript / TypeScript | — | — | ✅ | — | — | ✅ | — | ✅ npm/yarn | ✅ npm/yarn | ✅ |
-| Bash / Shell | ✅ full | — | — | — | — | ✅ basic | — | — | — | ✅ |
-| Kubernetes YAML | — | — | — | — | ✅ | ✅ | ✅ | ✅ | — | ✅ |
-| Dockerfile | — | — | — | ✅ | — | ✅ | ✅ | ✅ image+cfg | ✅ layers | ✅ |
-| Helm Charts | — | — | — | — | ✅ | — | ✅ | ✅ | — | ✅ |
-| Container Images | — | — | — | — | — | — | — | ✅ full vuln | ✅ full vuln | — |
-| Markdown | — | — | — | — | — | — | — | — | — | ✅ |
+| Language / Framework | ShellCheck | Ruff | ESLint | hadolint | yamllint | Semgrep CE | Checkov | Trivy | Grype (SCA) | Gitleaks | pip-audit | tflint |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Terraform (HCL) | — | — | — | — | — | ✅ | ✅ 1000+ | ✅ tfsec rules | — | ✅ | — | ✅ provider/module pins |
+| AWS CDK (TypeScript) | — | — | ✅ | — | — | ✅ TS rules | ✅ synth'd CFN | ✅ npm deps | ✅ npm deps | ✅ | — | — |
+| CloudFormation | — | — | — | — | ✅ syntax | ✅ | ✅ | ✅ | — | ✅ | — | — |
+| Python | — | ✅ lint+fmt | — | — | — | ✅ | — | ✅ pip/poetry | ✅ pip/poetry | ✅ | ✅ requirements | — |
+| JavaScript / TypeScript | — | — | ✅ | — | — | ✅ | — | ✅ npm/yarn | ✅ npm/yarn | ✅ | — | — |
+| Bash / Shell | ✅ full | — | — | — | — | ✅ basic | — | — | — | ✅ | — | — |
+| Kubernetes YAML | — | — | — | — | ✅ | ✅ | ✅ | ✅ | — | ✅ | — | — |
+| Dockerfile | — | — | — | ✅ | — | ✅ | ✅ | ✅ image+cfg | ✅ layers | ✅ | — | — |
+| Helm Charts | — | — | — | — | ✅ | — | ✅ | ✅ | — | ✅ | — | — |
+| Container Images | — | — | — | — | — | — | — | ✅ full vuln | ✅ full vuln | — | — | — |
+| Markdown | — | — | — | — | — | — | — | — | — | ✅ | — | — |
 
-> **Note:** markdownlint-cli adds Markdown style/structure linting in the Tier 1 pre-commit layer. It is omitted from the matrix above as it is a style tool rather than a security or language analysis tool. npm audit supplements Grype for npm-specific projects as a fast pre-commit check.
+> **Note:** markdownlint-cli adds Markdown style/structure linting in the Tier 1 pre-commit layer. It is omitted from the matrix above as it is a style tool rather than a security or language analysis tool. npm audit supplements Grype for npm-specific projects as a fast pre-commit check. tflint checks Terraform for **missing** provider version constraints and unpinned module sources — it does **not** flag a loose version range such as `version = ">= 3.0"`; see [ADR-015](adr/adr015-tflint-terraform-pin-checking.md).
 
 ---
 

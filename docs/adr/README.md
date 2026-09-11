@@ -22,3 +22,4 @@ For the full findings that prompted ADR-001 through ADR-012, see [`red-team/00-c
 | [ADR-012](adr012-backup-guidance.md) | Add Backup Guidance for Stateful Services | 2026-02-24 | Accepted |
 | [ADR-013](adr013-falco-runtime-detection.md) | Add Falco CE + FalcoSidekick for Kubernetes Runtime Anomaly Detection | 2026-02-26 | Accepted |
 | [ADR-014](adr014-cosign-slsa-kyverno.md) | Add Cosign Keyless Signing + SLSA Provenance + Kyverno Admission Control | 2026-02-26 | Accepted |
+| [ADR-015](adr015-tflint-terraform-pin-checking.md) | Adopt tflint for Terraform Provider and Module Pin Checking | 2026-09-11 | Accepted |
