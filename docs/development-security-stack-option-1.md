@@ -1470,6 +1470,18 @@ on:
   push:
     branches: [main]
 
+# Least-privilege token scopes for the scan jobs below.
+# IF YOU CALL THIS WORKFLOW FROM ANOTHER WORKFLOW (`uses:` / workflow_call), the
+# CALLING JOB must also grant `security-events: write`. A called workflow can only
+# downgrade an inherited permission set, never widen it — omit the grant on the
+# caller and every SARIF upload returns 403 while the run still reports green.
+# That is the single most likely adoption failure: an empty Security tab with
+# nothing red anywhere to explain it.
+permissions:
+  contents: read           # Required for actions/checkout to read the repository
+  security-events: write   # Required for upload-sarif to write code scanning results
+  actions: read            # Required by upload-sarif on private repositories
+
 # ─────────────────────────────────────────────────────────────────────────────
 # SHA PINNING NOTE
 #
@@ -1512,14 +1524,21 @@ jobs:
       - name: Run Semgrep (SARIF output for GitHub Security tab)
         if: always()
         run: semgrep scan --config auto --sarif --output semgrep.sarif . || true
-      - uses: github/codeql-action/upload-sarif@<SHA>  # v3 — pin to current SHA: https://github.com/github/codeql-action/releases
+      # A DISTINCT `category:` per analysis is mandatory, not stylistic. GitHub keys
+      # a code scanning analysis on tool name + category, so two scans that report the
+      # same tool name (e.g. the filesystem and image Trivy scans) collide without it
+      # and the second upload silently replaces the first.
+      - uses: github/codeql-action/upload-sarif@<SHA>  # v4 — pin to current SHA: https://github.com/github/codeql-action/releases
         if: always()
         continue-on-error: true
-        with: { sarif_file: semgrep.sarif }
-      - uses: actions/upload-artifact@<SHA>  # v4 — pin to current SHA: https://github.com/actions/upload-artifact/releases
+        with: { sarif_file: semgrep.sarif, category: semgrep }
+      # An EXPLICIT `retention-days:` is required — an implicit repository default is
+      # invisible in the workflow you copy and can be changed without a commit. 90 is
+      # the maximum available without a repository-settings change.
+      - uses: actions/upload-artifact@<SHA>  # v7 — pin to current SHA: https://github.com/actions/upload-artifact/releases
         if: always()
         continue-on-error: true
-        with: { name: semgrep-results, path: semgrep-results.json }
+        with: { name: semgrep-results, path: semgrep-results.json, retention-days: 90 }
 
   iac:
     name: IaC — Checkov
@@ -1533,14 +1552,14 @@ jobs:
           output_file_path: console,checkov-results.json,checkov.sarif
           quiet: true
           soft_fail: false
-      - uses: github/codeql-action/upload-sarif@<SHA>  # v3 — pin to current SHA: https://github.com/github/codeql-action/releases
+      - uses: github/codeql-action/upload-sarif@<SHA>  # v4 — pin to current SHA: https://github.com/github/codeql-action/releases
         if: always()
         continue-on-error: true
-        with: { sarif_file: checkov.sarif }
-      - uses: actions/upload-artifact@<SHA>  # v4 — pin to current SHA: https://github.com/actions/upload-artifact/releases
+        with: { sarif_file: checkov.sarif, category: checkov }
+      - uses: actions/upload-artifact@<SHA>  # v7 — pin to current SHA: https://github.com/actions/upload-artifact/releases
         if: always()
         continue-on-error: true
-        with: { name: checkov-results, path: checkov-results.json }
+        with: { name: checkov-results, path: checkov-results.json, retention-days: 90 }
 
   sca:
     name: SCA — Grype
@@ -1552,10 +1571,10 @@ jobs:
             | sh -s -- -b /usr/local/bin
       - name: Run Grype (fails on high/critical findings)
         run: grype dir:. --fail-on high -o json > grype-results.json
-      - uses: actions/upload-artifact@<SHA>  # v4 — pin to current SHA: https://github.com/actions/upload-artifact/releases
+      - uses: actions/upload-artifact@<SHA>  # v7 — pin to current SHA: https://github.com/actions/upload-artifact/releases
         if: always()
         continue-on-error: true
-        with: { name: grype-results, path: grype-results.json }
+        with: { name: grype-results, path: grype-results.json, retention-days: 90 }
 
   container:
     name: Container — Trivy
@@ -1580,14 +1599,14 @@ jobs:
           image-ref: 'app:${{ github.sha }}'
           format: sarif
           output: trivy.sarif
-      - uses: github/codeql-action/upload-sarif@<SHA>  # v3 — pin to current SHA: https://github.com/github/codeql-action/releases
+      - uses: github/codeql-action/upload-sarif@<SHA>  # v4 — pin to current SHA: https://github.com/github/codeql-action/releases
         if: always()
         continue-on-error: true
-        with: { sarif_file: trivy.sarif }
-      - uses: actions/upload-artifact@<SHA>  # v4 — pin to current SHA: https://github.com/actions/upload-artifact/releases
+        with: { sarif_file: trivy.sarif, category: trivy-image }
+      - uses: actions/upload-artifact@<SHA>  # v7 — pin to current SHA: https://github.com/actions/upload-artifact/releases
         if: always()
         continue-on-error: true
-        with: { name: trivy-results, path: trivy-results.json }
+        with: { name: trivy-results, path: trivy-results.json, retention-days: 90 }
 
   secrets:
     name: Secrets — Gitleaks
@@ -1600,10 +1619,10 @@ jobs:
             | tar xz -C /usr/local/bin gitleaks
       - name: Run Gitleaks (fails on any secret found)
         run: gitleaks detect --source . --report-path gitleaks-results.json --report-format json
-      - uses: actions/upload-artifact@<SHA>  # v4 — pin to current SHA: https://github.com/actions/upload-artifact/releases
+      - uses: actions/upload-artifact@<SHA>  # v7 — pin to current SHA: https://github.com/actions/upload-artifact/releases
         if: always()
         continue-on-error: true
-        with: { name: gitleaks-results, path: gitleaks-results.json }
+        with: { name: gitleaks-results, path: gitleaks-results.json, retention-days: 90 }
 
   sign:
     name: Sign — Cosign Keyless + SLSA Provenance
@@ -1705,6 +1724,11 @@ done
 | Grype | curl installer or Docker | JSON, Table, CycloneDX, SARIF |
 | Syft | curl installer or Docker | CycloneDX, SPDX, JSON, Table |
 | Gitleaks | curl/binary or Docker | JSON, SARIF, CSV |
+| npm audit | bundled with Node.js (`npm audit --json`) | JSON only — **no SARIF** |
+| pip-audit | `pip install pip-audit` | JSON, CycloneDX (JSON and XML), Markdown, Columns — **no SARIF** |
+| tflint | checksum-verified `.zip` release download | SARIF, JSON, Checkstyle, JUnit, Compact, Default |
+
+> **Note on SARIF availability:** npm audit and pip-audit have **no SARIF output at all** (verified from `npm audit --help` and `pip-audit --help`). Their findings therefore reach the **retained artifact set** — the JSON reports uploaded by `actions/upload-artifact` and imported into DefectDojo by its native `npm_audit_7_plus` and `pip_audit` parsers — rather than the GitHub Security tab. tflint emits SARIF natively and does appear in the Security tab. See [ADR-016](adr/adr016-sarif-upload-attribution-and-artifact-retention.md).
 
 **GitHub Actions is the primary CI/CD platform** — the complete workflow above is the reference implementation.
 
