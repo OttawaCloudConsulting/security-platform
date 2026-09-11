@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 15-03-PLAN.md
-last_updated: "2026-09-11T00:40:15.801Z"
+stopped_at: "Completed 15-05-PLAN.md — Phase 15 complete, PR #6 merged"
+last_updated: "2026-09-11T00:57:08.881Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
-  percent: 14
+  completed_plans: 8
+  percent: 29
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 ## Current Position
 
-Phase: 15 (five-parallel-scan-jobs) — EXECUTING
-Plan: 4 of 5 complete
-Status: Ready to execute
+Phase: 15 (five-parallel-scan-jobs) — COMPLETE
+Plan: 5 of 5 complete
+Status: Phase 15 complete. Ready to plan Phase 16.
 Last activity: 2026-09-11
 
-Progress: [█████████░] 88%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -70,6 +70,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 15]: Reworded two inline comments to avoid literal substrings ('config auto', 'gitleaks dir') that the plan's own negative-grep verify checks for — RESEARCH's authoritative example uses those exact substrings in comments, so a verbatim copy would have failed the plan's own verification.
 - [Phase 15]: No .gitleaksignore change made in 15-03 — smoke gate re-run pre- and post-commit produced the identical 9-finding list from 15-02, none pointing at security.yml.
 - [Phase 15]: Phase 15-04: Trivy JSON-format output prints no inline finding count; non-zero evidence rests on --exit-code 1 plus non-empty file sizes, cross-checked against 15-02/15-03 local baselines
+- [Phase 15-05]: PR #6 merged to OttawaCloudConsulting/security-platform main via --merge (commit e8e1009); origin/main verified via git show, not local working tree
+- [Phase 15-05]: Open Question Q3 closed — Dependabot vulnerability-alerts are disabled on OttawaCloudConsulting/security-platform (404 plus explicit 403 disabled message); dependabot.yml left unmodified
+- [Phase 15-05]: D-02/D-03 RESEARCH-corrected forms (C-1, C-2, C-3) confirmed as deliberate implementation choices, not drift from CONTEXT.md
 
 ### Pending Todos
 
@@ -77,21 +80,20 @@ None.
 
 ### Blockers/Concerns
 
-- **Scan fixtures are needed from Phase 15, not just Phase 19.** Verified 2026-09-10: `repos/` is gitignored
-  (`.gitignore:1`), so a CI checkout of this repo sees only ~356 `.md`, 13 `.cjs`, 12 `.json`, 2 `.sh`, 1 `.yaml`.
-  `git ls-files` matches **zero** Dockerfiles, lockfiles, `requirements*.txt`, `pyproject.toml`, or `.tf` files.
-  Consequence: the IaC, container, and SCA jobs have nothing real to scan. Only SAST (on `.cjs`/`.sh`) and
-  secrets (any repo) work out of the box. Phase 15 planning must decide the fixture strategy once, for all of
-  15/16/19 — do not rediscover it three times.
+- ~~Scan fixtures are needed from Phase 15, not just Phase 19.~~ — RESOLVED in Phase 15 (merged to `main` in
+  Plan 05, commit `e8e1009`): `fixtures/Dockerfile`, `fixtures/main.tf`, `fixtures/package.json`,
+  `fixtures/package-lock.json`, and `fixtures/README.md` now exist on `OttawaCloudConsulting/security-platform`
+  `main`, giving the IaC, container, and SCA jobs real content to scan.
 
-- **This repo's own hooks will block committing those fixtures.** Gitleaks pre-push and npm-audit pre-commit
-  (shipped in v1.0/v1.1) will reject a deliberately vulnerable `package-lock.json` or a seeded secret. Resolve
-  the exemption strategy alongside the fixture decision — scoped `.gitleaksignore` / hook `exclude:` for a
-  fixtures directory is preferred over a blanket bypass, so the repo's own protection stays intact.
+- ~~This repo's own hooks will block committing those fixtures.~~ — RESOLVED in Phase 15 (merged to `main` in
+  Plan 05): four `exclude: ^fixtures/` entries on `terraform_fmt`, `terraform_validate`, `hadolint`, and
+  `npm-audit` in `.pre-commit-config.yaml` scope the exemption to `fixtures/` only, leaving the repo's
+  protection intact elsewhere. No Gitleaks/`.gitleaksignore` change was needed (RESEARCH C-3).
 
-- ~~No `.github/` directory exists yet~~ — RESOLVED in Phase 14 Plan 01: the product repo
-  (`repos/security-platform`) now has `.github/workflows/security.yml`, `.github/workflows/pr-security.yml`,
-  and `.github/dependabot.yml` committed on `feature/phase-14-workflow-foundation` (unpushed).
+- ~~No `.github/` directory exists yet~~ — RESOLVED in Phase 14 Plan 01, merged in Phase 14 Plan 03 (not
+  "unpushed" — RESEARCH C-6 found this note stale): the product repo (`repos/security-platform`) has had
+  `.github/workflows/security.yml`, `.github/workflows/pr-security.yml`, and `.github/dependabot.yml` on
+  `main` since Phase 14, and `security.yml` now carries Phase 15's five parallel scan jobs.
 
 ## Deferred Items
 
@@ -107,13 +109,14 @@ Carried forward from v1.1 close:
 | Phase 15 P02 | 25min | 2 tasks | 1 files |
 | Phase 15-five-parallel-scan-jobs P03 | 20min | 2 tasks | 1 files |
 | Phase 15 P04 | 25min | 2 tasks | 0 files |
+| Phase 15 P05 | 20min | 2 tasks | 0 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T00:38:04.254Z
-Stopped at: Completed 15-03-PLAN.md
+Last session: 2026-09-11T00:57:08.874Z
+Stopped at: Completed 15-05-PLAN.md — Phase 15 complete, PR #6 merged
 Resume file: None
 
 ## Operator Next Steps
 
-- Execute Phase 15 Plan 02 (next plan in `feature/phase-15-five-parallel-scan-jobs`)
+- Phase 15 is complete. Plan Phase 16 (SCA-01/02/03 ecosystem sub-scans) — see carried-forward items in 15-05-SUMMARY.md.
