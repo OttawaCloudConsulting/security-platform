@@ -49,6 +49,10 @@ patterns-established:
   - "Negative-testing a static gate: every check label was observed firing against mutated COPIES of the workflows in a scratch tree, never by mutating the repo"
   - "Inducing a missing-dependency path without altering the workstation: a scratch dir containing `yaml.py` that raises ImportError, injected via PYTHONPATH"
 
+# NOTE: this field mirrors the PLAN.md frontmatter, as the template requires. It is NOT an
+# assertion of delivery. 17-01 ships the static gate and the permission grant only; the SARIF
+# upload steps and the artifact upload steps that actually satisfy CICD-02 and CICD-03 land in
+# 17-03 and 17-04. REQUIREMENTS.md correctly still shows both as Pending — see Issues Encountered.
 requirements-completed: [CICD-02, CICD-03]
 
 # Metrics
@@ -227,7 +231,27 @@ noise. No scope creep; no upload step, no artifact step and no trigger change wa
 
 ## Issues Encountered
 
-None. Both tasks ran as planned; the gate's RED-to-GREEN transition matched the prediction exactly.
+Both tasks ran as planned; the gate's RED-to-GREEN transition matched the prediction exactly. Two issues
+arose in the surrounding bookkeeping, both resolved:
+
+**1. `requirements.mark-complete` marked CICD-02 and CICD-03 Complete — reverted.**
+The GSD finalisation step marks every requirement ID in the plan's frontmatter complete. Run verbatim, it
+flipped `CICD-02` (SARIF upload to the Security tab) and `CICD-03` (JSON artifact retention) to `[x]` and
+their traceability rows to `Complete`. Neither is delivered: 17-01 adds the static gate and the permission
+grant, and there is still not a single `upload-sarif` or `upload-artifact` step in either workflow file.
+Marking them would have been exactly the broken-but-green bookkeeping this phase exists to prevent.
+`.planning/REQUIREMENTS.md` was restored with `git checkout` (diff confirmed empty) and both requirements
+remain `Pending`. **17-03 and 17-04 must mark them**, once the upload steps they name actually exist.
+
+**2. Task 2's comment placement differs from the acceptance criterion's literal wording.**
+The criterion asks for a *trailing* comment on the `security-events: write` line in each file. The rationale
+is multi-sentence in both files — the caller's names it as the grant that a called workflow cannot elevate,
+the callee's states its block is an explicit full set — and a trailing comment carrying that would run well
+past 80 characters and add yamllint `line-length` warnings. The comments were therefore placed on the lines
+immediately **above** each key. The required content is present verbatim in both files; only the position
+differs, so a verifier grepping for `security-events: write  #` will not match. Recorded here rather than
+amended: rewriting `66a18ad` is a git history modification, and adding a third commit to the phase branch
+would break this plan's own "exactly two commits" verification.
 
 ## User Setup Required
 
