@@ -3,13 +3,21 @@
 # Invoked by repo-local callers (see pr-security.yml) and, from Phase 20,
 # by external repositories as a reusable workflow.
 # All third-party actions are pinned to full commit SHAs (ADR-004).
-# Phase 15: report-only. Scan steps carry continue-on-error, so findings are
-# visible but non-blocking. Gate mode is Phase 18 (CICD-06).
+# Gate mode is `gate_mode` ("blocking" or "report-only"), defaulting to
+# "report-only". Supply it either as a `workflow_call` input or as the
+# caller repo's `GATE_MODE` variable — switching modes needs no YAML edit.
 
 name: Security Scans
 
 on:
-  workflow_call: {}
+  workflow_call:
+    inputs:
+      gate_mode:
+        description: >-
+          "blocking" or "report-only". Omit to fall back to the caller repo's
+          GATE_MODE variable, then to "report-only" (D-03).
+        required: false
+        type: string
 
 # Explicit FULL permission set, not a subset. A called workflow's block can
 # only REDUCE what the caller granted — leaving this at `contents: read`
@@ -22,6 +30,14 @@ permissions:
   # Required only for private repositories. Read-only; carried for Phase 20
   # consumer-template portability.
   actions: read
+
+# Workflow-level env is the only scope that sees both `inputs` and `vars` at
+# once. Inside a called workflow, `vars` resolves to the CALLER repository,
+# which is what lets the copy-paste consumption mode change gate_mode with no
+# YAML edit. The input carries no `default:`, so an omitted input is `""`
+# (falsy) and the `||` chain reaches `vars.GATE_MODE` instead of stopping dead.
+env:
+  GATE_MODE: ${{ inputs.gate_mode || vars.GATE_MODE || 'report-only' }}
 
 jobs:
 
