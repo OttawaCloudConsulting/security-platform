@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 16-03-PLAN.md — npm/pip-audit/tflint sub-scans plus the Criterion 4 clean-skip test proven locally (34d53ff)
-last_updated: "2026-09-11T13:55:34.903Z"
+stopped_at: Completed 16-04-PLAN.md — sca job now runs npm audit, pip-audit and tflint alongside Trivy fs, statically validated against the Phase 15 five-job contract (f4388f8, unpushed)
+last_updated: "2026-09-11T14:33:48.104Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 15
-  completed_plans: 11
+  completed_plans: 12
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 16 (sca-ecosystem-coverage) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-09-11
 
-Progress: [███████░░░] 73%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -82,6 +82,10 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 16]: 16-03: smoke-gate verdicts read report content, not exit codes — npm audit and pip-audit both exit 1 for findings AND for bad input, so auditReportVersion / dependencies keys plus count assertions are what discriminate
 - [Phase 16]: 16-03: SCA-03 asserted on the tflint rule-id set, not a finding count — local tflint 0.61.0 emits 3 ids of which 2 are pinning ids; terraform_module_pinned_source does NOT fire on this fixture, so 16-05 compares CI against three ids
 - [Phase 16]: 16-03: SKIPPED bookkeeping moved from the preflight into each sub-scan section so one absent tool is exactly one skipped sub-check (verified: restricted-PATH run reports 2 skips, 7 gated runs instead of 9)
+- [Phase 16]: 16-04: sub-scans wired as STEPS inside the existing sca job — job count stays 5, zero needs:, and the sca check-run name stays the inaccurate 'SCA — Trivy Filesystem' because Phase 18 hard-codes it
+- [Phase 16]: 16-04: each sub-scan is guarded scan (continue-on-error, D-04) -> intolerant report-content check (no continue-on-error) -> guarded ls evidence; an error-shaped report now turns a step red instead of reading as clean
+- [Phase 16]: 16-04: npm and pip reports are NUMBERED per input (npm-audit-<n>.json / pip-audit-<n>.json) — Phase 17's artifact upload must glob, not name
+- [Phase 16]: 16-04: the three CI verification bodies were extracted from the committed YAML and executed locally against real and corrupted reports (4 negative cases, all rc=1) rather than trusting the plan's static 'python3 appears in run' check
 
 ### Pending Todos
 
@@ -122,11 +126,12 @@ Carried forward from v1.1 close:
 | Phase 16 P01 | 18min | 2 tasks | 3 files |
 | Phase 16 P02 | ~56min | 2 tasks | 4 files |
 | Phase 16 P03 | ~35min | 2 tasks | 2 files |
+| Phase 16 P04 | 25min | 3 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T13:55:27.767Z
-Stopped at: Completed 16-03-PLAN.md — npm/pip-audit/tflint sub-scans plus the Criterion 4 clean-skip test proven locally (34d53ff)
+Last session: 2026-09-11T14:33:25.486Z
+Stopped at: Completed 16-04-PLAN.md — sca job now runs npm audit, pip-audit and tflint alongside Trivy fs, statically validated against the Phase 15 five-job contract (f4388f8, unpushed)
 Resume file: None
 
 ## Operator Next Steps
