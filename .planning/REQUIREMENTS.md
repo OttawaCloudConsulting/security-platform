@@ -8,7 +8,7 @@
 ### CI/CD Pipeline
 
 - [x] **CICD-01**: GitHub Actions security workflow runs 5 parallel scan jobs (SAST, IaC, SCA, container, secrets) on every PR
-- [ ] **CICD-02**: Each scan job uploads SARIF results to the GitHub Security tab
+- [x] **CICD-02**: Each scan job uploads SARIF results to the GitHub Security tab
 - [ ] **CICD-03**: Each scan job retains JSON artifact output for future DefectDojo import (import pipeline itself is out of scope this milestone)
 - [ ] **CICD-04**: Branch protection config/guidance provided so scan checks can be made required (block merge) once enabled
 - [x] **CICD-05**: Dependabot configured to keep GitHub Actions SHA pins updated
@@ -57,7 +57,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CICD-01 | Phase 15 | Complete |
-| CICD-02 | Phase 17 | Pending |
+| CICD-02 | Phase 17 | Complete |
 | CICD-03 | Phase 17 | Pending |
 | CICD-04 | Phase 18 | Pending |
 | CICD-05 | Phase 14 | Complete |

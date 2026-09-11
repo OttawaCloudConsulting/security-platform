@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: "Completed 17-02-PLAN.md — sca job now emits trivy-fs.sarif from a direct trivy fs --format sarif run (ROOTPATH = scan root, confirmed live); smoke gate mirrors it with run_scan semantics plus a ROOTPATH regression guard. Commits a3f9dac, f3e6dec in repos/security-platform. ALL PASS, 10 gated runs (was 9). Nothing pushed. Next: 17-03."
-last_updated: "2026-09-11T18:38:35.992Z"
+stopped_at: "Completed 17-03-PLAN.md — all six SARIF files now have a SHA-pinned upload-sarif step with a unique category (semgrep, checkov, trivy-fs, tflint, trivy-image, gitleaks) and a paired intolerant steps.<id>.outcome assertion. Commits 7525ad2, 9692fa7 in repos/security-platform. Gate PASS 10 checks, yamllint 0, nothing pushed. Next: 17-04 (artifact retention)."
+last_updated: "2026-09-11T19:01:31.330Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 22
-  completed_plans: 17
+  completed_plans: 18
   percent: 43
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 17 (sarif-upload-and-artifact-retention) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-09-11
 
@@ -104,6 +104,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-02: the sca job's `trivy convert` step is GONE — replaced by a second direct `trivy fs . --scanners vuln --format sarif` run with flags identical to the JSON run. Live-confirmed: the gate printed originalUriBaseIds.ROOTPATH = the repo root, not `.../trivy-fs.json/`. The container job's `trivy convert` (security.yml:394-396) is deliberately untouched — it is the conversion step D-01 rests on and ADR-016 (17-06) will record it as the only survivor. — `trivy convert` writes ROOTPATH = the INPUT JSON FILE path, so every uploaded result would resolve to a nonexistent `<workspace>/trivy-fs.json/...` path in code scanning; checkout_path relativization does not rescue it. Landing this before any upload step exists means the first SARIF the repo ever uploads is correctly based.
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-02: OD-7 flag parity means the new SARIF invocation is a SCANNER (exit 1 on findings), so in smoke-scans.sh it takes `run_scan`, NOT `require_success` — 17-VALIDATION's blanket "must use require_success" applies only to genuinely exit-0 infrastructure steps. `require_success "trivy-image-convert"` stays. Smoke gate baseline is now 10 gated runs, not 9. — Identical --scanners/--exit-code/--severity on both runs is the only way the retained JSON artifact and the uploaded SARIF can be guaranteed to describe the same finding set (T-17-09). The consequence is scanner semantics; require_success would have scored a healthy findings run as FAIL — the exact inversion Phase 15 hit with docker build and trivy convert.
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-02: the smoke gate now carries a ROOTPATH regression guard that fails when runs[0].originalUriBaseIds.ROOTPATH is absent or points at a .json input file (trailing slash or not), with distinct exit codes 3/4/5 per failure mode. All three modes were observed firing against crafted fixtures in a scratchpad, with the heredoc body extracted verbatim from the committed script — no second full-gate run was spent. — The guard is what stops a future "simplify this back to trivy convert" from silently reintroducing RESEARCH Pitfall 3. Proving a guard fires without re-running a 4-minute gate is the reusable technique.
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-03: all six SARIF files now upload with a UNIQUE category (semgrep, checkov, trivy-fs, tflint, trivy-image, gitleaks), each pinned to github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 (v4.38.0), each paired with an intolerant step reading steps.<id>.outcome. wait-for-processing is set NOWHERE — its default true is what makes an async ingestion rejection visible to the assertion. — trivy-fs.sarif and trivy-image.sarif carry the identical tool.driver.name `Trivy`, so GitHub would fail the second upload of the same tool+category in one run; distinct categories are mandatory, not stylistic. ADR-001 requires continue-on-error on the uploads, which alone would turn a 403 into a green check — the intolerant outcome assertion is what reconciles it with the anti-slop rule rather than trading one off against the other. steps.<id>.outcome did not appear anywhere in this repo before this plan.
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-03: ONE guard expression on all six verify steps — `always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'` — on the VERIFY step and never on the upload; the tflint pair ANDs `steps.tf.outputs.found == 'true'` into BOTH its upload and its verify. — This settles 17-PATTERNS' flagged disagreement between RESEARCH Pitfall 5 and RESEARCH Code Examples. Fork PRs and Dependabot PRs both get a read-only GITHUB_TOKEN regardless of the permissions key, so the upload cannot succeed there — guarding the UPLOAD would silently publish nothing, guarding the VERIFY skips the check instead. The Dependabot clause is not redundant with the same-repo test: a Dependabot PR is raised on a branch in the SAME repo, so the same-repo test is true for it while its token is still read-only. Consequence for 17-05: the live run must be a same-repo, non-Dependabot PR or all six verifies skip rather than prove anything.
 
 ### Pending Todos
 
@@ -150,11 +152,12 @@ Carried forward from v1.1 close:
 | Phase 16 P07 | ~10min | 2 tasks | 0 files |
 | Phase 17-sarif-upload-and-artifact-retention P01 | 20min | 2 tasks | 3 files |
 | Phase 17-sarif-upload-and-artifact-retention P02 | 5min | 2 tasks | 2 files |
+| Phase 17-sarif-upload-and-artifact-retention P03 | 12min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T18:16:47.324Z
-Stopped at: Completed 17-02-PLAN.md — sca job now emits trivy-fs.sarif from a direct trivy fs --format sarif run (ROOTPATH = scan root, confirmed live); smoke gate mirrors it with run_scan semantics plus a ROOTPATH regression guard. Commits a3f9dac, f3e6dec in repos/security-platform. ALL PASS, 10 gated runs (was 9). Nothing pushed. Next: 17-03.
+Last session: 2026-09-11T18:48:12.840Z
+Stopped at: Completed 17-03-PLAN.md — all six SARIF files now have a SHA-pinned upload-sarif step with a unique category (semgrep, checkov, trivy-fs, tflint, trivy-image, gitleaks) and a paired intolerant steps.<id>.outcome assertion. Commits 7525ad2, 9692fa7 in repos/security-platform. Gate PASS 10 checks, yamllint 0, nothing pushed. Next: 17-04 (artifact retention).
 Resume file: None
 
 ## Operator Next Steps

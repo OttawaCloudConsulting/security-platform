@@ -110,7 +110,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 **Plans**: 7 plans
 - [x] 17-01-PLAN.md — Cut the phase branch, author the offline static upload gate, and grant `security-events: write` at the calling job and the callee
 - [x] 17-02-PLAN.md — Replace the `sca` job's `trivy convert` with a direct `trivy fs --format sarif` run and mirror it in the smoke gate with a ROOTPATH regression guard
-- [ ] 17-03-PLAN.md — Add six `upload-sarif` steps with unique categories, each paired with an intolerant `steps.<id>.outcome` assertion
+- [x] 17-03-PLAN.md — Add six `upload-sarif` steps with unique categories, each paired with an intolerant `steps.<id>.outcome` assertion
 - [ ] 17-04-PLAN.md — Add five per-job `upload-artifact` steps with explicit 90-day retention and glob-based SCA paths, each with a landing assertion
 - [ ] 17-05-PLAN.md — Construct the annotation-capable fixture edit, push, open the PR, and collect live category, artifact and check-run evidence
 - [ ] 17-06-PLAN.md — Record the decisions in ADR-016 and make the blueprint's CI/CD template copy-pasteable; log the deferrals
