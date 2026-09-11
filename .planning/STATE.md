@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: "Completed 15-05-PLAN.md — Phase 15 complete, PR #6 merged"
-last_updated: "2026-09-11T00:57:08.881Z"
+stopped_at: Completed 16-01-PLAN.md — Phase 16 fixtures seeded on feature/phase-16-sca-ecosystem-coverage (68c3bbb)
+last_updated: "2026-09-11T12:19:47.151Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 15
+  completed_plans: 9
   percent: 29
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 15 — five-parallel-scan-jobs
+**Current focus:** Phase 16 — sca-ecosystem-coverage
 
 ## Current Position
 
-Phase: 15 (five-parallel-scan-jobs) — COMPLETE
-Plan: 5 of 5 complete
-Status: Phase 15 complete. Ready to plan Phase 16.
+Phase: 16 (sca-ecosystem-coverage) — EXECUTING
+Plan: 2 of 7
+Status: Ready to execute
 Last activity: 2026-09-11
 
-Progress: [██████████] 100%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
@@ -73,6 +73,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 15-05]: PR #6 merged to OttawaCloudConsulting/security-platform main via --merge (commit e8e1009); origin/main verified via git show, not local working tree
 - [Phase 15-05]: Open Question Q3 closed — Dependabot vulnerability-alerts are disabled on OttawaCloudConsulting/security-platform (404 plus explicit 403 disabled message); dependabot.yml left unmodified
 - [Phase 15-05]: D-02/D-03 RESEARCH-corrected forms (C-1, C-2, C-3) confirmed as deliberate implementation choices, not drift from CONTEXT.md
+- [Phase 16-01]: fixtures/main.tf needs BOTH an unconstrained random provider AND a random_id resource that uses it — tflint terraform_required_providers does not fire on a declared-but-unused provider
+- [Phase 16-01]: No floating range (>= 3.0) added to the fixture — measured NOT flagged by tflint default ruleset, so Criterion 3 is satisfiable only via missing-constraint and unpinned-module cases
+- [Phase 16-01]: Measured side effects recorded not predicted — Checkov terraform 10 to 12 failed (CKV_TF_1/CKV_TF_2 on unpinned module), Trivy fs 9 to 19 (10 new pip vulns), Trivy image re-measured identical at 222
 
 ### Pending Todos
 
@@ -110,13 +113,18 @@ Carried forward from v1.1 close:
 | Phase 15-five-parallel-scan-jobs P03 | 20min | 2 tasks | 1 files |
 | Phase 15 P04 | 25min | 2 tasks | 0 files |
 | Phase 15 P05 | 20min | 2 tasks | 0 files |
+| Phase 16 P01 | 18min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T00:57:08.874Z
-Stopped at: Completed 15-05-PLAN.md — Phase 15 complete, PR #6 merged
+Last session: 2026-09-11T12:19:47.143Z
+Stopped at: Completed 16-01-PLAN.md — Phase 16 fixtures seeded on feature/phase-16-sca-ecosystem-coverage (68c3bbb)
 Resume file: None
 
 ## Operator Next Steps
 
-- Phase 15 is complete. Plan Phase 16 (SCA-01/02/03 ecosystem sub-scans) — see carried-forward items in 15-05-SUMMARY.md.
+- Phase 16 Plan 01 complete: fixtures seeded and re-measured on branch
+  `feature/phase-16-sca-ecosystem-coverage` in `repos/security-platform` (commit `68c3bbb`, not pushed).
+- Next: 16-02-PLAN.md — extract `scripts/detect-{npm,python,terraform}.sh` and generalise the smoke-gate
+  helpers. Note `tflint` exits **2** on findings; `run_scan()` currently treats anything but rc=1 as a
+  tool error and would misclassify a healthy tflint run.
