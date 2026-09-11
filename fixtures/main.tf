@@ -35,7 +35,9 @@ resource "aws_security_group" "fixture" {
 
 # Registry module with NO `version` argument on purpose — seeds tflint's
 # terraform_module_version rule. Nothing ever runs `terraform init` on fixtures/.
-module "fixture_unpinned_module" {
+module "fixture_unpinned_module" { # 17-05: line deliberately touched — see below
+  # DELIBERATE 17-05 EDIT: touched on purpose so the verification PR diff exercises
+  # inline annotations (CKV_TF_1, CKV_TF_2 and tflint terraform_module_version).
   source = "terraform-aws-modules/s3-bucket/aws"
 }
 
