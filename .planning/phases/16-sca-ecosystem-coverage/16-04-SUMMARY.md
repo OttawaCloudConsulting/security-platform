@@ -147,6 +147,18 @@ this fixture emits **three** rule ids — `terraform_module_pinned_source` does 
 Since these steps carry no `continue-on-error`, each rc=1 is a red step — an error-shaped report can no
 longer be read as a clean scan.
 
+**The two `while` loop bodies were executed too** — same extraction method, run in a scratch directory
+holding a `fixtures` symlink and one-line `npm-lockfiles.txt` / `py-reqs.txt`:
+
+| Body | rc | stdout | report written |
+|---|---|---|---|
+| `SCA-01 — npm audit` | 1 | `npm audit [fixtures] exit=1` | `npm-audit-1.json`, top-level keys `auditReportVersion`, `metadata`, `vulnerabilities` |
+| `SCA-02 — pip-audit` | 1 | `pip-audit [fixtures/requirements.txt] exit=1` | `pip-audit-1.json`, top-level keys `dependencies`, `fixes` |
+
+rc=1 is the expected D-04 value that `continue-on-error` tolerates, the fd-3 iteration and numbering work,
+and both reports carry exactly the discriminating key the matching verification step asserts on. Nothing
+in either group now reaches 16-05's live run unexecuted.
+
 **Diff containment:** all four `git diff -U0` hunk headers (`@@ -77,2`, `@@ -80,0`, `@@ -89,0`, `@@ -107,0`)
 fall inside the old `sca` job span (lines 76-107). The other four jobs and `cicd/` are byte-identical.
 
