@@ -44,6 +44,7 @@ kinds, and artifact JSON named to match DefectDojo parser inputs. This phase imp
 
 ---
 
+<phase_requirements>
 ## Phase Requirements
 
 | ID | Description | Research Support |
@@ -53,6 +54,7 @@ kinds, and artifact JSON named to match DefectDojo parser inputs. This phase imp
 
 Success Criteria 1 and 2 are served by CICD-02; Criterion 3 by CICD-03; Criterion 4 straddles both and
 is the one criterion whose resolution is a **user decision, not a research verdict** (see Open Question Q1).
+</phase_requirements>
 
 ---
 
@@ -327,6 +329,13 @@ uploading multiple files for the **same tool and category in one workflow run wi
 [CITED: docs.github.com — uploading-a-sarif-file-to-github]. Measured below, two of this stack's files
 carry the *identical* driver name, so this is a live collision, not a hypothetical.
 
+**Guard the conditional ones.** The `sca` job's tflint steps are gated on `steps.tf.outputs.found` (Phase
+16 Plan 04). Its upload **and** its verify step must carry the same guard:
+`if: always() && steps.tf.outputs.found == 'true'`. An unguarded `upload-sarif` on a missing
+`tflint.sarif` fails-then-tolerates, and an unguarded verify step then fails the job on a **clean skip** —
+re-breaking the Criterion 4 skip behaviour Phase 16 spent an entire plan proving. Same rule for any
+npm/pip-derived upload if Q1 resolves toward conversion.
+
 ### Pattern 3 — Measured SARIF inventory (this is the phase's ground truth)
 
 Every row below was produced **this session** by running the tool against
@@ -448,8 +457,12 @@ tolerated step. The phase ships "complete" with zero alerts.
 **Why it happens:** ADR-001 *requires* `continue-on-error: true` on upload steps, for a good reason
 (uploads are reporting, not enforcement). But the project's own anti-slop rule forbids silent fallbacks.
 **How to avoid:** Use the pattern Phase 16 Plan 04 already established in this very workflow — *guarded
-action step (tolerated) → intolerant verification step (no `continue-on-error`)*. For SARIF, assert the
-`upload-sarif` step's `sarif-id` output is non-empty, and/or query
+action step (tolerated) → intolerant verification step (no `continue-on-error`)*. For SARIF, the primary
+assertion must be **`steps.<id>.outcome == 'success'`**, not `sarif-id` non-emptiness: `sarif-id` is
+emitted after the upload API call but *before* `wait-for-processing` completes, so a SARIF that uploads
+and is then **rejected during processing** can leave `sarif-id` populated on a failed step. `outcome` is
+the direct signal of whether a `continue-on-error` step failed, and it also covers the case where the
+action throws before emitting any output. Keep the `sarif-id` echo for the log. Optionally also query
 `GET /repos/{owner}/{repo}/code-scanning/analyses?ref=refs/pull/{n}/merge` and assert the expected set of
 categories is present. For artifacts, assert `artifact-id` is non-empty. This satisfies both ADR-001
 (the *upload* doesn't block) and anti-slop (a broken upload is *visible*).
@@ -459,14 +472,24 @@ categories is present. For artifacts, assert `artifact-id` is non-empty. This sa
 
 **What goes wrong:** SARIF result locations resolve to a nonexistent path, so alerts land with a broken or
 wrong file location and produce no annotation.
-**Measured this session, same Trivy 0.74.0, same repo:**
+**Measured twice this session, same Trivy 0.74.0, same repo — including with the byte-exact CI
+invocation (relative input path, run from the repo root), so this states what CI will literally emit:**
 
 ```
-trivy fs . --format json -o trivy-fs.json ; trivy convert --format sarif -o trivy-fs.sarif trivy-fs.json
-  → originalUriBaseIds.ROOTPATH = "file:///…/scratchpad/sarif/trivy-fs.json/"     ← the INPUT FILE
-trivy fs . --format sarif -o trivy-fs-direct.sarif
-  → originalUriBaseIds.ROOTPATH = "file:///…/repos/security-platform/"            ← the SCAN ROOT
+# (a) EXACTLY as security.yml runs it today — relative paths, cwd = repo root:
+trivy fs . --scanners vuln --format json --output trivy-fs.json …
+trivy convert --format sarif --output trivy-fs.sarif trivy-fs.json
+  → originalUriBaseIds.ROOTPATH = "file:///<cwd>/trivy-fs.json/"        ← the INPUT FILE
+  → result[0] uri = "fixtures/package-lock.json", uriBaseId = "ROOTPATH"
+
+# (b) direct SARIF output, same scan:
+trivy fs . --scanners vuln --format sarif --output trivy-fs-direct.sarif …
+  → originalUriBaseIds.ROOTPATH = "file:///<repo root>/"                ← the SCAN ROOT
 ```
+
+The relative-vs-absolute input path makes no difference: ROOTPATH tracks the **input file** either way.
+On the runner, form (a) therefore emits
+`ROOTPATH = file:///home/runner/work/security-platform/security-platform/trivy-fs.json/`.
 
 Both emit the same relative `uri` (`fixtures/package-lock.json`) with `uriBaseId: ROOTPATH`. On the runner
 the converted form becomes `<workspace>/trivy-fs.json/` + `fixtures/package-lock.json`. `checkout_path`
@@ -567,14 +590,21 @@ Worth a note in the adoption docs; not a blocker for this repo.
 # it does not license shipping a phase whose uploads never landed.
 # Pattern copied from the existing "Verify tflint SARIF" step in this workflow.
 - name: Verify Semgrep SARIF was accepted
-  if: always() && github.event.pull_request.head.repo.fork != true
+  # Fork PRs get a read-only token regardless of `permissions`, so the upload
+  # CANNOT succeed there. Guard the VERIFY step, never the upload step.
+  # Canonical same-repo idiom (reads correctly even if the consumer repo is itself a fork):
+  if: always() && github.event.pull_request.head.repo.full_name == github.repository
   run: |
-    if [ -z "${{ steps.sarif-semgrep.outputs.sarif-id }}" ]; then
-      echo "upload-sarif produced no sarif-id — the upload did not land."
+    # PRIMARY assertion: did the tolerated upload step actually succeed?
+    # `outcome` is the pre-continue-on-error result, and it accounts for
+    # wait-for-processing rejections that still populate sarif-id.
+    if [ "${{ steps.sarif-semgrep.outcome }}" != "success" ]; then
+      echo "upload-sarif outcome=${{ steps.sarif-semgrep.outcome }} — the upload did not land."
       echo "Most likely cause: security-events:write missing from the CALLER"
       echo "(.github/workflows/pr-security.yml), which the callee cannot elevate."
       exit 1
     fi
+    # Secondary, for the log only — never the sole assertion.
     echo "semgrep sarif-id=${{ steps.sarif-semgrep.outputs.sarif-id }}"
 ```
 
@@ -720,18 +750,31 @@ by `/gsd:discuss-phase` or raised as a checkpoint by the planner before it becom
      implemented) plus artifact retention for npm/pip, and record it in ADR-016.** Put this to the user
      before planning. Do **not** add a third-party converter action under any option.
 
-2. **Q2 — Does `main` need its own analysis baseline (a `push:` trigger)?**
-   - *What we know:* the caller triggers on `pull_request` only. Annotations are described as "new alerts
-     on lines of code changed in the pull request." Alert state "only reflect[s] the state of the alert on
-     the default branch," and non-default-branch alerts render as "in pull request"/"in branch."
-   - *What's unclear:* whether, with **zero** analyses on `main`, PR-only uploads still produce diff
-     annotations, and how the Security tab's default (default-branch) filter presents them. Criterion 1
-     says "the repo's Security > Code scanning view shows findings" — if that view defaults to `main` and
-     `main` has never been analysed, the literal criterion could read as unmet.
-   - *Recommendation:* plan for a **live observation task** on a real PR before deciding. If the Security
-     tab is empty under the default filter, adding `push: branches: [main]` to `pr-security.yml` is a
-     two-line fix — but it changes trigger policy, so it should be a user checkpoint, not an executor's
-     judgement call. Phase 19 (VAL-01) is the natural place for the full end-to-end proof.
+2. **Q2 — Should the workflow also run on `push: branches: [main]`? (This decides HOW Criterion 1 is
+   verified — present it as a choice between two *known* outcomes, not as an unknown.)**
+   - *Established fact, not speculation:* the caller triggers on `pull_request` **only**. Therefore `main`
+     is **never analysed** — not before the verification PR, and not after it merges. Alert state "only
+     reflect[s] the state of the alert on the default branch," and non-default-branch alerts render as
+     "in pull request" / "in branch" [CITED: docs.github.com]. A `branch` filter exists on the alert
+     summary [CITED: docs.github.com — managing code scanning alerts]. So no alert this phase produces
+     will ever be associated with the default branch **by construction**.
+   - *The two outcomes the user is choosing between:*
+     - **(i) Keep `pull_request` only.** Criterion 1 is verified via the alert summary's **branch/PR
+       filter** (and via `code-scanning/analyses?ref=refs/pull/<n>/merge`), not the unfiltered view. The
+       plan must state this, or a reviewer opening the Security tab and seeing nothing will read the
+       criterion as failed. Cost: zero. Risk: the criterion's literal wording ("the repo's Security >
+       Code scanning view shows findings") is satisfied only under a filter.
+     - **(ii) Add `push: branches: [main]`.** `main` gains a real baseline, the unfiltered Security tab
+       populates, and PR "new alert" diffing has something to diff against. Cost: **roughly doubles
+       workflow run count**, and it is a **trigger-policy change that propagates to the Phase 20 consumer
+       template (DIST-06/07/08)** — every adopting repo inherits it.
+   - *Still genuinely unverified:* whether the unfiltered view applies a default-branch filter on open,
+     and whether PR diff annotations render at all with no base analysis. Neither can be closed without a
+     live upload.
+   - *Recommendation:* **user checkpoint, not an executor judgement call.** Default to (i) for this phase
+     — it is zero-cost and keeps trigger policy out of scope — and record the choice in ADR-016. Revisit
+     in Phase 19 (VAL-01), which owns the end-to-end proof. **Hand-forward to Phase 20:** if (ii) is ever
+     adopted, the consumer template and adoption docs change with it.
 
 3. **Q3 — Do Dependabot PR runs get `security-events: write`?**
    - *What we know:* Dependabot runs get a read-only token by default; the troubleshooting doc says
@@ -749,6 +792,50 @@ by `/gsd:discuss-phase` or raised as a checkpoint by the planner before it becom
    - *Recommendation:* treat the blueprint update + ADR-016 as **in scope** (Phase 16 set this precedent
      with 16-06). Keep the blueprint's `<SHA>` placeholders per ADR-004 — update the version *comments*
      and add the three missing keys, do not paste live SHAs into the blueprint.
+
+---
+
+## Hand-Forwards to Later Phases
+
+State these rather than letting Phase 18 or 20 re-derive them.
+
+### Phase 18 (gate mode and branch protection)
+
+1. **Successful SARIF uploads ADD new check runs to the head SHA.** The check that carries code scanning
+   results is named **"Code scanning results"** [CITED: docs.github.com — triaging code scanning alerts in
+   pull requests]. 16-05 counted **six** checks on the head SHA (five `security / …` jobs plus the external
+   `GitGuardian Security Checks` app); after this phase there will be more.
+   **What is NOT known, and must not be guessed:** whether GitHub creates **one check run per
+   `tool.driver.name`** or **one per `category`**. These give *different counts here*, because `Trivy`
+   appears twice under two distinct categories (`trivy-fs`, `trivy-image`) — so the two hypotheses predict
+   5 vs 6 new checks. **Action for Phase 18:** after the first live upload, re-read the check-run list from
+   `GET /repos/{owner}/{repo}/commits/{sha}/check-runs` and record the exact names byte-for-byte (the same
+   discipline 16-07 applied to the em dash in `security / SCA — Trivy Filesystem`). **Do not add any of
+   them to the required-check list until Phase 18 decides deliberately** — a code-scanning check that is
+   `neutral` when no alerts are found behaves differently from a job check, and making it required has
+   merge-blocking consequences this phase has not evaluated.
+2. **The five existing job names are unchanged by this phase.** Phase 17 adds steps only — no job renames,
+   no new jobs. `security / SCA — Trivy Filesystem` (em dash U+2014) and its four siblings remain frozen.
+3. **Upload steps must stay `continue-on-error: true` under every gate mode** (ADR-001). Gate mode governs
+   *scanner* verdicts, not reporting infrastructure. The intolerant *verification* steps this phase adds
+   are a separate question, and Phase 18 should decide explicitly whether they participate in gating.
+
+### Phase 20 (DIST-06/07/08 — consumer template and adoption docs)
+
+1. **Every consumer caller must grant `security-events: write` on its calling job.** This is the single
+   most likely adoption failure: a copy-pasted caller with only `contents: read` yields a green workflow
+   and an empty Security tab, with no red step to notice (Pitfalls 1 + 2). The adoption docs must call this
+   out prominently, and the template must ship with the grant already present.
+2. **Private consumer repos cannot use CICD-02 at zero cost.** Code scanning on private repositories
+   requires a GitHub Code Security licence [CITED: docs.github.com — about code scanning]. This repo is
+   public, so the milestone is achievable here — but the "zero-cost" claim in the blueprint does **not**
+   transfer to a private adopting repo. The adoption docs must state this, and such repos fall back to the
+   artifact set (CICD-03) only.
+3. **SARIF limits are fixture-scale here and may not be at consumer scale** — 10 MB gzipped per file,
+   25,000 results per run (Pitfall 7). A large repo can exceed these on Semgrep `p/default` or a Trivy
+   image scan.
+4. **If Q2 resolves toward `push: branches: [main]`,** the consumer template and adoption docs inherit the
+   trigger change and the doubled run count.
 
 ---
 
