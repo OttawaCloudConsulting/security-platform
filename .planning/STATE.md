@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: "Completed 17-04-PLAN.md — all five scan jobs now upload one uniquely-named artifact (semgrep-results, checkov-results, sca-results, trivy-image-results, gitleaks-results) with retention-days: 90 explicit, the sca one globbing npm-audit-*.json / pip-audit-*.json at if-no-files-found: warn, and each paired with an intolerant steps.<id>.outcome assertion. Commits 4355f10, 803f988 in repos/security-platform. Gate PASS 10 checks, yamllint 0, smoke gate ALL PASS 10 gated runs / 0 skipped. CICD-03 marked Complete. Nothing pushed. Next: 17-05 (live run)."
-last_updated: "2026-09-11T19:25:00.000Z"
+stopped_at: "Completed 17-05-PLAN.md — PR #8 open and unmerged on OttawaCloudConsulting/security-platform, run 34638828775 green. Before: 0 artifacts, analyses HTTP 404. After: 7 analyses across 6 distinct categories on refs/pull/8/merge, 5 artifacts expiring exactly 90 days out, sca-results carrying npm-audit-1.json + pip-audit-1.json. Criterion 2 OBSERVED — 3 code-scanning annotations on fixtures/main.tf line 38. 12 check runs on the head SHA; code scanning adds ONE PER tool.driver.name, not per category. Checkov code-scanning check is RED. Commit fbe0071. Next: 17-06 (ADR-016)."
+last_updated: "2026-09-11T19:35:28.789Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 22
-  completed_plans: 19
-  percent: 45
+  completed_plans: 20
+  percent: 43
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 17 (sarif-upload-and-artifact-retention) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-09-11
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -113,6 +113,10 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-04: scripts/check-workflow-uploads.sh CANNOT exit 0 after Task 1 alone — check 8 (UPLOAD-VERIFY-PAIRING) fires on every id'd upload whose steps.<id>.outcome reader is Task 2's deliverable, contradicting Task 1's own acceptance criterion and 17-01's "passes at every intermediate commit" scope note. Resolved by verifying the FAILURE SHAPE instead: predicted and observed exactly 5 failures, all UPLOAD-VERIFY-PAIRING, one per artifact-* id, nothing from ARTIFACT-RETENTION or ARTIFACT-PATH-SAFETY; the gate is not a pre-commit hook (checked), so no --no-verify was needed and the two-commit structure held.
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-04: the fork/Dependabot guard on the five ARTIFACT verify steps is applied for UNIFORMITY with 17-03's six SARIF verifies, NOT because it was measured — upload-artifact authenticates with ACTIONS_RUNTIME_TOKEN rather than GITHUB_TOKEN and may well succeed on fork and Dependabot runs. Stated in the file as an open observation handed to Phase 18, never as a fact.
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-04: the container job's stale comment claiming github.sha is the only context interpolation in any run: block (17-03-SUMMARY issue #3) was reworded inside Task 2's commit, since Task 2 adds twenty more step-outcome/artifact-id interpolations to that file. The security claim was already true and is unchanged; only the count was wrong.
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-05: the live run is PR #8 / run 34638828775 on OttawaCloudConsulting/security-platform. Measured before/after pair: artifacts total_count 0 -> 5, code-scanning/analyses HTTP 404 "no analysis found" -> 7 analyses across the six distinct categories semgrep, checkov, trivy-fs, tflint, trivy-image, gitleaks on refs/pull/8/merge. Five artifacts (semgrep-results, checkov-results, sca-results, trivy-image-results, gitleaks-results), all non-zero, all expires_at 2026-12-10T19:26:17Z = EXACTLY 90 days after the run created_at. sca-results downloads as npm-audit-1.json, pip-audit-1.json, tflint.sarif, trivy-fs.json, trivy-fs.sarif, proving 17-04's glob. All ELEVEN intolerant .outcome assertions green, zero skipped. PR left OPEN and unmerged. — Everything before 17-05 was static YAML. This is the first time the caller-side permission grant, the six categories and the retention keys met the real GitHub API, and every value is read from gh api rather than recalled (T-17-21).
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-05: Criterion 2 is OBSERVED, not the pre-authorised NOT OBSERVED. The fixture edit was placed on fixtures/main.tf line 38 (the `module "fixture_unpinned_module" {` header) because it is the reported startLine for Checkov CKV_TF_1 and CKV_TF_2 AND the exact single line for tflint terraform_module_version. Three code-scanning annotations rendered there (tflint warning 38-38; Checkov failure 38-42 x2) and ZERO annotations on the other four github-advanced-security check runs, despite 82 other live results. RESEARCH Open Question Q2 is answered YES: annotations DO render with no base analysis on main to diff against, so D-02's pull_request-only trigger needs no push: branches: [main] companion. — Pre- and post-edit rule-id sets were measured identical (Checkov 14 total / 12 on main.tf both times; tflint the same three ids at the same lines), so the edit provably could not delete the finding the annotation depends on (T-17-24). The absence on the other checks is what makes the presence informative — Pitfall 4's discrimination worked exactly as described.
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-05: code scanning creates ONE check run per tool.driver.name, NOT per category — Phase 18's open question, resolved. `Trivy` appears exactly ONCE on the head SHA despite owning both trivy-fs and trivy-image. Six new checks appeared, which is the number the per-category hypothesis predicted, but the sixth is `tflint-errors` — tflint's single SARIF carries TWO drivers, so it yields two analyses and two check runs under one category. The head SHA now carries 12 checks byte-exactly: 'tflint-errors', 'tflint', 'Semgrep OSS', 'Checkov', 'Trivy', 'gitleaks', 'security / IaC — Checkov', 'security / SAST — Semgrep CE', 'security / Secrets — Gitleaks', 'security / Container — Trivy Image', 'security / SCA — Trivy Filesystem', 'GitGuardian Security Checks' (16-05's six, unchanged, plus six from github-advanced-security). Nothing added to any required-check list. — Matching the predicted count would have been a false confirmation — the rule must be read off WHICH members produce the count. Two further Phase 18 inputs: the `Checkov` code-scanning check concluded FAILURE while all five job checks were green and the PR stayed MERGEABLE, so making these checks required would block a PR carrying deliberately vulnerable fixtures; and the analyses endpoint and check-runs endpoint DISAGREE ON CASE (analyses `checkov`/`Gitleaks` vs check runs `Checkov`/`gitleaks`), so a required-check list must be built from commits/{sha}/check-runs, never from code-scanning/analyses.
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-05: `gh auth refresh -h github.com -s security_events` was NOT run and was not needed. The local token carries only 'gist', 'read:org', 'repo', 'workflow' — no security_events — yet every code-scanning read succeeded, because that scope is required only for PRIVATE repos and security-platform is PUBLIC. The pre-upload 404 also carries a misleading `gh: This API operation needs the "admin:repo_hook" scope` decoration, which is the CLI's generic error hint and not the API's complaint. — gh auth refresh is an interactive device-code flow that would have blocked an autonomous run; firing the documented fallback pre-emptively would have hung the plan on a problem that did not exist. T-17-22 closes by evidence (no 403 at any point) rather than by mitigation.
 
 ### Pending Todos
 
@@ -161,11 +165,12 @@ Carried forward from v1.1 close:
 | Phase 17-sarif-upload-and-artifact-retention P02 | 5min | 2 tasks | 2 files |
 | Phase 17-sarif-upload-and-artifact-retention P03 | 12min | 2 tasks | 1 files |
 | Phase 17-sarif-upload-and-artifact-retention P04 | 14min | 2 tasks | 1 files |
+| Phase 17-sarif-upload-and-artifact-retention P05 | 11 min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T19:25:00.000Z
-Stopped at: Completed 17-04-PLAN.md — all five scan jobs now upload one uniquely-named artifact (semgrep-results, checkov-results, sca-results, trivy-image-results, gitleaks-results) with retention-days: 90 explicit, the sca one globbing npm-audit-*.json / pip-audit-*.json at if-no-files-found: warn, and each paired with an intolerant steps.<id>.outcome assertion. Commits 4355f10, 803f988 in repos/security-platform. Gate PASS 10 checks, yamllint 0, smoke gate ALL PASS 10 gated runs / 0 skipped. CICD-03 marked Complete. Nothing pushed. Next: 17-05 (live run).
+Last session: 2026-09-11T19:34:36.140Z
+Stopped at: Completed 17-05-PLAN.md — PR #8 open and unmerged on OttawaCloudConsulting/security-platform, run 34638828775 green. Before: 0 artifacts, analyses HTTP 404. After: 7 analyses across 6 distinct categories on refs/pull/8/merge, 5 artifacts expiring exactly 90 days out, sca-results carrying npm-audit-1.json + pip-audit-1.json. Criterion 2 OBSERVED — 3 code-scanning annotations on fixtures/main.tf line 38. 12 check runs on the head SHA; code scanning adds ONE PER tool.driver.name, not per category. Checkov code-scanning check is RED. Commit fbe0071. Next: 17-06 (ADR-016).
 Resume file: None
 
 ## Operator Next Steps
