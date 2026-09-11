@@ -245,7 +245,11 @@ Archive:  tflint.zip
 bundled-ruleset bump from 0.14.1 to 0.15.0.** 16-03's warning about possible drift is now closed as
 *no drift observed*. `terraform_module_pinned_source` remains unfired in both environments — the
 fixture's unpinned module uses a registry source, not a bare git source, so the rule has nothing to
-flag. That limitation is unchanged by the newer version and is what 16-07's sign-off must
+flag. Verified this session by reading the fixture the run scanned:
+`repos/security-platform/fixtures/main.tf` line 39 is
+`  source = "terraform-aws-modules/s3-bucket/aws"` with no `version` argument, which is exactly what
+`terraform_module_version` flagged and exactly what `terraform_module_pinned_source` (a git/ref
+source rule) does not apply to. That limitation is unchanged by the newer version and is what 16-07's sign-off must
 acknowledge.
 
 **A secondary, unexpected match:** the npm histogram (`high=1 critical=1 total=2`) and the pip-audit
