@@ -119,13 +119,6 @@ require_nonempty() {
 # past require_nonempty; a real report carries "auditReportVersion".
 #
 # Usage: require_parses_json <label> <file> <required_key>
-#
-# SC2329 is suppressed because this helper has no call site yet: the npm,
-# pip-audit and tflint sub-scan sections that use it are added in the next
-# plan, and adding scan behaviour here would mean this refactor could no
-# longer be shown to be behaviour-preserving. Remove the suppression once
-# those call sites exist.
-# shellcheck disable=SC2329
 require_parses_json() {
   local label="$1"
   local file="$2"
@@ -161,6 +154,38 @@ PY
   fi
 }
 
+# npm_audit_to_file / tflint_sarif_to_file: thin wrappers, because run_scan_rc
+# has to observe each scanner's own exit code and neither tool can be handed
+# to it directly. `npm audit` must run in the lockfile's own directory and
+# writes its report to stdout; tflint writes SARIF to stdout as well and has
+# no output-file flag at all. Wrapping keeps shell redirection out of
+# run_scan_rc's argument list.
+#
+# Both are invoked indirectly — as the command argument of `run_scan_rc`,
+# which runs it as "$@" — and shellcheck's usage detection only counts a name
+# in command position, which is the case its own SC2329 text calls out ("or
+# ignored if invoked indirectly"). The suppression is scoped to these two
+# definitions and describes a real, checkable call site: `grep -n
+# 'npm_audit_to_file\|tflint_sarif_to_file' scripts/smoke-scans.sh` shows one
+# run_scan_rc call for each. Delete the wrapper and the directive together if
+# a future refactor removes the call.
+# shellcheck disable=SC2329
+npm_audit_to_file() {
+  # Subshell so the cd cannot leak into the rest of the gate. --audit-level
+  # gates the EXIT CODE only; it does not filter the report, so the severity
+  # histogram asserted below is complete either way.
+  (cd "$1" && npm audit --audit-level=high --json >"$2")
+}
+
+# --recursive is mandatory, not stylistic: a repo-root tflint without it sees
+# zero .tf files and exits 0 — a silent false pass. No soft-fail flag is
+# passed either; Phase 15's D-04 keeps native severity semantics so Phase 18
+# does not have to re-derive thresholds.
+# shellcheck disable=SC2329  # invoked indirectly via run_scan_rc; see above
+tflint_sarif_to_file() {
+  tflint --recursive --format sarif >"$1"
+}
+
 # Preflight, hard tier: fail fast, naming the missing binary, rather than
 # surfacing a confusing scanner error partway through the run. Every binary
 # here drives a check the gate cannot render a verdict without. `npm` is in
@@ -177,18 +202,18 @@ done
 # sub-check. A clean workstation without them must not hard-fail the whole
 # gate — but the skip has to be loud, named, and accounted for as SKIPPED so
 # it can never be mistaken for a pass. The HAVE_* flags are read by the
-# sub-scan sections; nothing here installs anything.
+# sub-scan sections, which are also where the SKIPPED entry is appended so a
+# single absent tool cannot be counted as two skipped sub-checks; nothing here
+# installs anything.
 HAVE_PIP_AUDIT=1
 HAVE_TFLINT=1
 if ! command -v pip-audit &>/dev/null; then
   HAVE_PIP_AUDIT=0
   echo "NOTE: optional binary 'pip-audit' not found on PATH — the SCA-02 Python sub-check will be SKIPPED, not passed. Install it with: pipx install pip-audit"
-  SKIPPED+=("SCA-02 (pip-audit): binary not found on PATH")
 fi
 if ! command -v tflint &>/dev/null; then
   HAVE_TFLINT=0
   echo "NOTE: optional binary 'tflint' not found on PATH — the SCA-03 Terraform sub-check will be SKIPPED, not passed. Install it with: brew install tflint"
-  SKIPPED+=("SCA-03 (tflint): binary not found on PATH")
 fi
 echo "Optional tooling: pip-audit=${HAVE_PIP_AUDIT} tflint=${HAVE_TFLINT}"
 
@@ -274,7 +299,207 @@ print(f'    trivy fs (filtered) total HIGH/CRITICAL vulnerabilities: {total}')
 " || true
 echo
 
-# --- 5. Container: docker build + Trivy image -----------------------------
+# --- 5. SCA-01: npm audit (npm lockfile advisories) -----------------------
+echo "--- SCA-01 (npm audit) ---"
+# Detect-then-guard. `npm audit` exits 1 when it finds vulnerabilities AND
+# when there is no lockfile to read (ENOLOCK), so the exit code alone cannot
+# tell a real scan from a missing input: the detector decides whether this
+# sub-scan applies at all, and require_parses_json decides whether what came
+# back is a report or an error object.
+# The list file is written into $OUT, never into the checkout: invoked with no
+# argument the detector defaults to writing it into the current directory,
+# which would leave an untracked file behind in the repository.
+bash scripts/detect-npm.sh "$OUT/npm-lockfiles.txt"
+if [ -s "$OUT/npm-lockfiles.txt" ]; then
+  npm_n=0
+  # The list is read on fd 3 because npm reads stdin: a scanner that consumed
+  # the loop's stdin would swallow the remaining lockfile paths. The loop and
+  # the numbered reports exist because a consumer repository is not guaranteed
+  # to have a single manifest at its root.
+  while IFS= read -r lockfile <&3; do
+    [ -n "$lockfile" ] || continue
+    npm_n=$((npm_n + 1))
+    npm_report="$OUT/npm-audit-${npm_n}.json"
+    echo "    lockfile [${npm_n}]: ${lockfile}"
+    run_scan_rc 1 "npm-audit" npm_audit_to_file "$(dirname "$lockfile")" "$npm_report"
+    require_nonempty "npm-audit" "$npm_report"
+    # auditReportVersion is the discriminator: the {"error":{"code":"ENOLOCK"}}
+    # object is non-empty, valid JSON, and exits with the same code as a real
+    # report, so only the top-level key separates them.
+    require_parses_json "npm-audit" "$npm_report" auditReportVersion
+    # Verdict assertion, not an informational print: Criterion 1 requires
+    # findings WITH severity levels, so the metadata histogram has to be shown
+    # to be populated, and printed so a human reading the log sees them.
+    npm_rc=0
+    python3 - "$npm_report" <<'PY' || npm_rc=$?
+import json
+import sys
+
+path = sys.argv[1]
+try:
+    with open(path) as handle:
+        data = json.load(handle)
+except Exception as exc:  # noqa: BLE001 - any parse/IO failure is a hard fail
+    print("    npm audit report unreadable: {} ({})".format(path, exc))
+    sys.exit(2)
+
+hist = (data.get("metadata") or {}).get("vulnerabilities") or {}
+print("    npm audit severity histogram: " + " ".join(
+    "{}={}".format(name, hist.get(name, 0))
+    for name in ("info", "low", "moderate", "high", "critical", "total")))
+for name, entry in sorted((data.get("vulnerabilities") or {}).items()):
+    print("      package={} severity={}".format(name, entry.get("severity")))
+gated = int(hist.get("high", 0)) + int(hist.get("critical", 0))
+print("    npm audit high+critical: {}".format(gated))
+if gated <= 0:
+    print("    npm audit reports no high/critical entry in metadata.vulnerabilities")
+    sys.exit(3)
+PY
+    if [ "$npm_rc" -ne 0 ]; then
+      FAILURES+=("npm-audit: no high/critical entry in metadata.vulnerabilities (${npm_report})")
+    fi
+  done 3<"$OUT/npm-lockfiles.txt"
+else
+  echo "    SKIPPED: no npm lockfile in this repository"
+  SKIPPED+=("SCA-01 (npm audit): no package-lock.json in this repository")
+fi
+echo
+
+# --- 6. SCA-02: pip-audit (Python advisories) -----------------------------
+echo "--- SCA-02 (pip-audit) ---"
+if [ "$HAVE_PIP_AUDIT" -eq 0 ]; then
+  echo "    SKIPPED: pip-audit is not available on this workstation"
+  SKIPPED+=("SCA-02 (pip-audit): binary not found on PATH")
+else
+  # Same detect-then-guard and same $OUT list-file rule as the npm section:
+  # pip-audit also exits 1 both for "advisories found" and for "input file
+  # missing or invalid".
+  bash scripts/detect-python.sh "$OUT/py-reqs.txt"
+  if [ -s "$OUT/py-reqs.txt" ]; then
+    py_n=0
+    while IFS= read -r reqfile <&3; do
+      [ -n "$reqfile" ] || continue
+      py_n=$((py_n + 1))
+      py_report="$OUT/pip-audit-${py_n}.json"
+      echo "    requirements [${py_n}]: ${reqfile}"
+      # Locked invocation: the default resolving mode, which walks the
+      # transitive closure and costs ~14 s. Flags that skip resolution or
+      # demand hash-pinned requirements are deliberately absent — both
+      # hard-error on any requirement a consumer repo has not pinned exactly.
+      run_scan_rc 1 "pip-audit" pip-audit -r "$reqfile" --format json \
+        --progress-spinner=off -o "$py_report"
+      require_nonempty "pip-audit" "$py_report"
+      # On its error paths pip-audit writes no output file at all, so the
+      # emptiness check above already discriminates; 'dependencies' is the
+      # top-level key a real report carries.
+      require_parses_json "pip-audit" "$py_report" dependencies
+      # Verdict assertion. NOTE for Phase 17/18: pip-audit emits NO severity
+      # and NO CVSS field anywhere in its JSON — unlike the npm section above,
+      # this count is over advisory IDs, and no severity threshold can be
+      # derived from this report. Do not infer pip-audit's shape from npm's.
+      py_rc=0
+      python3 - "$py_report" <<'PY' || py_rc=$?
+import json
+import sys
+
+path = sys.argv[1]
+try:
+    with open(path) as handle:
+        data = json.load(handle)
+except Exception as exc:  # noqa: BLE001 - any parse/IO failure is a hard fail
+    print("    pip-audit report unreadable: {} ({})".format(path, exc))
+    sys.exit(2)
+
+deps = data.get("dependencies") or []
+entries = 0
+ids = set()
+for dep in deps:
+    vulns = dep.get("vulns") or []
+    if vulns:
+        print("      package={} version={} advisories={}".format(
+            dep.get("name"), dep.get("version"), len(vulns)))
+    entries += len(vulns)
+    ids.update(v.get("id") for v in vulns)
+print("    pip-audit resolved dependencies: {}".format(len(deps)))
+print("    pip-audit advisory entries: {} ({} unique ids)".format(entries, len(ids)))
+if entries <= 0:
+    print("    pip-audit reports no advisories across dependencies[]")
+    sys.exit(3)
+PY
+      if [ "$py_rc" -ne 0 ]; then
+        FAILURES+=("pip-audit: no advisories across dependencies[] (${py_report})")
+      fi
+    done 3<"$OUT/py-reqs.txt"
+  else
+    echo "    SKIPPED: no Python requirements file in this repository"
+    SKIPPED+=("SCA-02 (pip-audit): no requirements*.txt in this repository")
+  fi
+fi
+echo
+
+# --- 7. SCA-03: tflint (provider and module pinning) ----------------------
+echo "--- SCA-03 (tflint) ---"
+# The verdict below is asserted on the RULE IDS, not on a finding count, and
+# the missing-required_version rule (terraform_required_version) is
+# deliberately NOT in the accepted set: it already fires on this fixture and
+# reports an absent top-level version block, which says nothing about whether
+# providers or modules are pinned. A bare "at least one finding" check would
+# therefore pass with SCA-03 completely unproven.
+# Recorded while measuring: tflint's default ruleset does NOT flag a floating
+# range such as a >= constraint, so Criterion 3 is satisfied through missing
+# constraints and unpinned module sources only.
+if [ "$HAVE_TFLINT" -eq 0 ]; then
+  echo "    SKIPPED: tflint is not available on this workstation"
+  SKIPPED+=("SCA-03 (tflint): binary not found on PATH")
+else
+  bash scripts/detect-terraform.sh "$OUT/tf-files.txt"
+  if [ -s "$OUT/tf-files.txt" ]; then
+    # run_scan_rc 2, not run_scan: tflint signals findings with exit code 2
+    # and reserves 1 for an application error, so the rc=1 default would score
+    # a healthy tflint run as a tool/infrastructure error.
+    run_scan_rc 2 "tflint" tflint_sarif_to_file "$OUT/tflint.sarif"
+    require_nonempty "tflint" "$OUT/tflint.sarif"
+    require_parses_json "tflint" "$OUT/tflint.sarif" runs
+    tf_rc=0
+    python3 - "$OUT/tflint.sarif" <<'PY' || tf_rc=$?
+import json
+import sys
+
+path = sys.argv[1]
+PINNING = {
+    "terraform_required_providers",
+    "terraform_module_version",
+    "terraform_module_pinned_source",
+}
+try:
+    with open(path) as handle:
+        data = json.load(handle)
+except Exception as exc:  # noqa: BLE001 - any parse/IO failure is a hard fail
+    print("    tflint SARIF unreadable: {} ({})".format(path, exc))
+    sys.exit(2)
+
+found = set()
+for run in data.get("runs") or []:
+    for result in run.get("results") or []:
+        found.add(result.get("ruleId"))
+print("    tflint rule ids: {}".format(sorted(i for i in found if i)))
+hits = sorted(PINNING & found)
+print("    tflint pinning rule ids: {}".format(hits))
+if not hits:
+    print("    tflint reported no pinning rule id from {}".format(sorted(PINNING)))
+    sys.exit(3)
+PY
+    if [ "$tf_rc" -ne 0 ]; then
+      FAILURES+=("tflint: no pinning rule id in the SARIF results (${OUT}/tflint.sarif)")
+    fi
+  else
+    echo "    SKIPPED: no Terraform files in this repository"
+    SKIPPED+=("SCA-03 (tflint): no .tf files in this repository")
+  fi
+fi
+echo
+
+# --- 8. Container: docker build + Trivy image -----------------------------
 echo "--- Container (docker build + Trivy image) ---"
 docker_rc=0
 docker build -f fixtures/Dockerfile -t scan-fixture:smoke fixtures/ || docker_rc=$?
@@ -310,7 +535,7 @@ else
 fi
 echo
 
-# --- 6. Secrets: Gitleaks (git history mode) -------------------------------
+# --- 9. Secrets: Gitleaks (git history mode) -------------------------------
 echo "--- Secrets (Gitleaks, git history mode) ---"
 run_scan "gitleaks-sarif" gitleaks git . --no-banner --redact \
   --report-format sarif --report-path "$OUT/gitleaks.sarif"
