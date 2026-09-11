@@ -553,6 +553,51 @@ for finding in data:
 " || true
 echo
 
+# --- Criterion 4: clean-skip negative test --------------------------------
+# This is the ONLY place the skip path can be observed, and it cannot be
+# replaced by a live CI observation: this repository contains npm, Python and
+# Terraform fixtures, so every CI run takes the FOUND branch of all three
+# detectors and never exercises a skip at all. Do not delete this section as
+# redundant on the grounds that "CI already covers the detectors".
+# It runs the same detector scripts CI runs — not a copy of their logic —
+# from inside a throwaway git repository, with GITHUB_OUTPUT explicitly unset
+# so the workstation case (no GitHub step-output file) is the one under test.
+echo "--- Criterion 4: clean-skip negative test ---"
+PROBE_DIR="$(mktemp -d)"
+# The existing EXIT trap is extended rather than joined by a second one: bash
+# replaces an EXIT trap instead of chaining it, so a second `trap … EXIT`
+# would silently leak $OUT. The directory is also removed explicitly at the
+# end of this section; the trap only covers an abnormal exit.
+trap 'rm -rf "$OUT" "$PROBE_DIR"' EXIT
+(cd "$PROBE_DIR" && git init -q)
+echo "    probe repository: ${PROBE_DIR}"
+for probe in npm python terraform; do
+  probe_rc=0
+  probe_out="$(cd "$PROBE_DIR" && env -u GITHUB_OUTPUT bash "$REPO_ROOT/scripts/detect-${probe}.sh" 2>&1)" || probe_rc=$?
+  # BOTH conditions are required. A detector that exits 0 while printing
+  # nothing has skipped silently — the invisible false pass this test exists
+  # to catch — so the exit code alone is not evidence of a clean skip.
+  if [ "$probe_rc" -eq 0 ] && printf '%s\n' "$probe_out" | grep -q '^SKIP:'; then
+    echo "==> skip-${probe}: exit=${probe_rc} (PASS - clean skip, rc=0 with a SKIP: line)"
+    echo "    ${probe_out}"
+  else
+    echo "==> skip-${probe}: exit=${probe_rc} (FAIL - expected rc=0 and a line matching ^SKIP:)"
+    echo "    observed output: ${probe_out:-<none>}"
+    FAILURES+=("skip-${probe}: expected rc=0 and a ^SKIP: line in an empty repository, observed rc=${probe_rc} and output: ${probe_out:-<none>}")
+  fi
+done
+# The skip branch must also leave no list file behind: a zero-length or stale
+# list file would make a downstream `[ -s … ]` guard read the wrong answer.
+for leftover in npm-lockfiles.txt py-reqs.txt tf-files.txt; do
+  if [ -e "${PROBE_DIR}/${leftover}" ]; then
+    echo "    FAIL: detector wrote ${leftover} on the skip branch"
+    FAILURES+=("skip-probe: ${leftover} was written in the empty repository; the skip branch must write no list file")
+  fi
+done
+echo "    no list file written on the skip branch: OK"
+rm -rf "$PROBE_DIR"
+echo
+
 # --- Summary ---------------------------------------------------------------
 echo "=== Summary ==="
 # Skips are printed before the verdict, on both the pass and the fail path,
