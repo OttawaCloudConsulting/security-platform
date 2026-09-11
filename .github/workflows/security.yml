@@ -151,16 +151,32 @@ jobs:
       # --scanners vuln only, deliberately: misconfig is the IaC job's remit and
       # secrets are Gitleaks' remit. No per-ecosystem plugin or .trivyignore — this
       # is SCA-04's generic sweep.
-      - name: Run Trivy filesystem scan
+      - name: Run Trivy filesystem scan (JSON for retention)
         continue-on-error: true          # D-04
         run: |
           trivy fs . --scanners vuln \
             --format json --output trivy-fs.json \
             --exit-code 1 --severity HIGH,CRITICAL
 
-      - name: Convert to SARIF
-        if: always()
-        run: trivy convert --format sarif --output trivy-fs.sarif trivy-fs.json
+      # TWO steps, not one chained run: block — the same reason the Gitleaks
+      # pair in the secrets job is split. GitHub's default shell is bash -e
+      # and BOTH runs exit 1 on findings by design (D-04), so a second
+      # command in the same run: block would be silently dropped.
+      # No `trivy convert` here: direct --format sarif sets
+      # originalUriBaseIds.ROOTPATH to the SCAN ROOT, while trivy convert
+      # sets it to the INPUT JSON FILE path — measured 2026-09-11 with trivy
+      # 0.74.0. The converted form makes every result resolve to a
+      # nonexistent trivy-fs.json/... path in code scanning.
+      # The flags below are deliberately identical to the JSON run above, so
+      # the retained artifact and the uploaded SARIF describe the same
+      # finding set. Do not change one without the other.
+      - name: Run Trivy filesystem scan (SARIF for code scanning)
+        if: always()                     # previous step exits 1 on findings
+        continue-on-error: true          # D-04
+        run: |
+          trivy fs . --scanners vuln \
+            --format sarif --output trivy-fs.sarif \
+            --exit-code 1 --severity HIGH,CRITICAL
 
       - name: Show scan output files
         if: always()
