@@ -31,3 +31,10 @@
   Fixing the ADR-011 link (and the CLAUDE.md path description) is out of 16-06's file scope — the plan's
   acceptance criteria pin this commit's contents, and a drive-by edit to unrelated prose would violate
   the executor scope boundary. A future docs-hygiene plan should sweep all relative links in the blueprint.
+
+## Resolved (2026-09-11, during 16-06 execution)
+
+- The untracked planning artifacts logged by 16-01 are now tracked — `16-PATTERNS.md`,
+  `16-PLAN-CHECK.md` and `15-VERIFICATION.md` were committed in `f2f8336`. That deferral is closed.
+- Still open: the broken relative links in `docs/development-security-stack-option-1.md` (the ADR-011
+  link, and CLAUDE.md's description of the blueprint as living at the repo root), logged immediately above.

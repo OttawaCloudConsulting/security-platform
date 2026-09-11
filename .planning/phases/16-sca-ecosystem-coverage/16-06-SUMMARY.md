@@ -53,6 +53,8 @@ completed: 2026-09-11
 | Commit | Subject | Tasks |
 |---|---|---|
 | `7b9b49d` | `docs(16-06): record tflint adoption in ADR-015 and add pip-audit/tflint to the blueprint tool tables` | **1 and 2** |
+| `f2f8336` | `docs(16-06): complete ADR-015 and blueprint reconciliation plan` | SUMMARY / STATE / ROADMAP / deferred-items + three long-untracked planning artifacts |
+| *(follow-up)* | `docs(16-06): narrow ADR-015's Checkov claim and record the remaining deviations` | post-review accuracy correction to ADR-015 |
 
 **Why one commit rather than two.** Task 2's acceptance criteria require `git log -1`'s subject to be exactly the string above *and* require `git show --name-only HEAD` to contain both `adr015-tflint-terraform-pin-checking.md` (a Task 1 file) and `docs/development-security-stack-option-1.md` (a Task 2 file). Committing Task 1 separately would have made that criterion unsatisfiable. Task 1's three `<verify>` blocks operate on the working tree and were run — and passed — before Task 2 began, so the gate was not skipped, only the commit boundary was. Files were staged individually by name; no `git add -A` (the working tree carries dozens of unrelated `.claude/**` modifications from other work).
 
@@ -167,9 +169,29 @@ The plan says to link ADR-015 "in the existing relative-link style used elsewher
 
 **Not fixed in passing:** the ADR-011 link and the CLAUDE.md path description are outside this plan's file scope, and a drive-by edit would have added prose changes to a commit whose contents are pinned by acceptance criteria. Both are logged to `deferred-items.md` for a future docs-hygiene sweep.
 
+### 3. [Scope boundary — resolved rather than perpetuated] Three untracked planning artifacts committed
+
+`.planning/phases/16-sca-ecosystem-coverage/16-PATTERNS.md`, `16-PLAN-CHECK.md` and
+`.planning/phases/15-five-parallel-scan-jobs/15-VERIFICATION.md` had been sitting untracked in the outer
+repo since 16-01 logged them to `deferred-items.md`, and five subsequent plans each re-deferred them. They
+are planning artifacts under `.planning/**`, which the final docs commit already covers, and 16-PATTERNS.md
+is cited as context by this very plan — leaving it untracked risks losing a referenced input. They were
+committed in `f2f8336`. Recorded as a deviation because it is outside 16-06's declared `files_modified`.
+
+### 4. [Post-review correction] ADR-015's Improved section narrowed after an accuracy review
+
+The first draft of ADR-015 said "Nothing in Checkov, Trivy, Semgrep or Grype reports any of these" of all
+three live findings. That overclaims, and contradicts the ADR's own Context section: Checkov's `CKV_TF_1`
+*would* flag the unpinned registry module — it is the *provider* finding that nothing else in the stack
+reports. Since an accepted ADR becomes immutable, this was corrected before the plan closed rather than
+left for a superseding record. The same follow-up commit makes the `continue-on-error: true` reference
+name D-04 explicitly and note that it suspends ADR-001's removal only while the pipeline is report-only.
+
 ---
 
-**Total deviations:** 2 (1 plan-directed commit-boundary merge, 1 link-style judgement call). No auto-fixes were needed; no Rule 4 architectural decision arose.
+**Total deviations:** 4 (1 plan-directed commit-boundary merge, 1 link-style judgement call, 1 scope-boundary
+resolution of a standing deferral, 1 post-review accuracy correction to this plan's own ADR). No Rule 1-3
+auto-fix of executing code was needed; no Rule 4 architectural decision arose.
 
 ## Threat Model Compliance
 
