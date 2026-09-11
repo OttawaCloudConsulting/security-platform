@@ -36,7 +36,7 @@ key-files:
 key-decisions:
   - "ADR-016 records PR diff annotation rendering as OBSERVED, not as unverified. The plan (written before 17-05 ran) instructed recording it as not verified; 17-05 §7 measured three annotations on fixtures/main.tf line 38 and answered RESEARCH Q2 YES. Following the plan literally would have understated the evidence and handed Phase 19 a false open question — the exact class of error T-17-28 exists to prevent."
   - "The 'not verified' section therefore names three genuinely open items instead of two: Dependabot security-events grantability (RESEARCH Q3/A8), whether actions/upload-artifact itself succeeds on fork/Dependabot runs where ACTIONS_RUNTIME_TOKEN differs (17-05 §8, explicitly 'still unmeasured'), and how GitHub's ingester treats a ROOTPATH resolving outside the repo (RESEARCH Pitfall 3 — the direct-SARIF decision sidesteps it rather than answering it)."
-  - "The measured SARIF inventory table uses the LIVE analyses-API driver names from 17-05 §3 (checkov, Gitleaks) rather than RESEARCH's locally-measured casing (Checkov, gitleaks), and footnotes the analyses-vs-check-runs case mismatch rather than silently mixing the two sets."
+  - "The measured SARIF inventory table reports the `tool.driver.name` the SARIF files themselves carry (RESEARCH-measured: Checkov, gitleaks), which is also what the check-runs endpoint reports and therefore what Phase 18 needs for a required-check list. The analyses API disagrees on case for two of them (checkov, Gitleaks) and that is carried in a footnote rather than mixed into the table. The first draft mixed the two sets in one row each way and was corrected post-commit — see Deviation 3."
   - "Blueprint SARIF categories follow the tool each example actually shows: semgrep, checkov, trivy-image. The blueprint's sca job example still runs Grype, so no trivy-fs or tflint category was invented for a job that does not exist there — that drift is deferral #2, not a drive-by fix."
   - "Inline-flow rendering (`with: { sarif_file: x.sarif, category: x }`) was chosen over expanding to block style, applied consistently to all three SARIF and all five artifact examples — the minimal diff that keeps the blueprint's existing idiom."
   - "No live 40-hex SHA was pasted into the blueprint (verified: grep -cE '@[0-9a-f]{40}' returns 0). Only the version comments changed; every @<SHA> placeholder is intact, per ADR-004."
@@ -85,6 +85,9 @@ completed: 2026-09-11
 
 1. **Task 1: Write ADR-016 and append its index row** — `553b2a2` (docs)
 2. **Task 2: Make the blueprint's CI/CD template copy-pasteable, and record the deferrals** — `939b5b3` (docs)
+
+Follow-up commits, no amends: `c3a0fb2` (this summary), `7ce6d05` (STATE + ROADMAP), `cc0bbc1` (STATE lint
+hygiene), `64a0a78` (the Deviation 3 correction to ADR-016 and the blueprint comment).
 
 Both committed with hooks; `--no-verify` was not used. Both commits were staged file-by-file, never with
 `-a`/`-A`, because the outer repo's working tree carries an unrelated uncommitted `.claude/` tooling update.
@@ -208,9 +211,30 @@ describes. The ADR states it as observed, and the unverified section names three
 - **Committed in:** n/a — a verification-script defect, not a content change. Recorded so a future plan does
   not copy the two-arg-less form into a repo with a dirty tree.
 
+### 3. Post-commit correction to ADR-016 and the blueprint comment
+
+- **Found during:** review after Task 2, before declaring the plan done.
+- **Issue:** two factual defects in the committed ADR. (a) The SARIF inventory table mixed casing from two
+  endpoints — `Checkov` is the SARIF/check-run form while `Gitleaks` is the analyses-API form, so the column
+  headed `tool.driver.name` was internally inconsistent. (b) The Context section and the blueprint's new
+  category comment both asserted that an uncategorised second upload "silently replaces the first". That
+  mechanism was never observed: 17-RESEARCH consequence #1 records the second upload as **failing**, and the
+  collision was designed out before the first live upload, so neither outcome was measured by this project.
+- **Fix:** the table now reports `Checkov` and `gitleaks` — what the SARIF files carry, and what the
+  check-runs endpoint reports — with the analyses API's differing casing moved into the existing footnote.
+  The collision wording now states the collision and its consequence (one of the two Trivy scans does not
+  reach the Security tab) and attributes the "second upload rejected" mechanism to research rather than to
+  measurement.
+- **Files modified:** `docs/adr/adr016-…md`, `docs/development-security-stack-option-1.md`.
+- **Verification:** Task 1's full grep block re-run after the edit — every literal token still present;
+  markdownlint 0 errors; table row count and pipe parity unchanged.
+- **Committed in:** `64a0a78` — a fresh commit, not an amend. **No decision changed**; both edits are to
+  measured-value reporting and to a mechanism claim.
+
 ---
 
-**Total deviations:** 2 — one evidence-over-plan correction, one verify-script correction.
+**Total deviations:** 3 — one evidence-over-plan correction, one verify-script correction, one post-commit
+factual correction to this plan's own deliverable (decisions unchanged).
 **Impact on plan:** none on scope or file set. Both commits landed exactly the files the plan named.
 
 ## Issues Encountered
