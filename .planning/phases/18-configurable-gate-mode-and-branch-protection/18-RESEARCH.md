@@ -23,12 +23,8 @@
 **Branch protection scope**
 - **D-06:** Required-checks guidance covers the six job-level checks only — `security / SAST — Semgrep CE`, `security / IaC — Checkov`, `security / SCA — Trivy Filesystem`, `security / Container — Trivy Image`, `security / Secrets — Gitleaks`, and the `security` wrapper job in `pr-security.yml` (exact names frozen per 17-07-SUMMARY.md's "twelve byte-exact check-run names" — the six job-level ones, not the six code-scanning-per-driver ones). Code-scanning-per-driver checks are informational (SARIF/Security-tab) only; Phase 17 left the Security tab's UI visibility unconfirmed, so requiring those checks is deferred.
 
-> **Research correction to D-06 — see Open Question Q1.** Two independent live observations show the `security` wrapper job produces **no check run of its own**. D-06's set is **five**, not six. The five named checks are byte-exact and confirmed; only the sixth member of the set is wrong.
-
 **Rollout safety**
 - **D-07:** The written guidance sequences adoption explicitly: (1) confirm job-level checks appear (green when clean, red when seeded) in PR runs while still in report-only, (2) THEN set `gate_mode: blocking`, (3) THEN add the job-level checks as required in branch protection settings. State plainly that doing step 3 before step 2 leaves merges un-gated even though the workflow is configured to block.
-
-> **Research correction to D-07 step 1 — see Open Question Q2.** "Red when seeded" is unobservable in report-only: D-04 defines report-only as "no finding ever turns a scan step red". Step 1 can only confirm the checks *appear and go green*; red-on-findings is only observable after step 2.
 
 ### Claude's Discretion
 - Exact GitHub Actions expression syntax for conditionally setting `continue-on-error` per scan step based on `gate_mode` (e.g. `${{ inputs.gate_mode == 'report-only' }}` vs a computed job output) — pick whatever composes cleanly with the existing `continue-on-error: true # D-04` lines across all five jobs' scan steps.
@@ -41,6 +37,19 @@
 - Per-job gate flags (independent blocking/report-only per scan job) — deferred per D-01; roadmap and success criteria describe one flag.
 - Full template-packaging and copy-paste rollout guidance for other repos — explicitly Phase 20's job; Phase 18 only needs `gate_mode` wired and documented for this repo's two consumption mechanisms.
 </user_constraints>
+
+---
+
+## Research Corrections to Locked Decisions
+
+The block above is CONTEXT.md verbatim. Two of its decisions are contradicted by primary evidence
+gathered during this research. Neither changes the decision's *intent* — both correct a factual detail
+the decision rests on. Full evidence in §Open Questions.
+
+| Decision | As written | Evidence says | Detail |
+|----------|-----------|---------------|--------|
+| **D-06** | "the **six** job-level checks … and the `security` wrapper job" | **Five.** A caller job that `uses:` a reusable workflow emits **no check run of its own**. The five named `security / …` checks are byte-exact and confirmed; only the sixth member of the set does not exist. | Q1 |
+| **D-07 step 1** | "confirm job-level checks appear (green when clean, **red when seeded**) … while still in report-only" | Red-on-findings is unobservable in report-only by D-04's own definition. Step 1 can only confirm the checks *appear and conclude green*; red is observable only after step 2. | Q2 |
 
 ---
 
@@ -89,9 +98,11 @@ Those three `if:` lines need `always() &&` prepended as part of this phase.
 it once at workflow level with `env: GATE_MODE: ${{ inputs.gate_mode || vars.GATE_MODE || 'report-only' }}`;
 replace all eleven `continue-on-error: true  # D-04` lines with
 `continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18`; prepend `always() &&` to
-the three guarded SCA scan steps; and write CICD-04 guidance around a read-modify-write `PUT` to
+the three guarded SCA scan steps; leave `pr-security.yml` with **no `with:` block** so the flag is driven
+entirely by `gh variable set GATE_MODE` (which is what makes "without editing workflow YAML" literally
+true, and is CICD-06's evidence); and write CICD-04 guidance around a read-modify-write `PUT` to
 ruleset `14243983` that adds `required_status_checks` (five contexts, `integration_id: 15368`) **and** a
-`pull_request` rule, while explicitly recommending this repo's own committed caller stay `report-only`.
+`pull_request` rule, while leaving this repo's own `main` un-required pending an operator decision.
 
 ## Architectural Responsibility Map
 
@@ -100,7 +111,7 @@ ruleset `14243983` that adds `required_status_checks` (five contexts, `integrati
 | Declaring the gate flag's contract (name, type, default) | Called workflow (`security.yml`, `on.workflow_call.inputs`) | — | The reusable workflow is the API surface; an input is the only typed, actionlint-validated contract a caller can be checked against. |
 | Resolving the effective mode from input + repo variable + default | Called workflow, workflow-level `env` | — | `env` at workflow level is the only scope that can see `inputs` and `vars` simultaneously and be read by every step in every job. Resolving once prevents eleven divergent expressions. |
 | Applying the mode to pass/fail | Called workflow, step-level `continue-on-error` | — | D-04 locks this. The tools' native exit codes already encode "finding vs clean"; `continue-on-error` is purely the tolerate/don't-tolerate switch. |
-| Supplying the mode value (this repo) | Caller workflow (`pr-security.yml`, `with:`) | — | An in-repo literal is deterministic and immune to both the empty-string trap and fork-PR `vars` unavailability. |
+| Supplying the mode value (this repo) | GitHub repo settings (`vars.GATE_MODE`), caller `with:` omitted | Caller `with:` literal — only for a public repo going blocking (Q3) | Omitting `with:` keeps the phase goal literal: the mode changes with one `gh variable set`, never a YAML edit. |
 | Supplying the mode value (copy-paste / external consumer) | GitHub repo settings (`vars.GATE_MODE`) | Called workflow `env` chain | Docs confirm a called workflow reads the *caller repo's* variables, so no YAML edit is needed by the consumer. |
 | Converting a red check into a blocked merge | GitHub repository ruleset (`required_status_checks`) | GitHub UI (Settings → Rules) | Workflow YAML cannot make a check required; this is repository configuration, outside the workflow entirely. This split is exactly why D-07's sequencing matters. |
 | Preventing direct-push bypass | GitHub repository ruleset (`pull_request` rule) | — | ADR-002 (Accepted) requires it; `required_status_checks` alone does not force a PR. |
@@ -227,8 +238,9 @@ repos/security-platform/.github/workflows/
 │                       # + workflow-level env: GATE_MODE
 │                       # ~ 11 × continue-on-error lines  (D-04 flip points)
 │                       # ~ 3  × if: lines gain `always() &&`  (P-03)
-│                       # + 1  × gate_mode validation step (recommended)
-└── pr-security.yml     # + with: gate_mode: <literal>   (job name `security` FROZEN)
+│                       # + 5  × gate_mode validation step — one PER JOB, never a 6th job
+└── pr-security.yml     # ~ comment only — NO `with:` block (job name `security` FROZEN);
+                        #   omitting it is what lets vars.GATE_MODE drive the flag
 
 docs/
 ├── adr/adr017-configurable-gate-mode-and-required-checks.md   # NEW (append-only rule)
@@ -311,11 +323,13 @@ true` is retained only on SARIF upload steps and artifact upload steps, where a 
 merge — those steps are reporting infrastructure, not enforcement."* Conditioning them on `gate_mode`
 would violate an accepted ADR.
 
-### Pattern 3: Caller threading
+### Pattern 3: Caller threading — omit `with:` entirely for this repo
 
-**What:** `pr-security.yml`'s frozen `security` job gains a `with:` block. `jobs.<job_id>.with.<with_id>`
-permits `github, needs, strategy, matrix, inputs, vars` — and **not `secrets`**
-`[CITED: docs.github.com Context availability]`.
+**What:** `pr-security.yml`'s frozen `security` job should **not** gain a `with:` block. The phase goal is
+"each consuming repo chooses … *without editing workflow YAML*" — a committed literal defeats that,
+because demonstrating blocking would then require a YAML edit on a branch and every later flip another
+one. With `with:` omitted, `inputs.gate_mode` is `""`, the Pattern 1 chain consults `vars.GATE_MODE`, and
+with no variable set it lands on `report-only` — exactly D-03, with zero YAML.
 
 ```yaml
 jobs:
@@ -326,19 +340,42 @@ jobs:
       security-events: write
       actions: read
     uses: ./.github/workflows/security.yml
-    with:
-      # For THIS repo: a literal. Deterministic, immune to the empty-string
-      # trap (P-01) and to fork-PR vars unavailability (Q3).
-      gate_mode: report-only
-      #
-      # For a copy-paste consumer that prefers a repo variable, the `with:`
-      # line can be omitted ENTIRELY — the callee's env chain reads
-      # vars.GATE_MODE from the CALLER's repository. Do NOT write
-      #   gate_mode: ${{ vars.GATE_MODE }}
-      # — an unset variable yields "" and SUPPRESSES the default (P-01).
-      # If a with: line is wanted anyway, it must carry its own fallback:
-      #   gate_mode: ${{ vars.GATE_MODE || 'report-only' }}
+    # NO `with:` block.
+    #   omitted            -> inputs.gate_mode = ""  -> chain reads vars.GATE_MODE
+    #   vars.GATE_MODE set -> that value wins        -> flip with one CLI command
+    #   neither set        -> 'report-only'          -> D-03
 ```
+
+**How the flip is then performed and evidenced — no YAML edit, which IS CICD-06's proof:**
+
+```bash
+SLUG=OttawaCloudConsulting/security-platform
+gh variable set GATE_MODE --body blocking -R "$SLUG"     # flip
+gh run rerun <run-id> -R "$SLUG"                          # or push to the PR branch
+gh api "repos/$SLUG/commits/$SHA/check-runs" \
+  --jq '[.check_runs[]|select(.app.id==15368)]|map({name,conclusion})'
+gh variable delete GATE_MODE -R "$SLUG"                   # back to report-only (D-03)
+```
+
+Use a **same-repo** PR for this. `vars` availability is only in doubt for fork PRs (Q3), and a same-repo
+PR removes that variable from the experiment.
+
+**When a literal `with:` IS the right answer:** only for a **public repo that intends to run blocking**,
+as the documented mitigation for Q3 — a fork PR whose `vars` lookup comes back empty would otherwise
+degrade to `report-only` while a required check reports green. A literal `report-only` buys nothing there,
+because a fork degrading to `report-only` produces the same outcome anyway.
+
+```yaml
+    # Only for a public repo running blocking, pending Q3's measurement:
+    with:
+      gate_mode: blocking
+```
+
+**Never write a bare `vars` passthrough.** `jobs.<job_id>.with.<with_id>` permits
+`github, needs, strategy, matrix, inputs, vars` — and **not `secrets`**
+`[CITED: docs.github.com Context availability]` — but `gate_mode: ${{ vars.GATE_MODE }}` with the variable
+unset passes `""`, which counts as *provided* and suppresses the input default (P-01). If a `with:` line
+is wanted anyway it must carry its own fallback: `${{ vars.GATE_MODE || 'report-only' }}`.
 
 ### Pattern 4: Required checks via read-modify-write of the existing ruleset
 
@@ -358,8 +395,10 @@ See §Code Examples for the full read-modify-write recipe.
 
 ### Pattern 5: Validate the flag value explicitly
 
-**What:** Add one cheap step per job (or one shared early step) that rejects any `GATE_MODE` value outside
-the enum. Without it, D-02's "string enum" is a convention, not a constraint — GitHub does not validate
+**What:** Add one cheap step **inside each of the five jobs** that rejects any `GATE_MODE` value outside
+the enum. **Never add a separate validation job.** A sixth job would emit a sixth `security / …` check
+run, break CICD-01's "five parallel jobs" shape, and silently change the frozen check-run set that D-06
+and P-07 depend on. Without it, D-02's "string enum" is a convention, not a constraint — GitHub does not validate
 `type: string` input values against a list. (`type: choice` exists for `workflow_dispatch` only, not for
 `workflow_call` `[ASSUMED]`.)
 
@@ -469,7 +508,7 @@ or a Python traceback, with the actual scanner step greyed out as skipped.
 
 **What goes wrong (or rather, doesn't):** every SARIF upload, artifact upload, "Show scan output files"
 and verify step in all five jobs already carries `if: always()` (or `always() && <guard>`)
-`[VERIFIED: grep of all five jobs]`. They therefore still run after a hard scan failure, so ADR-001's
+`[VERIFIED: `if:` guards enumerated per job — sast 33-170, iac 171-285, sca 285-715, container/secrets 715-970]`. They therefore still run after a hard scan failure, so ADR-001's
 reporting guarantee and CICD-02/CICD-03's SARIF and retention guarantees survive blocking mode intact.
 **How to avoid regressing it:** the plan should carry an explicit verification that in a blocking-mode run
 with findings, all five artifacts and all SARIF uploads still land. Do not infer it from the report-only
@@ -494,10 +533,11 @@ mode **all five checks go red on every PR**. The ruleset reports `bypass_actors:
 `current_user_can_bypass: "never"` `[VERIFIED: gh api]` — rulesets do **not** auto-exempt repo admins. Add
 required checks here while blocking is on and no PR can merge, including a PR that reverts the change; the
 only exit is editing the ruleset through the API or UI.
-**How to avoid:** keep this repo's committed caller at `gate_mode: report-only`. Demonstrate blocking on a
-short-lived PR branch with an explicit `with: gate_mode: blocking`, observe the five checks turn red, then
-revert. Treat "add required checks to this repo's ruleset" as an operator decision behind a
-`checkpoint:human-verify`, not an autonomous step. If it is done anyway, add a bypass actor (repo admin
+**How to avoid:** leave this repo's caller with **no `with:` block**, so it resolves to `report-only`
+(Pattern 3). Demonstrate blocking with `gh variable set GATE_MODE --body blocking`, re-run a same-repo PR,
+read back the five conclusions, then `gh variable delete GATE_MODE` — no YAML is edited and nothing is
+left in a blocking state. Treat "add required checks to this repo's ruleset" as an operator decision behind
+a `checkpoint:human-verify`, not an autonomous step. If it is done anyway, add a bypass actor (repo admin
 role) *first*.
 **Warning signs:** a PR showing five red required checks and a disabled merge button with no green path.
 
@@ -750,11 +790,14 @@ requires a git repository in an ancestor directory or it errors with "no project
   five checks go green regardless of findings → a required-check gate is satisfied by an un-gated run.
   That is a genuine bypass for a public repository, and `security-platform` is public
   `[VERIFIED: gh api .visibility == "public"]`.
-- **Recommendation:** do not resolve this by reasoning. (a) For this repo, use a **literal** in
-  `pr-security.yml`'s `with:` — deterministic and fork-safe; the `vars` path is documented as the Phase 20
-  consumer mechanism. (b) Record the limitation explicitly in the branch-protection guidance. (c) Hand the
-  empirical check to Phase 19 (VAL-01), which already owns end-to-end validation. Do not upgrade this from
-  LOW confidence without a measured fork-PR run.
+- **Recommendation:** do not resolve this by reasoning. (a) Scope the exposure honestly — it only bites a
+  repo that *intends* blocking, since a fork degrading to `report-only` is indistinguishable from a repo
+  that chose `report-only`. This repo stays `report-only` (Pattern 3), so it is unaffected today, and its
+  blocking demo runs on a **same-repo** PR where `vars` is not in doubt. (b) Document the literal
+  `with: gate_mode: blocking` as the fork-safe mitigation for any public repo that goes blocking, and say
+  plainly why. (c) Record the limitation in the branch-protection guidance. (d) Hand the empirical fork-PR
+  check to Phase 19 (VAL-01), which already owns end-to-end validation. Do not upgrade this from LOW
+  confidence without a measured fork-PR run.
 
 ### Q4 — Where does the branch-protection guidance live?
 
@@ -807,12 +850,12 @@ requires a git repository in an ancestor directory or it errors with "no project
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
 | CICD-06 | `gate_mode` input is declared and typed | static | `actionlint .github/workflows/security.yml` | ✅ |
-| CICD-06 | Caller's `with:` matches the callee's declared inputs | static | `actionlint .github/workflows/pr-security.yml` (flags undeclared keys — verified behaviour) | ✅ |
+| CICD-06 | Caller carries no `with:` block (flag driven by repo variable) | static | `! grep "gate_mode" .github/workflows/pr-security.yml` outside comments; `actionlint .github/workflows/pr-security.yml` also flags undeclared `with:` keys if one is ever added (verified behaviour) | ✅ |
 | CICD-06 | All 11 `# D-04` lines are conditioned, none left literal `true` | static | `! grep -n "continue-on-error: true.*# D-04" .github/workflows/security.yml` | ✅ |
 | CICD-06 | The 3 guarded SCA scan steps gained `always() &&` | static | `grep -c "if: always() && steps\.\(npm\|py\|tf\)\.outputs\.found" .github/workflows/security.yml` → expect ≥ 3 | ✅ |
 | CICD-06 | ADR-001 upload/artifact tolerances untouched | static | `grep -c "continue-on-error: true .*ADR-001" .github/workflows/security.yml` → expect unchanged count (11) | ✅ |
 | CICD-06 | report-only: all five checks conclude `success` despite findings | live | `gh api repos/$SLUG/commits/$SHA/check-runs --jq '[.check_runs[]\|select(.app.id==15368)]\|map(.conclusion)'` | ❌ `checkpoint:human-verify` — needs a PR |
-| CICD-06 | blocking: all five checks conclude `failure` on the same fixtures | live | same command on a `gate_mode: blocking` PR | ❌ `checkpoint:human-verify` |
+| CICD-06 | blocking: all five checks conclude `failure` on the same fixtures, flipped with **no YAML edit** | live | `gh variable set GATE_MODE --body blocking -R $SLUG` → re-run the same-repo PR → same `check-runs` command → `gh variable delete GATE_MODE -R $SLUG` | ❌ `checkpoint:human-verify` |
 | CICD-06 | blocking still uploads all SARIF + all five artifacts (ADR-001 / CICD-02 / CICD-03 hold) | live | `gh run view $RUN --log` + `gh api repos/$SLUG/actions/runs/$RUN/artifacts --jq '.total_count'` → expect 5 | ❌ `checkpoint:human-verify` |
 | CICD-06 | An invalid `gate_mode` fails fast and legibly | live or local | Pattern 5 `case` step; locally `GATE_MODE=nonsense bash -c '<case block>'` → exit 1 | ✅ |
 | CICD-04 | Guidance names the five contexts byte-exactly | static | `grep -c "security / " docs/<target>.md` → expect 5; diff against the `gh api` output | ✅ |
