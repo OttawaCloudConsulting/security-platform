@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: "Completed 17-03-PLAN.md — all six SARIF files now have a SHA-pinned upload-sarif step with a unique category (semgrep, checkov, trivy-fs, tflint, trivy-image, gitleaks) and a paired intolerant steps.<id>.outcome assertion. Commits 7525ad2, 9692fa7 in repos/security-platform. Gate PASS 10 checks, yamllint 0, nothing pushed. Next: 17-04 (artifact retention)."
-last_updated: "2026-09-11T19:01:31.330Z"
+stopped_at: "Completed 17-04-PLAN.md — all five scan jobs now upload one uniquely-named artifact (semgrep-results, checkov-results, sca-results, trivy-image-results, gitleaks-results) with retention-days: 90 explicit, the sca one globbing npm-audit-*.json / pip-audit-*.json at if-no-files-found: warn, and each paired with an intolerant steps.<id>.outcome assertion. Commits 4355f10, 803f988 in repos/security-platform. Gate PASS 10 checks, yamllint 0, smoke gate ALL PASS 10 gated runs / 0 skipped. CICD-03 marked Complete. Nothing pushed. Next: 17-05 (live run)."
+last_updated: "2026-09-11T19:25:00.000Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 22
-  completed_plans: 18
-  percent: 43
+  completed_plans: 19
+  percent: 45
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 17 (sarif-upload-and-artifact-retention) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-09-11
 
-Progress: [████████░░] 77%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -107,6 +107,13 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-03: all six SARIF files now upload with a UNIQUE category (semgrep, checkov, trivy-fs, tflint, trivy-image, gitleaks), each pinned to github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 (v4.38.0), each paired with an intolerant step reading steps.<id>.outcome. wait-for-processing is set NOWHERE — its default true is what makes an async ingestion rejection visible to the assertion. — trivy-fs.sarif and trivy-image.sarif carry the identical tool.driver.name `Trivy`, so GitHub would fail the second upload of the same tool+category in one run; distinct categories are mandatory, not stylistic. ADR-001 requires continue-on-error on the uploads, which alone would turn a 403 into a green check — the intolerant outcome assertion is what reconciles it with the anti-slop rule rather than trading one off against the other. steps.<id>.outcome did not appear anywhere in this repo before this plan.
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-03: ONE guard expression on all six verify steps — `always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'` — on the VERIFY step and never on the upload; the tflint pair ANDs `steps.tf.outputs.found == 'true'` into BOTH its upload and its verify. — This settles 17-PATTERNS' flagged disagreement between RESEARCH Pitfall 5 and RESEARCH Code Examples. Fork PRs and Dependabot PRs both get a read-only GITHUB_TOKEN regardless of the permissions key, so the upload cannot succeed there — guarding the UPLOAD would silently publish nothing, guarding the VERIFY skips the check instead. The Dependabot clause is not redundant with the same-repo test: a Dependabot PR is raised on a branch in the SAME repo, so the same-repo test is true for it while its token is still read-only. Consequence for 17-05: the live run must be a same-repo, non-Dependabot PR or all six verifies skip rather than prove anything.
 
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-04: all five scan jobs now leave exactly one artifact — semgrep-results, checkov-results, sca-results, trivy-image-results, gitleaks-results — each pinned to actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a (v7.0.1), each with retention-days: 90 stated EXPLICITLY rather than left to the repo default (Criterion 3 requires a stated period; 90 is the ceiling without a repo-settings change), and each read back by an intolerant steps.<id>.outcome assertion that also echoes artifact-id and artifact-url for 17-05 to cross-check. overwrite / include-hidden-files / archive are absent and asserted absent: overwrite: true would MASK a name collision, include-hidden-files: true would sweep dotfiles into a world-downloadable archive on this PUBLIC repo, archive: false ignores `name` and fails on a multi-file glob. — Formats are each tool's NATIVE output, unnormalised: DefectDojo's dojo/tools/ already ships parsers for every tool in this stack plus a generic SARIF parser, so a common-schema layer would destroy import fidelity for DEFECT-01. The runner's npm is 10.x, so the applicable parser is npm_audit_7_plus, not the legacy npm_audit.
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-04: the sca artifact takes if-no-files-found: warn and is the ONLY job where warn is correct — its npm-audit-*.json, pip-audit-*.json and tflint.sarif entries are ecosystem-conditional, so `error` would turn a clean skip red and re-break Criterion 4; trivy-fs.json is unconditional so the artifact is never empty. The other four take `error`.
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-04: the Phase 16 glob note CANNOT be a trailing comment on the npm/pip path lines as RESEARCH and PATTERNS both show it — a YAML literal block scalar has no comment syntax, so `npm-audit-*.json  # GLOB …` parses as ONE path string containing the comment and fails both the inline safe-path assertion and 17-01's ARTIFACT-PATH-SAFETY gate. It sits above `path: |` instead, and the reason is recorded in the file so nobody "restores" the canonical snippet verbatim.
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-04: scripts/check-workflow-uploads.sh CANNOT exit 0 after Task 1 alone — check 8 (UPLOAD-VERIFY-PAIRING) fires on every id'd upload whose steps.<id>.outcome reader is Task 2's deliverable, contradicting Task 1's own acceptance criterion and 17-01's "passes at every intermediate commit" scope note. Resolved by verifying the FAILURE SHAPE instead: predicted and observed exactly 5 failures, all UPLOAD-VERIFY-PAIRING, one per artifact-* id, nothing from ARTIFACT-RETENTION or ARTIFACT-PATH-SAFETY; the gate is not a pre-commit hook (checked), so no --no-verify was needed and the two-commit structure held.
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-04: the fork/Dependabot guard on the five ARTIFACT verify steps is applied for UNIFORMITY with 17-03's six SARIF verifies, NOT because it was measured — upload-artifact authenticates with ACTIONS_RUNTIME_TOKEN rather than GITHUB_TOKEN and may well succeed on fork and Dependabot runs. Stated in the file as an open observation handed to Phase 18, never as a fact.
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-04: the container job's stale comment claiming github.sha is the only context interpolation in any run: block (17-03-SUMMARY issue #3) was reworded inside Task 2's commit, since Task 2 adds twenty more step-outcome/artifact-id interpolations to that file. The security claim was already true and is unchanged; only the count was wrong.
+
 ### Pending Todos
 
 None.
@@ -153,11 +160,12 @@ Carried forward from v1.1 close:
 | Phase 17-sarif-upload-and-artifact-retention P01 | 20min | 2 tasks | 3 files |
 | Phase 17-sarif-upload-and-artifact-retention P02 | 5min | 2 tasks | 2 files |
 | Phase 17-sarif-upload-and-artifact-retention P03 | 12min | 2 tasks | 1 files |
+| Phase 17-sarif-upload-and-artifact-retention P04 | 14min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T18:48:12.840Z
-Stopped at: Completed 17-03-PLAN.md — all six SARIF files now have a SHA-pinned upload-sarif step with a unique category (semgrep, checkov, trivy-fs, tflint, trivy-image, gitleaks) and a paired intolerant steps.<id>.outcome assertion. Commits 7525ad2, 9692fa7 in repos/security-platform. Gate PASS 10 checks, yamllint 0, nothing pushed. Next: 17-04 (artifact retention).
+Last session: 2026-09-11T19:25:00.000Z
+Stopped at: Completed 17-04-PLAN.md — all five scan jobs now upload one uniquely-named artifact (semgrep-results, checkov-results, sca-results, trivy-image-results, gitleaks-results) with retention-days: 90 explicit, the sca one globbing npm-audit-*.json / pip-audit-*.json at if-no-files-found: warn, and each paired with an intolerant steps.<id>.outcome assertion. Commits 4355f10, 803f988 in repos/security-platform. Gate PASS 10 checks, yamllint 0, smoke gate ALL PASS 10 gated runs / 0 skipped. CICD-03 marked Complete. Nothing pushed. Next: 17-05 (live run).
 Resume file: None
 
 ## Operator Next Steps
