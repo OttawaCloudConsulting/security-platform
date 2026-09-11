@@ -136,6 +136,33 @@ jobs:
           # "unless changed from the repository settings page".
           retention-days: 90
 
+      # Deliberately WITHOUT continue-on-error, for the same reason the SARIF
+      # verify steps are: ADR-001 requires continue-on-error: true on the upload
+      # above, so without this step a failed artifact upload is invisible — the
+      # run stays green and CICD-03 retains nothing. This closes the same blind
+      # spot the six SARIF upload/verify pairs close.
+      #
+      # OPEN OBSERVATION, HANDED TO PHASE 18 — the fork/Dependabot guard below
+      # is applied here for UNIFORMITY with the six SARIF verify steps, NOT
+      # because it was measured to be needed. actions/upload-artifact uses the
+      # Actions runtime token (ACTIONS_RUNTIME_TOKEN) rather than GITHUB_TOKEN,
+      # so an artifact upload may well succeed on a fork PR or a Dependabot PR
+      # where a SARIF upload cannot. That was NOT verified this phase. A verify
+      # step that fails on an unverified assumption is worse than one that
+      # skips, so the guard stays until someone measures it.
+      - name: Verify SAST artifact upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          if [ "${{ steps.artifact-sast.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.artifact-sast.outcome }} — the artifact did not land."
+            echo "CICD-03 retains nothing for this job; a future DefectDojo import has no input."
+            exit 1
+          fi
+          # For the log, so 17-05's live verification has a run-local record to
+          # cross-check against the gh api artifact listing for this run.
+          echo "artifact-sast artifact-id=${{ steps.artifact-sast.outputs.artifact-id }}"
+          echo "artifact-sast artifact-url=${{ steps.artifact-sast.outputs.artifact-url }}"
+
   # ─────────────────────────────────────────────────────────────────────────
   # IaC — Checkov
   # Scans infrastructure as code (Terraform, CloudFormation, K8s, Dockerfile,
@@ -227,6 +254,24 @@ jobs:
           # Explicit — Criterion 3 requires a stated period, and 90 is the
           # maximum without a repository-settings change. See the sast job.
           retention-days: 90
+
+      # Same contract as `Verify SAST artifact upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard is applied for uniformity with the SARIF
+      # verify steps rather than because upload-artifact was measured to fail
+      # on those runs — see that step for the full note.
+      - name: Verify IaC artifact upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          if [ "${{ steps.artifact-iac.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.artifact-iac.outcome }} — the artifact did not land."
+            echo "CICD-03 retains nothing for this job; a future DefectDojo import has no input."
+            exit 1
+          fi
+          # For the log, so 17-05's live verification has a run-local record to
+          # cross-check against the gh api artifact listing for this run.
+          echo "artifact-iac artifact-id=${{ steps.artifact-iac.outputs.artifact-id }}"
+          echo "artifact-iac artifact-url=${{ steps.artifact-iac.outputs.artifact-url }}"
 
   # ─────────────────────────────────────────────────────────────────────────
   # SCA — four scanners in ONE job. Adding a sixth job would break three
@@ -644,6 +689,24 @@ jobs:
           # maximum without a repository-settings change. See the sast job.
           retention-days: 90
 
+      # Same contract as `Verify SAST artifact upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard is applied for uniformity with the SARIF
+      # verify steps rather than because upload-artifact was measured to fail
+      # on those runs — see that step for the full note.
+      - name: Verify SCA artifact upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          if [ "${{ steps.artifact-sca.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.artifact-sca.outcome }} — the artifact did not land."
+            echo "CICD-03 retains nothing for this job; a future DefectDojo import has no input."
+            exit 1
+          fi
+          # For the log, so 17-05's live verification has a run-local record to
+          # cross-check against the gh api artifact listing for this run.
+          echo "artifact-sca artifact-id=${{ steps.artifact-sca.outputs.artifact-id }}"
+          echo "artifact-sca artifact-url=${{ steps.artifact-sca.outputs.artifact-url }}"
+
   # ─────────────────────────────────────────────────────────────────────────
   # Container — Trivy Image
   # Builds the fixture image and scans it for OS package and language
@@ -661,8 +724,13 @@ jobs:
 
       # D-06: unconditional build. No "does a Dockerfile exist" check, no
       # conditional skip — a skipped job fails Success Criteria #2.
-      # ${{ github.sha }} is the only context interpolation in any run: block
-      # here and is not attacker-controlled.
+      # The only context interpolations in any run: block in this workflow are
+      # ${{ github.sha }} and GitHub-generated step outcomes and ids (the
+      # steps.<id>.outcome, .outputs.sarif-id and .outputs.artifact-id/-url
+      # values read by the upload verify steps). None is attacker-controlled:
+      # outcome is one of four literal GitHub strings and the ids are
+      # server-generated. 17-03 added the first of those and left this comment
+      # saying "only" — true when it was written, stale from that plan onward.
       - name: Build fixture image
         run: docker build -f fixtures/Dockerfile -t scan-fixture:${{ github.sha }} fixtures/
 
@@ -747,6 +815,24 @@ jobs:
           # Explicit — Criterion 3 requires a stated period, and 90 is the
           # maximum without a repository-settings change. See the sast job.
           retention-days: 90
+
+      # Same contract as `Verify SAST artifact upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard is applied for uniformity with the SARIF
+      # verify steps rather than because upload-artifact was measured to fail
+      # on those runs — see that step for the full note.
+      - name: Verify container artifact upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          if [ "${{ steps.artifact-container.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.artifact-container.outcome }} — the artifact did not land."
+            echo "CICD-03 retains nothing for this job; a future DefectDojo import has no input."
+            exit 1
+          fi
+          # For the log, so 17-05's live verification has a run-local record to
+          # cross-check against the gh api artifact listing for this run.
+          echo "artifact-container artifact-id=${{ steps.artifact-container.outputs.artifact-id }}"
+          echo "artifact-container artifact-url=${{ steps.artifact-container.outputs.artifact-url }}"
 
   # ─────────────────────────────────────────────────────────────────────────
   # Secrets — Gitleaks
@@ -856,3 +942,21 @@ jobs:
           # Explicit — Criterion 3 requires a stated period, and 90 is the
           # maximum without a repository-settings change. See the sast job.
           retention-days: 90
+
+      # Same contract as `Verify SAST artifact upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard is applied for uniformity with the SARIF
+      # verify steps rather than because upload-artifact was measured to fail
+      # on those runs — see that step for the full note.
+      - name: Verify secrets artifact upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          if [ "${{ steps.artifact-secrets.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.artifact-secrets.outcome }} — the artifact did not land."
+            echo "CICD-03 retains nothing for this job; a future DefectDojo import has no input."
+            exit 1
+          fi
+          # For the log, so 17-05's live verification has a run-local record to
+          # cross-check against the gh api artifact listing for this run.
+          echo "artifact-secrets artifact-id=${{ steps.artifact-secrets.outputs.artifact-id }}"
+          echo "artifact-secrets artifact-url=${{ steps.artifact-secrets.outputs.artifact-url }}"
