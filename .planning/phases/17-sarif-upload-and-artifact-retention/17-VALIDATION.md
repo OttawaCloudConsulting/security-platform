@@ -2,8 +2,8 @@
 phase: 17
 slug: sarif-upload-and-artifact-retention
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-09-11
 ---
 
@@ -46,7 +46,7 @@ created: 2026-09-11
 | 17-01-02 | 01 | 0 | CICD-02 | V14 | Every `upload-sarif` step has a `category`, categories unique across all uploads | static | same assertion | ❌ Wave 0 | ⬜ pending |
 | 17-01-03 | 01 | 0 | CICD-02 | ADR-004 | Both new actions (upload-sarif, upload-artifact) are 40-char SHA-pinned | static | same assertion | ❌ Wave 0 | ⬜ pending |
 | 17-01-04 | 01 | 1 | CICD-02 | — | Each SARIF file parses, has top-level `runs` key before upload | in-CI | extend existing `Verify … SARIF` python3 pattern (tflint precedent) | ✅ pattern exists | ⬜ pending |
-| 17-01-05 | 03 | 3 | CICD-02 | — | Upload landed (not swallowed by `continue-on-error`) | in-CI | assert `steps.<id>.outcome == 'success'` in an intolerant step (no `continue-on-error`); `sarif-id` echoed for the log only | ❌ Wave 0 | ⬜ pending |
+| 17-01-05 | 03 | 3 | CICD-02 | — | Upload landed (not swallowed by `continue-on-error`) | in-CI | assert `steps.<id>.outcome == 'success'` in an intolerant step (no `continue-on-error`); `sarif-id` echoed for the log only | ✅ implemented (17-03-PLAN.md) | ⬜ pending |
 | 17-01-06 | 01 | 2 | CICD-02 / Crit.1 | — | Six distinct categories present on head SHA | live | `gh api repos/.../code-scanning/analyses?ref=refs/pull/<n>/merge --jq '[.[].category]\|unique'` | ❌ Wave 0 (live PR) | ⬜ pending |
 | 17-01-07 | 01 | 2 | CICD-02 / Crit.2 | — | Inline annotations on PR diff for tools that report file+line | live + manual | verify via PR "Files changed" tab; PR must edit a flagged line in `fixtures/main.tf`/`Dockerfile`/`package-lock.json` | ❌ Wave 0 | ⬜ pending |
 | 17-02-01 | 02 | 0 | CICD-03 | V12 | Five artifacts, unique names, all with `retention-days`, no secret-bearing globs | static | `python3` yaml assertion | ❌ Wave 0 | ⬜ pending |
@@ -81,11 +81,11 @@ created: 2026-09-11
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s (static tier)
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s (static tier)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-09-11 (plan-checker PASSED, no blockers)
