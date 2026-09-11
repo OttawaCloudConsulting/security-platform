@@ -37,7 +37,7 @@ key-files:
 key-decisions:
   - "Merged with `gh pr merge --repo OttawaCloudConsulting/security-platform 8 --merge` — a merge commit, matching PR #6 (e8e1009) and PR #7 (40682ce) — and deliberately WITHOUT --delete-branch, so gh's local-branch side effects cannot act on the outer documentation repo, which shares the remote URL but is a separate checkout on an unrelated branch (16-07's reasoning, reapplied)"
   - "Criterion 1 is recorded NOT OBSERVED, not MET. The user looked and the Security > Code scanning view showed no results, which they attribute to code scanning possibly not being fully enabled at the repository level. 17-05's analyses API read proves six distinct categories exist server-side and the user confirms per-tool separation IS visible on the PR's Checks tab — but neither of those is the question Criterion 1 asks, which is about the Security tab under the branch/PR filter. Scoring it MET off the API would be exactly the substitution T-17-30 exists to prevent."
-  - "No filtered Security-tab URL was captured. The plan asked for one verbatim; the user's observation was of the unfiltered `…/security/code-scanning` view. Recording a URL the user did not land on would be fabrication, so the gap is recorded as a gap and handed forward with the two things that would discriminate the cause."
+  - "No filtered Security-tab URL was captured, and whether the branch/PR filter was applied is NOT stated in the user's answer. Recording a URL they did not give, or a filter state they did not describe, would be fabrication — so both are recorded as unknown and handed forward with the two probes that discriminate the cause regardless of which it was."
   - "REQUIREMENTS.md was NOT edited. CICD-02 and CICD-03 were already `[x]` in the CI/CD Pipeline list and already `Complete` in the traceability table, marked by 17-03's and 17-04's requirements-completed metadata (commit 997ae65). The plan's grep verify was run and confirms the state; this plan reports it as confirmed, not as marked here — 16-07's precedent for the same situation."
   - "The red `Checkov` code-scanning check was NOT treated as a merge blocker. It concluded `failure` on findings the fixtures exist to produce, while all five `security / *` job checks were green and the PR stayed MERGEABLE. Nothing was added to any required-check list; T-17-23 held and the decision stays Phase 18's."
 
@@ -95,9 +95,14 @@ literal; `workflow.auto_advance` was not applied to this gate.
 
 ### Criterion 1 — Security > Code scanning shows findings attributed to each scanner separately → **NOT OBSERVED**
 
-**Named cause:** the Security > Code scanning UI showed **no results** under the branch/PR filter, which
-the user attributes to code scanning possibly **not being fully enabled at the repository level** — a
-GitHub Advanced Security / repository-settings question, **not a workflow defect**.
+**Named cause:** the Security > Code scanning UI showed **no results**, which the user attributes to code
+scanning possibly **not being fully enabled at the repository level** — a GitHub Advanced Security /
+repository-settings question, **not a workflow defect**.
+
+**Whether the branch/PR filter was applied is NOT stated in the user's answer, and is therefore unknown.**
+They said only that "URL to code-scanning shows no results". This SUMMARY does not claim the view was
+filtered and does not claim it was unfiltered. Both hand-forward probes below are written so the unknown
+filter state is harmless — probe 1 settles the filter question, probe 2 settles the enablement question.
 
 What *was* seen, and what it does and does not prove:
 
@@ -105,16 +110,15 @@ What *was* seen, and what it does and does not prove:
 |---|---|---|
 | Per-tool results visible and separated on PR #8's **Checks** tab; checks also surfaced in the conversation timeline | the user, live | Separation is real and visible to a reviewer — but on the Checks tab, which is not the surface Criterion 1 names |
 | Six **distinct** categories on `refs/pull/8/merge` — `checkov`, `gitleaks`, `semgrep`, `tflint`, `trivy-fs`, `trivy-image` | 17-05 §3, `code-scanning/analyses` API | The uploads landed server-side and no tool overwrote another's results. The upload did **not** fail |
-| Security > Code scanning view, unfiltered and as the user opened it | the user, live | Empty |
+| Security > Code scanning view, as the user opened it (filter state unstated) | the user, live | Empty |
 
 **This is a UI-enablement discrepancy handed forward, not evidence that the upload failed.** The
 server-side state and the UI disagree; the criterion asks about the UI, so the criterion takes the
 weaker verdict.
 
-**No filtered Security-tab URL was captured.** The plan asked for one verbatim and the honest answer is
-that the user's observation was of `https://github.com/OttawaCloudConsulting/security-platform/security/code-scanning`
-with no branch/PR filter applied. Nothing is recorded as "the URL the user landed on" because no such
-URL exists in their answer.
+**No filtered Security-tab URL was captured.** The plan asked for one verbatim, and the user's answer
+contains no URL — only the phrase "URL to code-scanning". Nothing is recorded as "the URL the user landed
+on" because no such URL exists in their answer, and the filter state cannot be inferred from it either.
 
 **Handed to Phase 18 (and Phase 19 for the end-to-end proof) — the two probes that discriminate the
 cause:**
@@ -237,7 +241,10 @@ caller security job permissions: {'contents': 'read', 'security-events': 'write'
 ```
 
 `security-events: write` and `contents: read` both present on the `security` job, as required. The
-`actions: read` grant is also present (17-01's addition, needed for the artifact-listing reads).
+`actions: read` grant is also present. VERIFIED: it was added by 17-01 (`66a18ad`) — `git log -S 'actions: read'`
+on that file returns that commit and no earlier one. Its purpose, per the workflow's own inline comment,
+is that it is *required only for private repositories* and is carried for Phase 20 consumer-template
+portability; it grants nothing extra on this public repo.
 
 **T-17-04 re-checked on the merged content:** `--redact` appears **2** times in
 `origin/main:.github/workflows/security.yml` — both Gitleaks invocations, so no world-downloadable
@@ -338,10 +345,11 @@ protection and is the natural place to check whether code scanning is enabled at
 `997ae65`. The plan's own grep verify passes on the unmodified file. Reported as confirmed rather than
 claimed — 16-07 set this precedent for SCA-01/02/03.
 
-**2. No filtered Security-tab URL is recorded.** The plan's `<output>` requires the URL the user landed
-on verbatim. The user's observation was of the unfiltered view; inventing a filtered URL they did not
-visit would be fabrication. The gap is recorded, with the canonical URL to *try* clearly labelled as a
-Phase 18/19 next step rather than as an observation.
+**2. No filtered Security-tab URL is recorded, and the filter state is recorded as unknown.** The plan's
+`<output>` requires the URL the user landed on verbatim. Their answer contains no URL and does not say
+whether the branch/PR dropdown was applied. Inventing either would be fabrication, so both are recorded
+as unstated, with the canonical URL to *try* clearly labelled as a Phase 18/19 next step rather than as
+an observation.
 
 **3. Criterion 1 closes NOT OBSERVED although 17-05's API read is unambiguous.** The plan pre-authorised
 NOT OBSERVED as a legitimate outcome and forbids scoring a criterion off evidence that answers a
