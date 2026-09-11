@@ -23,7 +23,9 @@ created: 2026-09-11
 | **Full suite command** | `bash repos/security-platform/scripts/smoke-scans.sh` |
 | **Estimated runtime** | ~30-60s for static assertions; smoke-scans.sh varies by scanner count |
 
-**Important:** `smoke-scans.sh` validates *scanners* — its invariant is "a scanner that exits 0 found nothing = FAIL." Upload steps have the **opposite** semantics (success = exit 0). Phase 15 hit this exact inversion and fixed it with `require_success`. **Any smoke-gate extension for this phase must use `require_success`, never `run_scan`/`run_scan_rc`.**
+**Important:** `smoke-scans.sh` validates *scanners* — its invariant is "a scanner that exits 0 found nothing = FAIL." Upload and format-conversion steps have the **opposite** semantics (success = exit 0). Phase 15 hit this exact inversion and fixed it with `require_success`.
+
+**Superseded by planning (OD-7, resolved in `17-02-PLAN.md`):** the rule above is scoped to genuinely exit-0 *infrastructure* steps — uploads, `docker build`, `trivy convert`. This phase's smoke-gate extension replaces `trivy convert` with a second **`trivy fs … --format sarif --exit-code 1`** run, which is a **scanner** invocation and therefore takes **`run_scan`**; `require_success` there would score a healthy findings run as a FAIL. `require_success "trivy-image-convert"` is unaffected and stays.
 
 ---
 
@@ -44,7 +46,7 @@ created: 2026-09-11
 | 17-01-02 | 01 | 0 | CICD-02 | V14 | Every `upload-sarif` step has a `category`, categories unique across all uploads | static | same assertion | ❌ Wave 0 | ⬜ pending |
 | 17-01-03 | 01 | 0 | CICD-02 | ADR-004 | Both new actions (upload-sarif, upload-artifact) are 40-char SHA-pinned | static | same assertion | ❌ Wave 0 | ⬜ pending |
 | 17-01-04 | 01 | 1 | CICD-02 | — | Each SARIF file parses, has top-level `runs` key before upload | in-CI | extend existing `Verify … SARIF` python3 pattern (tflint precedent) | ✅ pattern exists | ⬜ pending |
-| 17-01-05 | 01 | 1 | CICD-02 | — | Upload landed (not swallowed by `continue-on-error`) | in-CI | assert `steps.<id>.outputs.sarif-id` non-empty via `require_success` | ❌ Wave 0 | ⬜ pending |
+| 17-01-05 | 03 | 3 | CICD-02 | — | Upload landed (not swallowed by `continue-on-error`) | in-CI | assert `steps.<id>.outcome == 'success'` in an intolerant step (no `continue-on-error`); `sarif-id` echoed for the log only | ❌ Wave 0 | ⬜ pending |
 | 17-01-06 | 01 | 2 | CICD-02 / Crit.1 | — | Six distinct categories present on head SHA | live | `gh api repos/.../code-scanning/analyses?ref=refs/pull/<n>/merge --jq '[.[].category]\|unique'` | ❌ Wave 0 (live PR) | ⬜ pending |
 | 17-01-07 | 01 | 2 | CICD-02 / Crit.2 | — | Inline annotations on PR diff for tools that report file+line | live + manual | verify via PR "Files changed" tab; PR must edit a flagged line in `fixtures/main.tf`/`Dockerfile`/`package-lock.json` | ❌ Wave 0 | ⬜ pending |
 | 17-02-01 | 02 | 0 | CICD-03 | V12 | Five artifacts, unique names, all with `retention-days`, no secret-bearing globs | static | `python3` yaml assertion | ❌ Wave 0 | ⬜ pending |
@@ -54,14 +56,16 @@ created: 2026-09-11
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
+**Plan-column note (post-planning):** this map was drafted before the phase was decomposed into seven plans. The task ids above map onto the plan set as: 17-01-01/02/03 → `17-01-PLAN.md` (static gate + permission grant, wave 1); 17-01-04/05 → `17-03-PLAN.md` (SARIF uploads + intolerant assertions, wave 3); 17-02-01 → `17-04-PLAN.md` (artifacts, wave 4); 17-01-06/07 and 17-02-02/03 → `17-05-PLAN.md` (live evidence, wave 5) and `17-07-PLAN.md` (human verification, wave 7); 17-03-01 → `17-06-PLAN.md` (ADR-016 + blueprint, wave 6). The direct-SARIF change and its smoke-gate mirror are `17-02-PLAN.md` (wave 2).
+
 ---
 
 ## Wave 0 Requirements
 
 - [ ] Static workflow-assertion script (or inline plan verification) covering CICD-02 + CICD-03 static checks (permissions, category uniqueness, SHA pins, retention-days, artifact-name uniqueness)
-- [ ] `sarif-id`-presence verification steps (one per upload) using `require_success` — covers the ADR-001 continue-on-error blind spot
+- [ ] Intolerant `steps.<id>.outcome == 'success'` verification steps (one per upload, SARIF and artifact) — covers the ADR-001 continue-on-error blind spot
 - [ ] Live `gh api` verification commands for analyses + artifacts (run manually against the verification PR)
-- [ ] `smoke-scans.sh` extension using `require_success` if `trivy convert` is added for npm-audit/pip-audit — must not reuse `run_scan_rc`
+- [ ] `smoke-scans.sh` extension for the direct `trivy fs --format sarif` run using `run_scan` (it carries `--exit-code 1`), plus a ROOTPATH assertion that fails when the value ends in `.json/`
 - [ ] A deliberately-constructed verification PR touching a flagged fixture line (Pitfall 4) — required to observe Criteria 1 and 2 live
 
 ---
