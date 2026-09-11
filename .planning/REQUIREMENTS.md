@@ -16,7 +16,7 @@
 
 ### SCA Coverage
 
-- [ ] **SCA-01**: SCA job audits npm/Node dependencies
+- [x] **SCA-01**: SCA job audits npm/Node dependencies
 - [x] **SCA-02**: SCA job audits Python dependencies (pip-audit or equivalent)
 - [x] **SCA-03**: SCA job checks Terraform provider/module pinning
 - [x] **SCA-04**: SCA job runs a generic Trivy/Grype filesystem scan as a catch-all for ecosystems not covered above
@@ -62,7 +62,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CICD-04 | Phase 18 | Pending |
 | CICD-05 | Phase 14 | Complete |
 | CICD-06 | Phase 18 | Pending |
-| SCA-01 | Phase 16 | Pending |
+| SCA-01 | Phase 16 | Complete |
 | SCA-02 | Phase 16 | Complete |
 | SCA-03 | Phase 16 | Complete |
 | SCA-04 | Phase 15 | Complete |

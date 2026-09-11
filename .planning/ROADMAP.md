@@ -91,7 +91,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
   4. Each sub-scan skips cleanly with a clear log message — no failure, no false pass — when the repo contains no files for that ecosystem.
 **Plans**: 7 plans
 - [x] 16-01-PLAN.md — Cut the phase branch and seed the missing fixtures: `fixtures/requirements.txt` plus an unconstrained-and-used provider and an unpinned module in `fixtures/main.tf`; re-measure `fixtures/README.md`
-- [ ] 16-02-PLAN.md — Extract `scripts/detect-{npm,python,terraform}.sh` and generalise the smoke-gate helpers (`run_scan_rc`, `require_parses_json`, soft preflight, SKIPPED accounting)
+- [x] 16-02-PLAN.md — Extract `scripts/detect-{npm,python,terraform}.sh` and generalise the smoke-gate helpers (`run_scan_rc`, `require_parses_json`, soft preflight, SKIPPED accounting)
 - [ ] 16-03-PLAN.md — Prove npm audit, pip-audit and tflint locally with report-content assertions, plus the Criterion 4 clean-skip negative test in an empty repo
 - [ ] 16-04-PLAN.md — Add the three detect/scan/verify step groups and guarded evidence steps to the existing `sca` job in `.github/workflows/security.yml`; static validation
 - [ ] 16-05-PLAN.md — Push, open the PR, and collect live evidence for Criteria 1-3 from the SCA job log; confirm the five check-run names and MERGEABLE
@@ -164,7 +164,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 13. Maintenance and Validation | v1.1 | 8/8 | Complete | 2026-09-10 |
 | 14. Workflow Foundation and Action Pinning | v2.0 | 3/3 | Complete   | 2026-09-10 |
 | 15. Five Parallel Scan Jobs | v2.0 | 5/5 | Complete   | 2026-09-11 |
-| 16. SCA Ecosystem Coverage | v2.0 | 1/7 | In Progress|  |
+| 16. SCA Ecosystem Coverage | v2.0 | 2/7 | In Progress|  |
 | 17. SARIF Upload and Artifact Retention | v2.0 | 0/? | Not started | - |
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 0/? | Not started | - |
 | 19. Pipeline Validation via Branch-Target PRs | v2.0 | 0/? | Not started | - |

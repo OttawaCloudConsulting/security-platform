@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 16-01-PLAN.md — Phase 16 fixtures seeded on feature/phase-16-sca-ecosystem-coverage (68c3bbb)
-last_updated: "2026-09-11T12:19:47.151Z"
+stopped_at: Completed 16-02-PLAN.md — shared ecosystem detectors + generalised smoke-gate helpers on feature/phase-16-sca-ecosystem-coverage (29dbc62)
+last_updated: "2026-09-11T13:29:31.334Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 15
-  completed_plans: 9
+  completed_plans: 10
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 16 (sca-ecosystem-coverage) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-09-11
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -76,6 +76,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 16-01]: fixtures/main.tf needs BOTH an unconstrained random provider AND a random_id resource that uses it — tflint terraform_required_providers does not fire on a declared-but-unused provider
 - [Phase 16-01]: No floating range (>= 3.0) added to the fixture — measured NOT flagged by tflint default ruleset, so Criterion 3 is satisfiable only via missing-constraint and unpinned-module cases
 - [Phase 16-01]: Measured side effects recorded not predicted — Checkov terraform 10 to 12 failed (CKV_TF_1/CKV_TF_2 on unpinned module), Trivy fs 9 to 19 (10 new pip vulns), Trivy image re-measured identical at 222
+- [Phase 16]: 16-02: ecosystem detectors extracted as shared scripts (detect-npm/python/terraform.sh) — CI and the smoke gate call one implementation, so the negative skip test exercises the logic CI runs rather than a copy of it
+- [Phase 16]: 16-02: run_scan generalised to run_scan_rc <expected_rc> — tflint signals findings with exit 2 and reserves 1 for application errors; the hardcoded rc=1 PASS would have scored a healthy tflint run as a tool error
+- [Phase 16]: 16-02: pip-audit and tflint moved to a soft preflight tier with SKIPPED accounting — A clean workstation without them must not hard-fail the gate, but a skip must never be counted or printed as a pass
 
 ### Pending Todos
 
@@ -114,17 +117,19 @@ Carried forward from v1.1 close:
 | Phase 15 P04 | 25min | 2 tasks | 0 files |
 | Phase 15 P05 | 20min | 2 tasks | 0 files |
 | Phase 16 P01 | 18min | 2 tasks | 3 files |
+| Phase 16 P02 | ~56min | 2 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T12:19:47.143Z
-Stopped at: Completed 16-01-PLAN.md — Phase 16 fixtures seeded on feature/phase-16-sca-ecosystem-coverage (68c3bbb)
+Last session: 2026-09-11T13:29:31.325Z
+Stopped at: Completed 16-02-PLAN.md — shared ecosystem detectors + generalised smoke-gate helpers on feature/phase-16-sca-ecosystem-coverage (29dbc62)
 Resume file: None
 
 ## Operator Next Steps
 
 - Phase 16 Plan 01 complete: fixtures seeded and re-measured on branch
   `feature/phase-16-sca-ecosystem-coverage` in `repos/security-platform` (commit `68c3bbb`, not pushed).
+
 - Next: 16-02-PLAN.md — extract `scripts/detect-{npm,python,terraform}.sh` and generalise the smoke-gate
   helpers. Note `tflint` exits **2** on findings; `run_scan()` currently treats anything but rc=1 as a
   tool error and would misclassify a healthy tflint run.
