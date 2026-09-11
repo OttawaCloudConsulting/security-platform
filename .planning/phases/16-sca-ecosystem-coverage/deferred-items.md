@@ -11,3 +11,12 @@
   16-02's `files_modified`, and folding it into this commit would have mixed a docs edit into a commit
   whose acceptance criterion pins the `git log -1` subject. 16-03 commits to the same repo next and
   should absorb it.
+
+## Resolved (2026-09-11, during 16-03 execution)
+
+- `repos/security-platform/fixtures/README.md` rewording (carried from 16-01 via 16-02) — DONE in
+  commit `6ae3019`, with the replacement text measured rather than inferred: 46 pip-audit entries =
+  23 unique advisories, and the 10 unique advisories on the direct pins carry exactly Trivy's 10
+  CVE ids as aliases (verified as an identical set).
+- Still open: the untracked planning artifacts logged by 16-01 (`16-PATTERNS.md`,
+  `16-PLAN-CHECK.md`, `15-VERIFICATION.md` in the outer repo).

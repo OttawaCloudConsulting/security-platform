@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 16-02-PLAN.md — shared ecosystem detectors + generalised smoke-gate helpers on feature/phase-16-sca-ecosystem-coverage (29dbc62)
-last_updated: "2026-09-11T13:29:31.334Z"
+stopped_at: Completed 16-03-PLAN.md — npm/pip-audit/tflint sub-scans plus the Criterion 4 clean-skip test proven locally (34d53ff)
+last_updated: "2026-09-11T13:55:34.903Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 15
-  completed_plans: 10
+  completed_plans: 11
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 16 (sca-ecosystem-coverage) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-09-11
 
-Progress: [███████░░░] 67%
+Progress: [███████░░░] 73%
 
 ## Performance Metrics
 
@@ -79,6 +79,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 16]: 16-02: ecosystem detectors extracted as shared scripts (detect-npm/python/terraform.sh) — CI and the smoke gate call one implementation, so the negative skip test exercises the logic CI runs rather than a copy of it
 - [Phase 16]: 16-02: run_scan generalised to run_scan_rc <expected_rc> — tflint signals findings with exit 2 and reserves 1 for application errors; the hardcoded rc=1 PASS would have scored a healthy tflint run as a tool error
 - [Phase 16]: 16-02: pip-audit and tflint moved to a soft preflight tier with SKIPPED accounting — A clean workstation without them must not hard-fail the gate, but a skip must never be counted or printed as a pass
+- [Phase 16]: 16-03: smoke-gate verdicts read report content, not exit codes — npm audit and pip-audit both exit 1 for findings AND for bad input, so auditReportVersion / dependencies keys plus count assertions are what discriminate
+- [Phase 16]: 16-03: SCA-03 asserted on the tflint rule-id set, not a finding count — local tflint 0.61.0 emits 3 ids of which 2 are pinning ids; terraform_module_pinned_source does NOT fire on this fixture, so 16-05 compares CI against three ids
+- [Phase 16]: 16-03: SKIPPED bookkeeping moved from the preflight into each sub-scan section so one absent tool is exactly one skipped sub-check (verified: restricted-PATH run reports 2 skips, 7 gated runs instead of 9)
 
 ### Pending Todos
 
@@ -118,11 +121,12 @@ Carried forward from v1.1 close:
 | Phase 15 P05 | 20min | 2 tasks | 0 files |
 | Phase 16 P01 | 18min | 2 tasks | 3 files |
 | Phase 16 P02 | ~56min | 2 tasks | 4 files |
+| Phase 16 P03 | ~35min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T13:29:31.325Z
-Stopped at: Completed 16-02-PLAN.md — shared ecosystem detectors + generalised smoke-gate helpers on feature/phase-16-sca-ecosystem-coverage (29dbc62)
+Last session: 2026-09-11T13:55:27.767Z
+Stopped at: Completed 16-03-PLAN.md — npm/pip-audit/tflint sub-scans plus the Criterion 4 clean-skip test proven locally (34d53ff)
 Resume file: None
 
 ## Operator Next Steps
