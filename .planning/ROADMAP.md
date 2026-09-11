@@ -42,7 +42,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] **Phase 14: Workflow Foundation and Action Pinning** - Callable security workflow triggers on PRs with SHA-pinned actions kept current by Dependabot (completed 2026-09-10)
 - [x] **Phase 15: Five Parallel Scan Jobs** - SAST, IaC, SCA, container, and secrets scans run concurrently on every PR in report-only mode (completed 2026-09-11)
 - [x] **Phase 16: SCA Ecosystem Coverage** - SCA job audits npm, Python, and Terraform dependencies alongside the generic filesystem sweep (completed 2026-09-11)
-- [ ] **Phase 17: SARIF Upload and Artifact Retention** - Findings reach the GitHub Security tab and persist as JSON artifacts
+- [x] **Phase 17: SARIF Upload and Artifact Retention** - Findings reach the GitHub Security tab and persist as JSON artifacts (completed 2026-09-11)
 - [ ] **Phase 18: Configurable Gate Mode and Branch Protection** - Each repo picks block-merge or report-only via a flag, with branch protection guidance
 - [ ] **Phase 19: Pipeline Validation via Branch-Target PRs** - Full pipeline proven end-to-end against seeded findings in this repo
 - [ ] **Phase 20: Template Packaging and Adoption Docs** - Both consumption modes packaged and documented for rollout to the remaining repos
@@ -130,7 +130,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] 17-04-PLAN.md — Add five per-job `upload-artifact` steps with explicit 90-day retention and glob-based SCA paths, each with a landing assertion
 - [x] 17-05-PLAN.md — Construct the annotation-capable fixture edit, push, open the PR, and collect live category, artifact and check-run evidence
 - [x] 17-06-PLAN.md — Record the decisions in ADR-016 and make the blueprint's CI/CD template copy-pasteable; log the deferrals
-- [ ] 17-07-PLAN.md — Human verification of the Security tab and PR annotations, then merge and close CICD-02/CICD-03
+- [x] 17-07-PLAN.md — Human verification of the Security tab and PR annotations, then merge and close CICD-02/CICD-03
 
 ### Phase 18: Configurable Gate Mode and Branch Protection
 
@@ -197,7 +197,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 14. Workflow Foundation and Action Pinning | v2.0 | 3/3 | Complete   | 2026-09-10 |
 | 15. Five Parallel Scan Jobs | v2.0 | 5/5 | Complete   | 2026-09-11 |
 | 16. SCA Ecosystem Coverage | v2.0 | 7/7 | Complete    | 2026-09-11 |
-| 17. SARIF Upload and Artifact Retention | v2.0 | 6/7 | In Progress|  |
+| 17. SARIF Upload and Artifact Retention | v2.0 | 7/7 | Complete    | 2026-09-11 |
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 0/? | Not started | - |
 | 19. Pipeline Validation via Branch-Target PRs | v2.0 | 0/? | Not started | - |
 | 20. Template Packaging and Adoption Docs | v2.0 | 0/? | Not started | - |

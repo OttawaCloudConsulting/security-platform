@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: "Completed 17-06-PLAN.md — ADR-016 written (65 lines, Accepted, 9 Decision bullets, 5 Tradeoff paragraphs, 3 explicitly unverified items) and indexed as docs/adr/README.md's last row; blueprint CI/CD template made copy-pasteable (workflow-level permissions block + caller-side warning, category: on all 3 upload-sarif examples, retention-days: 90 on all 5 upload-artifact examples, # v3->v4 and # v4->v7 comments, Cross-Platform CI table 6->9 rows with a SARIF-availability note linking ADR-016); 7 deferrals logged with owners. Commits 553b2a2, 939b5b3, c3a0fb2. Nothing under repos/ touched; PR #8 still OPEN. Next: 17-07 (human verification, then merge). PRIOR: Completed 17-05-PLAN.md — PR #8 open and unmerged on OttawaCloudConsulting/security-platform, run 34638828775 green. Before: 0 artifacts, analyses HTTP 404. After: 7 analyses across 6 distinct categories on refs/pull/8/merge, 5 artifacts expiring exactly 90 days out, sca-results carrying npm-audit-1.json + pip-audit-1.json. Criterion 2 OBSERVED — 3 code-scanning annotations on fixtures/main.tf line 38. 12 check runs on the head SHA; code scanning adds ONE PER tool.driver.name, not per category. Checkov code-scanning check is RED. Commit fbe0071. Next: 17-06 (ADR-016)."
-last_updated: "2026-09-11T20:00:00.000Z"
+stopped_at: "Completed 17-07-PLAN.md — PHASE 17 CLOSED. PR #8 MERGED to OttawaCloudConsulting/security-platform main on the user's explicit approval (\"approved — satisfied, merge it\"); merge commit 8fbea7d169ab79c31cb77cd18b835ff3ffb14633 (merge of 40682ce + fbe0071), merged 2026-09-11T20:02:53Z. Verified on origin/main (never the local tree): 6 categorised upload-sarif steps, 5 named artifacts at retention-days: 90, workflow-level security-events: write, 5 jobs, 0 needs:, 5 byte-identical job names (em dash e2 80 94), and the caller's job-level security-events: write + contents: read. Criterion verdicts: 1 NOT OBSERVED (Security > Code scanning UI showed no results under the branch/PR filter — user suspects code scanning is not fully enabled at repo level; per-tool results ARE separated on the PR Checks tab and 17-05's analyses API read confirms six distinct categories server-side), 2 MET (annotations visible), 3 MET (machine evidence, 17-05), 4 MET (user confirmed). ROADMAP Phase 17 7/7 Complete; CICD-02/CICD-03 confirmed already [x] and Complete. Next: Phase 18 (gate mode and branch protection) — inherits the twelve byte-exact check-run names, the per-driver rule, the red Checkov check, and the analyses-vs-check-runs case mismatch. PRIOR: Completed 17-06-PLAN.md — ADR-016 written and blueprint CI/CD template made copy-pasteable; commits 553b2a2, 939b5b3, c3a0fb2."
+last_updated: "2026-09-11T20:10:00.000Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 22
-  completed_plans: 21
-  percent: 43
+  completed_plans: 22
+  percent: 57
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 17 — sarif-upload-and-artifact-retention
+**Current focus:** Phase 18 — gate-mode-and-branch-protection (Phase 17 complete and merged)
 
 ## Current Position
 
-Phase: 17 (sarif-upload-and-artifact-retention) — EXECUTING
-Plan: 7 of 7
-Status: Ready to execute (17-06 complete)
+Phase: 17 (sarif-upload-and-artifact-retention) — COMPLETE (merged 2026-09-11, commit 8fbea7d)
+Plan: 7 of 7 — all complete
+Status: Phase 17 closed; ready to start Phase 18
 Last activity: 2026-09-11
 
-Progress: [█████████░] 95%
+Progress: [██████████] 100% (phase 17)
 
 ## Performance Metrics
 
