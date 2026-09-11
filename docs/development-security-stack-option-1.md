@@ -1526,8 +1526,8 @@ jobs:
         run: semgrep scan --config auto --sarif --output semgrep.sarif . || true
       # A DISTINCT `category:` per analysis is mandatory, not stylistic. GitHub keys
       # a code scanning analysis on tool name + category, so two scans that report the
-      # same tool name (e.g. the filesystem and image Trivy scans) collide without it
-      # and the second upload silently replaces the first.
+      # same tool name (e.g. the filesystem and image Trivy scans) collide on identity
+      # without it, and only one of the two reaches the Security tab.
       - uses: github/codeql-action/upload-sarif@<SHA>  # v4 — pin to current SHA: https://github.com/github/codeql-action/releases
         if: always()
         continue-on-error: true
