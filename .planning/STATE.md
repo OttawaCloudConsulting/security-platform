@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: "Completed 17-01-PLAN.md — phase branch feature/phase-17-sarif-upload-and-artifact-retention cut in repos/security-platform from main at 40682ce; scripts/check-workflow-uploads.sh (34cd158) then the security-events grant in both workflow files (66a18ad). Gate observed exit 1 -> exit 0. Nothing pushed. Next: 17-02."
-last_updated: "2026-09-11T18:05:42.598Z"
+stopped_at: "Completed 17-02-PLAN.md — sca job now emits trivy-fs.sarif from a direct trivy fs --format sarif run (ROOTPATH = scan root, confirmed live); smoke gate mirrors it with run_scan semantics plus a ROOTPATH regression guard. Commits a3f9dac, f3e6dec in repos/security-platform. ALL PASS, 10 gated runs (was 9). Nothing pushed. Next: 17-03."
+last_updated: "2026-09-11T18:38:35.992Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 22
-  completed_plans: 16
+  completed_plans: 17
   percent: 43
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 17 (sarif-upload-and-artifact-retention) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-09-11
 
-Progress: [███████░░░] 73%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
@@ -101,6 +101,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-01: the gate's REDACT-RETAINED check matches an ANCHORED gitleaks invocation line, not the substring 'gitleaks' — the Install Gitleaks step mentions the binary three times and redacts nothing, so a substring test would fail permanently; likewise ARTIFACT-PATH-SAFETY tests '**' separately because the plan's own regex character class admits '*'
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-01: the gate deliberately asserts NO counts of upload steps so it passes at every intermediate commit of the phase; 17-03/17-04 assert counts inline, and they inherit UPLOAD-VERIFY-PAIRING (every upload needs an id: and a later same-job step reading steps.<id>.outcome) plus ARTIFACT-PATH-SAFETY (bare-basename *.json/*.sarif globs only, so 16-04's numbered npm-audit-<n>.json must be globbed as npm-audit-*.json)
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-01: CICD-02 and CICD-03 were NOT marked complete. requirements.mark-complete flipped both to Complete from this plan's frontmatter and the change was reverted — no SARIF upload step and no artifact upload step exists yet; they ship in 17-03/17-04. Mark them there, not here.
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-02: the sca job's `trivy convert` step is GONE — replaced by a second direct `trivy fs . --scanners vuln --format sarif` run with flags identical to the JSON run. Live-confirmed: the gate printed originalUriBaseIds.ROOTPATH = the repo root, not `.../trivy-fs.json/`. The container job's `trivy convert` (security.yml:394-396) is deliberately untouched — it is the conversion step D-01 rests on and ADR-016 (17-06) will record it as the only survivor. — `trivy convert` writes ROOTPATH = the INPUT JSON FILE path, so every uploaded result would resolve to a nonexistent `<workspace>/trivy-fs.json/...` path in code scanning; checkout_path relativization does not rescue it. Landing this before any upload step exists means the first SARIF the repo ever uploads is correctly based.
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-02: OD-7 flag parity means the new SARIF invocation is a SCANNER (exit 1 on findings), so in smoke-scans.sh it takes `run_scan`, NOT `require_success` — 17-VALIDATION's blanket "must use require_success" applies only to genuinely exit-0 infrastructure steps. `require_success "trivy-image-convert"` stays. Smoke gate baseline is now 10 gated runs, not 9. — Identical --scanners/--exit-code/--severity on both runs is the only way the retained JSON artifact and the uploaded SARIF can be guaranteed to describe the same finding set (T-17-09). The consequence is scanner semantics; require_success would have scored a healthy findings run as FAIL — the exact inversion Phase 15 hit with docker build and trivy convert.
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-02: the smoke gate now carries a ROOTPATH regression guard that fails when runs[0].originalUriBaseIds.ROOTPATH is absent or points at a .json input file (trailing slash or not), with distinct exit codes 3/4/5 per failure mode. All three modes were observed firing against crafted fixtures in a scratchpad, with the heredoc body extracted verbatim from the committed script — no second full-gate run was spent. — The guard is what stops a future "simplify this back to trivy convert" from silently reintroducing RESEARCH Pitfall 3. Proving a guard fires without re-running a 4-minute gate is the reusable technique.
 
 ### Pending Todos
 
@@ -146,11 +149,12 @@ Carried forward from v1.1 close:
 | Phase 16 P06 | ~12min | 2 tasks | 3 files |
 | Phase 16 P07 | ~10min | 2 tasks | 0 files |
 | Phase 17-sarif-upload-and-artifact-retention P01 | 20min | 2 tasks | 3 files |
+| Phase 17-sarif-upload-and-artifact-retention P02 | 5min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T18:05:42.592Z
-Stopped at: Completed 17-01-PLAN.md — phase branch feature/phase-17-sarif-upload-and-artifact-retention cut in repos/security-platform from main at 40682ce; scripts/check-workflow-uploads.sh (34cd158) then the security-events grant in both workflow files (66a18ad). Gate observed exit 1 -> exit 0. Nothing pushed. Next: 17-02.
+Last session: 2026-09-11T18:16:47.324Z
+Stopped at: Completed 17-02-PLAN.md — sca job now emits trivy-fs.sarif from a direct trivy fs --format sarif run (ROOTPATH = scan root, confirmed live); smoke gate mirrors it with run_scan semantics plus a ROOTPATH regression guard. Commits a3f9dac, f3e6dec in repos/security-platform. ALL PASS, 10 gated runs (was 9). Nothing pushed. Next: 17-03.
 Resume file: None
 
 ## Operator Next Steps
