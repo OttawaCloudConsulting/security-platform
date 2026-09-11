@@ -1,0 +1,5 @@
+# INTENTIONALLY VULNERABLE SCAN FIXTURE — DO NOT "FIX" OR INSTALL
+# Nothing in this repository ever runs `pip install -r` against this file; it exists
+# solely as pip-audit / Trivy filesystem input for SCA-02. Exact `==` pins only.
+requests==2.19.1
+jinja2==2.11.2

@@ -74,10 +74,20 @@ jobs:
         run: ls -l checkov-results.json checkov.sarif
 
   # ─────────────────────────────────────────────────────────────────────────
-  # SCA — Trivy Filesystem
-  # SCA-04: generic filesystem sweep, no per-ecosystem configuration.
+  # SCA — four scanners in ONE job. Adding a sixth job would break three
+  # things at once: CICD-01's "5 parallel jobs" (already Complete), Phase 17's
+  # per-job artifact map, and Phase 18's required-check list.
+  #   SCA-04  Trivy filesystem — generic sweep, no per-ecosystem configuration
+  #   SCA-01  npm audit        — lockfile advisories, one run per lockfile dir
+  #   SCA-02  pip-audit        — Python requirements advisories
+  #   SCA-03  tflint           — Terraform provider and module pinning
   # ─────────────────────────────────────────────────────────────────────────
   sca:
+    # FROZEN. 15-05-SUMMARY recorded this string as one of the five verbatim
+    # check-run names Phase 18 hard-codes into its branch-protection required
+    # check list. It is inaccurate now that four scanners run in this job, and
+    # it stays anyway: renaming it would leave branch protection pointing at a
+    # check that no longer exists — silently non-blocking.
     name: SCA — Trivy Filesystem
     runs-on: ubuntu-latest
     steps:
@@ -86,6 +96,48 @@ jobs:
         with:
           version: v0.74.0
           cache: true
+
+      # No language-runtime setup action is needed here: Python 3.12.3, pip
+      # 24.0 and npm 10.9.8 are all preinstalled on GitHub-hosted
+      # ubuntu-latest, and so is the ubuntu-26.04 image's newer set.
+      - run: pip install pip-audit==2.10.1
+      # Assumption A7 fallback ladder if PEP 668 blocks the pip install above:
+      #   1) pipx install pip-audit==2.10.1   (pipx is preinstalled on GitHub-hosted ubuntu-latest)
+      #   2) python -m pip install --break-system-packages pip-audit==2.10.1
+
+      # Download-then-verify-then-extract, never curl | sh — the SAST job's own
+      # p/default ruleset (gha-curl-pipe-shell) flags the pipe pattern.
+      # The one line that does NOT transfer from the Gitleaks install below:
+      # tflint ships a .zip, not a .tar.gz. unzip is preinstalled on the runner.
+      # The SHA-256 is read from the official v0.64.0 checksums.txt asset.
+      - name: Install tflint
+        run: |
+          curl -sSfL -o tflint.zip \
+            https://github.com/terraform-linters/tflint/releases/download/v0.64.0/tflint_linux_amd64.zip
+          echo "cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537  tflint.zip" \
+            | sha256sum -c -
+          sudo unzip -o -d /usr/local/bin tflint.zip
+
+      # Detection is its own step rather than a bare `if: hashFiles(…) != ''`
+      # on each scan step: a step skipped by `if:` produces no log output at
+      # all, and the skip path has to say out loud that the ecosystem is absent
+      # (Criterion 4). The logic lives in shared scripts, not inline here, so
+      # that CI and scripts/smoke-scans.sh exercise the same implementation —
+      # the smoke gate's negative test then proves the real CI code path.
+      # No continue-on-error on a detect step: the detectors are contractually
+      # exit-0 on BOTH branches, so a non-zero exit is an infrastructure
+      # failure and must fail the job.
+      - name: Detect npm lockfiles
+        id: npm
+        run: bash scripts/detect-npm.sh npm-lockfiles.txt
+
+      - name: Detect Python requirements files
+        id: py
+        run: bash scripts/detect-python.sh py-reqs.txt
+
+      - name: Detect Terraform files
+        id: tf
+        run: bash scripts/detect-terraform.sh tf-files.txt
 
       # --scanners vuln only, deliberately: misconfig is the IaC job's remit and
       # secrets are Gitleaks' remit. No per-ecosystem plugin or .trivyignore — this
@@ -104,6 +156,186 @@ jobs:
       - name: Show scan output files
         if: always()
         run: ls -l trivy-fs.json trivy-fs.sarif
+
+      # SCA-01 — npm audit. `--audit-level=high` gates the EXIT CODE only; it
+      # does NOT filter the report, which is the opposite of Trivy's --severity
+      # above. It is kept for exit-code consistency with the repo's pre-commit
+      # npm-audit hook, and the full-severity JSON is retained regardless —
+      # which is what Phase 17 will want.
+      # npm audit operates on a working DIRECTORY, not a named file, hence the
+      # cd per lockfile and the numbered reports: a consumer repository is not
+      # guaranteed a single manifest at its root, so Phase 17's artifact upload
+      # cannot assume a fixed filename.
+      # The list is read on fd 3 because npm reads stdin — a scanner that
+      # consumed the loop's stdin would swallow the remaining lockfile paths
+      # (measured in scripts/smoke-scans.sh, 16-03).
+      - name: SCA-01 — npm audit
+        if: steps.npm.outputs.found == 'true'
+        continue-on-error: true          # D-04: native --audit-level exit code kept
+        run: |
+          i=0
+          last=0
+          while IFS= read -r lock <&3; do
+            [ -n "$lock" ] || continue
+            i=$((i + 1))
+            dir="$(dirname "$lock")"
+            rc=0
+            ( cd "$dir" && npm audit --audit-level=high --json ) \
+              > "npm-audit-${i}.json" || rc=$?
+            echo "npm audit [${dir}] exit=${rc}"
+            last="$rc"
+          done 3< npm-lockfiles.txt
+          exit "$last"
+
+      # Report-content check, deliberately WITHOUT continue-on-error. `npm
+      # audit` returns the same exit 1 for "vulnerabilities found" and for the
+      # {"error":{"code":"ENOLOCK"}} object, so an unread error report would be
+      # tolerated by the step above and read as a clean scan. A missing or
+      # error-shaped report is an infrastructure failure, not a finding, and it
+      # must turn this step red. This step also prints the severity histogram
+      # Criterion 1 requires into the job log instead of only into a file.
+      - name: Verify npm audit reports
+        if: always() && steps.npm.outputs.found == 'true'
+        run: |
+          python3 - npm-audit-*.json <<'PY'
+          import json
+          import sys
+
+          for path in sys.argv[1:]:
+              with open(path) as handle:
+                  data = json.load(handle)
+              if "error" in data or "auditReportVersion" not in data:
+                  print("npm audit report is an error object, not a report: {} ({})".format(
+                      path, data.get("error")))
+                  sys.exit(1)
+              hist = (data.get("metadata") or {}).get("vulnerabilities") or {}
+              print("npm audit severity histogram [{}]: ".format(path) + " ".join(
+                  "{}={}".format(name, hist.get(name, 0))
+                  for name in ("info", "low", "moderate", "high", "critical", "total")))
+              for name, entry in sorted((data.get("vulnerabilities") or {}).items()):
+                  print("  package={} severity={}".format(name, entry.get("severity")))
+          PY
+
+      # Guarded, not just always(): in a repository without npm the glob below
+      # matches nothing, ls exits 2, and the job would go red on a clean skip.
+      - name: Show npm audit output files
+        if: always() && steps.npm.outputs.found == 'true'
+        run: ls -l npm-audit-*.json
+
+      # SCA-02 — pip-audit. The resolving default is a locked decision: the
+      # flags that skip transitive resolution or demand hash-pinned inputs are
+      # absent on purpose, because each hard-errors on any requirement a
+      # consumer repository has not pinned exactly. The cost is ~11.5 s per
+      # requirements file (measured, 16-03) — do not "optimise" it into a hard
+      # error on unpinned consumer requirements.
+      # NOTE for Phase 17/18: pip-audit's JSON carries advisory ids, aliases and
+      # fix versions but NO severity and NO CVSS field anywhere, so no severity
+      # threshold can be derived from this report. Do not infer its shape from
+      # the npm section above.
+      - name: SCA-02 — pip-audit
+        if: steps.py.outputs.found == 'true'
+        continue-on-error: true          # D-04
+        run: |
+          i=0
+          last=0
+          while IFS= read -r req <&3; do
+            [ -n "$req" ] || continue
+            i=$((i + 1))
+            rc=0
+            pip-audit -r "$req" --format json --progress-spinner=off \
+              -o "pip-audit-${i}.json" || rc=$?
+            echo "pip-audit [${req}] exit=${rc}"
+            last="$rc"
+          done 3< py-reqs.txt
+          exit "$last"
+
+      # Report-content check, deliberately WITHOUT continue-on-error: pip-audit
+      # also returns exit 1 both for "advisories found" and for an invalid or
+      # missing input file, and on its error paths it writes no report at all —
+      # so an absent file or one without a top-level `dependencies` key is an
+      # infrastructure failure and must turn this step red.
+      - name: Verify pip-audit reports
+        if: always() && steps.py.outputs.found == 'true'
+        run: |
+          python3 - pip-audit-*.json <<'PY'
+          import json
+          import sys
+
+          for path in sys.argv[1:]:
+              with open(path) as handle:
+                  data = json.load(handle)
+              if "dependencies" not in data:
+                  print("pip-audit report has no dependencies key: {}".format(path))
+                  sys.exit(1)
+              deps = data.get("dependencies") or []
+              entries = 0
+              ids = set()
+              for dep in deps:
+                  vulns = dep.get("vulns") or []
+                  if vulns:
+                      print("  package={} version={} advisories={}".format(
+                          dep.get("name"), dep.get("version"), len(vulns)))
+                  entries += len(vulns)
+                  ids.update(v.get("id") for v in vulns)
+              print("pip-audit resolved dependencies [{}]: {}".format(path, len(deps)))
+              print("pip-audit advisory entries [{}]: {} ({} unique ids)".format(
+                  path, entries, len(ids)))
+          PY
+
+      - name: Show pip-audit output files
+        if: always() && steps.py.outputs.found == 'true'
+        run: ls -l pip-audit-*.json
+
+      # SCA-03 — tflint. `--recursive` is MANDATORY: a repo-root tflint sees
+      # zero .tf files and exits 0, a silent false pass. tflint signals findings
+      # with exit code 2, NOT 1 — it reserves 1 for an application error — so
+      # both steps below are tolerated at the step level; the second exits 2 on
+      # a successful scan exactly as the first does, and an untolerated step
+      # would fail the job on a scan that worked. No soft-fail flag is used: the
+      # native exit code is kept (D-04).
+      # Two steps rather than one chained run: block, following the Gitleaks
+      # precedent below — tflint has no output-file flag, SARIF goes to stdout
+      # by redirection, and a second command in the same bash -e block would be
+      # dropped the moment the first exits non-zero.
+      - name: SCA-03 — tflint (SARIF)
+        if: steps.tf.outputs.found == 'true'
+        continue-on-error: true          # D-04: exit 2 means findings
+        run: |
+          tflint --recursive --format sarif > tflint.sarif
+
+      - name: SCA-03 — tflint (human-readable log)
+        if: always() && steps.tf.outputs.found == 'true'
+        continue-on-error: true          # D-04: exit 2 means findings
+        run: |
+          tflint --recursive --format default
+
+      # Report-content check, deliberately WITHOUT continue-on-error: the SARIF
+      # is produced by shell redirection, so a tflint that died before writing
+      # anything still leaves a file behind. A SARIF without a top-level `runs`
+      # key is an infrastructure failure, not a finding.
+      - name: Verify tflint SARIF
+        if: always() && steps.tf.outputs.found == 'true'
+        run: |
+          python3 - tflint.sarif <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          with open(path) as handle:
+              data = json.load(handle)
+          if "runs" not in data:
+              print("tflint SARIF has no runs key: {}".format(path))
+              sys.exit(1)
+          found = set()
+          for run in data.get("runs") or []:
+              for result in run.get("results") or []:
+                  found.add(result.get("ruleId"))
+          print("tflint rule ids: {}".format(sorted(i for i in found if i)))
+          PY
+
+      - name: Show tflint output files
+        if: always() && steps.tf.outputs.found == 'true'
+        run: ls -l tflint.sarif
 
   # ─────────────────────────────────────────────────────────────────────────
   # Container — Trivy Image
