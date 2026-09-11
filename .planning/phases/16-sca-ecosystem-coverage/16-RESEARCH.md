@@ -197,7 +197,8 @@ repos/security-platform/
 - name: Detect npm lockfiles
   id: npm
   run: |
-    mapfile -t LOCKS < <(git ls-files -- '*package-lock.json' 'package-lock.json' \
+    # '*package-lock.json' matches BOTH root-level and nested files (measured).
+    mapfile -t LOCKS < <(git ls-files -- '*package-lock.json' \
                          | grep -v '/node_modules/' || true)
     if [ "${#LOCKS[@]}" -eq 0 ]; then
       echo "found=false" >> "$GITHUB_OUTPUT"
@@ -410,12 +411,41 @@ This is the **inverse** of Phase 15's Trivy pitfall, where `--severity HIGH,CRIT
 
 **The tradeoff is real and unresolved** — see Open Question Q2. `--no-deps --disable-pip` hard-errors (rc=1) on any requirement not pinned with `==`, which many consumer repos will have.
 
+### Pitfall 9: `git ls-files '**/requirements*.txt'` silently misses a root-level file
+
+**What goes wrong:** the detector reports `SKIP: no requirements*.txt found` on a repo whose `requirements.txt` sits at the root. A clean skip message on a repo that *does* have Python dependencies is a false pass — the precise thing Criterion 4 forbids, and it would be invisible in the log.
+
+**Measured evidence** (from `repos/security-platform` with a temporary `requirements.txt` at the root and one in `fixtures/`, both `git add -N`'d, then removed):
+
+| Pathspec | Root `requirements.txt` | `fixtures/requirements.txt` |
+|---|---|---|
+| `'requirements*.txt'` | ✗ not matched | ✗ not matched |
+| `'**/requirements*.txt'` | **✗ not matched** | ✓ matched |
+| `':(glob)**/requirements*.txt'` | ✓ matched | ✓ matched |
+| `'*requirements*.txt'` | ✓ matched | ✓ matched |
+| `'*package-lock.json'` | ✓ (root form untested but implied) | ✓ matched |
+| `'*.tf'` | n/a | ✓ matched `fixtures/main.tf` |
+
+Git's default (non-`:(glob)`) pathspec wildcards **do** cross `/`, which is why a leading `*` works for both depths and why a bare `requirements*.txt` — anchored at the root with no leading wildcard — matches nothing in a subdirectory. `**` only has its recursive meaning under explicit `:(glob)` magic.
+
+**How to avoid:** use `git ls-files -- '*requirements*.txt'` (and `'*package-lock.json'`, `'*.tf'`). A single leading-wildcard pathspec covers every depth. Accept that `*requirements*.txt` also matches `dev-requirements.txt` and `requirements-test.txt` — that is desirable here.
+
+**Warning sign:** a detector that logs `SKIP:` on a repo you know has the file. The smoke gate's positive path only exercises `fixtures/`, so add a root-level positive case if the detector is ever changed.
+
+### Pitfall 10: `mapfile` requires bash 4+; macOS `/bin/bash` is 3.2
+
+**Measured:** on this workstation, `bash` on `PATH` is 5.3.15 but `/bin/bash` is 3.2.57. The `mapfile -t` calls in the detection snippets above are bash-4 builtins and will fail under `/bin/bash`.
+
+**Why it matters locally, not in CI:** GitHub-hosted ubuntu runners use bash 5.x, so the workflow steps are safe. The risk is `scripts/smoke-scans.sh`, which the project rule requires be invoked as `bash scripts/smoke-scans.sh` (never `./` — no executable bit). `bash` on `PATH` resolves to 5.3 here, so it works — but any detector helper extracted into its own script must keep `#!/usr/bin/env bash` (as `smoke-scans.sh` already does) and must never be invoked via `sh` or `/bin/bash`. The existing `smoke-scans.sh` uses only bash-3-compatible array syntax (`FAILURES+=()`); introducing `mapfile` raises its minimum to bash 4. Either accept that, or use a `while read -r` loop instead of `mapfile` in the shared script.
+
+
 ## Code Examples
 
 ### SCA-01 — npm audit sub-scan
 
 ```yaml
-# Source: measured against repos/security-platform/fixtures/ (npm 11.7.0, 2026-09-10)
+# Source: npm invocation measured against repos/security-platform/fixtures/ (npm 11.7.0, 2026-09-10);
+# pathspec verified with git ls-files against the real repo (see Pitfall 9)
 - name: Detect npm lockfiles
   id: npm
   run: |
@@ -433,15 +463,16 @@ This is the **inverse** of Phase 15's Trivy pitfall, where `--severity HIGH,CRIT
   if: steps.npm.outputs.found == 'true'
   continue-on-error: true          # D-04: native --audit-level semantics kept
   run: |
-    i=0
+    i=0; last=0
     while read -r lock; do
       i=$((i+1))
       dir="$(dirname "$lock")"
       rc=0
       ( cd "$dir" && npm audit --audit-level=high --json ) > "npm-audit-${i}.json" || rc=$?
       echo "npm audit [$dir] exit=${rc}"
-      exit "$rc"     # last one wins; continue-on-error tolerates it
+      last="$rc"
     done < npm-lockfiles.txt
+    exit "$last"     # last non-zero wins; continue-on-error (D-04) tolerates it
 ```
 
 Measured output shape (`fixtures/`): `rc=1`, and
@@ -459,11 +490,14 @@ The per-advisory `severity` field and the `metadata.vulnerabilities` histogram a
 ### SCA-02 — pip-audit sub-scan
 
 ```yaml
-# Source: measured with pip-audit 2.10.1, 2026-09-10
+# Source: pip-audit invocation measured with pip-audit 2.10.1, 2026-09-10;
+# pathspec verified with git ls-files against the real repo (see Pitfall 9)
 - name: Detect Python dependency files
   id: py
   run: |
-    mapfile -t REQS < <(git ls-files 'requirements*.txt' '**/requirements*.txt' || true)
+    # '*requirements*.txt' — NOT 'requirements*.txt' (misses subdirectories) and NOT
+    # '**/requirements*.txt' (misses the repo root). Both verified by measurement.
+    mapfile -t REQS < <(git ls-files -- '*requirements*.txt' || true)
     if [ "${#REQS[@]}" -eq 0 ]; then
       echo "found=false" >> "$GITHUB_OUTPUT"
       echo "SKIP: no requirements*.txt found — Python sub-scan not applicable to this repository"
@@ -506,7 +540,8 @@ Measured output shape:
 ### SCA-03 — tflint sub-scan
 
 ```yaml
-# Source: measured with tflint 0.61.0 + bundled ruleset 0.14.1, 2026-09-10
+# Source: tflint invocation measured with tflint 0.61.0 + bundled ruleset 0.14.1, 2026-09-10;
+# pathspec '*.tf' verified with git ls-files against the real repo (see Pitfall 9)
 - name: Detect Terraform files
   id: tf
   run: |
