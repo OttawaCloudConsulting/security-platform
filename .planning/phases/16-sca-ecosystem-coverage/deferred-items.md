@@ -20,3 +20,14 @@
   CVE ids as aliases (verified as an identical set).
 - Still open: the untracked planning artifacts logged by 16-01 (`16-PATTERNS.md`,
   `16-PLAN-CHECK.md`, `15-VERIFICATION.md` in the outer repo).
+
+## Deferred (logged 2026-09-11 during 16-06 execution)
+
+- **Pre-existing broken relative link in the blueprint.** `docs/development-security-stack-option-1.md`
+  line ~1427 links `[ADR-011](docs/adr/adr011-precommit-bypass-warning.md)`. Since the blueprint itself
+  lives under `docs/`, that path resolves to `docs/docs/adr/…` and is broken — it dates from when the
+  blueprint sat at the repo root (CLAUDE.md still describes it that way). 16-06's new note therefore uses
+  the *working* path `adr/adr015-tflint-terraform-pin-checking.md` rather than copying the stale style.
+  Fixing the ADR-011 link (and the CLAUDE.md path description) is out of 16-06's file scope — the plan's
+  acceptance criteria pin this commit's contents, and a drive-by edit to unrelated prose would violate
+  the executor scope boundary. A future docs-hygiene plan should sweep all relative links in the blueprint.

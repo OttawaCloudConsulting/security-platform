@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
 stopped_at: "Completed 16-05-PLAN.md — PR #7 open and MERGEABLE on OttawaCloudConsulting/security-platform; run 34614017396 green with live evidence for Criteria 1-3 (npm high=1/critical=1, pip-audit 46 entries/23 ids, tflint 3 rule ids under v0.64.0). NOT merged — 16-07 owns the merge checkpoint"
-last_updated: "2026-09-11T15:09:57.959Z"
+last_updated: "2026-09-11T15:18:59.693Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 15
-  completed_plans: 13
+  completed_plans: 14
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 16 (sca-ecosystem-coverage) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-09-11
 
-Progress: [█████████░] 87%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -90,6 +90,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 16]: 16-05: the check-runs API returns SIX checks on the head SHA — the five security/* jobs plus an external GitGuardian App check; Phase 18 must decide explicitly whether it belongs in the required-check list
 - [Phase 16]: 16-05: tflint version evidenced from the install step's v0.64.0 download URL and the v0.15.0 ruleset doc links, because the job never runs 'tflint --version' and this plan may not modify source
 - [Phase 16]: 16-05: Criterion 4 recorded as NOT observed live (the repo has all three ecosystems) — its evidence remains 16-03's empty-repo negative test plus 16-04's static guard assertions; no fixture was deleted to manufacture a skip
+- [Phase 16-06]: ADR-015 records tflint adoption with its limit stated as plainly as its benefit — the default ruleset flags MISSING provider constraints and unpinned module sources, but does NOT flag a floating range like >= 3.0; a custom rule is explicitly out of scope
+- [Phase 16-06]: pip-audit (Apache-2.0) and tflint (MPL-2.0) added to both blueprint tool tables, licenses resolved from the GitHub API rather than recalled; the zero-cost/zero-account line remains true and unchanged
 
 ### Pending Todos
 
@@ -132,10 +134,11 @@ Carried forward from v1.1 close:
 | Phase 16 P03 | ~35min | 2 tasks | 2 files |
 | Phase 16 P04 | 25min | 3 tasks | 1 files |
 | Phase 16 P05 | ~15min | 2 tasks | 0 files |
+| Phase 16 P06 | ~12min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T15:09:57.950Z
+Last session: 2026-09-11T15:18:39.400Z
 Stopped at: Completed 16-05-PLAN.md — PR #7 open and MERGEABLE on OttawaCloudConsulting/security-platform; run 34614017396 green with live evidence for Criteria 1-3 (npm high=1/critical=1, pip-audit 46 entries/23 ids, tflint 3 rule ids under v0.64.0). NOT merged — 16-07 owns the merge checkpoint
 Resume file: None
 
