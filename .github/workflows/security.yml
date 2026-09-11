@@ -281,6 +281,57 @@ jobs:
         if: always()
         run: ls -l trivy-fs.json trivy-fs.sarif
 
+      - name: Upload Trivy filesystem SARIF
+        id: sarif-trivy-fs
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs       # MANDATORY — distinguishes this analysis
+          # Not optional here: trivy-image.sarif in the container job carries
+          # the identical tool.driver.name of `Trivy`, and GitHub fails the
+          # second upload of the same tool + category in one run. Dropping
+          # either category would also collapse both scanners into one
+          # analysis and destroy the per-tool attribution.
+          # wait-for-processing is deliberately NOT set: its default of true is
+          # what turns an async ingestion rejection into a step failure that
+          # the outcome assertion below can see.
+
+      # Same contract as `Verify Semgrep SARIF upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard sits on the verify step, never on the
+      # upload.
+      - name: Verify Trivy filesystem SARIF upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          python3 - trivy-fs.sarif <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          with open(path) as handle:
+              data = json.load(handle)
+          if "runs" not in data:
+              print("SARIF has no runs key: {}".format(path))
+              sys.exit(1)
+          runs = data.get("runs") or []
+          print("{}: {} run(s)".format(path, len(runs)))
+          for run in runs:
+              driver = (run.get("tool") or {}).get("driver") or {}
+              print("  tool.driver.name={} results={}".format(
+                  driver.get("name"), len(run.get("results") or [])))
+          PY
+          if [ "${{ steps.sarif-trivy-fs.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.sarif-trivy-fs.outcome }} — the upload did not land."
+            echo "Most likely cause: security-events: write missing from the CALLER"
+            echo "(.github/workflows/pr-security.yml), which a called workflow cannot elevate."
+            exit 1
+          fi
+          # Secondary, for the log only — never the sole assertion: sarif-id is
+          # populated before wait-for-processing can reject the SARIF.
+          echo "sarif-trivy-fs sarif-id=${{ steps.sarif-trivy-fs.outputs.sarif-id }}"
+
       # SCA-01 — npm audit. `--audit-level=high` gates the EXIT CODE only; it
       # does NOT filter the report, which is the opposite of Trivy's --severity
       # above. It is kept for exit-code consistency with the repo's pre-commit
@@ -460,6 +511,48 @@ jobs:
       - name: Show tflint output files
         if: always() && steps.tf.outputs.found == 'true'
         run: ls -l tflint.sarif
+
+      # The ecosystem guard is on BOTH this upload and its verify below, and it
+      # is the same `steps.tf.outputs.found` guard the tflint scan, log and
+      # evidence steps already carry. Unguarded, the upload of a missing
+      # tflint.sarif fails-then-tolerates and the verify then fails the whole
+      # job on a clean ecosystem skip — re-breaking the Criterion 4 skip
+      # behaviour Phase 16 spent an entire plan proving.
+      - name: Upload tflint SARIF
+        id: sarif-tflint
+        if: always() && steps.tf.outputs.found == 'true'
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+        with:
+          sarif_file: tflint.sarif
+          category: tflint         # MANDATORY — distinguishes this analysis
+          # wait-for-processing is deliberately NOT set: its default of true is
+          # what turns an async ingestion rejection into a step failure that
+          # the outcome assertion below can see.
+
+      # Same contract as `Verify Semgrep SARIF upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard sits on the verify step, never on the
+      # upload — plus the ecosystem guard, for the reason given above.
+      # This one asserts the OUTCOME only and deliberately parses nothing: the
+      # `Verify tflint SARIF` step above already loads tflint.sarif and prints
+      # its rule ids, and a second parse would be a second place to maintain
+      # the same assertion.
+      # If a parse is ever added here anyway: tflint.sarif carries TWO runs
+      # (`tflint` and `tflint-errors`, the second normally empty), so no
+      # assertion anywhere may require len(runs) == 1.
+      - name: Verify tflint SARIF upload landed
+        if: always() && steps.tf.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          if [ "${{ steps.sarif-tflint.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.sarif-tflint.outcome }} — the upload did not land."
+            echo "Most likely cause: security-events: write missing from the CALLER"
+            echo "(.github/workflows/pr-security.yml), which a called workflow cannot elevate."
+            exit 1
+          fi
+          # Secondary, for the log only — never the sole assertion: sarif-id is
+          # populated before wait-for-processing can reject the SARIF.
+          echo "sarif-tflint sarif-id=${{ steps.sarif-tflint.outputs.sarif-id }}"
 
   # ─────────────────────────────────────────────────────────────────────────
   # Container — Trivy Image
