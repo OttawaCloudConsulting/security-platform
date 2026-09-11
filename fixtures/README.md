@@ -31,9 +31,14 @@ fixtures/
 | `requirements.txt` | SCA sub-scan (pip-audit) | 46 advisory entries / 23 unique IDs across 4 vulnerable packages of 7 resolved dependencies |
 
 The two `requirements.txt` rows report different numbers on purpose: `pip-audit -r` resolves the
-transitive closure (`urllib3`, `idna`, `MarkupSafe`, …) and counts an advisory per source, while
-`trivy fs` reads only the two direct `==` pins in the file. Neither figure is wrong and the gap is
-not a broken scan.
+transitive closure (`urllib3`, `idna`, `MarkupSafe`, …) while `trivy fs` reads only the two direct
+`==` pins in the file. Inside pip-audit's own JSON every advisory is reported exactly twice — 46
+entries are 23 unique advisories, so dedupe on `vulns[].id` before counting anything. Measured
+2026-09-11 and not inferred: the 10 unique advisories pip-audit reports against the two direct pins
+carry exactly Trivy's 10 `requirements.txt` CVE ids in their `aliases` — the same ten
+vulnerabilities in two ID namespaces (`PYSEC-*` vs `CVE-*`), not a discrepancy. Neither figure is
+wrong and the gap is not a broken scan. Note also that pip-audit emits no severity or CVSS field at
+all, so no severity split can be quoted for that row.
 
 Tool versions used for the 2026-09-11 measurement: Trivy 0.74.0, Checkov 3.2.396, tflint 0.61.0
 (ruleset.terraform 0.14.1-bundled), pip-audit 2.10.1, npm 11.7.0.
