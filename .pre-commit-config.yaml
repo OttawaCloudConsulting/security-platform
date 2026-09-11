@@ -18,8 +18,10 @@ repos:
     hooks:
       - id: terraform_fmt
         types: [terraform]
+        exclude: ^fixtures/          # ADD
       - id: terraform_validate
         types: [terraform]
+        exclude: ^fixtures/          # ADD — also avoids `terraform init` on an old provider
 
   # --- Python: Ruff (replaces flake8, black, isort) ---
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -44,6 +46,12 @@ repos:
     hooks:
       - id: hadolint
         types: [dockerfile]
+        exclude: ^fixtures/          # ADD — the recommended digest-pinned debian
+                                     # Dockerfile may pass hadolint clean, but any
+                                     # future fixture edit (adding RUN apk/apt lines,
+                                     # a mutable tag) trips DL3006/DL3007/DL3018.
+                                     # Verified: an `alpine:3.14 + apk add curl`
+                                     # variant exits 1 on DL3018.
 
   # --- YAML / Kubernetes manifests: yamllint ---
   - repo: https://github.com/adrienverge/yamllint
@@ -79,7 +87,8 @@ repos:
         entry: npm audit --audit-level=high
         language: system
         files: package-lock\.json$
-        pass_filenames: false
+        exclude: ^fixtures/          # ADD — hook is pass_filenames:false and runs at
+        pass_filenames: false        #       repo root; ENOLOCK exit 1 without this
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TIER 2: Secrets Gate
