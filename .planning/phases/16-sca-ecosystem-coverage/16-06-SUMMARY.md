@@ -54,7 +54,7 @@ completed: 2026-09-11
 |---|---|---|
 | `7b9b49d` | `docs(16-06): record tflint adoption in ADR-015 and add pip-audit/tflint to the blueprint tool tables` | **1 and 2** |
 | `f2f8336` | `docs(16-06): complete ADR-015 and blueprint reconciliation plan` | SUMMARY / STATE / ROADMAP / deferred-items + three long-untracked planning artifacts |
-| *(follow-up)* | `docs(16-06): narrow ADR-015's Checkov claim and record the remaining deviations` | post-review accuracy correction to ADR-015 |
+| `3131a5e` | `docs(16-06): narrow ADR-015's Checkov claim and record the remaining deviations` | post-review accuracy correction to ADR-015 |
 
 **Why one commit rather than two.** Task 2's acceptance criteria require `git log -1`'s subject to be exactly the string above *and* require `git show --name-only HEAD` to contain both `adr015-tflint-terraform-pin-checking.md` (a Task 1 file) and `docs/development-security-stack-option-1.md` (a Task 2 file). Committing Task 1 separately would have made that criterion unsatisfiable. Task 1's three `<verify>` blocks operate on the working tree and were run — and passed — before Task 2 began, so the gate was not skipped, only the commit boundary was. Files were staged individually by name; no `git add -A` (the working tree carries dozens of unrelated `.claude/**` modifications from other work).
 
