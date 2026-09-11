@@ -97,6 +97,22 @@ and the original drift caveat retained. The Pre-commit Scoping section records t
 | Trivy fs | 9 (npm only) | **19** (9 npm + 10 pip) | Trivy parses `requirements.txt` natively. The npm sub-total is unchanged at 9, so this is purely additive. |
 | Trivy image | 222 (4 CRITICAL, 52 HIGH) | **222 (4 CRITICAL, 52 HIGH)** | Re-measured today and identical — the digest pin is doing its job. This is a fresh measurement that happens to match, not a carried-forward number. |
 
+### pip-audit 46 vs 23, and the 10 == 10 cross-check (verified after the fixture commit)
+
+Every advisory ID in the pip-audit report appears **exactly twice** — uniform 2x in all four vulnerable
+packages (requests 10 entries / 5 unique, jinja2 10 / 5, urllib3 22 / 11, idna 4 / 2). Comparing the
+duplicate pairs field-by-field: they carry the same `id`, `aliases` and `fix_versions`, and differ only
+in `description` text (one rendering reads like the GHSA advisory, the other like the OSV/NVD one). So
+the duplication is one advisory reported from two sources, not two distinct advisories.
+
+**The real advisory count is 23 unique IDs.** pip-audit 2.10.1's own stdout summary ("Found 46 known
+vulnerabilities") doubles as well.
+
+Cross-validation against Trivy: unique IDs on the two **direct** pins are requests 5 + jinja2 5 = **10**.
+`trivy fs` on `requirements.txt` reported **10** pip vulnerabilities. Exact match — which independently
+confirms that the pip-audit/Trivy gap is entirely (a) transitive resolution and (b) the 2x duplication,
+with no third unexplained factor.
+
 `checkov` also emitted `WARNI Failed to download module terraform-aws-modules/s3-bucket/aws:None (for
 external modules, the --download-external-modules flag is required)`. That is expected and desirable —
 it confirms T-16-04's "accept" disposition holds: nothing in this repo fetches the remote module.
@@ -155,6 +171,12 @@ a rule-correct finding."
   or taken from the Trivy pip results (which do carry severities — 1 HIGH, 9 MEDIUM here).
 - **Neither pip-audit nor npm audit emits SARIF.** tflint does. Phase 17's Criterion 4 applies to two
   of the three tools.
+- **`fixtures/README.md` wording to tighten.** The Fixture Reference note says pip-audit "counts an
+  advisory per source." That is consistent with the evidence above but imprecise and invites the reader
+  to treat 46 as the advisory count. The next plan that commits to the target repo should reword it to
+  the verified statement: *46 entries = 23 unique advisories reported twice each; the 10 unique IDs on
+  the direct pins match Trivy's 10 exactly.* Not fixed here because a second commit on this branch would
+  break this plan's acceptance criterion that `git log -1`'s subject is the `test(16-01): …` message.
 - **`sca` job check-run name** is still verbatim `SCA — Trivy Filesystem` (em-dash U+2014), unchanged
   by this plan. If a later plan renames it, Phase 18's branch-protection list must follow.
 
