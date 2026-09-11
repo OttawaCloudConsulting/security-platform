@@ -108,7 +108,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
   3. Every run leaves downloadable JSON artifacts — one per scan job, including the SCA sub-scans — with an explicit retention period.
   4. A tool without native SARIF output still reaches the Security tab or the artifact set through a documented conversion step.
 **Plans**: 7 plans
-- [ ] 17-01-PLAN.md — Cut the phase branch, author the offline static upload gate, and grant `security-events: write` at the calling job and the callee
+- [x] 17-01-PLAN.md — Cut the phase branch, author the offline static upload gate, and grant `security-events: write` at the calling job and the callee
 - [ ] 17-02-PLAN.md — Replace the `sca` job's `trivy convert` with a direct `trivy fs --format sarif` run and mirror it in the smoke gate with a ROOTPATH regression guard
 - [ ] 17-03-PLAN.md — Add six `upload-sarif` steps with unique categories, each paired with an intolerant `steps.<id>.outcome` assertion
 - [ ] 17-04-PLAN.md — Add five per-job `upload-artifact` steps with explicit 90-day retention and glob-based SCA paths, each with a landing assertion
@@ -172,7 +172,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 14. Workflow Foundation and Action Pinning | v2.0 | 3/3 | Complete   | 2026-09-10 |
 | 15. Five Parallel Scan Jobs | v2.0 | 5/5 | Complete   | 2026-09-11 |
 | 16. SCA Ecosystem Coverage | v2.0 | 7/7 | Complete    | 2026-09-11 |
-| 17. SARIF Upload and Artifact Retention | v2.0 | 0/7 | Planned | - |
+| 17. SARIF Upload and Artifact Retention | v2.0 | 1/7 | In Progress|  |
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 0/? | Not started | - |
 | 19. Pipeline Validation via Branch-Target PRs | v2.0 | 0/? | Not started | - |
 | 20. Template Packaging and Adoption Docs | v2.0 | 0/? | Not started | - |

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
-status: ready_to_plan
-stopped_at: Phase 16 complete (7/7) — ready to discuss Phase 17
-last_updated: 2026-09-11T15:44:47.766Z
+status: executing
+stopped_at: "Completed 17-01-PLAN.md — phase branch feature/phase-17-sarif-upload-and-artifact-retention cut in repos/security-platform from main at 40682ce; scripts/check-workflow-uploads.sh (34cd158) then the security-events grant in both workflow files (66a18ad). Gate observed exit 1 -> exit 0. Nothing pushed. Next: 17-02."
+last_updated: "2026-09-11T18:05:42.598Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 15
-  completed_plans: 15
+  total_plans: 22
+  completed_plans: 16
   percent: 43
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 17 — sarif upload and artifact retention
+**Current focus:** Phase 17 — sarif-upload-and-artifact-retention
 
 ## Current Position
 
-Phase: 17
-Plan: Not started
-Status: Ready to plan
+Phase: 17 (sarif-upload-and-artifact-retention) — EXECUTING
+Plan: 2 of 7
+Status: Ready to execute
 Last activity: 2026-09-11
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 73%
 
 ## Performance Metrics
 
@@ -96,6 +96,11 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 16-07]: Criterion 3 closed as PARTIALLY satisfied with explicit user acceptance — tflint flags missing provider constraints and unpinned module sources but NOT floating ranges like version = '>= 3.0'; a custom rule stays out of scope per ADR-015
 - [Phase 16-07]: the sca check-run name is frozen at 'security / SCA — Trivy Filesystem' (em dash U+2014, re-read from origin/main by yaml parse and byte-dumped) despite the job now running four tools, because Phase 18 hard-codes it
 - [Phase 16-07]: Criterion 4 recorded as met by 16-03's empty-repo negative test plus 16-04's static guard assertions, NOT by a live skip — the product repo carries all three ecosystems
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-01: the phase's standing offline gate is scripts/check-workflow-uploads.sh in repos/security-platform — ten static checks over BOTH workflow files, exit 0 pass / 1 workflow defect / 2 pyyaml missing, and it was observed FAILING (exit 1, PERMISSIONS-CALLER + PERMISSIONS-CALLEE) before the grant that satisfies it was made
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-01: security-events: write now exists on BOTH sides of the workflow_call boundary — job-scoped on jobs.security in pr-security.yml (OD-1) and re-declared at workflow level in security.yml; all three permission mappings parse to exactly {contents: read, security-events: write, actions: read} except the caller's workflow-level floor, which stays {contents: read}
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-01: the gate's REDACT-RETAINED check matches an ANCHORED gitleaks invocation line, not the substring 'gitleaks' — the Install Gitleaks step mentions the binary three times and redacts nothing, so a substring test would fail permanently; likewise ARTIFACT-PATH-SAFETY tests '**' separately because the plan's own regex character class admits '*'
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-01: the gate deliberately asserts NO counts of upload steps so it passes at every intermediate commit of the phase; 17-03/17-04 assert counts inline, and they inherit UPLOAD-VERIFY-PAIRING (every upload needs an id: and a later same-job step reading steps.<id>.outcome) plus ARTIFACT-PATH-SAFETY (bare-basename *.json/*.sarif globs only, so 16-04's numbered npm-audit-<n>.json must be globbed as npm-audit-*.json)
+- [Phase 17-sarif-upload-and-artifact-retention]: 17-01: CICD-02 and CICD-03 were NOT marked complete. requirements.mark-complete flipped both to Complete from this plan's frontmatter and the change was reverted — no SARIF upload step and no artifact upload step exists yet; they ship in 17-03/17-04. Mark them there, not here.
 
 ### Pending Todos
 
@@ -140,11 +145,12 @@ Carried forward from v1.1 close:
 | Phase 16 P05 | ~15min | 2 tasks | 0 files |
 | Phase 16 P06 | ~12min | 2 tasks | 3 files |
 | Phase 16 P07 | ~10min | 2 tasks | 0 files |
+| Phase 17-sarif-upload-and-artifact-retention P01 | 20min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T15:33:01.699Z
-Stopped at: Completed 16-07-PLAN.md — PR #7 MERGED to OttawaCloudConsulting/security-platform main (merge commit 40682ce) on the user's 'Approved — merge'. origin/main verified via git show to carry the four-tool sca job, the three detect-*.sh scripts, the extended smoke gate and both fixture changes. Phase 16 complete (7/7); SCA-01/02/03 closed. Next: verify Phase 16, then Phase 17 (SARIF upload / artifact retention)
+Last session: 2026-09-11T18:05:42.592Z
+Stopped at: Completed 17-01-PLAN.md — phase branch feature/phase-17-sarif-upload-and-artifact-retention cut in repos/security-platform from main at 40682ce; scripts/check-workflow-uploads.sh (34cd158) then the security-events grant in both workflow files (66a18ad). Gate observed exit 1 -> exit 0. Nothing pushed. Next: 17-02.
 Resume file: None
 
 ## Operator Next Steps
