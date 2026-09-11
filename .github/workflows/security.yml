@@ -54,6 +54,59 @@ jobs:
         if: always()
         run: ls -l semgrep-results.json semgrep.sarif
 
+      - name: Upload Semgrep SARIF
+        id: sarif-semgrep
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep         # MANDATORY — distinguishes this analysis
+          # wait-for-processing is deliberately NOT set: its default of true is
+          # what turns an async ingestion rejection into a step failure that
+          # the outcome assertion below can see.
+
+      # Deliberately WITHOUT continue-on-error, and deliberately NOT guarded on
+      # the upload step itself. ADR-001 tolerates a failed upload; it does not
+      # license shipping a phase whose uploads never landed, so the tolerated
+      # step above is read back here and a non-success outcome turns this job
+      # red. The fork/Dependabot guard belongs on THIS step and never on the
+      # upload: a fork PR gets a read-only GITHUB_TOKEN regardless of the
+      # `permissions` key, so the upload cannot succeed there, and whether a
+      # Dependabot run can be granted security-events: write is unconfirmed —
+      # a Dependabot PR is expected here, because Phase 14 pinned
+      # actions/checkout one patch behind on purpose. Guarding the upload
+      # instead would silently publish nothing on those runs.
+      - name: Verify Semgrep SARIF upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          python3 - semgrep.sarif <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          with open(path) as handle:
+              data = json.load(handle)
+          if "runs" not in data:
+              print("SARIF has no runs key: {}".format(path))
+              sys.exit(1)
+          runs = data.get("runs") or []
+          print("{}: {} run(s)".format(path, len(runs)))
+          for run in runs:
+              driver = (run.get("tool") or {}).get("driver") or {}
+              print("  tool.driver.name={} results={}".format(
+                  driver.get("name"), len(run.get("results") or [])))
+          PY
+          if [ "${{ steps.sarif-semgrep.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.sarif-semgrep.outcome }} — the upload did not land."
+            echo "Most likely cause: security-events: write missing from the CALLER"
+            echo "(.github/workflows/pr-security.yml), which a called workflow cannot elevate."
+            exit 1
+          fi
+          # Secondary, for the log only — never the sole assertion: sarif-id is
+          # populated before wait-for-processing can reject the SARIF.
+          echo "sarif-semgrep sarif-id=${{ steps.sarif-semgrep.outputs.sarif-id }}"
+
   # ─────────────────────────────────────────────────────────────────────────
   # IaC — Checkov
   # Scans infrastructure as code (Terraform, CloudFormation, K8s, Dockerfile,
@@ -81,6 +134,52 @@ jobs:
       - name: Show scan output files
         if: always()
         run: ls -l checkov-results.json checkov.sarif
+
+      - name: Upload Checkov SARIF
+        id: sarif-checkov
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+        with:
+          sarif_file: checkov.sarif
+          category: checkov         # MANDATORY — distinguishes this analysis
+          # wait-for-processing is deliberately NOT set: its default of true is
+          # what turns an async ingestion rejection into a step failure that
+          # the outcome assertion below can see.
+
+      # Same contract as `Verify Semgrep SARIF upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard sits on the verify step, never on the
+      # upload.
+      - name: Verify Checkov SARIF upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          python3 - checkov.sarif <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          with open(path) as handle:
+              data = json.load(handle)
+          if "runs" not in data:
+              print("SARIF has no runs key: {}".format(path))
+              sys.exit(1)
+          runs = data.get("runs") or []
+          print("{}: {} run(s)".format(path, len(runs)))
+          for run in runs:
+              driver = (run.get("tool") or {}).get("driver") or {}
+              print("  tool.driver.name={} results={}".format(
+                  driver.get("name"), len(run.get("results") or [])))
+          PY
+          if [ "${{ steps.sarif-checkov.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.sarif-checkov.outcome }} — the upload did not land."
+            echo "Most likely cause: security-events: write missing from the CALLER"
+            echo "(.github/workflows/pr-security.yml), which a called workflow cannot elevate."
+            exit 1
+          fi
+          # Secondary, for the log only — never the sole assertion: sarif-id is
+          # populated before wait-for-processing can reject the SARIF.
+          echo "sarif-checkov sarif-id=${{ steps.sarif-checkov.outputs.sarif-id }}"
 
   # ─────────────────────────────────────────────────────────────────────────
   # SCA — four scanners in ONE job. Adding a sixth job would break three
@@ -399,6 +498,55 @@ jobs:
         if: always()
         run: ls -l trivy-image.json trivy-image.sarif
 
+      - name: Upload Trivy image SARIF
+        id: sarif-trivy-image
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image     # MANDATORY — distinguishes this analysis
+          # Not optional: trivy-fs.sarif in the sca job carries the identical
+          # tool.driver.name of `Trivy`, and GitHub fails the second upload of
+          # the same tool + category in one run.
+          # wait-for-processing is deliberately NOT set: its default of true is
+          # what turns an async ingestion rejection into a step failure that
+          # the outcome assertion below can see.
+
+      # Same contract as `Verify Semgrep SARIF upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard sits on the verify step, never on the
+      # upload.
+      - name: Verify Trivy image SARIF upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          python3 - trivy-image.sarif <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          with open(path) as handle:
+              data = json.load(handle)
+          if "runs" not in data:
+              print("SARIF has no runs key: {}".format(path))
+              sys.exit(1)
+          runs = data.get("runs") or []
+          print("{}: {} run(s)".format(path, len(runs)))
+          for run in runs:
+              driver = (run.get("tool") or {}).get("driver") or {}
+              print("  tool.driver.name={} results={}".format(
+                  driver.get("name"), len(run.get("results") or [])))
+          PY
+          if [ "${{ steps.sarif-trivy-image.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.sarif-trivy-image.outcome }} — the upload did not land."
+            echo "Most likely cause: security-events: write missing from the CALLER"
+            echo "(.github/workflows/pr-security.yml), which a called workflow cannot elevate."
+            exit 1
+          fi
+          # Secondary, for the log only — never the sole assertion: sarif-id is
+          # populated before wait-for-processing can reject the SARIF.
+          echo "sarif-trivy-image sarif-id=${{ steps.sarif-trivy-image.outputs.sarif-id }}"
+
   # ─────────────────────────────────────────────────────────────────────────
   # Secrets — Gitleaks
   # Scans full git history for hardcoded secrets and credentials.
@@ -443,3 +591,49 @@ jobs:
       - name: Show scan output files
         if: always()
         run: ls -l gitleaks-results.json gitleaks.sarif
+
+      - name: Upload Gitleaks SARIF
+        id: sarif-gitleaks
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks        # MANDATORY — distinguishes this analysis
+          # wait-for-processing is deliberately NOT set: its default of true is
+          # what turns an async ingestion rejection into a step failure that
+          # the outcome assertion below can see.
+
+      # Same contract as `Verify Semgrep SARIF upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard sits on the verify step, never on the
+      # upload.
+      - name: Verify Gitleaks SARIF upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          python3 - gitleaks.sarif <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          with open(path) as handle:
+              data = json.load(handle)
+          if "runs" not in data:
+              print("SARIF has no runs key: {}".format(path))
+              sys.exit(1)
+          runs = data.get("runs") or []
+          print("{}: {} run(s)".format(path, len(runs)))
+          for run in runs:
+              driver = (run.get("tool") or {}).get("driver") or {}
+              print("  tool.driver.name={} results={}".format(
+                  driver.get("name"), len(run.get("results") or [])))
+          PY
+          if [ "${{ steps.sarif-gitleaks.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.sarif-gitleaks.outcome }} — the upload did not land."
+            echo "Most likely cause: security-events: write missing from the CALLER"
+            echo "(.github/workflows/pr-security.yml), which a called workflow cannot elevate."
+            exit 1
+          fi
+          # Secondary, for the log only — never the sole assertion: sarif-id is
+          # populated before wait-for-processing can reject the SARIF.
+          echo "sarif-gitleaks sarif-id=${{ steps.sarif-gitleaks.outputs.sarif-id }}"
