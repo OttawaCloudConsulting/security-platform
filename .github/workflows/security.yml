@@ -11,8 +11,17 @@ name: Security Scans
 on:
   workflow_call: {}
 
+# Explicit FULL permission set, not a subset. A called workflow's block can
+# only REDUCE what the caller granted — leaving this at `contents: read`
+# would downgrade the caller's grant back out and 403 every SARIF upload.
 permissions:
   contents: read
+  # Required for SARIF upload to the GitHub Security tab. Re-declared here, not
+  # newly granted: the caller's job-level set (pr-security.yml) is the ceiling.
+  security-events: write
+  # Required only for private repositories. Read-only; carried for Phase 20
+  # consumer-template portability.
+  actions: read
 
 jobs:
 
