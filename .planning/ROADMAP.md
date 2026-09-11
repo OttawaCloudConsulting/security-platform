@@ -50,30 +50,38 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 ## Phase Details
 
 ### Phase 14: Workflow Foundation and Action Pinning
+
 **Goal**: This repo has a callable security scanning workflow that runs on every pull request, pinned to immutable action SHAs and kept current automatically.
 **Depends on**: Phase 13 (v1.1 shipped)
 **Requirements**: CICD-05
 **Success Criteria** (what must be TRUE):
+
   1. Opening a pull request in this repo triggers a security workflow run visible in the Actions tab, and the run completes without blocking the merge.
   2. The scanning workflow is defined with `on: workflow_call` and is invoked by a thin `pull_request` caller workflow in this repo, so the same file is callable from another repo without restructuring later.
   3. Every `uses:` reference in the workflows is pinned to a full commit SHA with a human-readable version comment.
   4. Dependabot opens a pull request against this repo when a pinned action publishes a newer release.
+
 **Plans**: 3 plans
+
 - [x] 14-01-PLAN.md — Create root `.github/` tree in `repos/security-platform/`: callable `security.yml`, `pull_request` caller `pr-security.yml`, `dependabot.yml`; static gate
 - [x] 14-02-PLAN.md — Push the product-repo branch, open PR, observe the green PR-triggered run and capture the check-run name (criteria 1-2)
 - [x] 14-03-PLAN.md — Human-confirmed merge to `main`, then observe and classify Dependabot's first run (criterion 4 / CICD-05)
 
 ### Phase 15: Five Parallel Scan Jobs
+
 **Goal**: Every pull request is scanned by five independent security tools running in parallel, each reporting what it finds without blocking the merge.
 **Depends on**: Phase 14
 **Requirements**: CICD-01, SCA-04
 **Success Criteria** (what must be TRUE):
+
   1. A single pull request shows five separate scan checks — SAST, IaC, SCA, container, secrets — running concurrently rather than one after another.
   2. Each job's log shows a real result from its tool run against real files in the checkout — repo sources plus the scan fixtures added for the jobs that have nothing to scan otherwise — not a skipped or stubbed step.
   3. The SCA job runs a Trivy/Grype filesystem scan across the repo and reports the packages and vulnerabilities it detects, with no per-ecosystem configuration required.
   4. Each job writes its machine-readable output (SARIF and/or JSON) to a file on the runner, even though nothing consumes those files yet.
   5. A job that reports findings still leaves the pull request mergeable.
+
 **Plans**: 5 plans
+
 - [x] 15-01-PLAN.md — Cut the phase branch, scope four pre-commit hooks away from `fixtures/`, and author the fixture tree (Dockerfile, main.tf, package.json + generated lock, README)
 - [x] 15-02-PLAN.md — Author and run `scripts/smoke-scans.sh`, a local pass/fail gate proving all five scanner invocations yield real, non-empty results
 - [x] 15-03-PLAN.md — Replace the `placeholder` job with five SHA-pinned, `needs:`-free, step-tolerated scan jobs in `security.yml`; validate statically
@@ -81,15 +89,19 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] 15-05-PLAN.md — Human sign-off on concurrency and report-only behaviour, then merge to `main` and close out the phase's open questions
 
 ### Phase 16: SCA Ecosystem Coverage
+
 **Goal**: The SCA job audits each dependency ecosystem this practice actually uses, rather than relying on the generic filesystem sweep alone.
 **Depends on**: Phase 15
 **Requirements**: SCA-01, SCA-02, SCA-03
 **Success Criteria** (what must be TRUE):
+
   1. On a repo containing `package-lock.json`, the SCA job reports npm dependency vulnerabilities with severity levels.
   2. On a repo containing Python dependency files, the SCA job reports Python advisories via pip-audit or an equivalent tool.
   3. Terraform provider and module version pinning is checked, and floating or unpinned versions are reported as findings.
   4. Each sub-scan skips cleanly with a clear log message — no failure, no false pass — when the repo contains no files for that ecosystem.
+
 **Plans**: 7 plans
+
 - [x] 16-01-PLAN.md — Cut the phase branch and seed the missing fixtures: `fixtures/requirements.txt` plus an unconstrained-and-used provider and an unpinned module in `fixtures/main.tf`; re-measure `fixtures/README.md`
 - [x] 16-02-PLAN.md — Extract `scripts/detect-{npm,python,terraform}.sh` and generalise the smoke-gate helpers (`run_scan_rc`, `require_parses_json`, soft preflight, SKIPPED accounting)
 - [x] 16-03-PLAN.md — Prove npm audit, pip-audit and tflint locally with report-content assertions, plus the Criterion 4 clean-skip negative test in an empty repo
@@ -99,54 +111,67 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] 16-07-PLAN.md — Human sign-off on the evidence and the Criterion 3 limitation, then merge and close SCA-01/02/03
 
 ### Phase 17: SARIF Upload and Artifact Retention
+
 **Goal**: Scan findings surface in GitHub's Security tab and are retained as JSON so a future DefectDojo import has data to consume.
 **Depends on**: Phase 16
 **Requirements**: CICD-02, CICD-03
 **Success Criteria** (what must be TRUE):
+
   1. After a workflow run, the repo's Security > Code scanning view shows findings attributed to each scanner separately, so results from one tool do not overwrite another's.
   2. Findings appear as inline annotations on the pull request diff wherever the tool reports a file and line.
   3. Every run leaves downloadable JSON artifacts — one per scan job, including the SCA sub-scans — with an explicit retention period.
   4. A tool without native SARIF output still reaches the Security tab or the artifact set through a documented conversion step.
+
 **Plans**: 7 plans
+
 - [x] 17-01-PLAN.md — Cut the phase branch, author the offline static upload gate, and grant `security-events: write` at the calling job and the callee
 - [x] 17-02-PLAN.md — Replace the `sca` job's `trivy convert` with a direct `trivy fs --format sarif` run and mirror it in the smoke gate with a ROOTPATH regression guard
 - [x] 17-03-PLAN.md — Add six `upload-sarif` steps with unique categories, each paired with an intolerant `steps.<id>.outcome` assertion
 - [x] 17-04-PLAN.md — Add five per-job `upload-artifact` steps with explicit 90-day retention and glob-based SCA paths, each with a landing assertion
 - [x] 17-05-PLAN.md — Construct the annotation-capable fixture edit, push, open the PR, and collect live category, artifact and check-run evidence
-- [ ] 17-06-PLAN.md — Record the decisions in ADR-016 and make the blueprint's CI/CD template copy-pasteable; log the deferrals
+- [x] 17-06-PLAN.md — Record the decisions in ADR-016 and make the blueprint's CI/CD template copy-pasteable; log the deferrals
 - [ ] 17-07-PLAN.md — Human verification of the Security tab and PR annotations, then merge and close CICD-02/CICD-03
 
 ### Phase 18: Configurable Gate Mode and Branch Protection
+
 **Goal**: Each consuming repo chooses whether security scans block a merge or merely report, without editing workflow YAML.
 **Depends on**: Phase 17
 **Requirements**: CICD-06, CICD-04
 **Success Criteria** (what must be TRUE):
+
   1. With the gate flag set to blocking, a pull request carrying a seeded finding fails its check; with the flag set to report-only, the same pull request passes.
   2. The flag is settable in both consumption modes — as a `workflow_call` input when the workflow is referenced remotely, and as a repo-level variable or env when the template is copy-pasted.
   3. Switching a repo between blocking and report-only requires no change to workflow YAML.
   4. Written branch-protection configuration and steps exist for promoting the scan checks to required checks, including which severity threshold triggers a failure.
+
 **Plans**: TBD
 
 ### Phase 19: Pipeline Validation via Branch-Target PRs
+
 **Goal**: The complete pipeline is proven end-to-end inside this repo against deliberately seeded findings, with no second repo required.
 **Depends on**: Phase 18
 **Requirements**: VAL-01
 **Success Criteria** (what must be TRUE):
+
   1. A branch-target pull request carrying seeded findings for all five scan categories produces a detection from each of the five jobs.
   2. That same pull request is observed failing its checks under blocking mode and passing under report-only mode — both runs witnessed, not inferred.
   3. A seeded finding is traced from its source file through to both the Security tab entry and the retained JSON artifact.
   4. A clean pull request with no seeded findings passes all five jobs green.
+
 **Plans**: TBD
 
 ### Phase 20: Template Packaging and Adoption Docs
+
 **Goal**: Any of the other 6+ org repos can adopt the security pipeline in either consumption mode by following documentation alone.
 **Depends on**: Phase 19
 **Requirements**: DIST-06, DIST-07, DIST-08
 **Success Criteria** (what must be TRUE):
+
   1. A copy-paste workflow template exists with every per-repo substitution clearly marked, and dropping it into a repo produces a working scan run.
   2. Another repo in the org can call the workflow via `uses: OCC-github/security_solution/.github/workflows/<name>.yml@<ref>` against a stable published ref.
   3. Adoption docs walk through both consumption modes end to end, covering gate-mode selection, branch protection setup, and Dependabot wiring.
   4. Docs state which scan jobs apply to which repo types and how to disable the ones that do not apply.
+
 **Plans**: TBD
 
 ## Progress
@@ -172,7 +197,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 14. Workflow Foundation and Action Pinning | v2.0 | 3/3 | Complete   | 2026-09-10 |
 | 15. Five Parallel Scan Jobs | v2.0 | 5/5 | Complete   | 2026-09-11 |
 | 16. SCA Ecosystem Coverage | v2.0 | 7/7 | Complete    | 2026-09-11 |
-| 17. SARIF Upload and Artifact Retention | v2.0 | 4/7 | In Progress|  |
+| 17. SARIF Upload and Artifact Retention | v2.0 | 6/7 | In Progress|  |
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 0/? | Not started | - |
 | 19. Pipeline Validation via Branch-Target PRs | v2.0 | 0/? | Not started | - |
 | 20. Template Packaging and Adoption Docs | v2.0 | 0/? | Not started | - |
