@@ -144,7 +144,16 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
   3. Switching a repo between blocking and report-only requires no change to workflow YAML.
   4. Written branch-protection configuration and steps exist for promoting the scan checks to required checks, including which severity threshold triggers a failure.
 
-**Plans**: TBD
+**Plans**: 8 plans
+
+- [ ] 18-01-PLAN.md — Cut the phase branch; declare the `gate_mode` input, resolve it once in workflow-level `env`, and validate the enum in all five jobs
+- [ ] 18-02-PLAN.md — Condition the eleven `# D-04` scan tolerances on the resolved mode (fail-closed), repair the three SCA `if:` guards, correct the caller's comments
+- [ ] 18-03-PLAN.md — Author `scripts/set-required-checks.sh` (read-modify-write, dry-run default) and prove it non-destructive offline
+- [ ] 18-04-PLAN.md — Live report-only run: open the PR with nothing set and measure the five green checks, artifacts and analyses
+- [ ] 18-05-PLAN.md — Flip to blocking via `gh variable set` on the same commit, measure five red checks and upload survival, restore, and take the operator's required-checks decision
+- [ ] 18-06-PLAN.md — Correct the blueprint and milestone-plan branch-protection passages: five byte-exact contexts, ruleset path, severity answer, both consumption modes, D-07 ordering
+- [ ] 18-07-PLAN.md — Author ADR-017 with the D-06 five-not-six and D-07 corrections, and index it
+- [ ] 18-08-PLAN.md — Human-confirmed merge, remote verification of `origin/main`, criterion verdicts, and CICD-04/CICD-06 closure
 
 ### Phase 19: Pipeline Validation via Branch-Target PRs
 
