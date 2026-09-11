@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 16-04-PLAN.md — sca job now runs npm audit, pip-audit and tflint alongside Trivy fs, statically validated against the Phase 15 five-job contract (f4388f8, unpushed)
-last_updated: "2026-09-11T14:33:48.104Z"
+stopped_at: "Completed 16-05-PLAN.md — PR #7 open and MERGEABLE on OttawaCloudConsulting/security-platform; run 34614017396 green with live evidence for Criteria 1-3 (npm high=1/critical=1, pip-audit 46 entries/23 ids, tflint 3 rule ids under v0.64.0). NOT merged — 16-07 owns the merge checkpoint"
+last_updated: "2026-09-11T15:09:57.959Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 15
-  completed_plans: 12
+  completed_plans: 13
   percent: 29
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 16 (sca-ecosystem-coverage) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-09-11
 
-Progress: [████████░░] 80%
+Progress: [█████████░] 87%
 
 ## Performance Metrics
 
@@ -86,6 +86,10 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 16]: 16-04: each sub-scan is guarded scan (continue-on-error, D-04) -> intolerant report-content check (no continue-on-error) -> guarded ls evidence; an error-shaped report now turns a step red instead of reading as clean
 - [Phase 16]: 16-04: npm and pip reports are NUMBERED per input (npm-audit-<n>.json / pip-audit-<n>.json) — Phase 17's artifact upload must glob, not name
 - [Phase 16]: 16-04: the three CI verification bodies were extracted from the committed YAML and executed locally against real and corrupted reports (4 negative cases, all rc=1) rather than trusting the plan's static 'python3 appears in run' check
+- [Phase 16]: 16-05: live run 34614017396 on PR #7 confirms tflint v0.64.0 fires the SAME three rule ids as workstation 0.61.0 despite a bundled-ruleset bump 0.14.1 to v0.15.0 — no drift; terraform_module_pinned_source still does not fire
+- [Phase 16]: 16-05: the check-runs API returns SIX checks on the head SHA — the five security/* jobs plus an external GitGuardian App check; Phase 18 must decide explicitly whether it belongs in the required-check list
+- [Phase 16]: 16-05: tflint version evidenced from the install step's v0.64.0 download URL and the v0.15.0 ruleset doc links, because the job never runs 'tflint --version' and this plan may not modify source
+- [Phase 16]: 16-05: Criterion 4 recorded as NOT observed live (the repo has all three ecosystems) — its evidence remains 16-03's empty-repo negative test plus 16-04's static guard assertions; no fixture was deleted to manufacture a skip
 
 ### Pending Todos
 
@@ -127,11 +131,12 @@ Carried forward from v1.1 close:
 | Phase 16 P02 | ~56min | 2 tasks | 4 files |
 | Phase 16 P03 | ~35min | 2 tasks | 2 files |
 | Phase 16 P04 | 25min | 3 tasks | 1 files |
+| Phase 16 P05 | ~15min | 2 tasks | 0 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T14:33:25.486Z
-Stopped at: Completed 16-04-PLAN.md — sca job now runs npm audit, pip-audit and tflint alongside Trivy fs, statically validated against the Phase 15 five-job contract (f4388f8, unpushed)
+Last session: 2026-09-11T15:09:57.950Z
+Stopped at: Completed 16-05-PLAN.md — PR #7 open and MERGEABLE on OttawaCloudConsulting/security-platform; run 34614017396 green with live evidence for Criteria 1-3 (npm high=1/critical=1, pip-audit 46 entries/23 ids, tflint 3 rule ids under v0.64.0). NOT merged — 16-07 owns the merge checkpoint
 Resume file: None
 
 ## Operator Next Steps

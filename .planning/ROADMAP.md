@@ -94,7 +94,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] 16-02-PLAN.md — Extract `scripts/detect-{npm,python,terraform}.sh` and generalise the smoke-gate helpers (`run_scan_rc`, `require_parses_json`, soft preflight, SKIPPED accounting)
 - [x] 16-03-PLAN.md — Prove npm audit, pip-audit and tflint locally with report-content assertions, plus the Criterion 4 clean-skip negative test in an empty repo
 - [x] 16-04-PLAN.md — Add the three detect/scan/verify step groups and guarded evidence steps to the existing `sca` job in `.github/workflows/security.yml`; static validation
-- [ ] 16-05-PLAN.md — Push, open the PR, and collect live evidence for Criteria 1-3 from the SCA job log; confirm the five check-run names and MERGEABLE
+- [x] 16-05-PLAN.md — Push, open the PR, and collect live evidence for Criteria 1-3 from the SCA job log; confirm the five check-run names and MERGEABLE
 - [ ] 16-06-PLAN.md — Record the tflint adoption in ADR-015 and add pip-audit/tflint to the blueprint's tool tables
 - [ ] 16-07-PLAN.md — Human sign-off on the evidence and the Criterion 3 limitation, then merge and close SCA-01/02/03
 
@@ -164,7 +164,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 13. Maintenance and Validation | v1.1 | 8/8 | Complete | 2026-09-10 |
 | 14. Workflow Foundation and Action Pinning | v2.0 | 3/3 | Complete   | 2026-09-10 |
 | 15. Five Parallel Scan Jobs | v2.0 | 5/5 | Complete   | 2026-09-11 |
-| 16. SCA Ecosystem Coverage | v2.0 | 4/7 | In Progress|  |
+| 16. SCA Ecosystem Coverage | v2.0 | 5/7 | In Progress|  |
 | 17. SARIF Upload and Artifact Retention | v2.0 | 0/? | Not started | - |
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 0/? | Not started | - |
 | 19. Pipeline Validation via Branch-Target PRs | v2.0 | 0/? | Not started | - |
