@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
-status: executing
-stopped_at: "Completed 17-07-PLAN.md — PHASE 17 CLOSED. PR #8 MERGED to OttawaCloudConsulting/security-platform main on the user's explicit approval (\"approved — satisfied, merge it\"); merge commit 8fbea7d169ab79c31cb77cd18b835ff3ffb14633 (merge of 40682ce + fbe0071), merged 2026-09-11T20:02:53Z. Verified on origin/main (never the local tree): 6 categorised upload-sarif steps, 5 named artifacts at retention-days: 90, workflow-level security-events: write, 5 jobs, 0 needs:, 5 byte-identical job names (em dash e2 80 94), and the caller's job-level security-events: write + contents: read. Criterion verdicts: 1 NOT OBSERVED (Security > Code scanning UI showed no results; whether the branch/PR filter was applied is not stated in the user's answer and no filtered URL was captured — user suspects code scanning is not fully enabled at repo level; per-tool results ARE separated on the PR Checks tab and 17-05's analyses API read confirms six distinct categories server-side), 2 MET (annotations visible), 3 MET (machine evidence, 17-05), 4 MET (user confirmed). ROADMAP Phase 17 7/7 Complete; CICD-02/CICD-03 confirmed already [x] and Complete. Next: Phase 18 (gate mode and branch protection) — inherits the twelve byte-exact check-run names, the per-driver rule, the red Checkov check, and the analyses-vs-check-runs case mismatch. PRIOR: Completed 17-06-PLAN.md — ADR-016 written and blueprint CI/CD template made copy-pasteable; commits 553b2a2, 939b5b3, c3a0fb2."
-last_updated: "2026-09-11T20:10:00.000Z"
+status: Phase 17 closed; ready to start Phase 18
+stopped_at: Phase 18 context gathered
+last_updated: "2026-09-11T22:10:14.284Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
@@ -172,9 +172,9 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-09-11T19:34:36.140Z
-Stopped at: Completed 17-05-PLAN.md — PR #8 open and unmerged on OttawaCloudConsulting/security-platform, run 34638828775 green. Before: 0 artifacts, analyses HTTP 404. After: 7 analyses across 6 distinct categories on refs/pull/8/merge, 5 artifacts expiring exactly 90 days out, sca-results carrying npm-audit-1.json + pip-audit-1.json. Criterion 2 OBSERVED — 3 code-scanning annotations on fixtures/main.tf line 38. 12 check runs on the head SHA; code scanning adds ONE PER tool.driver.name, not per category. Checkov code-scanning check is RED. Commit fbe0071. Next: 17-06 (ADR-016).
-Resume file: None
+Last session: 2026-09-11T22:10:14.271Z
+Stopped at: Phase 18 context gathered
+Resume file: .planning/phases/18-configurable-gate-mode-and-branch-protection/18-CONTEXT.md
 
 ## Operator Next Steps
 
