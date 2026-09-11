@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
-status: executing
-stopped_at: "Completed 16-05-PLAN.md — PR #7 open and MERGEABLE on OttawaCloudConsulting/security-platform; run 34614017396 green with live evidence for Criteria 1-3 (npm high=1/critical=1, pip-audit 46 entries/23 ids, tflint 3 rule ids under v0.64.0). NOT merged — 16-07 owns the merge checkpoint"
-last_updated: "2026-09-11T15:18:59.693Z"
+status: verifying
+stopped_at: "Completed 16-07-PLAN.md — PR #7 MERGED to OttawaCloudConsulting/security-platform main (merge commit 40682ce) on the user's 'Approved — merge'. origin/main verified via git show to carry the four-tool sca job, the three detect-*.sh scripts, the extended smoke gate and both fixture changes. Phase 16 complete (7/7); SCA-01/02/03 closed. Next: verify Phase 16, then Phase 17 (SARIF upload / artifact retention)"
+last_updated: "2026-09-11T15:33:01.714Z"
 last_activity: 2026-09-11
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 15
-  completed_plans: 14
-  percent: 29
+  completed_plans: 15
+  percent: 43
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 ## Current Position
 
-Phase: 16 (sca-ecosystem-coverage) — EXECUTING
+Phase: 16 (sca-ecosystem-coverage) — COMPLETE (merged, awaiting verification)
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-11
 
-Progress: [█████████░] 93%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -92,6 +92,10 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 16]: 16-05: Criterion 4 recorded as NOT observed live (the repo has all three ecosystems) — its evidence remains 16-03's empty-repo negative test plus 16-04's static guard assertions; no fixture was deleted to manufacture a skip
 - [Phase 16-06]: ADR-015 records tflint adoption with its limit stated as plainly as its benefit — the default ruleset flags MISSING provider constraints and unpinned module sources, but does NOT flag a floating range like >= 3.0; a custom rule is explicitly out of scope
 - [Phase 16-06]: pip-audit (Apache-2.0) and tflint (MPL-2.0) added to both blueprint tool tables, licenses resolved from the GitHub API rather than recalled; the zero-cost/zero-account line remains true and unchanged
+- [Phase 16-07]: PR #7 merged to OttawaCloudConsulting/security-platform main via --merge (commit 40682ce) on the user's literal 'Approved — merge'; origin/main verified via git show, never the local tree
+- [Phase 16-07]: Criterion 3 closed as PARTIALLY satisfied with explicit user acceptance — tflint flags missing provider constraints and unpinned module sources but NOT floating ranges like version = '>= 3.0'; a custom rule stays out of scope per ADR-015
+- [Phase 16-07]: the sca check-run name is frozen at 'security / SCA — Trivy Filesystem' (em dash U+2014, re-read from origin/main by yaml parse and byte-dumped) despite the job now running four tools, because Phase 18 hard-codes it
+- [Phase 16-07]: Criterion 4 recorded as met by 16-03's empty-repo negative test plus 16-04's static guard assertions, NOT by a live skip — the product repo carries all three ecosystems
 
 ### Pending Todos
 
@@ -135,18 +139,29 @@ Carried forward from v1.1 close:
 | Phase 16 P04 | 25min | 3 tasks | 1 files |
 | Phase 16 P05 | ~15min | 2 tasks | 0 files |
 | Phase 16 P06 | ~12min | 2 tasks | 3 files |
+| Phase 16 P07 | ~10min | 2 tasks | 0 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T15:18:39.400Z
-Stopped at: Completed 16-05-PLAN.md — PR #7 open and MERGEABLE on OttawaCloudConsulting/security-platform; run 34614017396 green with live evidence for Criteria 1-3 (npm high=1/critical=1, pip-audit 46 entries/23 ids, tflint 3 rule ids under v0.64.0). NOT merged — 16-07 owns the merge checkpoint
+Last session: 2026-09-11T15:33:01.699Z
+Stopped at: Completed 16-07-PLAN.md — PR #7 MERGED to OttawaCloudConsulting/security-platform main (merge commit 40682ce) on the user's 'Approved — merge'. origin/main verified via git show to carry the four-tool sca job, the three detect-*.sh scripts, the extended smoke gate and both fixture changes. Phase 16 complete (7/7); SCA-01/02/03 closed. Next: verify Phase 16, then Phase 17 (SARIF upload / artifact retention)
 Resume file: None
 
 ## Operator Next Steps
 
-- Phase 16 Plan 01 complete: fixtures seeded and re-measured on branch
-  `feature/phase-16-sca-ecosystem-coverage` in `repos/security-platform` (commit `68c3bbb`, not pushed).
+- **Phase 16 is complete and merged.** PR #7 merged to `OttawaCloudConsulting/security-platform` `main`
+  as merge commit `40682cea329c34b65115236bd449d16f84432e0e`; `origin/main` carries the four-tool `sca`
+  job, `scripts/detect-{npm,python,terraform}.sh`, the extended `scripts/smoke-scans.sh`,
+  `fixtures/requirements.txt` and the extended `fixtures/main.tf`. The local checkout of
+  `repos/security-platform` is on a clean `main` at `40682ce`; the merged local feature branch was
+  deleted, the remote one was left in place (non-blocking loose end).
 
-- Next: 16-02-PLAN.md — extract `scripts/detect-{npm,python,terraform}.sh` and generalise the smoke-gate
-  helpers. Note `tflint` exits **2** on findings; `run_scan()` currently treats anything but rc=1 as a
-  tool error and would misclassify a healthy tflint run.
+- **Next:** verify Phase 16, then Phase 17 (SARIF upload and artifact retention). Phase 17 must not
+  re-derive the four facts recorded in `16-07-SUMMARY.md`: npm/pip report filenames are numbered per
+  input (glob, never name), neither npm audit nor pip-audit emits SARIF while tflint does,
+  pip-audit's JSON carries no severity or CVSS field, and `--audit-level` does not filter npm's report
+  even though Trivy's `--severity` does filter Trivy's.
+
+- **Phase 18** inherits the frozen check-run name `security / SCA — Trivy Filesystem` (em dash U+2014,
+  re-read from `origin/main`) and must express any gate per tool — tflint signals findings with exit 2,
+  the others with exit 1, and pip-audit has no severity field to threshold on.

@@ -41,7 +41,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 
 - [x] **Phase 14: Workflow Foundation and Action Pinning** - Callable security workflow triggers on PRs with SHA-pinned actions kept current by Dependabot (completed 2026-09-10)
 - [x] **Phase 15: Five Parallel Scan Jobs** - SAST, IaC, SCA, container, and secrets scans run concurrently on every PR in report-only mode (completed 2026-09-11)
-- [ ] **Phase 16: SCA Ecosystem Coverage** - SCA job audits npm, Python, and Terraform dependencies alongside the generic filesystem sweep
+- [x] **Phase 16: SCA Ecosystem Coverage** - SCA job audits npm, Python, and Terraform dependencies alongside the generic filesystem sweep (completed 2026-09-11)
 - [ ] **Phase 17: SARIF Upload and Artifact Retention** - Findings reach the GitHub Security tab and persist as JSON artifacts
 - [ ] **Phase 18: Configurable Gate Mode and Branch Protection** - Each repo picks block-merge or report-only via a flag, with branch protection guidance
 - [ ] **Phase 19: Pipeline Validation via Branch-Target PRs** - Full pipeline proven end-to-end against seeded findings in this repo
@@ -96,7 +96,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] 16-04-PLAN.md — Add the three detect/scan/verify step groups and guarded evidence steps to the existing `sca` job in `.github/workflows/security.yml`; static validation
 - [x] 16-05-PLAN.md — Push, open the PR, and collect live evidence for Criteria 1-3 from the SCA job log; confirm the five check-run names and MERGEABLE
 - [x] 16-06-PLAN.md — Record the tflint adoption in ADR-015 and add pip-audit/tflint to the blueprint's tool tables
-- [ ] 16-07-PLAN.md — Human sign-off on the evidence and the Criterion 3 limitation, then merge and close SCA-01/02/03
+- [x] 16-07-PLAN.md — Human sign-off on the evidence and the Criterion 3 limitation, then merge and close SCA-01/02/03
 
 ### Phase 17: SARIF Upload and Artifact Retention
 **Goal**: Scan findings surface in GitHub's Security tab and are retained as JSON so a future DefectDojo import has data to consume.
@@ -164,7 +164,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 13. Maintenance and Validation | v1.1 | 8/8 | Complete | 2026-09-10 |
 | 14. Workflow Foundation and Action Pinning | v2.0 | 3/3 | Complete   | 2026-09-10 |
 | 15. Five Parallel Scan Jobs | v2.0 | 5/5 | Complete   | 2026-09-11 |
-| 16. SCA Ecosystem Coverage | v2.0 | 6/7 | In Progress|  |
+| 16. SCA Ecosystem Coverage | v2.0 | 7/7 | Complete   | 2026-09-11 |
 | 17. SARIF Upload and Artifact Retention | v2.0 | 0/? | Not started | - |
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 0/? | Not started | - |
 | 19. Pipeline Validation via Branch-Target PRs | v2.0 | 0/? | Not started | - |
