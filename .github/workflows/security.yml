@@ -11,8 +11,17 @@ name: Security Scans
 on:
   workflow_call: {}
 
+# Explicit FULL permission set, not a subset. A called workflow's block can
+# only REDUCE what the caller granted — leaving this at `contents: read`
+# would downgrade the caller's grant back out and 403 every SARIF upload.
 permissions:
   contents: read
+  # Required for SARIF upload to the GitHub Security tab. Re-declared here, not
+  # newly granted: the caller's job-level set (pr-security.yml) is the ceiling.
+  security-events: write
+  # Required only for private repositories. Read-only; carried for Phase 20
+  # consumer-template portability.
+  actions: read
 
 jobs:
 
@@ -45,6 +54,115 @@ jobs:
         if: always()
         run: ls -l semgrep-results.json semgrep.sarif
 
+      - name: Upload Semgrep SARIF
+        id: sarif-semgrep
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep         # MANDATORY — distinguishes this analysis
+          # wait-for-processing is deliberately NOT set: its default of true is
+          # what turns an async ingestion rejection into a step failure that
+          # the outcome assertion below can see.
+
+      # Deliberately WITHOUT continue-on-error, and deliberately NOT guarded on
+      # the upload step itself. ADR-001 tolerates a failed upload; it does not
+      # license shipping a phase whose uploads never landed, so the tolerated
+      # step above is read back here and a non-success outcome turns this job
+      # red. The fork/Dependabot guard belongs on THIS step and never on the
+      # upload: a fork PR gets a read-only GITHUB_TOKEN regardless of the
+      # `permissions` key, so the upload cannot succeed there, and whether a
+      # Dependabot run can be granted security-events: write is unconfirmed —
+      # a Dependabot PR is expected here, because Phase 14 pinned
+      # actions/checkout one patch behind on purpose. Guarding the upload
+      # instead would silently publish nothing on those runs.
+      - name: Verify Semgrep SARIF upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          python3 - semgrep.sarif <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          with open(path) as handle:
+              data = json.load(handle)
+          if "runs" not in data:
+              print("SARIF has no runs key: {}".format(path))
+              sys.exit(1)
+          runs = data.get("runs") or []
+          print("{}: {} run(s)".format(path, len(runs)))
+          for run in runs:
+              driver = (run.get("tool") or {}).get("driver") or {}
+              print("  tool.driver.name={} results={}".format(
+                  driver.get("name"), len(run.get("results") or [])))
+          PY
+          if [ "${{ steps.sarif-semgrep.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.sarif-semgrep.outcome }} — the upload did not land."
+            echo "Most likely cause: security-events: write missing from the CALLER"
+            echo "(.github/workflows/pr-security.yml), which a called workflow cannot elevate."
+            exit 1
+          fi
+          # Secondary, for the log only — never the sole assertion: sarif-id is
+          # populated before wait-for-processing can reject the SARIF.
+          echo "sarif-semgrep sarif-id=${{ steps.sarif-semgrep.outputs.sarif-id }}"
+
+      # RETENTION FORMAT — the contract the other four artifact steps share.
+      # Each tool's NATIVE output is retained unchanged; nothing is normalised
+      # to a common schema. 17-RESEARCH measured DefectDojo's parser inventory
+      # directly: dojo/tools/ already ships checkov, gitleaks, npm_audit_7_plus,
+      # pip_audit, sarif, semgrep, tflint and trivy parsers — every tool in this
+      # stack, plus a generic SARIF parser. Normalising would DESTROY import
+      # fidelity for the future DEFECT-01 pipeline this retention exists to
+      # feed. Note the runner's npm is 10.x, so the applicable parser is
+      # npm_audit_7_plus ("NPM Audit v7+ Scan"), not the legacy npm_audit.
+      # SARIF is retained alongside the JSON because tflint emits no JSON in
+      # this workflow at all — without it SCA-03's results would not be kept.
+      - name: Upload SAST reports
+        id: artifact-sast
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: semgrep-results          # unique across the five parallel jobs
+          path: |
+            semgrep-results.json
+            semgrep.sarif
+          # error, not warn: both files are produced unconditionally by the
+          # single Semgrep run above, so a missing one is a real failure.
+          if-no-files-found: error
+          # Explicit, never omitted in favour of the repository default, because
+          # Criterion 3 requires a STATED period. 90 is the documented maximum
+          # "unless changed from the repository settings page".
+          retention-days: 90
+
+      # Deliberately WITHOUT continue-on-error, for the same reason the SARIF
+      # verify steps are: ADR-001 requires continue-on-error: true on the upload
+      # above, so without this step a failed artifact upload is invisible — the
+      # run stays green and CICD-03 retains nothing. This closes the same blind
+      # spot the six SARIF upload/verify pairs close.
+      #
+      # OPEN OBSERVATION, HANDED TO PHASE 18 — the fork/Dependabot guard below
+      # is applied here for UNIFORMITY with the six SARIF verify steps, NOT
+      # because it was measured to be needed. actions/upload-artifact uses the
+      # Actions runtime token (ACTIONS_RUNTIME_TOKEN) rather than GITHUB_TOKEN,
+      # so an artifact upload may well succeed on a fork PR or a Dependabot PR
+      # where a SARIF upload cannot. That was NOT verified this phase. A verify
+      # step that fails on an unverified assumption is worse than one that
+      # skips, so the guard stays until someone measures it.
+      - name: Verify SAST artifact upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          if [ "${{ steps.artifact-sast.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.artifact-sast.outcome }} — the artifact did not land."
+            echo "CICD-03 retains nothing for this job; a future DefectDojo import has no input."
+            exit 1
+          fi
+          # For the log, so 17-05's live verification has a run-local record to
+          # cross-check against the gh api artifact listing for this run.
+          echo "artifact-sast artifact-id=${{ steps.artifact-sast.outputs.artifact-id }}"
+          echo "artifact-sast artifact-url=${{ steps.artifact-sast.outputs.artifact-url }}"
+
   # ─────────────────────────────────────────────────────────────────────────
   # IaC — Checkov
   # Scans infrastructure as code (Terraform, CloudFormation, K8s, Dockerfile,
@@ -72,6 +190,88 @@ jobs:
       - name: Show scan output files
         if: always()
         run: ls -l checkov-results.json checkov.sarif
+
+      - name: Upload Checkov SARIF
+        id: sarif-checkov
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+        with:
+          sarif_file: checkov.sarif
+          category: checkov         # MANDATORY — distinguishes this analysis
+          # wait-for-processing is deliberately NOT set: its default of true is
+          # what turns an async ingestion rejection into a step failure that
+          # the outcome assertion below can see.
+
+      # Same contract as `Verify Semgrep SARIF upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard sits on the verify step, never on the
+      # upload.
+      - name: Verify Checkov SARIF upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          python3 - checkov.sarif <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          with open(path) as handle:
+              data = json.load(handle)
+          if "runs" not in data:
+              print("SARIF has no runs key: {}".format(path))
+              sys.exit(1)
+          runs = data.get("runs") or []
+          print("{}: {} run(s)".format(path, len(runs)))
+          for run in runs:
+              driver = (run.get("tool") or {}).get("driver") or {}
+              print("  tool.driver.name={} results={}".format(
+                  driver.get("name"), len(run.get("results") or [])))
+          PY
+          if [ "${{ steps.sarif-checkov.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.sarif-checkov.outcome }} — the upload did not land."
+            echo "Most likely cause: security-events: write missing from the CALLER"
+            echo "(.github/workflows/pr-security.yml), which a called workflow cannot elevate."
+            exit 1
+          fi
+          # Secondary, for the log only — never the sole assertion: sarif-id is
+          # populated before wait-for-processing can reject the SARIF.
+          echo "sarif-checkov sarif-id=${{ steps.sarif-checkov.outputs.sarif-id }}"
+
+      # Same retention-format contract as `Upload SAST reports` in the sast job.
+      - name: Upload IaC reports
+        id: artifact-iac
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: checkov-results          # unique across the five parallel jobs
+          path: |
+            checkov-results.json
+            checkov.sarif
+          # error, not warn: the single Checkov run writes both files
+          # unconditionally, so a missing one is a real failure.
+          if-no-files-found: error
+          # Explicit — Criterion 3 requires a stated period, and 90 is the
+          # maximum without a repository-settings change. See the sast job.
+          retention-days: 90
+
+      # Same contract as `Verify SAST artifact upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard is applied for uniformity with the SARIF
+      # verify steps rather than because upload-artifact was measured to fail
+      # on those runs — see that step for the full note.
+      - name: Verify IaC artifact upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          if [ "${{ steps.artifact-iac.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.artifact-iac.outcome }} — the artifact did not land."
+            echo "CICD-03 retains nothing for this job; a future DefectDojo import has no input."
+            exit 1
+          fi
+          # For the log, so 17-05's live verification has a run-local record to
+          # cross-check against the gh api artifact listing for this run.
+          echo "artifact-iac artifact-id=${{ steps.artifact-iac.outputs.artifact-id }}"
+          echo "artifact-iac artifact-url=${{ steps.artifact-iac.outputs.artifact-url }}"
 
   # ─────────────────────────────────────────────────────────────────────────
   # SCA — four scanners in ONE job. Adding a sixth job would break three
@@ -142,20 +342,87 @@ jobs:
       # --scanners vuln only, deliberately: misconfig is the IaC job's remit and
       # secrets are Gitleaks' remit. No per-ecosystem plugin or .trivyignore — this
       # is SCA-04's generic sweep.
-      - name: Run Trivy filesystem scan
+      - name: Run Trivy filesystem scan (JSON for retention)
         continue-on-error: true          # D-04
         run: |
           trivy fs . --scanners vuln \
             --format json --output trivy-fs.json \
             --exit-code 1 --severity HIGH,CRITICAL
 
-      - name: Convert to SARIF
-        if: always()
-        run: trivy convert --format sarif --output trivy-fs.sarif trivy-fs.json
+      # TWO steps, not one chained run: block — the same reason the Gitleaks
+      # pair in the secrets job is split. GitHub's default shell is bash -e
+      # and BOTH runs exit 1 on findings by design (D-04), so a second
+      # command in the same run: block would be silently dropped.
+      # No `trivy convert` here: direct --format sarif sets
+      # originalUriBaseIds.ROOTPATH to the SCAN ROOT, while trivy convert
+      # sets it to the INPUT JSON FILE path — measured 2026-09-11 with trivy
+      # 0.74.0. The converted form makes every result resolve to a
+      # nonexistent trivy-fs.json/... path in code scanning.
+      # The flags below are deliberately identical to the JSON run above, so
+      # the retained artifact and the uploaded SARIF describe the same
+      # finding set. Do not change one without the other.
+      - name: Run Trivy filesystem scan (SARIF for code scanning)
+        if: always()                     # previous step exits 1 on findings
+        continue-on-error: true          # D-04
+        run: |
+          trivy fs . --scanners vuln \
+            --format sarif --output trivy-fs.sarif \
+            --exit-code 1 --severity HIGH,CRITICAL
 
       - name: Show scan output files
         if: always()
         run: ls -l trivy-fs.json trivy-fs.sarif
+
+      - name: Upload Trivy filesystem SARIF
+        id: sarif-trivy-fs
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs       # MANDATORY — distinguishes this analysis
+          # Not optional here: trivy-image.sarif in the container job carries
+          # the identical tool.driver.name of `Trivy`, and GitHub fails the
+          # second upload of the same tool + category in one run. Dropping
+          # either category would also collapse both scanners into one
+          # analysis and destroy the per-tool attribution.
+          # wait-for-processing is deliberately NOT set: its default of true is
+          # what turns an async ingestion rejection into a step failure that
+          # the outcome assertion below can see.
+
+      # Same contract as `Verify Semgrep SARIF upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard sits on the verify step, never on the
+      # upload.
+      - name: Verify Trivy filesystem SARIF upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          python3 - trivy-fs.sarif <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          with open(path) as handle:
+              data = json.load(handle)
+          if "runs" not in data:
+              print("SARIF has no runs key: {}".format(path))
+              sys.exit(1)
+          runs = data.get("runs") or []
+          print("{}: {} run(s)".format(path, len(runs)))
+          for run in runs:
+              driver = (run.get("tool") or {}).get("driver") or {}
+              print("  tool.driver.name={} results={}".format(
+                  driver.get("name"), len(run.get("results") or [])))
+          PY
+          if [ "${{ steps.sarif-trivy-fs.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.sarif-trivy-fs.outcome }} — the upload did not land."
+            echo "Most likely cause: security-events: write missing from the CALLER"
+            echo "(.github/workflows/pr-security.yml), which a called workflow cannot elevate."
+            exit 1
+          fi
+          # Secondary, for the log only — never the sole assertion: sarif-id is
+          # populated before wait-for-processing can reject the SARIF.
+          echo "sarif-trivy-fs sarif-id=${{ steps.sarif-trivy-fs.outputs.sarif-id }}"
 
       # SCA-01 — npm audit. `--audit-level=high` gates the EXIT CODE only; it
       # does NOT filter the report, which is the opposite of Trivy's --severity
@@ -337,6 +604,109 @@ jobs:
         if: always() && steps.tf.outputs.found == 'true'
         run: ls -l tflint.sarif
 
+      # The ecosystem guard is on BOTH this upload and its verify below, and it
+      # is the same `steps.tf.outputs.found` guard the tflint scan, log and
+      # evidence steps already carry. Unguarded, the upload of a missing
+      # tflint.sarif fails-then-tolerates and the verify then fails the whole
+      # job on a clean ecosystem skip — re-breaking the Criterion 4 skip
+      # behaviour Phase 16 spent an entire plan proving.
+      - name: Upload tflint SARIF
+        id: sarif-tflint
+        if: always() && steps.tf.outputs.found == 'true'
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+        with:
+          sarif_file: tflint.sarif
+          category: tflint         # MANDATORY — distinguishes this analysis
+          # wait-for-processing is deliberately NOT set: its default of true is
+          # what turns an async ingestion rejection into a step failure that
+          # the outcome assertion below can see.
+
+      # Same contract as `Verify Semgrep SARIF upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard sits on the verify step, never on the
+      # upload — plus the ecosystem guard, for the reason given above.
+      # This one asserts the OUTCOME only and deliberately parses nothing: the
+      # `Verify tflint SARIF` step above already loads tflint.sarif and prints
+      # its rule ids, and a second parse would be a second place to maintain
+      # the same assertion.
+      # If a parse is ever added here anyway: tflint.sarif carries TWO runs
+      # (`tflint` and `tflint-errors`, the second normally empty), so no
+      # assertion anywhere may require len(runs) == 1.
+      - name: Verify tflint SARIF upload landed
+        if: always() && steps.tf.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          if [ "${{ steps.sarif-tflint.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.sarif-tflint.outcome }} — the upload did not land."
+            echo "Most likely cause: security-events: write missing from the CALLER"
+            echo "(.github/workflows/pr-security.yml), which a called workflow cannot elevate."
+            exit 1
+          fi
+          # Secondary, for the log only — never the sole assertion: sarif-id is
+          # populated before wait-for-processing can reject the SARIF.
+          echo "sarif-tflint sarif-id=${{ steps.sarif-tflint.outputs.sarif-id }}"
+
+      # Same retention-format contract as `Upload SAST reports` in the sast job.
+      #
+      # GLOB, NEVER A LITERAL NAME, for the npm and pip reports. Phase 16
+      # hand-forward #1: npm audit operates on a working DIRECTORY and a
+      # consumer repo is not guaranteed a single manifest at its root, so 16-04
+      # numbers those reports per input — npm-audit-1.json, pip-audit-2.json and
+      # so on. Naming one literally would silently retain that one report and
+      # drop every other. That is why the two starred lines below exist, and
+      # this note sits here rather than on them: a `path: |` literal block
+      # scalar has no comment syntax, so a trailing `#` would be swallowed into
+      # the path string itself.
+      #
+      # overwrite, include-hidden-files and archive are left at their defaults
+      # on all five artifact steps, each for its own reason. overwrite: true
+      # would MASK a name collision rather than fix one — the five names are
+      # distinct, so the failing default is the behaviour we want.
+      # include-hidden-files: true would sweep dotfiles into an archive that is
+      # world-downloadable on this PUBLIC repo. archive: false ignores `name`
+      # entirely and fails on a multi-file glob.
+      - name: Upload SCA reports
+        id: artifact-sca
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: sca-results              # unique across the five parallel jobs
+          path: |
+            trivy-fs.json
+            trivy-fs.sarif
+            npm-audit-*.json
+            pip-audit-*.json
+            tflint.sarif
+          # warn, and this is the ONLY job where warn is correct. The npm, pip
+          # and tflint entries are ecosystem-conditional: in a consumer repo
+          # with no package-lock.json the npm glob matches nothing, and `error`
+          # there would turn a clean, correct skip red — re-breaking the
+          # Criterion 4 skip behaviour Phase 16 spent a plan proving.
+          # trivy-fs.json is unconditional, so this artifact is never empty.
+          if-no-files-found: warn
+          # Explicit — Criterion 3 requires a stated period, and 90 is the
+          # maximum without a repository-settings change. See the sast job.
+          retention-days: 90
+
+      # Same contract as `Verify SAST artifact upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard is applied for uniformity with the SARIF
+      # verify steps rather than because upload-artifact was measured to fail
+      # on those runs — see that step for the full note.
+      - name: Verify SCA artifact upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          if [ "${{ steps.artifact-sca.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.artifact-sca.outcome }} — the artifact did not land."
+            echo "CICD-03 retains nothing for this job; a future DefectDojo import has no input."
+            exit 1
+          fi
+          # For the log, so 17-05's live verification has a run-local record to
+          # cross-check against the gh api artifact listing for this run.
+          echo "artifact-sca artifact-id=${{ steps.artifact-sca.outputs.artifact-id }}"
+          echo "artifact-sca artifact-url=${{ steps.artifact-sca.outputs.artifact-url }}"
+
   # ─────────────────────────────────────────────────────────────────────────
   # Container — Trivy Image
   # Builds the fixture image and scans it for OS package and language
@@ -354,8 +724,13 @@ jobs:
 
       # D-06: unconditional build. No "does a Dockerfile exist" check, no
       # conditional skip — a skipped job fails Success Criteria #2.
-      # ${{ github.sha }} is the only context interpolation in any run: block
-      # here and is not attacker-controlled.
+      # The only context interpolations in any run: block in this workflow are
+      # ${{ github.sha }} and GitHub-generated step outcomes and ids (the
+      # steps.<id>.outcome, .outputs.sarif-id and .outputs.artifact-id/-url
+      # values read by the upload verify steps). None is attacker-controlled:
+      # outcome is one of four literal GitHub strings and the ids are
+      # server-generated. 17-03 added the first of those and left this comment
+      # saying "only" — true when it was written, stale from that plan onward.
       - name: Build fixture image
         run: docker build -f fixtures/Dockerfile -t scan-fixture:${{ github.sha }} fixtures/
 
@@ -373,6 +748,91 @@ jobs:
       - name: Show scan output files
         if: always()
         run: ls -l trivy-image.json trivy-image.sarif
+
+      - name: Upload Trivy image SARIF
+        id: sarif-trivy-image
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image     # MANDATORY — distinguishes this analysis
+          # Not optional: trivy-fs.sarif in the sca job carries the identical
+          # tool.driver.name of `Trivy`, and GitHub fails the second upload of
+          # the same tool + category in one run.
+          # wait-for-processing is deliberately NOT set: its default of true is
+          # what turns an async ingestion rejection into a step failure that
+          # the outcome assertion below can see.
+
+      # Same contract as `Verify Semgrep SARIF upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard sits on the verify step, never on the
+      # upload.
+      - name: Verify Trivy image SARIF upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          python3 - trivy-image.sarif <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          with open(path) as handle:
+              data = json.load(handle)
+          if "runs" not in data:
+              print("SARIF has no runs key: {}".format(path))
+              sys.exit(1)
+          runs = data.get("runs") or []
+          print("{}: {} run(s)".format(path, len(runs)))
+          for run in runs:
+              driver = (run.get("tool") or {}).get("driver") or {}
+              print("  tool.driver.name={} results={}".format(
+                  driver.get("name"), len(run.get("results") or [])))
+          PY
+          if [ "${{ steps.sarif-trivy-image.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.sarif-trivy-image.outcome }} — the upload did not land."
+            echo "Most likely cause: security-events: write missing from the CALLER"
+            echo "(.github/workflows/pr-security.yml), which a called workflow cannot elevate."
+            exit 1
+          fi
+          # Secondary, for the log only — never the sole assertion: sarif-id is
+          # populated before wait-for-processing can reject the SARIF.
+          echo "sarif-trivy-image sarif-id=${{ steps.sarif-trivy-image.outputs.sarif-id }}"
+
+      # Same retention-format contract as `Upload SAST reports` in the sast job.
+      - name: Upload container reports
+        id: artifact-container
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: trivy-image-results      # unique across the five parallel jobs
+          path: |
+            trivy-image.json
+            trivy-image.sarif
+          # error, not warn: the scan writes the JSON and the conversion step
+          # writes the SARIF, both unconditionally, so a missing one is real.
+          if-no-files-found: error
+          # Explicit — Criterion 3 requires a stated period, and 90 is the
+          # maximum without a repository-settings change. See the sast job.
+          retention-days: 90
+
+      # Same contract as `Verify SAST artifact upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard is applied for uniformity with the SARIF
+      # verify steps rather than because upload-artifact was measured to fail
+      # on those runs — see that step for the full note.
+      - name: Verify container artifact upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          if [ "${{ steps.artifact-container.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.artifact-container.outcome }} — the artifact did not land."
+            echo "CICD-03 retains nothing for this job; a future DefectDojo import has no input."
+            exit 1
+          fi
+          # For the log, so 17-05's live verification has a run-local record to
+          # cross-check against the gh api artifact listing for this run.
+          echo "artifact-container artifact-id=${{ steps.artifact-container.outputs.artifact-id }}"
+          echo "artifact-container artifact-url=${{ steps.artifact-container.outputs.artifact-url }}"
 
   # ─────────────────────────────────────────────────────────────────────────
   # Secrets — Gitleaks
@@ -418,3 +878,85 @@ jobs:
       - name: Show scan output files
         if: always()
         run: ls -l gitleaks-results.json gitleaks.sarif
+
+      - name: Upload Gitleaks SARIF
+        id: sarif-gitleaks
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks        # MANDATORY — distinguishes this analysis
+          # wait-for-processing is deliberately NOT set: its default of true is
+          # what turns an async ingestion rejection into a step failure that
+          # the outcome assertion below can see.
+
+      # Same contract as `Verify Semgrep SARIF upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard sits on the verify step, never on the
+      # upload.
+      - name: Verify Gitleaks SARIF upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          python3 - gitleaks.sarif <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          with open(path) as handle:
+              data = json.load(handle)
+          if "runs" not in data:
+              print("SARIF has no runs key: {}".format(path))
+              sys.exit(1)
+          runs = data.get("runs") or []
+          print("{}: {} run(s)".format(path, len(runs)))
+          for run in runs:
+              driver = (run.get("tool") or {}).get("driver") or {}
+              print("  tool.driver.name={} results={}".format(
+                  driver.get("name"), len(run.get("results") or [])))
+          PY
+          if [ "${{ steps.sarif-gitleaks.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.sarif-gitleaks.outcome }} — the upload did not land."
+            echo "Most likely cause: security-events: write missing from the CALLER"
+            echo "(.github/workflows/pr-security.yml), which a called workflow cannot elevate."
+            exit 1
+          fi
+          # Secondary, for the log only — never the sole assertion: sarif-id is
+          # populated before wait-for-processing can reject the SARIF.
+          echo "sarif-gitleaks sarif-id=${{ steps.sarif-gitleaks.outputs.sarif-id }}"
+
+      # Same retention-format contract as `Upload SAST reports` in the sast job.
+      - name: Upload secrets reports
+        id: artifact-secrets
+        if: always()                     # scanners exit non-zero by design (D-04)
+        continue-on-error: true          # ADR-001: upload failures must not block
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: gitleaks-results         # unique across the five parallel jobs
+          path: |
+            gitleaks-results.json
+            gitleaks.sarif
+          # error, not warn: the two Gitleaks runs above each write one of these
+          # files unconditionally, so a missing one is a real failure.
+          if-no-files-found: error
+          # Explicit — Criterion 3 requires a stated period, and 90 is the
+          # maximum without a repository-settings change. See the sast job.
+          retention-days: 90
+
+      # Same contract as `Verify SAST artifact upload landed` in the sast job:
+      # no continue-on-error (ADR-001 governs the upload, not the assertion),
+      # and the fork/Dependabot guard is applied for uniformity with the SARIF
+      # verify steps rather than because upload-artifact was measured to fail
+      # on those runs — see that step for the full note.
+      - name: Verify secrets artifact upload landed
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        run: |
+          if [ "${{ steps.artifact-secrets.outcome }}" != "success" ]; then
+            echo "upload outcome=${{ steps.artifact-secrets.outcome }} — the artifact did not land."
+            echo "CICD-03 retains nothing for this job; a future DefectDojo import has no input."
+            exit 1
+          fi
+          # For the log, so 17-05's live verification has a run-local record to
+          # cross-check against the gh api artifact listing for this run.
+          echo "artifact-secrets artifact-id=${{ steps.artifact-secrets.outputs.artifact-id }}"
+          echo "artifact-secrets artifact-url=${{ steps.artifact-secrets.outputs.artifact-url }}"

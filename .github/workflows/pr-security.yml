@@ -8,10 +8,32 @@ name: PR Security
 on:
   pull_request: {}
 
+# Workflow-level FLOOR. Deliberately left at contents: read — it is what any
+# job added to this file later inherits by default. The security-events grant
+# is job-scoped below (least privilege, ASVS V4).
 permissions:
   contents: read
 
 jobs:
   security:
+    # FROZEN. Phase 14-02 captured the check-run string as
+    # `security / <job name>`, and Phase 18 hard-codes it into the
+    # branch-protection required-check list. Renaming this job would leave
+    # branch protection pointing at a check that no longer exists.
     name: security
+    # A job-level permissions block REPLACES the workflow-level set for this
+    # job, so contents: read must be restated here or actions/checkout inside
+    # the called workflow loses its read scope.
+    permissions:
+      contents: read
+      # THE GRANT. Required for SARIF upload to the GitHub Security tab. The
+      # caller's permission set is the CEILING for a called workflow: the
+      # callee can only downgrade it, never elevate. Omitting it here 403s
+      # every upload, and ADR-001's mandatory continue-on-error leaves no red
+      # step anywhere in the run to notice.
+      security-events: write
+      # Required only for private repositories. Read-only, grants nothing this
+      # workflow does not already have on a public repo, and carried for
+      # Phase 20 consumer-template portability.
+      actions: read
     uses: ./.github/workflows/security.yml

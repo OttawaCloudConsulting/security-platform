@@ -18,6 +18,14 @@ set -euo pipefail
 # A sub-check whose tool is absent from this workstation is reported as
 # SKIPPED and listed separately in the summary. A skip is never a pass.
 #
+# The SCA section runs `trivy fs` TWICE with identical flags, mirroring what
+# CI does: once with --format json (the report retained as a build artifact)
+# and once with --format sarif (the report uploaded to code scanning). It is
+# deliberately NOT a scan plus a conversion — `trivy convert` writes an
+# originalUriBaseIds.ROOTPATH pointing at its input JSON file rather than at
+# the scan root, so the SCA path emits SARIF directly and asserts that base.
+# Both invocations are scanners and are scored with scanner semantics.
+#
 # Usage:
 #   bash scripts/smoke-scans.sh
 
@@ -36,7 +44,8 @@ SKIPPED=()
 # SCANS_PASSED: gated scan runs that produced the expected findings exit code.
 # Counted from the run itself so the summary cannot go stale as sub-scans are
 # added. Note it counts runs, not tools: Gitleaks is scanned twice (SARIF and
-# JSON report formats).
+# JSON report formats), and so is Trivy fs (JSON for retention, SARIF for
+# code scanning).
 SCANS_PASSED=0
 
 # run_scan_rc: capture a scanner's exit code without tripping `set -e`, and
@@ -283,8 +292,52 @@ echo "--- SCA (Trivy fs, HIGH/CRITICAL - gated, exact CI form) ---"
 run_scan "trivy-fs" trivy fs . --scanners vuln --format json \
   -o "$OUT/trivy-fs.json" --exit-code 1 --severity HIGH,CRITICAL
 require_nonempty "trivy-fs-json" "$OUT/trivy-fs.json"
-require_success "trivy-fs-convert" trivy convert --format sarif -o "$OUT/trivy-fs.sarif" "$OUT/trivy-fs.json"
+# run_scan, NOT require_success: this is a SCANNER invocation carrying the
+# same flags as the JSON run above, so exit 1 means "findings present" and
+# require_success would score a healthy findings run as a FAIL — the same
+# verdict inversion Phase 15 hit with `docker build` and `trivy convert`.
+# require_success remains correct for the container job's
+# "trivy-image-convert" below, which is genuinely an exit-0 conversion step.
+run_scan "trivy-fs-sarif" trivy fs . --scanners vuln --format sarif \
+  -o "$OUT/trivy-fs.sarif" --exit-code 1 --severity HIGH,CRITICAL
 require_nonempty "trivy-fs-sarif" "$OUT/trivy-fs.sarif"
+# ROOTPATH regression guard. `trivy convert` writes
+# originalUriBaseIds.ROOTPATH = file:///<cwd>/trivy-fs.json/ — the INPUT FILE,
+# not the scan root (measured 2026-09-11, trivy 0.74.0), which makes every
+# uploaded result resolve to a path that does not exist. This assertion is
+# what stops a future "simplify it back to trivy convert" from silently
+# reintroducing that form.
+rootpath_rc=0
+python3 - "$OUT/trivy-fs.sarif" <<'PY' || rootpath_rc=$?
+import json
+import sys
+
+path = sys.argv[1]
+try:
+    with open(path) as handle:
+        data = json.load(handle)
+except Exception as exc:  # noqa: BLE001 - any parse/IO failure is a hard fail
+    print("    trivy-fs SARIF unreadable: {} ({})".format(path, exc))
+    sys.exit(2)
+
+runs = data.get("runs") or []
+if not runs:
+    print("    trivy-fs SARIF carries no runs[]")
+    sys.exit(3)
+bases = runs[0].get("originalUriBaseIds") or {}
+rootpath = (bases.get("ROOTPATH") or {}).get("uri")
+print("    trivy-fs SARIF originalUriBaseIds.ROOTPATH: {}".format(rootpath))
+if not rootpath:
+    print("    ROOTPATH absent: result locations have no base to resolve against")
+    sys.exit(4)
+if rootpath.rstrip("/").endswith(".json"):
+    print("    ROOTPATH points at a .json INPUT FILE, not the scan root -- the")
+    print("    trivy convert form (Phase 17 RESEARCH Pitfall 3)")
+    sys.exit(5)
+PY
+if [ "$rootpath_rc" -ne 0 ]; then
+  FAILURES+=("trivy-fs-sarif: originalUriBaseIds.ROOTPATH absent or pointing at a .json input file (${OUT}/trivy-fs.sarif)")
+fi
 python3 -c "
 import json
 with open('$OUT/trivy-fs.json') as f:
