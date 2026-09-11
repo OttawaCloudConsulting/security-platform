@@ -302,8 +302,9 @@ No drift, no count drop — the edit could not have removed the finding the anno
 | `tflint-errors`, `Semgrep OSS`, `Trivy`, `gitleaks` | — | — | — | — | **zero annotations** |
 
 Three annotations, all on line 38, all from the two tools whose results were measured to report there, and
-zero from everything else. That is exactly the discrimination Pitfall 4 describes: 82 other live results
-exist on this run and **none** of them annotated the diff, because none of them sits on a changed line.
+zero from everything else. That is exactly the discrimination Pitfall 4 describes: the seven analyses
+carry 91 results in total (0+3+3+6+14+56+9); three of them annotated the diff and the other **88** did not,
+because none of those 88 sits on a changed line.
 
 **RESEARCH Open Question Q2 is answered: YES.** Annotations DO render with no base analysis on `main` to
 diff against. D-02's `pull_request`-only trigger does not suppress them, and no `push: branches: [main]`
@@ -379,8 +380,11 @@ assertion on `code-scanning/analyses` must expect seven, not six.
 
 **3. The `gh` 404 carries a misleading scope hint.** The pre-upload
 `code-scanning/analyses` 404 is followed by `gh: This API operation needs the "admin:repo_hook" scope`. That
-line is the CLI's generic error decoration, not the API's complaint, and reading it as a permission problem
-would have sent the plan chasing T-17-22 for nothing.
+VERIFIED: the scope hint was not a permission problem — no read returned 403 at any point, before or after
+the upload, on a token with no `security_events` scope. BELIEF, not verified: that the line is the CLI's
+generic error decoration rather than the API's own complaint. The mechanism was not investigated; only the
+conclusion is evidenced. Reading the hint as a permission problem would have sent the plan chasing T-17-22
+for nothing.
 
 No unresolved issues.
 
