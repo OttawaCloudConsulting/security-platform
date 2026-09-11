@@ -164,7 +164,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 13. Maintenance and Validation | v1.1 | 8/8 | Complete | 2026-09-10 |
 | 14. Workflow Foundation and Action Pinning | v2.0 | 3/3 | Complete   | 2026-09-10 |
 | 15. Five Parallel Scan Jobs | v2.0 | 5/5 | Complete   | 2026-09-11 |
-| 16. SCA Ecosystem Coverage | v2.0 | 7/7 | Complete   | 2026-09-11 |
+| 16. SCA Ecosystem Coverage | v2.0 | 7/7 | Complete    | 2026-09-11 |
 | 17. SARIF Upload and Artifact Retention | v2.0 | 0/? | Not started | - |
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 0/? | Not started | - |
 | 19. Pipeline Validation via Branch-Target PRs | v2.0 | 0/? | Not started | - |
