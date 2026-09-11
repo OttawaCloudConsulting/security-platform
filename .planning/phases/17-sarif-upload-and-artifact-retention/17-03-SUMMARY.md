@@ -186,6 +186,33 @@ the same trap will appear in 17-04/17-05: **the parsed `run:` string is already 
 **2. `roadmap.update-plan-progress` was run twice** — once before SUMMARY.md existed (reporting
 `summary_count: 2`) and again after it was written, since the counter reads SUMMARY files from disk.
 
+**3. A stale security comment is now inaccurate and was deliberately LEFT IN PLACE — 17-04 should fix it.**
+The `container` job's `Build fixture image` step (`security.yml:574`) says:
+
+```yaml
+      # ${{ github.sha }} is the only context interpolation in any run: block
+      # here and is not attacker-controlled.
+```
+
+That was true before this plan. Each of the six verify steps interpolates `steps.<id>.outcome` (twice) and
+`steps.<id>.outputs.sarif-id` (once) into its `run:` block, so there are now fifteen more across the file,
+three of them in the container job itself. The **security claim is still true in substance** — `outcome`
+is one of GitHub's four literal outcome strings and `sarif-id` is a server-generated identifier; neither is
+attacker-controlled, and the plan's own T-17-16 mitigation (quoted `<<'PY'` delimiter, file passed via
+`sys.argv`, no SARIF content interpolated into shell) is intact. Only the *count* in the comment is wrong.
+
+Not corrected here because this plan's `<verification>` requires exactly two `feat(17-03):` commits, and
+17-01 hit the same trap and set the precedent (`d95e2ed`) of recording rather than amending. **17-04 touches
+every job in this file and should reword that comment** to say that the only context interpolations in any
+`run:` block are `github.sha` and GitHub-generated step outcomes/ids, none attacker-controlled.
+
+**4. Note for 17-06 / Phase 20, not a defect here.** `github.event.pull_request.head.repo.full_name` is
+empty on a `push` or `workflow_dispatch` caller, so the same-repo test evaluates false and all six verify
+steps skip silently. That is correct under D-02 (the caller is `pull_request` only), but a Phase 20
+consumer wiring this reusable workflow into a `push` trigger would silently reopen ADR-001's blind spot —
+the uploads would still run, and nothing would assert they landed. Worth naming in the adoption docs; not
+worth changing the guard this plan mandates verbatim.
+
 No unresolved issues.
 
 ## User Setup Required
