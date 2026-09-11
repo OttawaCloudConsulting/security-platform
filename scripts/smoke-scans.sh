@@ -2,11 +2,21 @@
 set -euo pipefail
 
 # Local pass/fail gate for the five Phase 15 CI scan jobs (SAST, IaC, SCA,
-# container, secrets). Runs the exact CI-shaped scanner commands against the
-# real checkout and fails if any scanner exits 0 (nothing found) or writes an
-# empty report. An empty report that reads as "clean" is the failure mode
+# container, secrets) and the three Phase 16 SCA ecosystem sub-scans (npm
+# audit, pip-audit, tflint). Runs the exact CI-shaped scanner commands against
+# the real checkout and fails if a scanner exits 0 (nothing found), exits with
+# a code that means "tool error" rather than "findings", or writes an empty or
+# malformed report. An empty report that reads as "clean" is the failure mode
 # this script exists to catch — it must never be possible to pass green with
 # a skipped or stubbed scan.
+#
+# Not every tool signals findings with exit code 1: tflint uses 2 and reserves
+# 1 for application errors. Scanners are therefore run through
+# `run_scan_rc <expected_rc>`, and reports are checked for the top-level key a
+# real report carries, so a tool's error object cannot be read as a clean scan.
+#
+# A sub-check whose tool is absent from this workstation is reported as
+# SKIPPED and listed separately in the summary. A skip is never a pass.
 #
 # Usage:
 #   bash scripts/smoke-scans.sh
@@ -18,18 +28,38 @@ OUT="$(mktemp -d)"
 trap 'rm -rf "$OUT"' EXIT
 
 FAILURES=()
+# SKIPPED: sub-checks that did not run (optional tool absent, or the ecosystem
+# is not present in this repository). Reported separately from FAILURES and
+# separately from passes — a skip must never read as a pass — and it never
+# affects the exit status.
+SKIPPED=()
+# SCANS_PASSED: gated scan runs that produced the expected findings exit code.
+# Counted from the run itself so the summary cannot go stale as sub-scans are
+# added. Note it counts runs, not tools: Gitleaks is scanned twice (SARIF and
+# JSON report formats).
+SCANS_PASSED=0
 
-# run_scan: capture a scanner's exit code without tripping `set -e`. Exit
-# code 1 is the expected PASS (a real finding was made). Exit code 0 means
-# the tool found nothing — the exact failure this script exists to catch.
-# Anything else is a tool/infrastructure error, not a scan verdict.
-run_scan() {
-  local label="$1"
-  shift
+# run_scan_rc: capture a scanner's exit code without tripping `set -e`, and
+# compare it against the exit code that means "this scanner found something".
+#   rc == expected_rc        -> PASS, a real finding was made
+#   rc == 0 (expected != 0)  -> FAIL, the tool found nothing: the exact
+#                               failure this script exists to catch
+#   anything else            -> FAIL, a tool/infrastructure error, not a
+#                               scan verdict
+# The expected code is a parameter rather than a per-tool special case because
+# it genuinely differs per tool: npm audit, pip-audit, Trivy, Semgrep, Checkov
+# and Gitleaks all use 1; tflint uses 2 for findings and 1 for an application
+# error, so passing it through the rc=1 default would score a healthy tflint
+# run as "tool/infrastructure error".
+run_scan_rc() {
+  local expected_rc="$1"
+  local label="$2"
+  shift 2
   local rc=0
   "$@" || rc=$?
-  if [[ "$rc" -eq 1 ]]; then
+  if [[ "$rc" -eq "$expected_rc" ]]; then
     echo "==> ${label}: exit=${rc} (PASS - finding(s) detected)"
+    SCANS_PASSED=$((SCANS_PASSED + 1))
   elif [[ "$rc" -eq 0 ]]; then
     echo "==> ${label}: exit=${rc} (FAIL - scanner found nothing)"
     FAILURES+=("${label}: scanner exited 0 (no findings)")
@@ -38,6 +68,13 @@ run_scan() {
     FAILURES+=("${label}: scanner exited ${rc} (tool/infrastructure error)")
   fi
   return 0
+}
+
+# run_scan: the common case — a scanner that signals "findings present" with
+# exit code 1. rc=1-as-PASS is a default, not a law; see run_scan_rc above.
+# Use `run_scan_rc 2 …` for tflint rather than adding a special case here.
+run_scan() {
+  run_scan_rc 1 "$@"
 }
 
 # require_success: run a command that is expected to exit 0 (e.g. a docker
@@ -70,14 +107,90 @@ require_nonempty() {
   fi
 }
 
-# Preflight: fail fast, naming the missing binary, rather than surfacing a
-# confusing scanner error partway through the run.
-for bin in semgrep checkov trivy gitleaks docker python3; do
+# require_parses_json: assert a report file exists, parses as JSON, and
+# carries <required_key> at its top level.
+#
+# This is an assertion, not a print helper. It pushes to FAILURES exactly like
+# require_nonempty and must never swallow its own result with `|| true` — an
+# assertion that ignores its own failure IS the false-pass mechanism this
+# script exists to prevent. It is what discriminates a real report from a tool
+# error object: `npm audit` writes {"error":{"code":"ENOLOCK",...}} on a
+# directory with no lockfile, which is non-empty, valid JSON, and would sail
+# past require_nonempty; a real report carries "auditReportVersion".
+#
+# Usage: require_parses_json <label> <file> <required_key>
+#
+# SC2329 is suppressed because this helper has no call site yet: the npm,
+# pip-audit and tflint sub-scan sections that use it are added in the next
+# plan, and adding scan behaviour here would mean this refactor could no
+# longer be shown to be behaviour-preserving. Remove the suppression once
+# those call sites exist.
+# shellcheck disable=SC2329
+require_parses_json() {
+  local label="$1"
+  local file="$2"
+  local required_key="$3"
+  if [[ ! -f "$file" ]]; then
+    echo "    report MISSING: ${file}"
+    FAILURES+=("${label}: report missing (${file})")
+    return 0
+  fi
+  local rc=0
+  python3 - "$file" "$required_key" <<'PY' || rc=$?
+import json
+import sys
+
+path, key = sys.argv[1], sys.argv[2]
+try:
+    with open(path) as handle:
+        data = json.load(handle)
+except Exception as exc:  # noqa: BLE001 - any parse/IO failure is a hard fail
+    print("    report NOT VALID JSON: {} ({})".format(path, exc))
+    sys.exit(2)
+
+keys = list(data.keys()) if isinstance(data, dict) else []
+if key not in keys:
+    print("    report MISSING TOP-LEVEL KEY {!r}: {} (top-level keys: {})".format(
+        key, path, sorted(keys)[:8] or type(data).__name__))
+    sys.exit(3)
+
+print("    report OK: {} (valid JSON, top-level {!r} present)".format(path, key))
+PY
+  if [[ "$rc" -ne 0 ]]; then
+    FAILURES+=("${label}: report is not JSON with top-level '${required_key}' (${file})")
+  fi
+}
+
+# Preflight, hard tier: fail fast, naming the missing binary, rather than
+# surfacing a confusing scanner error partway through the run. Every binary
+# here drives a check the gate cannot render a verdict without. `npm` is in
+# this tier because it ships with node, which any workstation that ran
+# workstation/setup.sh already has.
+for bin in semgrep checkov trivy gitleaks docker python3 npm; do
   if ! command -v "$bin" &>/dev/null; then
     echo "FATAL: required binary '${bin}' not found on PATH" >&2
     exit 1
   fi
 done
+
+# Preflight, soft tier: pip-audit and tflint each drive exactly one Phase 16
+# sub-check. A clean workstation without them must not hard-fail the whole
+# gate — but the skip has to be loud, named, and accounted for as SKIPPED so
+# it can never be mistaken for a pass. The HAVE_* flags are read by the
+# sub-scan sections; nothing here installs anything.
+HAVE_PIP_AUDIT=1
+HAVE_TFLINT=1
+if ! command -v pip-audit &>/dev/null; then
+  HAVE_PIP_AUDIT=0
+  echo "NOTE: optional binary 'pip-audit' not found on PATH — the SCA-02 Python sub-check will be SKIPPED, not passed. Install it with: pipx install pip-audit"
+  SKIPPED+=("SCA-02 (pip-audit): binary not found on PATH")
+fi
+if ! command -v tflint &>/dev/null; then
+  HAVE_TFLINT=0
+  echo "NOTE: optional binary 'tflint' not found on PATH — the SCA-03 Terraform sub-check will be SKIPPED, not passed. Install it with: brew install tflint"
+  SKIPPED+=("SCA-03 (tflint): binary not found on PATH")
+fi
+echo "Optional tooling: pip-audit=${HAVE_PIP_AUDIT} tflint=${HAVE_TFLINT}"
 
 echo "Report directory: ${OUT}"
 echo
@@ -217,6 +330,15 @@ echo
 
 # --- Summary ---------------------------------------------------------------
 echo "=== Summary ==="
+# Skips are printed before the verdict, on both the pass and the fail path,
+# under their own heading. They are not failures and they are not passes.
+if [ "${#SKIPPED[@]}" -gt 0 ]; then
+  echo "SKIPPED - ${#SKIPPED[@]} sub-check(s) did not run. A SKIP IS NOT A PASS:"
+  for s in "${SKIPPED[@]}"; do
+    echo "  - ${s}"
+  done
+  echo
+fi
 if [ "${#FAILURES[@]}" -gt 0 ]; then
   echo "FAILED - one or more scanners did not produce the expected result:"
   for f in "${FAILURES[@]}"; do
@@ -224,6 +346,6 @@ if [ "${#FAILURES[@]}" -gt 0 ]; then
   done
   exit 1
 else
-  echo "ALL PASS - all five scanners produced real, non-empty findings."
+  echo "ALL PASS - ${SCANS_PASSED} gated scan run(s) produced real, non-empty findings; ${#SKIPPED[@]} sub-check(s) skipped (not passed)."
   exit 0
 fi
