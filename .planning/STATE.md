@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
-status: Phase 17 closed; ready to start Phase 18
-stopped_at: Phase 18 context gathered
-last_updated: "2026-09-11T22:10:14.284Z"
-last_activity: 2026-09-11
+status: verifying
+stopped_at: Completed 18-06-PLAN.md
+last_updated: "2026-09-12T12:57:46.888Z"
+last_activity: 2026-09-12
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 22
-  completed_plans: 22
+  total_plans: 30
+  completed_plans: 28
   percent: 57
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 Phase: 17 (sarif-upload-and-artifact-retention) — COMPLETE (merged 2026-09-11, commit 8fbea7d)
 Plan: 7 of 7 — all complete
-Status: Phase 17 closed; ready to start Phase 18
-Last activity: 2026-09-11
+Status: Phase complete — ready for verification
+Last activity: 2026-09-12
 
-Progress: [██████████] 100% (phase 17)
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -119,6 +119,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-06: ADR-016 (docs/adr/adr016-sarif-upload-attribution-and-artifact-retention.md) is Accepted and carries all nine decisions: six sticky categories; caller-job security-events: write + callee re-declaration + actions: read for private-repo portability; outcome-not-sarif-id assertion; ADR-001 tolerated-upload/intolerant-assertion pairing; five artifact names + explicit retention-days: 90; native JSON retained unnormalised (dojo/tools parser inventory, npm_audit_7_plus); sca direct trivy fs --format sarif with the measured ROOTPATH comparison and trivy convert retained in the container job; D-01's Criterion 4 via the artifact set (pip-audit has NO severity field, so a hand-rolled converter would emit level: warning for everything); D-02's pull_request-only trigger with the default-branch consequence stated. — Deliberate divergence from the plan: the plan (written before 17-05 ran) told 17-06 to record annotation rendering as UNVERIFIED. 17-05 measured it as OBSERVED, so the ADR says observed, and the not-verified section instead names three genuinely open items: Dependabot security-events grantability, whether upload-artifact itself succeeds on fork/Dependabot runs (ACTIONS_RUNTIME_TOKEN differs), and how GitHub's ingester treats an out-of-repo ROOTPATH. Evidence outranks a plan written before the evidence existed.
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-06: blueprint before/after, measured by grep — upload-sarif '# v3' 3->0 and '# v4' 0->3; upload-artifact '# v4' 5->0 and '# v7' 0->5; retention-days 0->6; category: 0->4; security-events 0->2; code fences 134->134 (unchanged); live 40-hex SHAs 0->0 (every `@<SHA>` placeholder intact per ADR-004). Cross-Platform CI Compatibility table 6->9 rows, uniform pipe count, all six originals byte-unchanged; the language matrix 16-06 updated is untouched. Seven deferrals logged in .planning/phases/17-.../deferred-items.md, three of whose owners were assigned by 17-06 rather than by the plan and are labelled as such. — The plan's own verify commands use `git diff HEAD~1 --name-only`, which diffs against the WORKING TREE; with this repo's pre-existing uncommitted .claude/ tooling changes it reported 139 files and a false FAIL. The correct form is `git diff HEAD~1 HEAD --name-only`; both commits confirmed to contain exactly the named files.
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-05: `gh auth refresh -h github.com -s security_events` was NOT run and was not needed. The local token carries only 'gist', 'read:org', 'repo', 'workflow' — no security_events — yet every code-scanning read succeeded, because that scope is required only for PRIVATE repos and security-platform is PUBLIC. The pre-upload 404 also carries a misleading `gh: This API operation needs the "admin:repo_hook" scope` decoration. VERIFIED: it was not a permission problem (no 403 at any point on a token with no security_events scope). BELIEF, not verified: that the line is the CLI's generic error hint rather than the API's own complaint — the mechanism was not investigated. — gh auth refresh is an interactive device-code flow that would have blocked an autonomous run; firing the documented fallback pre-emptively would have hung the plan on a problem that did not exist. T-17-22 closes by evidence (no 403 at any point) rather than by mitigation.
+- [Phase 18]: [Phase 18-06]: Corrected the blueprint's and milestone plan's Phase 2/M2-F4 branch-protection passages -- five byte-exact security / ... check-run contexts (not job ids), ruleset navigation (not classic branch protection), gate_mode documented in both consumption modes, and the D-07 report-only-then-blocking-then-require adoption order
+- [Phase 18]: [Phase 18-06]: Milestone plan's Done Criteria line could not contain the literal substring 'Settings > Branches' even as a negative example -- reworded to 'the classic branch-protection settings screen' to satisfy the plan's own negative-grep verify check while preserving the 404 caveat's meaning
 
 ### Pending Todos
 
@@ -169,12 +171,13 @@ Carried forward from v1.1 close:
 | Phase 17-sarif-upload-and-artifact-retention P04 | 14min | 2 tasks | 1 files |
 | Phase 17-sarif-upload-and-artifact-retention P05 | 11 min | 2 tasks | 1 files |
 | Phase 17-sarif-upload-and-artifact-retention P06 | 18 min | 2 tasks | 4 files |
+| Phase 18 P06 | 15min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-11T22:10:14.271Z
-Stopped at: Phase 18 context gathered
-Resume file: .planning/phases/18-configurable-gate-mode-and-branch-protection/18-CONTEXT.md
+Last session: 2026-09-12T12:57:46.880Z
+Stopped at: Completed 18-06-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

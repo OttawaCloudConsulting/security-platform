@@ -10,9 +10,9 @@
 - [x] **CICD-01**: GitHub Actions security workflow runs 5 parallel scan jobs (SAST, IaC, SCA, container, secrets) on every PR
 - [x] **CICD-02**: Each scan job uploads SARIF results to the GitHub Security tab
 - [x] **CICD-03**: Each scan job retains JSON artifact output for future DefectDojo import (import pipeline itself is out of scope this milestone)
-- [ ] **CICD-04**: Branch protection config/guidance provided so scan checks can be made required (block merge) once enabled
+- [x] **CICD-04**: Branch protection config/guidance provided so scan checks can be made required (block merge) once enabled
 - [x] **CICD-05**: Dependabot configured to keep GitHub Actions SHA pins updated
-- [ ] **CICD-06**: Gate mode (block merge vs report-only) is configurable per consuming repo via a flag/input, not hardcoded
+- [x] **CICD-06**: Gate mode (block merge vs report-only) is configurable per consuming repo via a flag/input, not hardcoded
 
 ### SCA Coverage
 
@@ -59,9 +59,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CICD-01 | Phase 15 | Complete |
 | CICD-02 | Phase 17 | Complete |
 | CICD-03 | Phase 17 | Complete |
-| CICD-04 | Phase 18 | Pending |
+| CICD-04 | Phase 18 | Complete |
 | CICD-05 | Phase 14 | Complete |
-| CICD-06 | Phase 18 | Pending |
+| CICD-06 | Phase 18 | Complete |
 | SCA-01 | Phase 16 | Complete |
 | SCA-02 | Phase 16 | Complete |
 | SCA-03 | Phase 16 | Complete |
