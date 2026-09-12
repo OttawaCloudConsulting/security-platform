@@ -279,3 +279,8 @@ None. No new network endpoint, auth path, file-access pattern or schema was intr
 items requiring active mitigation were both discharged as written: **T-19-01** (synthetic credentials, never
 real, stated as such in the fixture header) and **T-19-02** (zero fingerprints in `.gitleaksignore`, verified
 before and after). **T-19-03** holds — nothing imports or executes `vulnerable.py`, and it was never run.
+
+## Self-Check: PASSED
+
+All three created files verified present on disk; both commits (`fbfcbe9` inner, `c452439` outer) verified
+present in their respective repositories' git history.

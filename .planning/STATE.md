@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
-status: verifying
+status: executing
 stopped_at: Phase 19 context gathered
-last_updated: "2026-09-12T13:31:43.570Z"
+last_updated: "2026-09-12T22:16:25.912Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 30
-  completed_plans: 30
+  total_plans: 37
+  completed_plans: 31
   percent: 71
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 19 — pipeline-validation-via-branch-target-prs (Phase 18 complete and merged)
+**Current focus:** Phase 19 — pipeline-validation-via-branch-target-prs
 
 ## Current Position
 
-Phase: 18 (configurable-gate-mode-and-branch-protection) — COMPLETE (merged prior to 18-08, verified from origin/main 2026-09-12, commit 2e29004)
-Plan: 8 of 8 — all complete
-Status: Phase complete — ready for verification
+Phase: 19 (pipeline-validation-via-branch-target-prs) — EXECUTING
+Plan: 2 of 7
+Status: Ready to execute
 Last activity: 2026-09-12
 
-Progress: [██████████] 100%
+Progress: [████████░░] 84%
 
 ## Performance Metrics
 
@@ -124,6 +124,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 18]: Phase 18-07: ADR-017 recorded (Accepted) for CICD-04/CICD-06 -- gate_mode enum, five required contexts pinned to integration_id 15368, D-06 five-not-six correction, D-07 step 1 unobservable-red correction, leave-unrequired for this repo's own main
 - [Phase 18]: Phase 18-07: discovered PR #9 was already merged (2026-09-12T12:48:34Z, commit 2e29004) before this plan's live cross-check ran -- handed to 18-08 to reconcile, not resolved here
 - [Phase 18]: Phase 18 closed: PR #9 already merged by human operator (mergeCommit 2e29004) before 18-08 began; verification confirmed from origin/main that the merged tree hash (ce7ec652...) matches 18-05's measured tree exactly, all standing gates pass, no leftover GATE_MODE variable, rules/branches/main unchanged at operator's leave-unrequired decision
+- [Phase 19]: 19-01: the Gitleaks pre-fixture baseline ALREADY carries 8 aws-access-token findings in .planning/ history (05-02-SUMMARY, 05-VERIFICATION, STATE.md L82), so every Secrets assertion from 19-03 onward must AND the rule id with secret.env in File — An SC1 check of the form "gitleaks-results.json contains a finding with RuleID == aws-access-token" passes against the UNTOUCHED baseline and proves nothing. PATTERNS S-4 is now a measured necessity for Gitleaks, not just a Semgrep convention. Measured: baseline 9 findings, 8 of them aws-access-token, zero on secret.env.
+- [Phase 19]: 19-01: VAL-01 deliberately NOT marked complete — local fixture seeding cannot satisfy "full pipeline validated in this repo using branch-target PRs"; it needs the live PR runs in 19-03+ — Follows the 17-01 precedent already recorded in this file, where requirements.mark-complete flipped CICD-02/03 to Complete from plan frontmatter and the change had to be reverted because the deliverable actually shipped in a later plan.
+- [Phase 19]: 19-01: measured deltas 2026-09-12 — semgrep p/default 3 to 8 (3 new on fixtures/vulnerable.py, 2 on fixtures/secret.env) and gitleaks 9 to 11 (aws-access-token line 21, generic-api-key line 22); committed blobs verified byte-identical to the measured files — No registry drift from RESEARCH predictions — the 3-rule Semgrep baseline reproduced exactly and the 2/2 Gitleaks split held. ruff --fix did NOT rewrite the fixture at commit (sha256 unchanged, git show piped to diff empty), and the pinned v0.15.7 hook agreed with the local 0.14.8 binary. The semgrep binary self-reports 1.155.0 while pip metadata says 1.177.0 (assumption A5 confirmed, deliberately not resolved).
 
 ### Pending Todos
 
@@ -179,12 +182,13 @@ Carried forward from v1.1 close:
 | Phase 18 P06 | 15min | 2 tasks | 2 files |
 | Phase 18 P07 | 35min | 2 tasks | 2 files |
 | Phase 18 P08 | 25min | 2 tasks | 1 files |
+| Phase 19 P01 | 18min | 3 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-12T13:31:43.560Z
+Last session: 2026-09-12T22:14:20.196Z
 Stopped at: Phase 19 context gathered
-Resume file: .planning/phases/19-pipeline-validation-via-branch-target-prs/19-CONTEXT.md
+Resume file: None
 
 ## Operator Next Steps
 
