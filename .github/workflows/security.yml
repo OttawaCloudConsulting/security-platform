@@ -50,6 +50,22 @@ jobs:
     name: SAST — Semgrep CE
     runs-on: ubuntu-latest
     steps:
+      # This is the enum control: GitHub does not validate a `type: string`
+      # value against a list, so without this step "string enum" is a
+      # convention, not a constraint. The empty string is rejected on
+      # purpose — it is the shape an omitted-and-unresolved input produces,
+      # and a blank mode must fail loudly rather than resolve to anything.
+      # Deliberately placed before checkout: an invalid value fails the job
+      # before any scan runs, and the job's trailing `if: always()` upload
+      # and "Show scan output files" steps will then also fail on missing
+      # files. The job is red either way; the first failure in the log is
+      # the legible one, and fail-before-scan is the intended behaviour.
+      - name: Validate gate_mode
+        run: |
+          case "${GATE_MODE}" in
+            blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;
+            *) echo "invalid gate_mode: '${GATE_MODE}' (expected blocking|report-only)"; exit 1 ;;
+          esac
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - run: pip install semgrep==1.177.0
       # Assumption A7 fallback ladder if PEP 668 blocks the pip install above:
@@ -188,6 +204,22 @@ jobs:
     name: IaC — Checkov
     runs-on: ubuntu-latest
     steps:
+      # This is the enum control: GitHub does not validate a `type: string`
+      # value against a list, so without this step "string enum" is a
+      # convention, not a constraint. The empty string is rejected on
+      # purpose — it is the shape an omitted-and-unresolved input produces,
+      # and a blank mode must fail loudly rather than resolve to anything.
+      # Deliberately placed before checkout: an invalid value fails the job
+      # before any scan runs, and the job's trailing `if: always()` upload
+      # and "Show scan output files" steps will then also fail on missing
+      # files. The job is red either way; the first failure in the log is
+      # the legible one, and fail-before-scan is the intended behaviour.
+      - name: Validate gate_mode
+        run: |
+          case "${GATE_MODE}" in
+            blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;
+            *) echo "invalid gate_mode: '${GATE_MODE}' (expected blocking|report-only)"; exit 1 ;;
+          esac
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       # SHA-pinned action; it internally pulls ghcr.io/bridgecrewio/checkov:3.3.17
@@ -307,6 +339,22 @@ jobs:
     name: SCA — Trivy Filesystem
     runs-on: ubuntu-latest
     steps:
+      # This is the enum control: GitHub does not validate a `type: string`
+      # value against a list, so without this step "string enum" is a
+      # convention, not a constraint. The empty string is rejected on
+      # purpose — it is the shape an omitted-and-unresolved input produces,
+      # and a blank mode must fail loudly rather than resolve to anything.
+      # Deliberately placed before checkout: an invalid value fails the job
+      # before any scan runs, and the job's trailing `if: always()` upload
+      # and "Show scan output files" steps will then also fail on missing
+      # files. The job is red either way; the first failure in the log is
+      # the legible one, and fail-before-scan is the intended behaviour.
+      - name: Validate gate_mode
+        run: |
+          case "${GATE_MODE}" in
+            blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;
+            *) echo "invalid gate_mode: '${GATE_MODE}' (expected blocking|report-only)"; exit 1 ;;
+          esac
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
         with:
@@ -732,6 +780,22 @@ jobs:
     name: Container — Trivy Image
     runs-on: ubuntu-latest
     steps:
+      # This is the enum control: GitHub does not validate a `type: string`
+      # value against a list, so without this step "string enum" is a
+      # convention, not a constraint. The empty string is rejected on
+      # purpose — it is the shape an omitted-and-unresolved input produces,
+      # and a blank mode must fail loudly rather than resolve to anything.
+      # Deliberately placed before checkout: an invalid value fails the job
+      # before any scan runs, and the job's trailing `if: always()` upload
+      # and "Show scan output files" steps will then also fail on missing
+      # files. The job is red either way; the first failure in the log is
+      # the legible one, and fail-before-scan is the intended behaviour.
+      - name: Validate gate_mode
+        run: |
+          case "${GATE_MODE}" in
+            blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;
+            *) echo "invalid gate_mode: '${GATE_MODE}' (expected blocking|report-only)"; exit 1 ;;
+          esac
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
         with:
@@ -858,6 +922,22 @@ jobs:
     name: Secrets — Gitleaks
     runs-on: ubuntu-latest
     steps:
+      # This is the enum control: GitHub does not validate a `type: string`
+      # value against a list, so without this step "string enum" is a
+      # convention, not a constraint. The empty string is rejected on
+      # purpose — it is the shape an omitted-and-unresolved input produces,
+      # and a blank mode must fail loudly rather than resolve to anything.
+      # Deliberately placed before checkout: an invalid value fails the job
+      # before any scan runs, and the job's trailing `if: always()` upload
+      # and "Show scan output files" steps will then also fail on missing
+      # files. The job is red either way; the first failure in the log is
+      # the legible one, and fail-before-scan is the intended behaviour.
+      - name: Validate gate_mode
+        run: |
+          case "${GATE_MODE}" in
+            blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;
+            *) echo "invalid gate_mode: '${GATE_MODE}' (expected blocking|report-only)"; exit 1 ;;
+          esac
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0   # REQUIRED: `gitleaks git` finds findings in history;
