@@ -55,6 +55,28 @@
 
 ---
 
+## Project Constraints (from CLAUDE.md)
+
+`./CLAUDE.md` and four `.claude/rules/*.md` files are in force as project instructions. The directives that bite on Phase 19, with what they mean for the plan:
+
+| Source | Directive | Consequence for this phase |
+|---|---|---|
+| `rules/…anti-slop.md` | **Never `chmod +x` a script; always invoke with an explicit interpreter** (`bash scripts/x.sh`, never `./scripts/x.sh`) | Every verification field that runs a repo script must read `bash scripts/smoke-scans.sh` / `bash scripts/check-workflow-uploads.sh`. Both are `#!/usr/bin/env bash`. |
+| `rules/…anti-slop.md` | **On any failure: STOP → REPORT → WAIT.** No silent retry. | A live run that concludes unexpectedly (e.g. a job green under blocking) is a *finding*, not something to re-trigger until it looks right. Re-running destroys the signal. Plans should say this explicitly for the three D-05 runs. |
+| `rules/…anti-slop.md` | **No silent fallbacks** (`or {}`, `except: pass`). Let it crash. | Evidence-parsing steps must assert and exit non-zero, never default to an empty list when an artifact or alert is missing. Mirrors `security.yml`'s own eleven intolerant verify steps. |
+| `rules/…anti-slop.md` | **Second-order effects: list what depends on a thing before changing it. "Nothing else uses this" is usually wrong.** | Directly why §Common Pitfalls 5 and 6 exist — the permanent fixtures change every future PR in the repo, not just this one. |
+| `rules/…session-management.md` | **Irreversible actions require a pause and explicit user confirmation**: data deletion, git history modification, architectural commitments. | Two qualify here: the repo-wide `GATE_MODE=blocking` flip (affects every PR and Dependabot run while set) and D-10's merge-vs-close of the validation PR. Phase 18-05 handled exactly these as `checkpoint:human-verify` / `checkpoint:decision` tasks and explicitly refused to resolve them autonomously. **That was a CLAUDE.md requirement, not a Phase 18 stylistic choice — the planner must carry the same checkpoints forward.** |
+| `rules/…session-management.md` | A checkpoint is "I ran it, here's what happened", not "I believe this works". | "Witnessed, not inferred" (SC2) and this rule are the same requirement. Record run ids and conclusions; never a paraphrase. |
+| `rules/…epistemology.md` | **Chesterton's Fence** — articulate why something exists before changing it. | Applies to `.gitleaksignore`, the four `exclude: ^fixtures/` entries, the frozen `security` job name, and `fixtures/README.md`'s "do not add a fifth exclude" sentence. The `.py` fixture is genuinely new information about that last one; the planner should *decide* it, not silently override it. |
+| `rules/…epistemology.md` | **High-risk actions use the full DOING/EXPECT/IF-MISMATCH format.** | The gate flip, the pushes, and the merge all qualify. |
+| `CLAUDE.md` | **`docs/adr/` records are append-only** — add new files, never modify accepted ones. | ADR-016 and ADR-017 are read-only inputs here. If this phase's measurements warrant a decision record, it is a **new** ADR, not an edit. (Nothing found suggests one is needed — this phase records evidence, not decisions.) |
+| `CLAUDE.md` | Preserve the ASCII architecture diagrams, the 4-phase layered structure, and the tool coverage matrices in `development-security-stack-option-1.md` | Only relevant if a plan touches the primary document. Nothing in Phase 19's scope requires it. |
+| `CLAUDE.md` | This repo is reference documentation; `repos/security-platform` is a separate, real checkout with its own remote | Two commit streams. Fixture/workflow commits → `OttawaCloudConsulting/security-platform`; PLAN/SUMMARY/RESEARCH commits → this repo. `repos/` is gitignored here (see Pitfall 7). |
+
+**Project skills** (`.claude/skills/`): `cdk-testing`, `create-prd`, `itsg-assessment`, `nist-csf-assessment`, `nist-fedramp-assessment`, `occ-skill-creator`, `occ-skill-refactor`, `rule-creator`. None applies to this phase — there is no CDK code, no PRD to author, and no compliance assessment in scope.
+
+---
+
 ## Summary
 
 This phase is **measurement, not construction**. The pipeline already works — Phase 17 proved SARIF upload and artifact retention live on PR #8, Phase 18 proved the gate flip live on PR #9 with a byte-identical tree. What Phase 19 adds is two missing fixtures and one coherent end-to-end observation. The engineering risk is therefore concentrated almost entirely in **fixture determinism** (do the seeded files actually trip the scanners?) and in **evidence plumbing** (does the observation prove what the criterion asks, or something adjacent?).
@@ -299,7 +321,7 @@ The unfiltered list is empty **by design**, not by fault: ADR-016 records D-02's
 **How to avoid:** use a non-`EXAMPLE` synthetic `AKIA` + 16 uppercase-alphanumeric key ID. Verify locally with `gitleaks git .` in a throwaway repo *before* pushing.
 **Warning sign:** `gitleaks … ; echo $?` returns 0.
 
-**D-02 nuance the planner must decide:** D-02 asks for "a fake AWS access key ID + secret matching Gitleaks' built-in `aws-access-token` rule". Measurement shows only the **ID** matches `aws-access-token`; the secret value matches `generic-api-key`, which is entropy-based and therefore the exact kind of non-deterministic match D-02's rationale argues against. Two viable readings: (a) include both lines and document that the fixture produces 2 findings under 2 rules, one named and one entropy-based; (b) include only the ID line for a clean 1-finding, 1-named-rule fixture. **Recommendation: (a)** — it is the more literal reading of D-02's wording ("ID + secret"), the extra entropy match is harmless, and a `.env` carrying only half a credential pair looks like a mistake to a future reader. Record the 2/2 split explicitly in the `fixtures/README.md` row so the entropy match is never mistaken for the deterministic one.
+**D-02 nuance the planner must decide:** D-02 asks for "a fake AWS access key ID + secret matching Gitleaks' built-in `aws-access-token` rule". Measurement shows only the **ID** matches `aws-access-token`; the secret value matches `generic-api-key`, which is entropy-based and therefore the exact kind of non-deterministic match D-02's rationale argues against. Two viable readings: (a) include both lines and document that the fixture produces 2 findings under 2 rules, one named and one entropy-based; (b) include only the ID line for a clean 1-finding, 1-named-rule fixture. **Recommendation: (a)** — it is the more literal reading of D-02's wording ("ID + secret"); a `.env` carrying only half a credential pair looks like a mistake to a future reader; and the secret line is not purely an entropy match after all — Semgrep independently flags it under the **named** rule `generic.secrets.security.detected-aws-secret-access-key`, so keeping it adds a deterministic detection rather than only a fragile one. Record the 2/2 split explicitly in the `fixtures/README.md` row so the entropy match is never mistaken for the deterministic one.
 
 ### Pitfall 2: `os.system()` is not a Semgrep `p/default` finding
 **What goes wrong:** `vulnerable.py` is written around `os.system(...)` per a literal reading of D-01; the `sast` job reports the same 3 pre-existing findings it already reports; SC1's SAST detection is indistinguishable from the baseline and D-08's trace target does not exist.
@@ -315,7 +337,7 @@ The unfiltered list is empty **by design**, not by fault: ADR-016 records D-02's
 | `os.popen("cat " + x)` | **No** | — | — |
 
 **How to avoid:** build the fixture on `eval()` (D-01's satisfiable half). Keep an `os.system()` line if D-01 fidelity matters, but annotate it as deliberately silent — `fixtures/main.tf` already establishes that convention for its provider pin (*"An exact `3.74.0` pin is correctly SILENT under tflint"*).
-**Warning sign:** the `sast` job's finding count is 3, not 6.
+**Warning sign:** the `sast` job's finding count is 3, not 8.
 
 ### Pitfall 3: Confusing the SAST baseline with the seeded finding
 **What goes wrong:** SC1 is recorded as "the SAST job produced a detection" using findings that were already there before the fixture existed.
@@ -328,7 +350,19 @@ The unfiltered list is empty **by design**, not by fault: ADR-016 records D-02's
 | `dockerfile.security.missing-user.missing-user` | `fixtures/Dockerfile` |
 
 These three are confirmed **live** — the same three appear as Semgrep OSS alerts on `refs/pull/8/merge` (alerts 86, 87, 88) and in the retained `semgrep-results.json` from run `34638828775`. The local measurement and production agree exactly.
-**How to avoid:** every SC1/SC3 assertion must be scoped to `path == "fixtures/vulnerable.py"`, never to "the semgrep job found something". With the fixture, the count goes 3 → 6.
+
+**With BOTH new fixtures present the count goes 3 → 8**, measured in one run with `vulnerable.py` and `secret.env` together — not 3 → 6. `secret.env` fires Semgrep as well as Gitleaks:
+
+| Path | Rule | Source |
+|---|---|---|
+| `fixtures/vulnerable.py` | `python.lang.security.audit.eval-detected.eval-detected` | D-01 |
+| `fixtures/vulnerable.py` | `python.lang.security.audit.exec-detected.exec-detected` | D-01 |
+| `fixtures/vulnerable.py` | `python.lang.security.audit.subprocess-shell-true.subprocess-shell-true` | D-01 |
+| `fixtures/secret.env` | `generic.secrets.security.detected-aws-access-key-id-value…` | D-02 side effect |
+| `fixtures/secret.env` | `generic.secrets.security.detected-aws-secret-access-key…` | D-02 side effect |
+
+This is a **benefit, not a problem** — it gives the secret fixture a second, independent named-rule detection under a different tool — but it means `fixtures/README.md`'s Fixture Reference table needs a `secret.env` → SAST (Semgrep) row alongside its Secrets (Gitleaks) row, exactly as `main.tf` already carries both a Checkov row and a tflint row.
+**How to avoid:** every SC1/SC3 assertion must be scoped to `path == "fixtures/vulnerable.py"`, never to "the semgrep job found something" and never to a bare total.
 
 ### Pitfall 4: The unfiltered Security tab reads empty
 **What goes wrong:** SC3's "Security tab entry" is checked in the UI, nothing is there, and the criterion is scored as failed or — worse — the phase "fixes" it by adding `push: branches: [main]`, silently reversing ADR-016's locked D-02.
@@ -363,7 +397,7 @@ These three are confirmed **live** — the same three appear as Semgrep OSS aler
 
 ### The recommended `fixtures/vulnerable.py`
 
-Measured: **3 Semgrep findings**; passes `ruff check` and `ruff format --diff` clean; adds **0** Checkov findings.
+Measured: **3 Semgrep findings** attributable to this file; passes `ruff check` and `ruff format --diff` clean; adds **0** Checkov findings.
 
 ```python
 # INTENTIONALLY VULNERABLE SCAN FIXTURE — DO NOT "FIX" OR RUN
@@ -410,7 +444,7 @@ if __name__ == "__main__":
 
 ### The recommended `fixtures/secret.env`
 
-Measured: **`aws-access-token` fires** (plus `generic-api-key` on the secret line); adds **0** Checkov findings.
+Measured: **Gitleaks `aws-access-token` fires** (plus `generic-api-key` on the secret line), **and Semgrep independently fires two named `generic.secrets.security.*` rules on the same two lines**; adds **0** Checkov findings.
 
 ```bash
 # INTENTIONALLY VULNERABLE SCAN FIXTURE — DO NOT "FIX"
@@ -420,6 +454,9 @@ Measured: **`aws-access-token` fires** (plus `generic-api-key` on the secret lin
 # Measured 2026-09-12 against gitleaks 8.30.1 (the CI-pinned version):
 #   AWS_ACCESS_KEY_ID     -> aws-access-token   (named rule, deterministic)
 #   AWS_SECRET_ACCESS_KEY -> generic-api-key    (entropy 5.22, NOT version-stable)
+# This file ALSO lands in the SAST job — semgrep p/default 1.177.0 flags both
+# lines under generic.secrets.security.detected-aws-access-key-id-value and
+# .detected-aws-secret-access-key. Two tools, four findings, one fixture.
 #
 # DO NOT substitute AWS's canonical AKIAIOSFODNN7EXAMPLE key: gitleaks allowlists
 # EXAMPLE-suffixed keys and it produces ZERO findings — measured, not assumed.
@@ -527,8 +564,8 @@ Both were read in full at `origin/main`. **Neither requires a change for the two
 
 | Script | Why it is unaffected |
 |---|---|
-| `scripts/smoke-scans.sh` | Its SAST and Secrets sections run `semgrep scan … .` and `gitleaks git . …` at the **repo root** with no per-fixture paths, so the new files are picked up automatically. Both sections use `run_scan` (rc=1 == PASS), and both already pass on the current tree (semgrep baseline 3, gitleaks non-empty on existing history) — adding fixtures only increases the counts. The "Criterion 4 clean-skip negative test" section exercises `detect-{npm,python,terraform}.sh` inside a throwaway repo and is untouched by fixture content. |
-| `scripts/check-workflow-uploads.sh` | A **static YAML gate**, not a scanner. Its own scope note states it *"deliberately asserts NO counts"*; it checks SARIF category presence/uniqueness, artifact-name uniqueness, `--redact` on gitleaks invocations, and retention. Fixture files are invisible to it. |
+| `scripts/smoke-scans.sh` | Its SAST and Secrets sections run `semgrep scan … .` and `gitleaks git . …` at the **repo root** with no per-fixture paths, so the new files are picked up automatically. Both sections use `run_scan` (rc=1 == PASS), and both already pass on the current tree (semgrep baseline 3, gitleaks non-empty on existing history) — adding fixtures only increases the counts (semgrep 3 → 8, measured). Note its hard-tier preflight `exit 1`s if `semgrep` is not on `PATH`, so this script cannot run on the current workstation without the venv on `PATH` first. The "Criterion 4 clean-skip negative test" section exercises `detect-{npm,python,terraform}.sh` inside a throwaway repo and is untouched by fixture content. |
+| `scripts/check-workflow-uploads.sh` | A **static YAML gate**, not a scanner (a `#!/usr/bin/env bash` wrapper around a `python3 - <<'PY'` heredoc; run it as `bash scripts/check-workflow-uploads.sh`). Its own scope note states it *"deliberately asserts NO counts"*; it checks SARIF category presence/uniqueness, artifact-name uniqueness, `--redact` on gitleaks invocations, and retention. Fixture files are invisible to it. |
 
 **Optional improvement, not required:** `smoke-scans.sh`'s semgrep block prints a finding count but does not assert *which* files produced it. A one-line assertion that `fixtures/vulnerable.py` appears would make the local gate catch a registry drift (Pitfall 8) before CI does. Flagged as a discretionary addition — it changes a Phase 15/16 artifact, so the planner should weigh it against the CONTEXT's "no scan-job logic changes" boundary. It is a *script* change, not a *workflow* change, so it is arguably in scope; treat as a planner decision.
 
@@ -553,7 +590,7 @@ Both were read in full at `origin/main`. **Neither requires a change for the two
 | `rules/branches/main` | `deletion`, `non_fast_forward` — **no required checks, no required review**; PRs merge freely |
 | `secret_scanning` / push protection | **disabled** — no GH013 risk when pushing the secret fixture |
 | Dependabot security updates | disabled |
-| Last PR | #9 MERGED; #1–#9 all closed — the next validation PR will be **#10** |
+| Last PR | #9 MERGED; #1–#9 all closed. The next PR number is **≥ 10** — PRs and issues share one counter, so do not hard-code it; read it back with `gh pr view --json number`. |
 | Unfiltered code-scanning alerts | `[]` |
 
 ---
@@ -626,8 +663,8 @@ Not applicable — this is not a rename, refactor, or migration phase. One item 
 |----------|-------|
 | Framework | **No unit-test framework.** This is a documentation repo; the inner repo's validation is `bash scripts/smoke-scans.sh` (a local pass/fail scanner gate), `python3 scripts/check-workflow-uploads.sh` (a static YAML invariant gate), and live `gh` API assertions. |
 | Config file | none — both gates are self-contained scripts |
-| Quick run command | `cd repos/security-platform && python3 scripts/check-workflow-uploads.sh` (offline, seconds) |
-| Full suite command | `cd repos/security-platform && bash scripts/smoke-scans.sh` (runs every scanner locally; minutes; requires semgrep, which is absent → reports SKIPPED, and **a skip is never a pass** per the script's own contract) |
+| Quick run command | `cd repos/security-platform && bash scripts/check-workflow-uploads.sh` (offline, seconds; needs `pyyaml` — it preflights for it and fails with an install hint) |
+| Full suite command | `cd repos/security-platform && bash scripts/smoke-scans.sh` (runs every scanner locally; minutes). **It HARD-FAILS on this workstation:** its hard-tier preflight loops `semgrep checkov trivy gitleaks docker python3 npm` and `exit 1`s on the first missing binary — semgrep is missing, so the gate never starts. Verified by reading lines 202-208. Only `pip-audit` and `tflint` are soft-tier (SKIPPED, and a skip is never a pass). To run it, put the venv's semgrep on `PATH` first. |
 
 ### Phase Requirements → Test Map
 
@@ -641,12 +678,12 @@ Not applicable — this is not a rename, refactor, or migration phase. One item 
 | VAL-01 / SC3 | Human sees the rendered alert page | `checkpoint:human-verify` | manual — hand over the alert `html_url` | ❌ checkpoint task needed (see Q2) |
 | VAL-01 / SC4 | Clean PR: five green | live API | same check-runs query + `gh variable list` must be empty | ✅ |
 | D-03/D-04 | Fixtures carry the header convention; README tables updated | static | `head -1 fixtures/vulnerable.py fixtures/secret.env \| grep -c 'INTENTIONALLY VULNERABLE'` and a row-count check on the Fixture Reference table | ✅ trivial |
-| D-04 regression | New fixtures break no existing gate | static + local | `python3 scripts/check-workflow-uploads.sh` (must stay green) and `ruff check fixtures/vulnerable.py && ruff format --diff fixtures/vulnerable.py` | ✅ measured green |
+| D-04 regression | New fixtures break no existing gate | static + local | `bash scripts/check-workflow-uploads.sh` (must stay green) and `ruff check fixtures/vulnerable.py && ruff format --diff fixtures/vulnerable.py` | ✅ measured green |
 | D-09 | Repo restored | live API | `gh variable list -R … ` must print nothing | ✅ |
 
 ### Sampling Rate
 
-- **Per task commit (inner repo):** `ruff check fixtures/ && ruff format --diff fixtures/` and `python3 scripts/check-workflow-uploads.sh` — both offline and fast.
+- **Per task commit (inner repo):** `ruff check fixtures/ && ruff format --diff fixtures/` and `bash scripts/check-workflow-uploads.sh` — both offline and fast. Invoke with an explicit interpreter; never `chmod +x` (project rule).
 - **Per live run:** capture run id, the five `security / …` conclusions, and the `gate_mode=` log line count (must be 5) *immediately*, before triggering the next run. Each measurement is destroyed by the next one.
 - **Phase gate:** all four criteria evidenced with recorded run ids + alert numbers, and `gh variable list` empty.
 
@@ -691,9 +728,9 @@ Not applicable — this is not a rename, refactor, or migration phase. One item 
 
 ### Primary — HIGH confidence (measured or read live in this session, 2026-09-12)
 
-- `repos/security-platform` @ `origin/main` `2e29004`: `.github/workflows/security.yml` (1070 lines), `.github/workflows/pr-security.yml`, `.pre-commit-config.yaml`, `.gitleaksignore`, `.gitignore`, `fixtures/*`, `scripts/smoke-scans.sh`, `scripts/check-workflow-uploads.sh`
+- `repos/security-platform` @ `origin/main` `2e29004`: `scripts/check-workflow-uploads.sh` (bash wrapper + python heredoc, pyyaml preflight), `scripts/smoke-scans.sh` hard-tier binary preflight (lines 202-208, `exit 1` on a missing scanner), `.github/workflows/security.yml` (1070 lines), `.github/workflows/pr-security.yml`, `.pre-commit-config.yaml`, `.gitleaksignore`, `.gitignore`, `fixtures/*`, `scripts/smoke-scans.sh`, `scripts/check-workflow-uploads.sh`
 - Local measurement, gitleaks **8.30.1** (exact CI pin): `EXAMPLE` key → 0 findings; synthetic `AKIA` key → `aws-access-token`; `+` secret line → `generic-api-key`; `fixtures/` path not allowlisted
-- Local measurement, **semgrep 1.177.0** venv, byte-exact CI invocation: baseline 3 findings; `+vulnerable.py` → 6; `eval`/`exec`/`subprocess-shell-true` fire, `os.system`/`os.popen` do not
+- Local measurement, **semgrep 1.177.0** venv, byte-exact CI invocation: baseline 3 findings; with **both** new fixtures present → 8 (`eval`/`exec`/`subprocess-shell-true` on `vulnerable.py`, plus two `generic.secrets.security.*` rules on `secret.env`); `os.system`/`os.popen` produce nothing
 - Local measurement, **checkov 3.2.396**: 14 failed checks (12 terraform + 2 dockerfile) with both new fixtures present — identical to ADR-016's recorded 14; secrets framework → 0
 - Local measurement, **ruff 0.14.8**: recommended `vulnerable.py` passes `check` and `format --diff`
 - Live API: `gh api repos/OttawaCloudConsulting/security-platform` (public, secret scanning + push protection disabled); `gh variable list` (empty); `rules/branches/main` (`deletion`, `non_fast_forward`); `code-scanning/alerts` unfiltered (`[]`) vs `?ref=refs/pull/8/merge` (populated) vs `&tool_name=Semgrep%20OSS` (3 alerts, 86/87/88); `gh run download 34638828775 -n semgrep-results` (artifact retrieved, contents match the alerts)
