@@ -16,10 +16,15 @@ permissions:
 
 jobs:
   security:
-    # FROZEN. Phase 14-02 captured the check-run string as
-    # `security / <job name>`, and Phase 18 hard-codes it into the
-    # branch-protection required-check list. Renaming this job would leave
-    # branch protection pointing at a check that no longer exists.
+    # FROZEN. `security` is this job's ID, and therefore the PREFIX of every
+    # check-run name the called workflow's jobs emit: `security / <called job
+    # name>`. This caller job itself emits NO check run of its own — verified
+    # twice: Phase 14-02 saw exactly one check (`security / Placeholder`) for
+    # a one-job callee, no bare `security`; Phase 18's research read of the
+    # Phase 17 head SHA returned 12 check names, again none a bare `security`.
+    # Renaming this job therefore renames all five required contexts at once,
+    # and a required context with no matching check run sits permanently
+    # pending rather than failing — which is why it is frozen.
     name: security
     # A job-level permissions block REPLACES the workflow-level set for this
     # job, so contents: read must be restated here or actions/checkout inside
@@ -37,3 +42,20 @@ jobs:
       # Phase 20 consumer-template portability.
       actions: read
     uses: ./.github/workflows/security.yml
+    # No `with:` block, deliberately — omission is the mechanism, not an
+    # oversight. With gate_mode omitted, inputs.gate_mode resolves to "",
+    # so the callee's env.GATE_MODE chain falls through to this CALLER
+    # repo's `GATE_MODE` variable and then to 'report-only' (D-03). That
+    # means the mode is switched with `gh variable set GATE_MODE --body
+    # blocking`, never a YAML edit — exactly what Success Criterion 3 asks
+    # for.
+    #
+    # Two traps to avoid if a `with:` block is ever added here:
+    #   - A bare passthrough `gate_mode: ${{ vars.GATE_MODE }}` is FORBIDDEN:
+    #     an unset variable resolves to "", which counts as a PROVIDED input
+    #     and suppresses the callee's own default. Any literal added here
+    #     must carry its own `|| 'report-only'` fallback.
+    #   - A public repo that genuinely intends to run blocking may need a
+    #     literal `with: gate_mode: blocking` instead of the vars path,
+    #     because whether a fork PR's job can even read repo `vars` at all
+    #     is UNVERIFIED. That question is handed to Phase 19 (VAL-01).
