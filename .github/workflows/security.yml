@@ -76,7 +76,7 @@ jobs:
       # --json-output=/--sarif-output= compose in one run; the bare --json/--sarif
       # display flags are mutually exclusive and must not appear.
       - name: Run Semgrep
-        continue-on-error: true          # D-04: native --error kept, step tolerated
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06: native --error kept, step tolerated
         run: |
           semgrep scan --config p/default --metrics=off --error \
             --json-output=semgrep-results.json \
@@ -227,7 +227,7 @@ jobs:
       # this residual risk is accepted for this phase (T-15-13).
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@a8664e3a0549367977f0cda990a34311835c87c0  # v12.3123.0
-        continue-on-error: true          # D-04: native failing behaviour tolerated at step level
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06: native failing behaviour tolerated at step level
         with:
           directory: .
           output_format: cli,json,sarif
@@ -407,7 +407,7 @@ jobs:
       # secrets are Gitleaks' remit. No per-ecosystem plugin or .trivyignore — this
       # is SCA-04's generic sweep.
       - name: Run Trivy filesystem scan (JSON for retention)
-        continue-on-error: true          # D-04
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
           trivy fs . --scanners vuln \
             --format json --output trivy-fs.json \
@@ -427,7 +427,7 @@ jobs:
       # finding set. Do not change one without the other.
       - name: Run Trivy filesystem scan (SARIF for code scanning)
         if: always()                     # previous step exits 1 on findings
-        continue-on-error: true          # D-04
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
           trivy fs . --scanners vuln \
             --format sarif --output trivy-fs.sarif \
@@ -502,7 +502,7 @@ jobs:
       # (measured in scripts/smoke-scans.sh, 16-03).
       - name: SCA-01 — npm audit
         if: steps.npm.outputs.found == 'true'
-        continue-on-error: true          # D-04: native --audit-level exit code kept
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06: native --audit-level exit code kept
         run: |
           i=0
           last=0
@@ -565,7 +565,7 @@ jobs:
       # the npm section above.
       - name: SCA-02 — pip-audit
         if: steps.py.outputs.found == 'true'
-        continue-on-error: true          # D-04
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
           i=0
           last=0
@@ -630,13 +630,13 @@ jobs:
       # dropped the moment the first exits non-zero.
       - name: SCA-03 — tflint (SARIF)
         if: steps.tf.outputs.found == 'true'
-        continue-on-error: true          # D-04: exit 2 means findings
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06: exit 2 means findings
         run: |
           tflint --recursive --format sarif > tflint.sarif
 
       - name: SCA-03 — tflint (human-readable log)
         if: always() && steps.tf.outputs.found == 'true'
-        continue-on-error: true          # D-04: exit 2 means findings
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06: exit 2 means findings
         run: |
           tflint --recursive --format default
 
@@ -815,7 +815,7 @@ jobs:
         run: docker build -f fixtures/Dockerfile -t scan-fixture:${{ github.sha }} fixtures/
 
       - name: Run Trivy image scan
-        continue-on-error: true          # D-04
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
           trivy image scan-fixture:${{ github.sha }} --scanners vuln \
             --format json --output trivy-image.json \
@@ -959,14 +959,14 @@ jobs:
       # *expected* to exit 1 under D-04, and a two-command run: would silently
       # drop the second command once the first exits non-zero.
       - name: Run Gitleaks (SARIF)
-        continue-on-error: true          # D-04
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
           gitleaks git . --no-banner --redact \
             --report-format sarif --report-path gitleaks.sarif
 
       - name: Run Gitleaks (JSON)
         if: always()                     # previous step exits 1 on findings
-        continue-on-error: true          # D-04
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
           gitleaks git . --no-banner --redact \
             --report-format json --report-path gitleaks-results.json
