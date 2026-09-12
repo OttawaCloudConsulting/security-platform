@@ -2018,12 +2018,32 @@ pre-commit run --all-files   # hooks auto-skip for irrelevant file types
 - JSON artifacts downloadable from each workflow run
 - Branch protection configured on the `main` branch (required — without this, the CI security gate is advisory-only and provides zero enforcement)
 
-  **Configure in GitHub:** Settings → Branches → Branch protection rules → Add rule
-  - Branch name pattern: `main`
-  - Enable: **Require a pull request before merging**
-  - Enable: **Require status checks to pass before merging** — add each security workflow job as a required check: `sast`, `iac`, `sca`, `container`, `secrets`
-  - Enable: **Do not allow bypassing the above settings**
-  - Enable: **Restrict who can push to matching branches** (block direct pushes to `main`)
+  **Configure in GitHub:** Settings → Rules → Rulesets → the ruleset covering the default branch → Edit → Branch rules. This repository is governed by a **ruleset**, not classic branch protection — the classic **Settings → Branches → Branch protection rules** screen returns 404 on a ruleset-governed repository by design, so its absence there proves nothing about whether the branch is protected.
+
+  **The gate mode flag, in both consumption modes:** the reusable workflow exposes `gate_mode` as a `workflow_call` input, accepting `blocking` or `report-only`. A caller invoking it directly passes `with: gate_mode: blocking`. A copy-paste consumer that does not modify the caller YAML instead sets a repository variable on the CALLER repository — `gh variable set GATE_MODE --body blocking -R OWNER/REPO` — because a called reusable workflow reads the caller repository's variables, not its own. Leaving both unset defaults to `report-only`. Switching modes requires no YAML edit: measured live, the identical commit and tree produced five green `security / …` checks under report-only and five red ones under blocking, with only the repository variable changed in between.
+
+  **What counts as a failure:** any finding fails the job, per each tool's own native detection configuration — there is no pipeline-level severity knob. This is deliberate, not an omission: pip-audit's JSON output carries no severity or CVSS field at all, so a cutoff could not be applied consistently across the five jobs. Per-tool mechanisms as configured today:
+  - Semgrep: `--error` — exit 1 on any finding
+  - Checkov: `soft_fail: false` — native failing exit code
+  - Trivy (filesystem and image): `--exit-code 1 --severity HIGH,CRITICAL` — Trivy's own severity filter already limits what it reports, so the threshold lives in per-tool configuration, not a pipeline-level switch
+  - tflint: exit 2 signals findings (exit 1 is reserved for tool errors)
+  - Gitleaks: exit 1 on any finding
+  - SCA sub-scans: npm audit uses its native `--audit-level` exit code; pip-audit exits 1 on findings and has no severity field to threshold on
+
+  **Enable: Require a pull request before merging.** Required status checks alone do not require a PR — without this rule, a developer with write access bypasses the entire gate with one direct push. Keep `deletion` and `non_fast_forward` enabled as well. A scripted update to the ruleset must read-modify-write: the ruleset API replaces the entire rules document on write, so a request body carrying only the new rule silently deletes every other rule already in place. The reference implementation ships this as `scripts/set-required-checks.sh`, run with `bash`, dry-run by default.
+
+  **Enable: Require status checks to pass before merging** — add these five contexts, byte-exact, each read from `gh api repos/OWNER/REPO/commits/SHA/check-runs` (never from the code-scanning `analyses` endpoint, which disagrees with the check-runs API on case):
+  - `security / SAST — Semgrep CE`
+  - `security / IaC — Checkov`
+  - `security / SCA — Trivy Filesystem`
+  - `security / Container — Trivy Image`
+  - `security / Secrets — Gitleaks`
+
+  The naming rule is `<caller job id> / <called workflow job name>`; the caller job itself (`security`) emits no check run of its own, so there are five contexts here, not six. GitHub treats a required context it has never seen as permanently **pending**, not passing — a mistyped name (wrong dash character, wrong case) produces a branch nobody can merge into, not a visible error. The separator in every context above is an em dash (—, U+2014), not a hyphen.
+
+  **Adopt in this order, not the reverse:** first leave `gate_mode` at its `report-only` default and confirm on a real PR that all five contexts above appear and conclude green. Then flip to `blocking` (no YAML edit needed) and confirm the same PR turns red. Only then add the five contexts as required status checks. Red-on-findings is not observable in report-only — by definition a report-only run is green regardless of what the scanners find — so the only thing step one confirms is that the checks appear and conclude green. Requiring the checks before confirming blocking behavior (step three before step two) leaves merges un-gated while the repository settings claim otherwise.
+
+  Two caveats: leave **"Require branches to be up to date before merging"** (the strict policy) off unless the re-run churn is acceptable — five jobs re-run on every advance of the base branch. And whether a fork pull request can read the caller repository's variables at all is unverified; a PUBLIC repository that intends to run blocking should pass a literal `with: gate_mode: blocking` from its caller rather than relying on `GATE_MODE`, since a fork PR resolving the variable to empty would silently degrade to report-only while a required check still reports green.
 
   Without branch protection, a developer can push directly to `main` (bypassing all PR-based scanning), and failing scanner jobs have no effect on merge eligibility. The `continue-on-error` changes described above only enforce quality gates when branch protection makes those status checks required.
 
