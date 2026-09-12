@@ -167,7 +167,17 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
   3. A seeded finding is traced from its source file through to both the Security tab entry and the retained JSON artifact.
   4. A clean pull request with no seeded findings passes all five jobs green.
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+
+- [ ] 19-01-PLAN.md — Seed and locally verify the SAST (`fixtures/vulnerable.py`) and Secrets (`fixtures/secret.env`) fixtures
+- [ ] 19-02-PLAN.md — Document both fixtures in `fixtures/README.md` and add rule-id verdict assertions to the smoke gate
+- [ ] 19-03-PLAN.md — Open the validation PR under report-only and capture SC1: a named detection from each of the five jobs
+- [ ] 19-04-PLAN.md — Trace the seeded `eval()` finding source → Security tab entry → retained artifact (SC3), with a human confirming the rendered alert
+- [ ] 19-05-PLAN.md — Flip `GATE_MODE` to blocking, prove opposite verdicts on an identical tree (SC2), and restore unconditionally (D-09)
+- [ ] 19-06-PLAN.md — Open a clean PR with no fixture changes and capture SC4: five `security / …` check runs concluded success
+- [ ] 19-07-PLAN.md — D-10 merge-vs-close decision, verify from `origin/main`, and close the phase with VAL-01 complete
 
 ### Phase 20: Template Packaging and Adoption Docs
 
