@@ -65,8 +65,9 @@ completed: 2026-09-12
 - **The mode was read from the log, not inferred.** All five `Validate gate_mode` steps printed `gate_mode=report-only`; zero printed `gate_mode=blocking`.
 - **No sixth `security` check exists.** The full twelve-check listing on the head SHA matches 17-05's set exactly (five `security / …` + six `github-advanced-security` + one GitGuardian), and a scripted assertion confirms no check is named bare `security`.
 - **Phase 17's SARIF/artifact guarantees survive the gate rewiring.** Five artifacts, one 90-day expiry, seven analyses across six categories, eleven upload-verify assertions all green — all matching 17-05's shape.
-- **One real, expected difference from 17-05, verified rather than assumed:** the `Checkov` code-scanning check (app 57789) concluded `success` here vs `failure` in 17-05. Confirmed by reading its annotations directly: `GET check-runs/{id}/annotations` returns `[]` on this run (17-05 had two `failure`-level annotations on `fixtures/main.tf` line 38). This PR's diff touches only `.github/workflows/*.yml` and `scripts/set-required-checks.sh` — no fixture lines — so no error-severity Checkov alert lands on a changed line. Results counts across all six categories are otherwise identical to 17-05 (checkov 14, trivy-image 56, semgrep 3, gitleaks 9, tflint 3, trivy-fs 6).
-- **`continue-on-error` was observed actually tolerating failures, not just configured to.** The run log shows `Process completed with exit code 1` on the Trivy filesystem scan (both JSON and SARIF invocations), the Trivy image scan, the Semgrep step, and both Gitleaks invocations (SARIF + JSON) — every one of those five jobs nonetheless concluded `success`. This is the live proof the plan's objective paragraph asks for: 18-05's blocking run should turn these same steps red.
+- **One real, expected difference from 17-05, verified rather than assumed:** the `Checkov` code-scanning check (app 57789) concluded `success` here vs `failure` in 17-05. VERIFIED: `GET check-runs/{id}/annotations` returns `[]` on this run's Checkov check (17-05 had two `failure`-level annotations on `fixtures/main.tf` line 38); this PR's diff touches only `.github/workflows/*.yml` and `scripts/set-required-checks.sh` — no fixture lines. BELIEF, not verified: that "no changed-line overlap" is the *mechanism* GitHub uses to decide the code-scanning check's conclusion (this is the standard documented behaviour, but this plan did not trace GitHub's evaluator). Results counts across all six categories are otherwise identical to 17-05 (checkov 14, trivy-image 56, semgrep 3, gitleaks 9, tflint 3, trivy-fs 6).
+- **`continue-on-error` was observed actually tolerating failures, not just configured to — on 10 of the 11 gated steps.** The run log shows an explicit `Process completed with exit code N` error line, immediately followed by the job continuing, on: both Trivy filesystem scan invocations (JSON + SARIF), `SCA-01 — npm audit`, `SCA-02 — pip-audit`, both `SCA-03 — tflint` invocations (SARIF + human-readable), the Trivy image scan, the Semgrep step, and both Gitleaks invocations (SARIF + JSON) — 10 lines total, spread across four jobs (sca ×6, container ×1, sast ×1, secrets ×2). Every one of those jobs nonetheless concluded `success`. See §8 for the full per-step table.
+- **The 11th gated step — `Run Checkov` — produced NO `Process completed with exit code N` line anywhere in its block**, despite 14 findings (12 on `fixtures/main.tf`, 2 on `fixtures/Dockerfile`) and `soft_fail: false` set explicitly in its `with:` block. VERIFIED: grepped the full IaC job log for `##[error]` and `exit` — the only `##[error]` lines are Checkov's own per-finding `File: ...` annotations (14 of them, matching the 14 findings), never a process-exit marker. The step is a Docker container action (`##[command]/usr/bin/docker run ...ghcr.io/bridgecrewio/checkov:3.3.17`), not a shell `run:` step, so GitHub's runner may not wrap its exit differently, or the container itself may not be exiting non-zero on findings despite `soft_fail: false`. BELIEF, not verified: which of those two explanations is correct — this plan did not instrument the container's actual exit code. **This is the discriminating fact 18-05 needs**: if Checkov's container genuinely never signals failure via the mechanism the other ten steps use, then 18-05's blocking run may show the IaC job green even under `gate_mode: blocking`, and that would not be a bug in the gate expression — it would mean the tolerance was never being exercised in the first place. 18-05 must check this explicitly rather than assume all five jobs turn red uniformly.
 
 ## Task Commits
 
@@ -177,7 +178,7 @@ Spot-checked per the Task 2 how-to-verify: `security / IaC — Checkov`'s first 
 
 Seven analyses, six distinct categories: `checkov, gitleaks, semgrep, tflint, trivy-fs, trivy-image` — matches 17-05 exactly, including the tflint dual-driver artifact (7 analyses / 6 categories, not 6/6).
 
-**Difference from 17-05, explained (see Accomplishments #6):** the `Checkov` app-check concluded `success` here (17-05: `failure`) because this PR's diff carries no fixture-line changes, so zero Checkov annotations render on a changed line (verified: `GET check-runs/{checkov_id}/annotations` → `[]`; 17-05 had two). Result counts are unaffected — only the diff-annotation-driven check conclusion differs, which is consistent with GitHub's code-scanning check behaviour (fails on error-severity alerts attributable to the diff, not on total analysis results).
+**Difference from 17-05, explained (see Accomplishments):** the `Checkov` app-check concluded `success` here (17-05: `failure`). VERIFIED: `GET check-runs/{checkov_id}/annotations` → `[]` on this run (17-05 had two); this PR's diff carries no fixture-line changes. Result counts are unaffected — only the check conclusion differs. BELIEF, not verified: that "zero diff-annotations implies success" is the exact mechanism GitHub's evaluator uses (standard documented behaviour, not traced here).
 
 ### 7. Eleven upload-verify assertions — all green, none skipped
 
@@ -199,18 +200,26 @@ Read from `gh run view 34668611172 --json jobs`:
 
 Zero skips — the same-repo, non-Dependabot PR condition held (branch pushed to origin, no fork used), so every assertion actually proved something.
 
-### 8. Live proof `continue-on-error` tolerated real failures
+### 8. Live proof `continue-on-error` tolerated real failures — 10 of 11 gated steps confirmed, 1 not
 
-`Process completed with exit code 1` (or equivalent non-zero) observed in the run log, job still concluding `success`:
+`grep '##\[error\]Process completed with exit code' <run-log>` returned exactly **10** lines. Mapped to steps via `gh run view --json jobs` step ordering (job still concluding `success` in every case):
 
-| Job | Step(s) that exited non-zero |
-|---|---|
-| `security / SCA — Trivy Filesystem` | Trivy filesystem scan (JSON for retention), Trivy filesystem scan (SARIF for code scanning) |
-| `security / Container — Trivy Image` | Run Trivy image scan |
-| `security / SAST — Semgrep CE` | Run Semgrep |
-| `security / Secrets — Gitleaks` | Run Gitleaks (SARIF), Run Gitleaks (JSON) |
+| Job | Step | Exit code | Tolerated? |
+|---|---|---|---|
+| `security / SCA — Trivy Filesystem` | Trivy filesystem scan (JSON for retention) | 1 | yes |
+| `security / SCA — Trivy Filesystem` | Trivy filesystem scan (SARIF for code scanning) | 1 | yes |
+| `security / SCA — Trivy Filesystem` | SCA-01 — npm audit | 1 | yes |
+| `security / SCA — Trivy Filesystem` | SCA-02 — pip-audit | 1 | yes |
+| `security / SCA — Trivy Filesystem` | SCA-03 — tflint (SARIF) | 2 | yes |
+| `security / SCA — Trivy Filesystem` | SCA-03 — tflint (human-readable log) | 2 | yes |
+| `security / Container — Trivy Image` | Run Trivy image scan | 1 | yes |
+| `security / SAST — Semgrep CE` | Run Semgrep | 1 | yes |
+| `security / Secrets — Gitleaks` | Run Gitleaks (SARIF) | 1 | yes |
+| `security / Secrets — Gitleaks` | Run Gitleaks (JSON) | 1 | yes |
 
-Every one of these jobs concluded `success` overall — this is the live mechanism the objective paragraph asks to be observed, not just configured. 18-05's blocking run is expected to turn these same steps (and jobs) red.
+That accounts for 10 of the 11 gated `continue-on-error` steps (sast ×1, iac ×1, sca ×6, container ×1, secrets ×2 = 11 total per 18-02-SUMMARY's table). **The 11th — `Run Checkov` in the `iac` job — produced no such line.** VERIFIED: grepping the entire `security / IaC — Checkov` job log for `##[error]` returns only Checkov's 14 per-finding `File: ...` annotations, never a `Process completed with exit code` marker; the step is a Docker container action (`docker run ... ghcr.io/bridgecrewio/checkov:3.3.17`), not a shell `run:` step. Whether the container exited non-zero and GitHub reports it differently for container actions, or whether it did not exit non-zero at all despite `soft_fail: false`, is NOT verified here — this plan did not instrument the container's raw exit code.
+
+**Every one of the four jobs with a confirmed non-zero exit concluded `success` overall** — live proof of the mechanism the objective paragraph asks to be observed. For the `iac` job, only the *check-run conclusion* (`success`, no crash, findings reported) is confirmed; whether its scan step would visibly flip red under `gate_mode: blocking` is unconfirmed and flagged for 18-05 to check explicitly rather than assume.
 
 ### 9. Postflight (after the run) — no repository configuration changed
 
@@ -268,10 +277,17 @@ The full evidence table above (sections 0-9) is what Task 2 asks to be presented
 ## Next Phase Readiness
 
 - PR #9 is open, unmerged, mergeable, at `https://github.com/OttawaCloudConsulting/security-platform/pull/9`, running the rewired workflow with nothing set anywhere — the report-only baseline this phase's Success Criterion 1 needs.
-- 18-05 can re-run on this same PR by setting the `GATE_MODE` repository variable to `blocking` (no YAML edit) and comparing the same eleven scan-step outcomes — this plan's §8 (five tolerated non-zero exits, spread across four jobs) is the direct prediction for what should turn red.
+- 18-05 can re-run on this same PR by setting the `GATE_MODE` repository variable to `blocking` (no YAML edit) and comparing the same eleven scan-step outcomes — this plan's §8 (10 of 11 gated steps confirmed tolerating a non-zero exit, spread across four jobs: sca, container, sast, secrets) is the direct prediction for what should turn red. The 11th step (`Run Checkov`, iac job) is an open question 18-05 must check explicitly, not assume — see §8's closing paragraph.
 - 18-08 owns the eventual merge, gated on both 18-04's and 18-05's evidence being confirmed by the operator.
 - **Blocker for phase progression:** Task 2's operator confirmation has not occurred. 18-05 should not begin until "approved" (or a described mismatch) is received for this plan's Task 2.
 
 ---
 *Phase: 18-configurable-gate-mode-and-branch-protection*
 *Completed: 2026-09-12 (Task 1 only; Task 2 pending)*
+
+## Self-Check: PASSED
+
+- FOUND: .planning/phases/18-configurable-gate-mode-and-branch-protection/18-04-SUMMARY.md
+- FOUND (nested repos/security-platform, live GitHub state, not a local commit): PR #9 at `https://github.com/OttawaCloudConsulting/security-platform/pull/9`, OPEN, MERGEABLE
+- FOUND (live GitHub state): run 34668611172, head SHA 31dbb0d76749900b82f59fd4e2e4601dec485289, conclusion success
+- FOUND: docs-repo commit d451299 (this SUMMARY)
