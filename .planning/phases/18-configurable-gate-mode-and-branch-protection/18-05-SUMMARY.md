@@ -266,8 +266,17 @@ Whether to run `bash scripts/set-required-checks.sh --apply` against ruleset `14
 ## Next Phase Readiness
 
 - PR #9 is open, unmerged, mergeable, at `https://github.com/OttawaCloudConsulting/security-platform/pull/9`, currently `success` on all five checks at head `835c43e8e8d7cad5276120b925ca5650a3bcda50` — the repository is back in report-only exactly as it started.
-- **Blocker for phase progression:** Task 2's operator confirmation and Task 3's operator decision have not occurred. 18-06/18-07 (documentation plans) and 18-08 (the eventual merge) should not proceed until both are resolved.
-- The full evidence table above (sections 0-10) is what Task 2 asks to be presented to the operator, and what Task 3's decision context depends on.
+- The full evidence table above (sections 0-10) is what Task 2 asked the operator to review, and what Task 3's decision context depended on.
+
+## Checkpoint Handoff — Task 2
+
+Operator response (verbatim): "approved"
+
+## Checkpoint Handoff — Task 3
+
+Operator selection (verbatim): "leave-unrequired"
+
+Reasoning: recommended option — no lockout risk; CICD-04 is satisfied by the proven `set-required-checks.sh` script (18-03) plus the written guidance (18-06/18-07) whether or not this repository requires the checks on itself. `main` remains pushable directly and `rules/branches/main` remains exactly `deletion`, `non_fast_forward` (read back live, unchanged from the plan's opening read). No `--apply` was run.
 
 ---
 *Phase: 18-configurable-gate-mode-and-branch-protection*
