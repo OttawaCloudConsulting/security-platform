@@ -3,13 +3,21 @@
 # Invoked by repo-local callers (see pr-security.yml) and, from Phase 20,
 # by external repositories as a reusable workflow.
 # All third-party actions are pinned to full commit SHAs (ADR-004).
-# Phase 15: report-only. Scan steps carry continue-on-error, so findings are
-# visible but non-blocking. Gate mode is Phase 18 (CICD-06).
+# Gate mode is `gate_mode` ("blocking" or "report-only"), defaulting to
+# "report-only". Supply it either as a `workflow_call` input or as the
+# caller repo's `GATE_MODE` variable — switching modes needs no YAML edit.
 
 name: Security Scans
 
 on:
-  workflow_call: {}
+  workflow_call:
+    inputs:
+      gate_mode:
+        description: >-
+          "blocking" or "report-only". Omit to fall back to the caller repo's
+          GATE_MODE variable, then to "report-only" (D-03).
+        required: false
+        type: string
 
 # Explicit FULL permission set, not a subset. A called workflow's block can
 # only REDUCE what the caller granted — leaving this at `contents: read`
@@ -23,6 +31,14 @@ permissions:
   # consumer-template portability.
   actions: read
 
+# Workflow-level env is the only scope that sees both `inputs` and `vars` at
+# once. Inside a called workflow, `vars` resolves to the CALLER repository,
+# which is what lets the copy-paste consumption mode change gate_mode with no
+# YAML edit. The input carries no `default:`, so an omitted input is `""`
+# (falsy) and the `||` chain reaches `vars.GATE_MODE` instead of stopping dead.
+env:
+  GATE_MODE: ${{ inputs.gate_mode || vars.GATE_MODE || 'report-only' }}
+
 jobs:
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -34,6 +50,22 @@ jobs:
     name: SAST — Semgrep CE
     runs-on: ubuntu-latest
     steps:
+      # This is the enum control: GitHub does not validate a `type: string`
+      # value against a list, so without this step "string enum" is a
+      # convention, not a constraint. The empty string is rejected on
+      # purpose — it is the shape an omitted-and-unresolved input produces,
+      # and a blank mode must fail loudly rather than resolve to anything.
+      # Deliberately placed before checkout: an invalid value fails the job
+      # before any scan runs, and the job's trailing `if: always()` upload
+      # and "Show scan output files" steps will then also fail on missing
+      # files. The job is red either way; the first failure in the log is
+      # the legible one, and fail-before-scan is the intended behaviour.
+      - name: Validate gate_mode
+        run: |
+          case "${GATE_MODE}" in
+            blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;
+            *) echo "invalid gate_mode: '${GATE_MODE}' (expected blocking|report-only)"; exit 1 ;;
+          esac
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - run: pip install semgrep==1.177.0
       # Assumption A7 fallback ladder if PEP 668 blocks the pip install above:
@@ -44,7 +76,7 @@ jobs:
       # --json-output=/--sarif-output= compose in one run; the bare --json/--sarif
       # display flags are mutually exclusive and must not appear.
       - name: Run Semgrep
-        continue-on-error: true          # D-04: native --error kept, step tolerated
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06: native --error kept, step tolerated
         run: |
           semgrep scan --config p/default --metrics=off --error \
             --json-output=semgrep-results.json \
@@ -172,6 +204,22 @@ jobs:
     name: IaC — Checkov
     runs-on: ubuntu-latest
     steps:
+      # This is the enum control: GitHub does not validate a `type: string`
+      # value against a list, so without this step "string enum" is a
+      # convention, not a constraint. The empty string is rejected on
+      # purpose — it is the shape an omitted-and-unresolved input produces,
+      # and a blank mode must fail loudly rather than resolve to anything.
+      # Deliberately placed before checkout: an invalid value fails the job
+      # before any scan runs, and the job's trailing `if: always()` upload
+      # and "Show scan output files" steps will then also fail on missing
+      # files. The job is red either way; the first failure in the log is
+      # the legible one, and fail-before-scan is the intended behaviour.
+      - name: Validate gate_mode
+        run: |
+          case "${GATE_MODE}" in
+            blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;
+            *) echo "invalid gate_mode: '${GATE_MODE}' (expected blocking|report-only)"; exit 1 ;;
+          esac
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       # SHA-pinned action; it internally pulls ghcr.io/bridgecrewio/checkov:3.3.17
@@ -179,7 +227,7 @@ jobs:
       # this residual risk is accepted for this phase (T-15-13).
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@a8664e3a0549367977f0cda990a34311835c87c0  # v12.3123.0
-        continue-on-error: true          # D-04: native failing behaviour tolerated at step level
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06: native failing behaviour tolerated at step level
         with:
           directory: .
           output_format: cli,json,sarif
@@ -291,6 +339,22 @@ jobs:
     name: SCA — Trivy Filesystem
     runs-on: ubuntu-latest
     steps:
+      # This is the enum control: GitHub does not validate a `type: string`
+      # value against a list, so without this step "string enum" is a
+      # convention, not a constraint. The empty string is rejected on
+      # purpose — it is the shape an omitted-and-unresolved input produces,
+      # and a blank mode must fail loudly rather than resolve to anything.
+      # Deliberately placed before checkout: an invalid value fails the job
+      # before any scan runs, and the job's trailing `if: always()` upload
+      # and "Show scan output files" steps will then also fail on missing
+      # files. The job is red either way; the first failure in the log is
+      # the legible one, and fail-before-scan is the intended behaviour.
+      - name: Validate gate_mode
+        run: |
+          case "${GATE_MODE}" in
+            blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;
+            *) echo "invalid gate_mode: '${GATE_MODE}' (expected blocking|report-only)"; exit 1 ;;
+          esac
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
         with:
@@ -343,7 +407,7 @@ jobs:
       # secrets are Gitleaks' remit. No per-ecosystem plugin or .trivyignore — this
       # is SCA-04's generic sweep.
       - name: Run Trivy filesystem scan (JSON for retention)
-        continue-on-error: true          # D-04
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
           trivy fs . --scanners vuln \
             --format json --output trivy-fs.json \
@@ -363,7 +427,7 @@ jobs:
       # finding set. Do not change one without the other.
       - name: Run Trivy filesystem scan (SARIF for code scanning)
         if: always()                     # previous step exits 1 on findings
-        continue-on-error: true          # D-04
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
           trivy fs . --scanners vuln \
             --format sarif --output trivy-fs.sarif \
@@ -436,9 +500,21 @@ jobs:
       # The list is read on fd 3 because npm reads stdin — a scanner that
       # consumed the loop's stdin would swallow the remaining lockfile paths
       # (measured in scripts/smoke-scans.sh, 16-03).
+      # Compound guard, deliberate: this step's `if:` had no status function of
+      # its own, so GitHub applied an implicit success() — once an earlier
+      # scan step failed hard under gate_mode: blocking, this scanner
+      # silently skipped while its always()-guarded verify step still ran
+      # and failed on a missing report, an infrastructure-shaped error for
+      # a scan that never ran. always() && restores the intended semantics:
+      # skip only on this ecosystem's own not-found signal, never on an
+      # upstream failure. This also changes report-only behaviour — these
+      # three steps previously skipped after any failed intolerant step
+      # earlier in the job; now they run regardless. The gate verdict is
+      # identical either way; what improves is report completeness and
+      # error honesty.
       - name: SCA-01 — npm audit
-        if: steps.npm.outputs.found == 'true'
-        continue-on-error: true          # D-04: native --audit-level exit code kept
+        if: always() && steps.npm.outputs.found == 'true'
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06: native --audit-level exit code kept
         run: |
           i=0
           last=0
@@ -500,8 +576,8 @@ jobs:
       # threshold can be derived from this report. Do not infer its shape from
       # the npm section above.
       - name: SCA-02 — pip-audit
-        if: steps.py.outputs.found == 'true'
-        continue-on-error: true          # D-04
+        if: always() && steps.py.outputs.found == 'true'
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
           i=0
           last=0
@@ -565,14 +641,14 @@ jobs:
       # by redirection, and a second command in the same bash -e block would be
       # dropped the moment the first exits non-zero.
       - name: SCA-03 — tflint (SARIF)
-        if: steps.tf.outputs.found == 'true'
-        continue-on-error: true          # D-04: exit 2 means findings
+        if: always() && steps.tf.outputs.found == 'true'
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06: exit 2 means findings
         run: |
           tflint --recursive --format sarif > tflint.sarif
 
       - name: SCA-03 — tflint (human-readable log)
         if: always() && steps.tf.outputs.found == 'true'
-        continue-on-error: true          # D-04: exit 2 means findings
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06: exit 2 means findings
         run: |
           tflint --recursive --format default
 
@@ -716,6 +792,22 @@ jobs:
     name: Container — Trivy Image
     runs-on: ubuntu-latest
     steps:
+      # This is the enum control: GitHub does not validate a `type: string`
+      # value against a list, so without this step "string enum" is a
+      # convention, not a constraint. The empty string is rejected on
+      # purpose — it is the shape an omitted-and-unresolved input produces,
+      # and a blank mode must fail loudly rather than resolve to anything.
+      # Deliberately placed before checkout: an invalid value fails the job
+      # before any scan runs, and the job's trailing `if: always()` upload
+      # and "Show scan output files" steps will then also fail on missing
+      # files. The job is red either way; the first failure in the log is
+      # the legible one, and fail-before-scan is the intended behaviour.
+      - name: Validate gate_mode
+        run: |
+          case "${GATE_MODE}" in
+            blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;
+            *) echo "invalid gate_mode: '${GATE_MODE}' (expected blocking|report-only)"; exit 1 ;;
+          esac
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567  # v0.3.1
         with:
@@ -735,7 +827,7 @@ jobs:
         run: docker build -f fixtures/Dockerfile -t scan-fixture:${{ github.sha }} fixtures/
 
       - name: Run Trivy image scan
-        continue-on-error: true          # D-04
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
           trivy image scan-fixture:${{ github.sha }} --scanners vuln \
             --format json --output trivy-image.json \
@@ -842,6 +934,22 @@ jobs:
     name: Secrets — Gitleaks
     runs-on: ubuntu-latest
     steps:
+      # This is the enum control: GitHub does not validate a `type: string`
+      # value against a list, so without this step "string enum" is a
+      # convention, not a constraint. The empty string is rejected on
+      # purpose — it is the shape an omitted-and-unresolved input produces,
+      # and a blank mode must fail loudly rather than resolve to anything.
+      # Deliberately placed before checkout: an invalid value fails the job
+      # before any scan runs, and the job's trailing `if: always()` upload
+      # and "Show scan output files" steps will then also fail on missing
+      # files. The job is red either way; the first failure in the log is
+      # the legible one, and fail-before-scan is the intended behaviour.
+      - name: Validate gate_mode
+        run: |
+          case "${GATE_MODE}" in
+            blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;
+            *) echo "invalid gate_mode: '${GATE_MODE}' (expected blocking|report-only)"; exit 1 ;;
+          esac
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0   # REQUIRED: `gitleaks git` finds findings in history;
@@ -863,14 +971,14 @@ jobs:
       # *expected* to exit 1 under D-04, and a two-command run: would silently
       # drop the second command once the first exits non-zero.
       - name: Run Gitleaks (SARIF)
-        continue-on-error: true          # D-04
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
           gitleaks git . --no-banner --redact \
             --report-format sarif --report-path gitleaks.sarif
 
       - name: Run Gitleaks (JSON)
         if: always()                     # previous step exits 1 on findings
-        continue-on-error: true          # D-04
+        continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
           gitleaks git . --no-banner --redact \
             --report-format json --report-path gitleaks-results.json
