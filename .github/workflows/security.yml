@@ -500,8 +500,20 @@ jobs:
       # The list is read on fd 3 because npm reads stdin — a scanner that
       # consumed the loop's stdin would swallow the remaining lockfile paths
       # (measured in scripts/smoke-scans.sh, 16-03).
+      # Compound guard, deliberate: this step's `if:` had no status function of
+      # its own, so GitHub applied an implicit success() — once an earlier
+      # scan step failed hard under gate_mode: blocking, this scanner
+      # silently skipped while its always()-guarded verify step still ran
+      # and failed on a missing report, an infrastructure-shaped error for
+      # a scan that never ran. always() && restores the intended semantics:
+      # skip only on this ecosystem's own not-found signal, never on an
+      # upstream failure. This also changes report-only behaviour — these
+      # three steps previously skipped after any failed intolerant step
+      # earlier in the job; now they run regardless. The gate verdict is
+      # identical either way; what improves is report completeness and
+      # error honesty.
       - name: SCA-01 — npm audit
-        if: steps.npm.outputs.found == 'true'
+        if: always() && steps.npm.outputs.found == 'true'
         continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06: native --audit-level exit code kept
         run: |
           i=0
@@ -564,7 +576,7 @@ jobs:
       # threshold can be derived from this report. Do not infer its shape from
       # the npm section above.
       - name: SCA-02 — pip-audit
-        if: steps.py.outputs.found == 'true'
+        if: always() && steps.py.outputs.found == 'true'
         continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
           i=0
@@ -629,7 +641,7 @@ jobs:
       # by redirection, and a second command in the same bash -e block would be
       # dropped the moment the first exits non-zero.
       - name: SCA-03 — tflint (SARIF)
-        if: steps.tf.outputs.found == 'true'
+        if: always() && steps.tf.outputs.found == 'true'
         continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06: exit 2 means findings
         run: |
           tflint --recursive --format sarif > tflint.sarif
