@@ -281,9 +281,15 @@ The full evidence table above (sections 0-9) is what Task 2 asks to be presented
 - 18-08 owns the eventual merge, gated on both 18-04's and 18-05's evidence being confirmed by the operator.
 - **Blocker for phase progression:** Task 2's operator confirmation has not occurred. 18-05 should not begin until "approved" (or a described mismatch) is received for this plan's Task 2.
 
+## Checkpoint Handoff — Task 2
+
+Operator response (verbatim): "approved"
+
+No repository variable was set, no ruleset was modified, and PR #9 remains open and unmerged at checkpoint resolution time. Proceeding to 18-05's blocking-mode demonstration on this same PR.
+
 ---
 *Phase: 18-configurable-gate-mode-and-branch-protection*
-*Completed: 2026-09-12 (Task 1 only; Task 2 pending)*
+*Completed: 2026-09-12*
 
 ## Self-Check: PASSED
 
