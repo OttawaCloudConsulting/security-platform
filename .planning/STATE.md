@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: verifying
-stopped_at: Completed 18-06-PLAN.md
-last_updated: "2026-09-12T12:57:46.888Z"
+stopped_at: Completed 18-07-PLAN.md
+last_updated: "2026-09-12T13:06:01.446Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 30
-  completed_plans: 28
+  completed_plans: 29
   percent: 57
 ---
 
@@ -30,7 +30,7 @@ Plan: 7 of 7 — all complete
 Status: Phase complete — ready for verification
 Last activity: 2026-09-12
 
-Progress: [█████████░] 93%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -121,6 +121,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 17-sarif-upload-and-artifact-retention]: 17-05: `gh auth refresh -h github.com -s security_events` was NOT run and was not needed. The local token carries only 'gist', 'read:org', 'repo', 'workflow' — no security_events — yet every code-scanning read succeeded, because that scope is required only for PRIVATE repos and security-platform is PUBLIC. The pre-upload 404 also carries a misleading `gh: This API operation needs the "admin:repo_hook" scope` decoration. VERIFIED: it was not a permission problem (no 403 at any point on a token with no security_events scope). BELIEF, not verified: that the line is the CLI's generic error hint rather than the API's own complaint — the mechanism was not investigated. — gh auth refresh is an interactive device-code flow that would have blocked an autonomous run; firing the documented fallback pre-emptively would have hung the plan on a problem that did not exist. T-17-22 closes by evidence (no 403 at any point) rather than by mitigation.
 - [Phase 18]: [Phase 18-06]: Corrected the blueprint's and milestone plan's Phase 2/M2-F4 branch-protection passages -- five byte-exact security / ... check-run contexts (not job ids), ruleset navigation (not classic branch protection), gate_mode documented in both consumption modes, and the D-07 report-only-then-blocking-then-require adoption order
 - [Phase 18]: [Phase 18-06]: Milestone plan's Done Criteria line could not contain the literal substring 'Settings > Branches' even as a negative example -- reworded to 'the classic branch-protection settings screen' to satisfy the plan's own negative-grep verify check while preserving the 404 caveat's meaning
+- [Phase 18]: Phase 18-07: ADR-017 recorded (Accepted) for CICD-04/CICD-06 -- gate_mode enum, five required contexts pinned to integration_id 15368, D-06 five-not-six correction, D-07 step 1 unobservable-red correction, leave-unrequired for this repo's own main
+- [Phase 18]: Phase 18-07: discovered PR #9 was already merged (2026-09-12T12:48:34Z, commit 2e29004) before this plan's live cross-check ran -- handed to 18-08 to reconcile, not resolved here
 
 ### Pending Todos
 
@@ -142,6 +144,8 @@ None.
   "unpushed" — RESEARCH C-6 found this note stale): the product repo (`repos/security-platform`) has had
   `.github/workflows/security.yml`, `.github/workflows/pr-security.yml`, and `.github/dependabot.yml` on
   `main` since Phase 14, and `security.yml` now carries Phase 15's five parallel scan jobs.
+
+- 18-08 must reconcile: PR #9 (OttawaCloudConsulting/security-platform) was found already merged (mergedAt 2026-09-12T12:48:34Z, merge commit 2e290042a775ff1c442bac75757ef8d0106d7dc3) when 18-07's live cross-check ran, before 18-08 had executed -- 18-05 recorded PR #9 as OPEN/MERGEABLE at that plan's end, so the merge happened outside any plan this executor could see
 
 ## Deferred Items
 
@@ -172,11 +176,12 @@ Carried forward from v1.1 close:
 | Phase 17-sarif-upload-and-artifact-retention P05 | 11 min | 2 tasks | 1 files |
 | Phase 17-sarif-upload-and-artifact-retention P06 | 18 min | 2 tasks | 4 files |
 | Phase 18 P06 | 15min | 2 tasks | 2 files |
+| Phase 18 P07 | 35min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-12T12:57:46.880Z
-Stopped at: Completed 18-06-PLAN.md
+Last session: 2026-09-12T13:05:52.748Z
+Stopped at: Completed 18-07-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

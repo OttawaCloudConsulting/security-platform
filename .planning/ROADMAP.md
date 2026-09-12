@@ -152,7 +152,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] 18-04-PLAN.md — Live report-only run: open the PR with nothing set and measure the five green checks, artifacts and analyses
 - [x] 18-05-PLAN.md — Flip to blocking via `gh variable set` on the same commit, measure five red checks and upload survival, restore, and take the operator's required-checks decision
 - [x] 18-06-PLAN.md — Correct the blueprint and milestone-plan branch-protection passages: five byte-exact contexts, ruleset path, severity answer, both consumption modes, D-07 ordering
-- [ ] 18-07-PLAN.md — Author ADR-017 with the D-06 five-not-six and D-07 corrections, and index it
+- [x] 18-07-PLAN.md — Author ADR-017 with the D-06 five-not-six and D-07 corrections, and index it
 - [ ] 18-08-PLAN.md — Human-confirmed merge, remote verification of `origin/main`, criterion verdicts, and CICD-04/CICD-06 closure
 
 ### Phase 19: Pipeline Validation via Branch-Target PRs
@@ -207,6 +207,6 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 15. Five Parallel Scan Jobs | v2.0 | 5/5 | Complete   | 2026-09-11 |
 | 16. SCA Ecosystem Coverage | v2.0 | 7/7 | Complete    | 2026-09-11 |
 | 17. SARIF Upload and Artifact Retention | v2.0 | 7/7 | Complete    | 2026-09-11 |
-| 18. Configurable Gate Mode and Branch Protection | v2.0 | 6/8 | In Progress|  |
+| 18. Configurable Gate Mode and Branch Protection | v2.0 | 7/8 | In Progress|  |
 | 19. Pipeline Validation via Branch-Target PRs | v2.0 | 0/? | Not started | - |
 | 20. Template Packaging and Adoption Docs | v2.0 | 0/? | Not started | - |
