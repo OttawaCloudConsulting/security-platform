@@ -95,18 +95,20 @@ Security scanning runs automatically on every Pull Request. Findings are visible
 
 **Key Components:**
 
-- GitHub repository Settings > Branches > Branch protection rules
-- Required status checks: `sast`, `iac`, `sca`, `container`, `secrets`
+- GitHub repository Settings > Rules > Rulesets (this stack governs `main` via a ruleset, not classic branch protection)
+- Required status checks, byte-exact, read from the check-runs API: `security / SAST — Semgrep CE`, `security / IaC — Checkov`, `security / SCA — Trivy Filesystem`, `security / Container — Trivy Image`, `security / Secrets — Gitleaks` — sourced from `gh api repos/OWNER/REPO/commits/SHA/check-runs`; the caller job (`security`) contributes only the `<job> / <job>` prefix and emits no check run of its own, so this list is five contexts, not six
 - Require PR before merging
 - Do not allow bypassing the above settings
 - Restrict direct pushes to `main`
+- See the blueprint's Phase 2 branch-protection passage (`development-security-stack-option-1.md`) for the full adoption procedure, including the ruleset-API read-modify-write warning and the fork-variable caveat
 
 **Done Criteria:**
 
 - `git push origin main` from a local branch is rejected by GitHub with a branch protection error
 - A PR with a failing required status check shows the merge button as disabled/blocked
 - A PR with all 5 status checks passing can be merged
-- Settings > Branches shows the protection rule active on `main` with all required checks listed
+- `gh api repos/OWNER/REPO/rules/branches/main` shows the ruleset active on `main` with all five required contexts listed — not the classic branch-protection settings screen, which 404s on a ruleset-governed repository by design and is not evidence of anything
+- The same PR observed `success` on all five checks in `report-only` and `failure` on all five in `blocking`, switched by the `GATE_MODE` repository variable alone with no YAML edit
 
 **Dependencies:** M2-F1 (workflow must exist so status check names are available for selection).
 
