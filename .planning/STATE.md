@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: verifying
-stopped_at: Completed 18-07-PLAN.md
-last_updated: "2026-09-12T13:06:01.446Z"
+stopped_at: Completed 18-08-PLAN.md
+last_updated: "2026-09-12T13:17:57.852Z"
 last_activity: 2026-09-12
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 30
-  completed_plans: 29
-  percent: 57
+  completed_plans: 30
+  percent: 71
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 18 — gate-mode-and-branch-protection (Phase 17 complete and merged)
+**Current focus:** Phase 19 — pipeline-validation-via-branch-target-prs (Phase 18 complete and merged)
 
 ## Current Position
 
-Phase: 17 (sarif-upload-and-artifact-retention) — COMPLETE (merged 2026-09-11, commit 8fbea7d)
-Plan: 7 of 7 — all complete
+Phase: 18 (configurable-gate-mode-and-branch-protection) — COMPLETE (merged prior to 18-08, verified from origin/main 2026-09-12, commit 2e29004)
+Plan: 8 of 8 — all complete
 Status: Phase complete — ready for verification
 Last activity: 2026-09-12
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -123,6 +123,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 18]: [Phase 18-06]: Milestone plan's Done Criteria line could not contain the literal substring 'Settings > Branches' even as a negative example -- reworded to 'the classic branch-protection settings screen' to satisfy the plan's own negative-grep verify check while preserving the 404 caveat's meaning
 - [Phase 18]: Phase 18-07: ADR-017 recorded (Accepted) for CICD-04/CICD-06 -- gate_mode enum, five required contexts pinned to integration_id 15368, D-06 five-not-six correction, D-07 step 1 unobservable-red correction, leave-unrequired for this repo's own main
 - [Phase 18]: Phase 18-07: discovered PR #9 was already merged (2026-09-12T12:48:34Z, commit 2e29004) before this plan's live cross-check ran -- handed to 18-08 to reconcile, not resolved here
+- [Phase 18]: Phase 18 closed: PR #9 already merged by human operator (mergeCommit 2e29004) before 18-08 began; verification confirmed from origin/main that the merged tree hash (ce7ec652...) matches 18-05's measured tree exactly, all standing gates pass, no leftover GATE_MODE variable, rules/branches/main unchanged at operator's leave-unrequired decision
 
 ### Pending Todos
 
@@ -177,10 +178,11 @@ Carried forward from v1.1 close:
 | Phase 17-sarif-upload-and-artifact-retention P06 | 18 min | 2 tasks | 4 files |
 | Phase 18 P06 | 15min | 2 tasks | 2 files |
 | Phase 18 P07 | 35min | 2 tasks | 2 files |
+| Phase 18 P08 | 25min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-12T13:05:52.748Z
+Last session: 2026-09-12T13:16:02.044Z
 Stopped at: Completed 18-07-PLAN.md
 Resume file: None
 

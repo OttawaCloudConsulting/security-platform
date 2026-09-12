@@ -43,7 +43,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] **Phase 15: Five Parallel Scan Jobs** - SAST, IaC, SCA, container, and secrets scans run concurrently on every PR in report-only mode (completed 2026-09-11)
 - [x] **Phase 16: SCA Ecosystem Coverage** - SCA job audits npm, Python, and Terraform dependencies alongside the generic filesystem sweep (completed 2026-09-11)
 - [x] **Phase 17: SARIF Upload and Artifact Retention** - Findings reach the GitHub Security tab and persist as JSON artifacts (completed 2026-09-11)
-- [ ] **Phase 18: Configurable Gate Mode and Branch Protection** - Each repo picks block-merge or report-only via a flag, with branch protection guidance
+- [x] **Phase 18: Configurable Gate Mode and Branch Protection** - Each repo picks block-merge or report-only via a flag, with branch protection guidance (completed 2026-09-12)
 - [ ] **Phase 19: Pipeline Validation via Branch-Target PRs** - Full pipeline proven end-to-end against seeded findings in this repo
 - [ ] **Phase 20: Template Packaging and Adoption Docs** - Both consumption modes packaged and documented for rollout to the remaining repos
 
@@ -153,7 +153,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] 18-05-PLAN.md — Flip to blocking via `gh variable set` on the same commit, measure five red checks and upload survival, restore, and take the operator's required-checks decision
 - [x] 18-06-PLAN.md — Correct the blueprint and milestone-plan branch-protection passages: five byte-exact contexts, ruleset path, severity answer, both consumption modes, D-07 ordering
 - [x] 18-07-PLAN.md — Author ADR-017 with the D-06 five-not-six and D-07 corrections, and index it
-- [ ] 18-08-PLAN.md — Human-confirmed merge, remote verification of `origin/main`, criterion verdicts, and CICD-04/CICD-06 closure
+- [x] 18-08-PLAN.md — Human-confirmed merge, remote verification of `origin/main`, criterion verdicts, and CICD-04/CICD-06 closure
 
 ### Phase 19: Pipeline Validation via Branch-Target PRs
 
@@ -207,6 +207,6 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 15. Five Parallel Scan Jobs | v2.0 | 5/5 | Complete   | 2026-09-11 |
 | 16. SCA Ecosystem Coverage | v2.0 | 7/7 | Complete    | 2026-09-11 |
 | 17. SARIF Upload and Artifact Retention | v2.0 | 7/7 | Complete    | 2026-09-11 |
-| 18. Configurable Gate Mode and Branch Protection | v2.0 | 7/8 | In Progress|  |
+| 18. Configurable Gate Mode and Branch Protection | v2.0 | 8/8 | Complete   | 2026-09-12 |
 | 19. Pipeline Validation via Branch-Target PRs | v2.0 | 0/? | Not started | - |
 | 20. Template Packaging and Adoption Docs | v2.0 | 0/? | Not started | - |
