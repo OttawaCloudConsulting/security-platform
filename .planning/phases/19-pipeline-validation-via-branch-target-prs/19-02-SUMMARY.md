@@ -37,7 +37,7 @@ key-decisions:
   - "The Semgrep assertion ANDs `eval-detected` with `path == fixtures/vulnerable.py`. The filtered negative test keeps the 3 baseline findings AND both secret.env findings and still exits 3, proving it is not a count check."
   - "Table header restructured to '(2026-09-11 unless the row states another date)' AND each new row carries 'Measured 2026-09-12' explicitly — both, not either, so no new row is silently read under the old date."
   - "VAL-01 NOT marked complete, following 19-01's decision and the 17-01 precedent. Its text is 'full pipeline validated using branch-target PRs', which needs the live PR runs in 19-03+, not local documentation and a local gate."
-  - "Edit point 4 cites the pre-commit hook pin as gitleaks v8.30.0 and the measurement/CI pin as 8.30.1 separately — the two differ and conflating them would have put a wrong version next to a measured claim."
+  - "Edit point 4 as first drafted claimed the pre-push hook DOES fire on secret.env and labelled it Measured. It was never measured, and when measured it is FALSE: the hook entry is `gitleaks git --pre-commit --redact --staged --verbose` and at pre-push time nothing is staged, so it scans 0 commits and Passes. Corrected in commit d8bd09b. The v8.30.0 hook pin and the 8.30.1 CI pin are cited as separate facts about separate invocations."
 
 patterns-established:
   - "Exact-string replacement with an `assert count == 1` per edit point, in preference to sed, when the target contains box-drawing Unicode and multi-line prose"
@@ -59,7 +59,7 @@ completed: 2026-09-13
 - **Duration:** ~24 min
 - **Tasks:** 2 of 2
 - **Files modified:** 2 (both in the inner repo)
-- **Commits:** `22d3328` (inner), `0df88d8` (inner)
+- **Commits:** `22d3328`, `0df88d8`, `d8bd09b` (all inner)
 
 ## Task 1 — fixtures/README.md, five edit points
 
@@ -120,20 +120,31 @@ changing."*
 > The Gitleaks secrets hook is NOT excluded — no fixture ever contains a real secret, so
 > it is unaffected and continues to run normally.
 
-**AFTER (as committed):**
+**AFTER (as committed at `d8bd09b`, after the correction described in Deviation 5):**
 
-> The Gitleaks secrets hook is NOT excluded, and that is deliberate. `fixtures/secret.env`
-> does now carry credential-shaped values, so the hook DOES fire on it — but the values are
-> SYNTHETIC and have never existed in any AWS account, so "no fixture contains a real secret"
-> remains true. The hook is `stages: [pre-push]`, so it fires on `git push`, never on
-> `git commit`. Bypass: `git push --no-verify` skips this hook — CI is the compensating
-> control. Do NOT add this file's fingerprint to `.gitleaksignore`: CI reads that file too, so
-> the suppression would silence the `secrets` job, which is the exact detection this fixture
-> exists to produce. Measured 2026-09-12 against the pinned hook (gitleaks v8.30.0) and the CI
-> version (gitleaks 8.30.1): `aws-access-token` at `fixtures/secret.env`.
+> The Gitleaks secrets hook is NOT excluded, and that is deliberate. `fixtures/secret.env` does
+> now carry credential-shaped values, but they are SYNTHETIC and have never existed in any AWS
+> account, so "no fixture contains a real secret" remains true.
+>
+> Measured 2026-09-13, not assumed: **the pre-commit hook does not block this fixture, and that is
+> a property of the hook, not of the fixture.** The hook is `stages: [pre-push]`, so it never runs
+> at `git commit`; and its entry is `gitleaks git --pre-commit --redact --staged --verbose`, which
+> scans the STAGED diff — at push time nothing is staged, so it reports `0 commits scanned` /
+> `no leaks found` and Passes. Observed: `pre-commit run gitleaks --hook-stage pre-push
+> --all-files` exits 0 on a tree containing this fixture.
+>
+> Do not read that as the fixture being undetectable. The CI `secrets` job runs `gitleaks git .`
+> over full history with gitleaks 8.30.1 and DOES report `aws-access-token` at
+> `fixtures/secret.env` (measured 2026-09-12). The pre-push hook pins v8.30.0 and is a different
+> invocation from the CI job — never quote one as evidence about the other.
+>
+> Bypass, should the hook ever fire: `git push --no-verify` skips it — CI is the compensating
+> control. Do NOT add this file's fingerprint to `.gitleaksignore`: CI reads that file too, so the
+> suppression would silence the `secrets` job, which is the exact detection this fixture exists to
+> produce.
 
-The bypass sentence is byte-for-byte the wording `.pre-commit-config.yaml` L101 already uses. The literal
-string `no fixture ever contains a real secret, so` no longer appears anywhere in the file (verified by
+The bypass wording follows `.pre-commit-config.yaml` L101. The literal string
+`no fixture ever contains a real secret, so` no longer appears anywhere in the file (verified by
 `grep -q`, which found nothing).
 
 ### Edit point 5 — the half-stale no-hook-fires claim, BEFORE and AFTER
@@ -196,8 +207,8 @@ the `File` clause is load-bearing rather than decorative.
 ### The existing prints were not touched — proven, not asserted
 
 `git diff --numstat scripts/smoke-scans.sh` → **84 insertions, 0 deletions**. A zero deletion count means
-neither `|| true` print could have been modified. Both `|| true` markers survive at what are now lines 248
-and 622.
+neither `|| true` print could have been modified. Both `|| true` markers survive, at what are now lines 248 (SAST)
+and 644 (Secrets) — the SAST block shifted the Secrets print from 606 to 644.
 
 ### The six exit codes
 
@@ -257,7 +268,7 @@ produced by the pinned 1.177.0 venv, so the inputs are the right ones.
 | Item | Value |
 |---|---|
 | Branch | `feature/phase-19-pipeline-validation` |
-| Commits above `origin/main` (`2e29004`) | **3** — `fbfcbe9` (19-01), `22d3328`, `0df88d8` |
+| Commits above `origin/main` (`2e29004`) | **4** — `fbfcbe9` (19-01), `22d3328`, `0df88d8`, `d8bd09b` |
 | `git diff origin/main --name-only` | `fixtures/README.md`, `fixtures/secret.env`, `fixtures/vulnerable.py`, `scripts/smoke-scans.sh` |
 | Pushed? | **No.** Still local only. Plan 19-03 opens the PR. |
 | `.gitleaksignore` / `.pre-commit-config.yaml` / workflow YAML | untouched; still 0 fingerprints and exactly 4 `exclude: ^fixtures/` entries |
@@ -317,6 +328,43 @@ precedent of a premature mark-complete that had to be reverted: VAL-01 reads "fu
 branch-target PRs", which needs the live PR runs in 19-03+, not local documentation and a local gate.
 `requirements.mark-complete` was deliberately not invoked.
 
+**5. [Rule 1 - Bug] Edit point 4 shipped a false claim labelled "Measured", and it was corrected**
+
+- **Found during:** final review, after commit `22d3328`.
+- **Issue:** The plan's `<interfaces>` block asserted *"After secret.env lands the hook DOES fire, on push"*,
+  and that was carried into the README as *"so the hook DOES fire on it"* plus *"Measured 2026-09-12 against
+  the pinned hook (gitleaks v8.30.0) and the CI version (gitleaks 8.30.1)"*. Neither was true. 19-01 measured
+  `gitleaks git .` with the local **8.30.1** binary; the **v8.30.0** pre-push hook was never exercised by
+  anyone, because nothing has been pushed. Writing an unverified expectation under the word "Measured", in a
+  file whose entire purpose in this plan is removing false claims, is the exact failure the plan exists to
+  prevent.
+- **Measured instead of assumed:** `pre-commit run gitleaks --hook-stage pre-push --all-files` →
+  **Passed, rc=0**, `0 commits scanned … no leaks found`. Cause read from the hook definition in
+  `~/.cache/pre-commit`, not inferred: the entry is `gitleaks git --pre-commit --redact --staged --verbose`.
+  `--staged` scans the STAGED diff; at pre-push time nothing is staged, so the scan is empty and always
+  Passes. Combined with `stages: [pre-push]` (so it never runs at commit either), the hook does not block
+  this fixture at all.
+- **Fix:** commit `d8bd09b` rewrites edit point 4 to state the measured behaviour, name the entry and the
+  `--staged` reason, and separate the pre-push hook (v8.30.0) from the CI `secrets` job
+  (`gitleaks git .`, 8.30.1) as different invocations that must never be quoted as evidence about each
+  other. The not-excluded stance, the synthetic-values statement, `stages: [pre-push]`, the
+  `git push --no-verify` bypass with CI as the compensating control, and the `.gitleaksignore` prohibition
+  with its reason are all retained — every acceptance criterion still holds.
+- **Files modified:** `repos/security-platform/fixtures/README.md`
+- **Commit:** `d8bd09b`
+- **NOT fixed, and deliberately so:** the `stages: [pre-push]` + `--staged` combination makes the
+  pre-commit Gitleaks hook effectively a no-op. That is a pre-existing property of
+  `.pre-commit-config.yaml`, not something this plan introduced, and CONTEXT forbids config changes here.
+  It is now documented rather than silently inherited. See Handoff Note 7.
+
+**6. [Rule 1 - Bug] The first heredoc extractor's line numbers were misquoted in this summary**
+
+- **Found during:** final review.
+- **Issue:** An earlier draft of this summary said the two `|| true` markers sit at lines 248 and 622. 622 is
+  the trivy print; the Secrets print moved 606 → 644. Corrected above.
+- **Files modified:** none in either repository.
+- **Commit:** n/a
+
 ### Authentication gates
 
 None. No network authentication was required — no push, no `gh` call, no package install.
@@ -340,7 +388,7 @@ Two results that could be misread as failures, and were not:
 
 ## Handoff Notes for Plan 19-03 and Later
 
-1. **Nothing is pushed.** `feature/phase-19-pipeline-validation` is local only at `0df88d8`, three commits
+1. **Nothing is pushed.** `feature/phase-19-pipeline-validation` is local only at `d8bd09b`, four commits
    above `origin/main` (`2e29004`), touching exactly four paths. 19-03 opens the PR.
 2. **The smoke gate now has teeth on both new fixtures.** If a future plan sees
    `semgrep: no eval-detected finding at fixtures/vulnerable.py` or
@@ -354,6 +402,14 @@ Two results that could be misread as failures, and were not:
    `.gitleaksignore` fingerprint, no history cleanup of `secret.env`.
 6. **The extracted-heredoc harness lives in this session's scratchpad** (`extract.py`, `t2/`). It is
    reproducible from the script itself; nothing about it needs preserving beyond this record.
+7. **The pre-commit Gitleaks hook is effectively a no-op and was NOT fixed here.** `stages: [pre-push]`
+   means it never runs at commit, and its `--staged` entry scans nothing at push, so
+   `pre-commit run gitleaks --hook-stage pre-push --all-files` Passes on a tree containing
+   `fixtures/secret.env`. This is pre-existing, out of scope under CONTEXT's no-config-changes boundary, and
+   now documented in `fixtures/README.md`. **The local secrets gate is CI, not the hook** — do not treat a
+   clean `git push` as evidence that a secret is absent. Worth a decision in a later phase: either move the
+   hook to `stages: [pre-commit]` so `--staged` is meaningful, or change the entry to a history scan.
+
 
 ## Threat Flags
 
@@ -373,6 +429,7 @@ threat-register items requiring mitigation were discharged as written:
 
 ## Self-Check: PASSED
 
-Both modified files verified present on disk with the expected content; both inner-repo commits (`22d3328`,
-`0df88d8`) verified present in `git log origin/main..HEAD`, and `git diff origin/main --name-only` returns
-exactly the four expected paths.
+Both modified files verified present on disk with the expected content; all three inner-repo commits
+(`22d3328`, `0df88d8`, `d8bd09b`) verified present in `git log origin/main..HEAD`;
+`git diff origin/main --name-only` returns exactly the four expected paths; `markdownlint` and
+`bash scripts/check-workflow-uploads.sh` (rc=0) both re-run green after the `d8bd09b` correction.
