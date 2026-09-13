@@ -163,7 +163,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 **Success Criteria** (what must be TRUE):
 
   1. A branch-target pull request carrying seeded findings for all five scan categories produces a detection from each of the five jobs.
-  2. That same pull request is observed failing its checks under blocking mode and passing under report-only mode — both runs witnessed, not inferred.
+  2. That same pull request is observed failing its checks under blocking mode and passing under report-only mode — both runs witnessed, not inferred. (Amended 2026-09-13: PR #10 was merged out of band before SC2 and SC4 were captured, so "that same pull request" became unsatisfiable; SC2's essential claim — gate-mode-isolated opposite verdicts on a byte-identical tree — was captured on a replacement PR instead, evidence recorded in 19-05-SUMMARY.md.)
   3. A seeded finding is traced from its source file through to both the Security tab entry and the retained JSON artifact.
   4. A clean pull request with no seeded findings passes all five jobs green.
 
