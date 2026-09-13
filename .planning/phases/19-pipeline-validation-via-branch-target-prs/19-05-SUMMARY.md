@@ -418,6 +418,29 @@ unconditionally**, record `DEL_TS`, push a SECOND empty commit, and enumerate ev
 two timestamps. Do not re-open a PR, do not re-run run 1, and do not re-derive anything in this SUMMARY.
 **Do not merge or close PR #11** — plan 07 owns its fate.
 
+### State bookkeeping at a halt — what was run, and what was deliberately undone
+
+`state.advance-plan` was **not** run and `requirements.mark-complete` was **not** invoked: the plan is halted
+at Task 1 of 3. `state.record-session` was run with **named** flags (`--stopped-at`, `--resume-file`) per
+D-19-D, and its `updated` array was read rather than its `recorded` boolean — it listed all three fields
+including `Stopped At`. `state.sync` then brought the frontmatter into line. `state.validate` returns
+`{"valid": true, "warnings": [], "drift": {}}`. STATE.md now reads
+`Stopped at: HALTED at 19-05-PLAN.md Task 1 checkpoint …` with `Plan: 5 of 7` unchanged.
+
+**`roadmap.update-plan-progress --phase 19` was run and then REVERTED, deliberately.** It returned
+`{"summary_count": 5}` and, deriving completion from the existence of this SUMMARY file, checked
+`19-05-PLAN.md` off as `[x]` and advanced the progress row to `5/7`. That is not true: SC2 — the entire point
+of this plan — has not been measured. Leaving the tick would have made the phase record read as if the
+gate-mode proof were captured, which is precisely the failure T-19-36 exists to prevent. The file was
+restored byte-for-byte from a pre-command copy and `.planning/ROADMAP.md` again reads `[ ]` and `4/7`.
+**Re-run `roadmap.update-plan-progress --phase 19` on resume, after Task 3 closes.**
+
+One related side effect is recorded rather than hand-edited, following D-19-E: `state.sync` raised
+STATE.md's `completed_plans` from 34 to 35 and its progress bar from 92% to 95% by the same
+SUMMARY-file-counting logic. It was left alone because `state.sync` recomputes it from disk, so an edit would
+be clobbered by the next sync; the halt is instead made unmissable in `Stopped at`, in this SUMMARY's banner
+and in its title-line status.
+
 ## Self-Check: PASSED
 
 | Claim | Verification | Result |

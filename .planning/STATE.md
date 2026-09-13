@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 19-04-PLAN.md
-last_updated: "2026-09-13T22:36:57.324Z"
+stopped_at: HALTED at 19-05-PLAN.md Task 1 checkpoint (awaiting operator authorisation for the GATE_MODE blocking window)
+last_updated: "2026-09-13T23:52:16.276Z"
 last_activity: 2026-09-13
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 37
-  completed_plans: 34
+  completed_plans: 35
   percent: 71
 ---
 
@@ -30,7 +30,7 @@ Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-09-13
 
-Progress: [█████████░] 92%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -199,9 +199,9 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-09-13T22:33:58.073Z
-Stopped at: Completed 19-04-PLAN.md
-Resume file: None
+Last session: 2026-09-13T23:52:16.111Z
+Stopped at: HALTED at 19-05-PLAN.md Task 1 checkpoint (awaiting operator authorisation for the GATE_MODE blocking window)
+Resume file: .planning/phases/19-pipeline-validation-via-branch-target-prs/19-05-PLAN.md
 
 ## Operator Next Steps
 
