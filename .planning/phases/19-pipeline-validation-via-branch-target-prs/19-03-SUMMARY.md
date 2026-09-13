@@ -71,16 +71,21 @@ downloaded and read to yield one named, path-scoped detection per job — `eval-
 
 ## The blocked first attempt, and what it measured
 
-The first attempt at Task 1 pushed and was **rejected by GitHub Push Protection**, not by the local hook:
+The first attempt at Task 1 pushed and was **rejected by GitHub Push Protection**, not by the local hook.
 
-```
-remote: error: GH013: Repository rule violations found for refs/heads/feature/phase-19-pipeline-validation.
-remote:   —— Amazon AWS Access Key ID ————————————————————————
-remote:    locations:
-remote:      commit: fbfcbe9   path: fixtures/secret.env:21
-remote:   —— Amazon AWS Secret Access Key ——————————————————————
-remote:      commit: fbfcbe9   path: fixtures/secret.env:22
-```
+**Provenance of the figures below: they are RECONSTRUCTED from `deferred-items.md` D-19-A, not quoted.** The
+rejection happened in a prior session and its raw `remote:` output was not preserved into this one. What
+D-19-A recorded at the time is reproduced as a fact table rather than as a fake transcript — writing a
+plausible-looking verbatim block for output nobody still holds is exactly the substitution T-19-13 exists to
+prevent:
+
+| Field | As recorded in D-19-A |
+|---|---|
+| Error code | `GH013` — repository rule violations for `refs/heads/feature/phase-19-pipeline-validation` |
+| Pattern 1 | Amazon AWS Access Key ID, at `fixtures/secret.env:21` |
+| Pattern 2 | Amazon AWS Secret Access Key, at `fixtures/secret.env:22` |
+| Named commit | `fbfcbe9` (the 19-01 fixture commit) |
+| Side note in the rejection | the repo "does not have Secret Scanning enabled, but is eligible" |
 
 Three layers, measured separately, because the repository's own documentation describes only two of them:
 
@@ -319,8 +324,11 @@ vulnerable `requests 2.19.1`, `jinja2 2.11.2`, `idna 2.7` and `urllib3 1.23`.
 
 The image is built from `fixtures/Dockerfile`, whose base is digest-pinned:
 `FROM public.ecr.aws/docker/library/debian:12-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171`.
-The severity split is only HIGH and CRITICAL because the scan step filters severities — this is not a claim
-that the image has no lower-severity vulnerabilities.
+The severity split is only HIGH and CRITICAL because the scan step filters severities. **Verified, not
+inferred:** `security.yml` L834 runs `trivy image scan-fixture:… --exit-code 1 --severity HIGH,CRITICAL`.
+This is not a claim that the image has no lower-severity vulnerabilities — 15-01 measured 222 vulnerabilities
+on the same digest-pinned base unfiltered. The same `--severity HIGH,CRITICAL` filter is on both Trivy
+filesystem steps (L414 JSON, L434 SARIF), so the SCA counts above are filtered the same way.
 
 ## Post-state — what plans 04-07 inherit
 
@@ -416,5 +424,7 @@ Three results that could be misread as failures, and are not:
 | The four inner commits on PR #10 | `git -C repos/security-platform log --oneline --all` | `fbfcbe9`, `22d3328`, `0df88d8`, `d8bd09b` all FOUND |
 | PR #10 still OPEN, 1 run on the branch | `gh pr view --json state`, `gh run list --jq length` | `OPEN`, `1` |
 
-Every figure in this SUMMARY was read from a recorded command's output. None is a UI impression and none is
-recalled (T-19-13).
+Every figure in this SUMMARY was read from a recorded command's output in **this** session, with exactly one
+declared exception: the GH013 rejection details in "The blocked first attempt", which are reconstructed from
+`deferred-items.md` D-19-A because the prior session's raw `remote:` output was not preserved. That section
+says so in its own words. No figure anywhere in this SUMMARY is a UI impression (T-19-13).
