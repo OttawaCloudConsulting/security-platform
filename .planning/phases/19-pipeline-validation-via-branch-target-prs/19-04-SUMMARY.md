@@ -304,6 +304,23 @@ because API evidence was offered where a UI observation was asked for.
   already shows. No other change; the artifact name, run id and `-D` directory are the plan's.
 - **Files modified:** none — a command-line correction, not a file edit.
 
+**1b. [Rule 3 - Blocking, on resume] `gsd-sdk` state handlers required NAMED flags, not the executor
+template's positional args.** Found while running this plan's state updates.
+`state.record-metric "19" "04" "11min" "2" "1"` returned `{"error":"phase, plan, and duration required"}` and
+`state.add-decision "<text>"` returned `{"error":"summary required"}`; the installed SDK parses both with
+`parseNamedArgs`. Re-run as `--phase/--plan/--duration/--tasks/--files` and `--summary/--rationale/--phase`,
+both then `recorded`/`added: true`.
+
+The one worth naming: `state.record-session "" "Completed 19-04-PLAN.md" "None"` returned
+**`recorded: true`** while its own `updated` array listed only `["Last session","Resume File"]` — it had
+silently dropped `Stopped At`, leaving `Stopped at:` pointing at 19-03. Caught by reading the `updated` array
+rather than the `recorded` boolean, then corrected with `--stopped-at/--resume-file`. Frontmatter
+`stopped_at:` needed a further `state.sync` (which `record-session` does not do) to reach
+`Completed 19-04-PLAN.md`. Verified: body line 201 and frontmatter line 6 now agree, and `state.validate`
+returns `{"valid": true, "warnings": [], "drift": {}}`. Logged for the template's own fix as **D-19-D** in
+`deferred-items.md` — out of scope here, since the fix is to `.claude/` agent templates carrying an unrelated
+uncommitted tooling self-update this phase must not disturb.
+
 No Rule 1 or Rule 2 fix was required. Nothing else in the plan's commands needed correction.
 
 ### Intentional additions

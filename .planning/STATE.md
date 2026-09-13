@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 19-03-PLAN.md
-last_updated: "2026-09-13T22:18:08.470Z"
+stopped_at: Completed 19-04-PLAN.md
+last_updated: "2026-09-13T22:34:29.778Z"
 last_activity: 2026-09-13
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 37
-  completed_plans: 33
+  completed_plans: 34
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 19 (pipeline-validation-via-branch-target-prs) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-09-13
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -134,6 +134,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 19-03]: PR #10 is the long-lived D-05 validation PR, OPEN at head d8bd09b with exactly ONE run (34786019516) — plan 19-04's SC3 trace and plan 19-05's blocking re-run must both reference that run id.
 - [Phase 19-03]: Five green 'security / ' checks are report-only tolerance (continue-on-error: true), NOT zero findings — the Secrets step itself exited 1 while its check concluded success; SC1 rests on rule-id-plus-path reads from all five downloaded artifacts.
 - [Phase 19-03]: VAL-01 still NOT marked complete (19-01/19-02/17-01 precedent) — SC2 and SC3 remain unmeasured until plans 19-05 and 19-04.
+- [Phase 19]: [19-04]: SC3 closed on BOTH halves — the eval() finding traced source line 20 -> code-scanning alert 98 -> semgrep-results.json line 20, and the operator replied 'approved' at alert 98's own html_url. — RESEARCH Q2's remedy for what cost Phase 17 a criterion: capture the full API evidence AND hand the human exactly one URL with one yes/no question, rather than offering API evidence where a UI observation was asked for. The unfiltered alerts list returning [] was recorded as a deliberate CONTROL (by design under ADR-016 D-02), not treated as a fault.
 
 ### Pending Todos
 
@@ -192,11 +193,12 @@ Carried forward from v1.1 close:
 | Phase 19 P01 | 18min | 3 tasks | 2 files |
 | Phase 19 P02 | 24min | 2 tasks | 2 files |
 | Phase 19 P03 | 22min | 2 tasks | 1 files |
+| Phase 19 P04 | 11min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-13T22:17:36.092Z
-Stopped at: Completed 19-03-PLAN.md
+Last session: 2026-09-13T22:33:58.073Z
+Stopped at: Completed 19-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

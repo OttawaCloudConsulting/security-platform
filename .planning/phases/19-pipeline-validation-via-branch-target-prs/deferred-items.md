@@ -50,3 +50,49 @@ the installed `.git/hooks/pre-push` with git's exact stdin line: rc=0, `Detect h
 
 **Not actioned here:** CONTEXT forbids config changes in this phase. Fix options remain as 19-02 recorded:
 move to `stages: [pre-commit]` so `--staged` is meaningful, or change the entry to a history scan.
+
+## D-19-D — `gsd-sdk` state handlers take NAMED flags, not the positional args the executor template documents
+
+Observed during 19-04's resume, 2026-09-13. The executor agent template prescribes positional invocations:
+
+```
+gsd-sdk query state.record-metric "${PHASE}" "${PLAN}" "${DURATION}" "${TASK_COUNT}" "${FILE_COUNT}"
+gsd-sdk query state.add-decision "${decision}"
+gsd-sdk query state.record-session "" "Completed X-PLAN.md" "None"
+```
+
+The installed SDK (`get-shit-done-cc`, global) parses these with `parseNamedArgs`, so all three silently
+mis-fire. Measured, not inferred:
+
+| Invocation | Result |
+|---|---|
+| `state.record-metric "19" "04" "11min" "2" "1"` | `{"error":"phase, plan, and duration required"}` |
+| `state.add-decision "<text>"` | `{"error":"summary required"}` |
+| `state.record-session "" "Completed 19-04-PLAN.md" "None"` | `{"recorded":true, updated:["Last session","Resume File"]}` — **the dangerous one: it reports success while silently dropping `Stopped At`** |
+
+Correct forms, confirmed working: `--phase --plan --duration --tasks --files`, `--summary [--rationale]
+[--phase]`, `--stopped-at --resume-file`.
+
+**Why this matters beyond one plan.** The first two fail loudly and get caught. `record-session` returns
+`recorded: true` with `Stopped At` missing from its `updated` list — an executor that does not read the
+`updated` array will believe the session was recorded and leave `Stopped at:` pointing at the previous plan.
+
+**Also observed:** `state.record-session` writes only the BODY field. The frontmatter `stopped_at:` is
+brought into line by a separate `state.sync`, which the executor template does not call. Running
+`state.sync` after `record-session` is what advanced frontmatter `stopped_at` to `Completed 19-04-PLAN.md`
+here.
+
+**Not actioned here:** the fix is to the GSD agent templates under `.claude/`, which currently carry an
+unrelated uncommitted tooling self-update that this phase must not disturb.
+
+## D-19-E — STATE.md frontmatter `percent` disagrees with its own sibling counters
+
+Frontmatter reads `total_plans: 37`, `completed_plans: 34`, `percent: 71`, while the body's bar reads
+`[█████████░] 92%` — and 34/37 is 92%, not 71%. `percent: 71` has not moved since the Phase 18 close; every
+plan from 19-01 onward left it. `state.update-progress` maintains the body bar and `completed_plans` but not
+`percent`.
+
+**Not a drift by the SDK's own reckoning:** `gsd-sdk query state.validate` returns
+`{"valid": true, "warnings": [], "drift": {}}` against exactly this file, so the two fields are evidently not
+expected to track each other — `percent` may be milestone-scoped by design. Recorded as an observation to be
+resolved rather than as a confirmed defect, and deliberately **not** hand-edited.
