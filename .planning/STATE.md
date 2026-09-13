@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
 stopped_at: Completed 19-04-PLAN.md
-last_updated: "2026-09-13T22:34:29.778Z"
+last_updated: "2026-09-13T22:36:57.324Z"
 last_activity: 2026-09-13
 progress:
   total_phases: 7
@@ -135,6 +135,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 19-03]: Five green 'security / ' checks are report-only tolerance (continue-on-error: true), NOT zero findings — the Secrets step itself exited 1 while its check concluded success; SC1 rests on rule-id-plus-path reads from all five downloaded artifacts.
 - [Phase 19-03]: VAL-01 still NOT marked complete (19-01/19-02/17-01 precedent) — SC2 and SC3 remain unmeasured until plans 19-05 and 19-04.
 - [Phase 19]: [19-04]: SC3 closed on BOTH halves — the eval() finding traced source line 20 -> code-scanning alert 98 -> semgrep-results.json line 20, and the operator replied 'approved' at alert 98's own html_url. — RESEARCH Q2's remedy for what cost Phase 17 a criterion: capture the full API evidence AND hand the human exactly one URL with one yes/no question, rather than offering API evidence where a UI observation was asked for. The unfiltered alerts list returning [] was recorded as a deliberate CONTROL (by design under ADR-016 D-02), not treated as a fault.
+- [Phase 19]: [19-04]: code-scanning endpoint-shape quirk — the LIST endpoint returns state:'open' for alert 98 while the SINGLE-alert endpoint code-scanning/alerts/98 returns state:null for the same alert in the same minute. — A difference in the reader, not in the finding: number, rule.id, path, start_line, ref and html_url are identical across both responses. Plan 05 re-queries alerts after the GATE_MODE flip — do not read a null state from the single-alert endpoint as drift or as an alert having been dismissed.
+- [Phase 19]: [19-04]: VAL-01 still NOT marked complete, superseding the 19-03 note. SC1 (19-03) and SC3 (19-04, both halves) are closed; SC2 is unmeasured until plan 05 and SC4 until plan 06. Plan 07 owns VAL-01's closure. — Follows the 19-01/19-02/19-03 and 17-01 precedent. requirements.mark-complete was deliberately not invoked by 19-04 — an executor or verifier reading requirements-completed: [] on 19-04-SUMMARY should read it as withheld on purpose, not as a missed step.
 
 ### Pending Todos
 
