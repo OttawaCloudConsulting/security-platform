@@ -34,9 +34,10 @@ key-files:
   modified: []
 
 key-decisions:
-  - "Task 2 is a blocking checkpoint and the plan HALTS here. Auto-advance is off (workflow._auto_chain_active=false), the orchestrator instructed a clean halt, and the acceptance criteria require the operator's reply VERBATIM — auto-approving would fabricate the exact evidence T-19-15 exists to prevent."
+  - "Task 2 was NOT auto-approved. Auto-advance is off (workflow._auto_chain_active=false), the plan is autonomous:false, and the acceptance criteria require the operator's reply VERBATIM — auto-approving would have fabricated the exact evidence T-19-15 exists to prevent. The plan halted, the operator was asked, and the reply was recorded on resume."
+  - "The operator replied `approved` — the plan's own resume-signal token — so SC3's UI half is OBSERVED and SC3 closes MET on both halves. The token is recorded as the confirmation it is defined to be, without narrating detail the operator did not volunteer."
   - "The single-alert endpoint returns state: null while the list endpoint returns state: open for the same alert 98. Recorded as an observed endpoint-shape discrepancy, NOT reconciled and NOT silently dropped. It is a difference in the reader, not in the finding."
-  - "VAL-01 NOT marked complete — following 19-01/19-02/19-03 and the 17-01 precedent. SC2 is still unmeasured (plan 05) and this plan's own SC3 is only half-closed until the operator replies."
+  - "VAL-01 NOT marked complete — following 19-01/19-02/19-03 and the 17-01 precedent. SC3 is now closed, but SC2 is still unmeasured (plan 05) and plan 07 owns VAL-01's closure."
   - "Nothing was pushed, merged, closed, re-run, or GATE_MODE-touched. Every command in this plan is a read."
 
 patterns-established:
@@ -45,7 +46,7 @@ patterns-established:
 requirements-completed: []
 
 # Metrics
-duration: 9min (Task 1 only — HALTED at Task 2 checkpoint)
+duration: 11min (9min Task 1 + 2min resume to record the operator's reply and close Task 2)
 completed: 2026-09-13
 ---
 
@@ -57,9 +58,10 @@ completed: 2026-09-13
 matching entry in the independently re-downloaded `semgrep-results.json` — **all three hops reporting line 20
 and the same rule** — while the unfiltered alerts list returned `[]`, exactly as ADR-016 D-02 predicts.**
 
-**STATUS: HALTED at Task 2.** Task 1 is complete and committed. Task 2 is a blocking
-`checkpoint:human-verify` and the operator's reply has not been received. SC3's UI half is **not yet
-observed**; see [Operator Reply](#operator-reply-task-2--pending).
+**STATUS: COMPLETE.** Task 1 was committed, the plan halted at Task 2's blocking
+`checkpoint:human-verify`, and the operator has since replied **`approved`** — the plan's own resume-signal
+token. SC3's UI half is therefore **OBSERVED**, not inferred, and SC3 closes MET on both halves; see
+[Operator Reply](#operator-reply-task-2--received).
 
 ## Scope note
 
@@ -256,28 +258,38 @@ Every command in this plan is a read. Verified after the fact, not assumed:
 
 No push, no merge, no close, no re-run, no `GATE_MODE` change, no `.gitleaksignore` edit, no package install.
 
-## Operator Reply (Task 2) — PENDING
+## Operator Reply (Task 2) — RECEIVED
 
-**The plan is HALTED here.** Task 2 is `checkpoint:human-verify` with `gate="blocking"`, and its acceptance
-criteria require *"The operator's reply is recorded VERBATIM in the SUMMARY, whatever it says."*
+Task 2 is `checkpoint:human-verify` with `gate="blocking"`, and its acceptance criteria require *"The
+operator's reply is recorded VERBATIM in the SUMMARY, whatever it says."* The plan halted, the operator was
+handed exactly one URL and one yes/no question, and replied. The reply, recorded verbatim:
 
 | Field | Value |
 |---|---|
 | The single URL handed to the operator | `https://github.com/OttawaCloudConsulting/security-platform/security/code-scanning/98` |
 | The one question | Does that page render an alert naming `fixtures/vulnerable.py`, rule `eval-detected`, line **20**? |
-| Operator reply | **PENDING — not yet received. To be recorded here VERBATIM by the continuation agent, whatever it says.** |
-| SC3 UI half | **NOT YET OBSERVED** |
+| **Operator reply (VERBATIM)** | **`approved`** |
+| SC3 UI half | **OBSERVED** |
+
+**What that token means, stated precisely and no further.** `approved` is the plan's own
+`<resume-signal>` — *"Type \"approved\" to continue, or describe what you saw instead."* It is therefore a
+confirmation that the four `how-to-verify` checks matched: the page rendered an alert (not a 404, not an
+empty list), it named `fixtures/vulnerable.py`, and the rule and line agreed with the table above. The
+operator did not volunteer a description, and none is narrated here on their behalf — the token is recorded
+as the confirmation it is defined to be, not embellished into a sentence they did not say. Had anything not
+matched, the signal's alternative branch ("describe what you saw instead") would have stopped the plan.
 
 **Why this was not auto-approved.** Auto-advance is off (`workflow._auto_chain_active` = `false`,
 `workflow.auto_advance` unset), the plan is `autonomous: false`, and the orchestrator instructed a clean halt
 at any defined checkpoint. More importantly, the deliverable of Task 2 *is* the human's words. Writing
-"approved" without having asked would be precisely the substitution T-19-15 exists to prevent — API evidence
-dressed up as the UI observation that was requested — and it is the failure mode RESEARCH Q2 designed this
-checkpoint to foreclose.
+"approved" without having asked would have been precisely the substitution T-19-15 exists to prevent — API
+evidence dressed up as the UI observation that was requested — and it is the failure mode RESEARCH Q2
+designed this checkpoint to foreclose. The token above was received from the operator, not synthesised.
 
-**What is already secured regardless of the reply:** the API half of SC3 is complete and measured above. If
-the operator confirms, SC3 closes MET on both halves. If the operator reports something different, the reply
-is recorded verbatim and the plan STOPS — no re-query, no re-trace, no substituted finding.
+**SC3 outcome.** Both halves are now closed: the API half measured in Task 1 (source line → alert 98 →
+retained artifact, agreeing on rule and line) and the UI half observed by a human at alert 98's own
+`html_url`. This forecloses the Phase 17 outcome that RESEARCH Q2 flagged — a criterion scored NOT OBSERVED
+because API evidence was offered where a UI observation was asked for.
 
 ## Deviations from Plan
 
@@ -310,14 +322,18 @@ is the ref filter's own value echoed back by the server, which is what makes "re
 `refs/pull/<N>/merge`" a measurement rather than a claim about the query string.
 
 **5. VAL-01 NOT marked complete.** The plan frontmatter lists `requirements: [VAL-01]` and the executor
-template marks listed requirements complete. Withheld, following 19-01, 19-02, 19-03 and the 17-01 precedent:
-SC2 is unmeasured (plan 05), and this plan's own SC3 is half-open until the operator replies.
-`requirements.mark-complete` was deliberately not invoked.
+template marks listed requirements complete. Withheld, following 19-01, 19-02, 19-03 and the 17-01 precedent.
+SC3 is now closed on both halves, but VAL-01 spans all four success criteria: **SC2 is unmeasured** (plan 05
+owns the `GATE_MODE` flip) and **SC4 is unmeasured** (plan 06), and plan 07 owns the requirement's closure.
+`requirements.mark-complete` was deliberately not invoked on resume either — marking it here would claim a
+requirement two of whose criteria have not been observed.
 
 ### Checkpoints
 
-**Task 2 — reached and HALTED.** See [Operator Reply](#operator-reply-task-2--pending). This is the plan
-working as designed, not a failure: `autonomous: false` exists for exactly this task.
+**Task 2 — reached, HALTED, and resumed on the operator's reply `approved`.** See
+[Operator Reply](#operator-reply-task-2--received). The halt was the plan working as designed, not a failure:
+`autonomous: false` exists for exactly this task. Nothing was re-queried, re-traced or substituted on resume
+— the continuation recorded the reply and closed the plan against the Task 1 evidence as committed.
 
 ### Authentication gates
 
@@ -333,11 +349,10 @@ None unresolved. One observation that could be misread and is not a problem:
 
 ## Handoff Notes
 
-1. **The continuation agent's ONLY job on resume is to record the operator's reply verbatim** in the
-   *Operator Reply* section, flip *SC3 UI half* from NOT YET OBSERVED to its measured outcome, and then run
-   the state updates (`state.advance-plan`, `state.update-progress`, `state.record-metric`,
-   `roadmap.update-plan-progress`). Those were deliberately **not** run by this session — the plan is not
-   complete until Task 2 is.
+1. **DONE on resume.** The operator's reply was recorded verbatim, *SC3 UI half* flipped to OBSERVED, and the
+   state updates (`state.advance-plan`, `state.update-progress`, `state.record-metric`,
+   `state.record-session`, `roadmap.update-plan-progress`) were run. Nothing further is owed by this plan.
+   `requirements.mark-complete` was again deliberately not invoked — see note 6.
 2. **Do not re-run the trace on resume.** The evidence above is scoped to run `34786019516`, which is still
    the only run on the branch. Re-querying after plan 05's empty commits would produce *different* alert
    numbers for the same findings.
@@ -348,6 +363,9 @@ None unresolved. One observation that could be misread and is not a problem:
    not durable, and deliberately outside both repositories.
 5. **Plan 05 still owns the `GATE_MODE` flip, and `gh variable list` is still empty** — the restore target
    remains *deletion*, not "set back to report-only", exactly as 19-03 recorded.
+6. **VAL-01 is still open, deliberately.** SC3 closed here; SC2 (plan 05) and SC4 (plan 06) are unmeasured.
+   Plan 07 marks VAL-01 complete. An orchestrator or verifier reading `requirements-completed: []` on this
+   plan should read it as *withheld on purpose*, not as a missed step.
 
 ## Self-Check: PASSED
 
@@ -362,6 +380,17 @@ None unresolved. One observation that could be misread and is not a problem:
 | Hop 3 line | `semgrep-results.json` | `20` |
 | PR still OPEN, 1 run, no variable | `gh pr view` / `gh run list` / `gh variable list` | `OPEN` / `1` / empty |
 
-Every figure in this SUMMARY was read from a command's recorded output in **this** session. Nothing was
-carried over from 19-03 without being re-read, and no figure anywhere is a UI impression — the one UI
-observation this plan requires is explicitly marked PENDING rather than inferred (T-19-13, T-19-15).
+Re-check on resume, after Task 2 was closed:
+
+| Claim | Verification | Result |
+|---|---|---|
+| The operator's reply is recorded VERBATIM | the *Operator Reply* table's reply cell reads exactly `approved`, the plan's resume-signal token, with no words added to it | PASS |
+| SC3 UI half flipped to its measured outcome | `grep -n 'SC3 UI half'` → `**OBSERVED**` | PASS |
+| No stale halt language survives the flip | `grep -nE 'PENDING\|NOT YET OBSERVED\|HALTED here'` | **1 hit, and it is this very table row quoting the pattern.** Zero hits in the body. Recorded as observed rather than as a clean `0` the command did not print. |
+| The cross-reference anchor still resolves | `grep -n 'operator-reply-task-2--pending'` | **1 hit, and it is this very table row.** Both real links (lines 64, 334) now read `#operator-reply-task-2--received`, matching the renamed heading at line 261. |
+| Task 1's evidence was not re-run on resume | no `gh` command was issued during the continuation; alert 98, run `34786019516` and analysis `1769518474` are as committed in `2e51d43` | PASS |
+| `requirements-completed` still `[]` | frontmatter | PASS — withheld on purpose (deviation 5, handoff note 6) |
+
+Every figure in this SUMMARY was read from a command's recorded output. Nothing was carried over from 19-03
+without being re-read, and no figure anywhere is a UI impression — the one UI observation this plan requires
+came from the operator, recorded as the token they sent rather than inferred from the API (T-19-13, T-19-15).
