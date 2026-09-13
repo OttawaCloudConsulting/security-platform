@@ -47,7 +47,7 @@ requirements-completed: []
 
 # Metrics
 duration: 24min
-completed: 2026-09-12
+completed: 2026-09-13
 ---
 
 # Phase 19 Plan 02: Document and Defend the New Fixtures Summary
@@ -325,6 +325,9 @@ None. No network authentication was required — no push, no `gh` call, no packa
 
 None unresolved. The one surprise (Deviation 1) was caught, diagnosed and fixed before anything was read into
 its output.
+
+Execution ran 2026-09-13; every `Measured 2026-09-12` claim in this summary and in the two committed
+files is 19-01's measurement date, correctly attributed, not this plan's execution date.
 
 Two results that could be misread as failures, and were not:
 
