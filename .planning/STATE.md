@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 19-01-PLAN.md
-last_updated: "2026-09-12T22:20:17.387Z"
-last_activity: 2026-09-12
+stopped_at: Completed 19-02-PLAN.md
+last_updated: "2026-09-13T21:34:51.939Z"
+last_activity: 2026-09-13
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 37
-  completed_plans: 31
+  completed_plans: 32
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 19 (pipeline-validation-via-branch-target-prs) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
-Last activity: 2026-09-12
+Last activity: 2026-09-13
 
-Progress: [████████░░] 84%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -127,6 +127,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 19]: 19-01: the Gitleaks pre-fixture baseline ALREADY carries 8 aws-access-token findings in .planning/ history (05-02-SUMMARY, 05-VERIFICATION, STATE.md L82), so every Secrets assertion from 19-03 onward must AND the rule id with secret.env in File — An SC1 check of the form "gitleaks-results.json contains a finding with RuleID == aws-access-token" passes against the UNTOUCHED baseline and proves nothing. PATTERNS S-4 is now a measured necessity for Gitleaks, not just a Semgrep convention. Measured: baseline 9 findings, 8 of them aws-access-token, zero on secret.env.
 - [Phase 19]: 19-01: VAL-01 deliberately NOT marked complete — local fixture seeding cannot satisfy "full pipeline validated in this repo using branch-target PRs"; it needs the live PR runs in 19-03+ — Follows the 17-01 precedent already recorded in this file, where requirements.mark-complete flipped CICD-02/03 to Complete from plan frontmatter and the change had to be reverted because the deliverable actually shipped in a later plan.
 - [Phase 19]: 19-01: measured deltas 2026-09-12 — semgrep p/default 3 to 8 (3 new on fixtures/vulnerable.py, 2 on fixtures/secret.env) and gitleaks 9 to 11 (aws-access-token line 21, generic-api-key line 22); committed blobs verified byte-identical to the measured files — No registry drift from RESEARCH predictions — the 3-rule Semgrep baseline reproduced exactly and the 2/2 Gitleaks split held. ruff --fix did NOT rewrite the fixture at commit (sha256 unchanged, git show piped to diff empty), and the pinned v0.15.7 hook agreed with the local 0.14.8 binary. The semgrep binary self-reports 1.155.0 while pip metadata says 1.177.0 (assumption A5 confirmed, deliberately not resolved).
+- [Phase 19]: 19-02: smoke-gate rule-id assertions were discretionary per RESEARCH and taken deliberately — p/default resolves from the registry at scan time, so an informational print that swallows its own result is a live false-pass mechanism
+- [Phase 19]: 19-02: VAL-01 still not marked complete — it needs the live branch-target PR runs in 19-03+, following the 17-01 reverted-mark precedent
 
 ### Pending Todos
 
@@ -183,11 +185,12 @@ Carried forward from v1.1 close:
 | Phase 18 P07 | 35min | 2 tasks | 2 files |
 | Phase 18 P08 | 25min | 2 tasks | 1 files |
 | Phase 19 P01 | 18min | 3 tasks | 2 files |
+| Phase 19 P02 | 24min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-12T22:20:17.376Z
-Stopped at: Completed 19-01-PLAN.md
+Last session: 2026-09-13T21:34:51.931Z
+Stopped at: Completed 19-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
