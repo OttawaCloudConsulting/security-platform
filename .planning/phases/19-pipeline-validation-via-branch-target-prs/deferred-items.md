@@ -34,6 +34,14 @@ controlled at the account level, not by the repo-level `security_and_analysis` b
 **Not actioned here:** enabling Secret Scanning mid-phase would change the measurement conditions for
 plans 04-06. Recorded as an observation for plan 07 / Phase 20.
 
+**Update, measured 2026-09-13 after the user approved the two unblock URLs (reason: "used in tests"):** the
+push then succeeded (`* [new branch] feature/phase-19-pipeline-validation`, rc=0), and
+`gh api repos/OttawaCloudConsulting/security-platform --jq .security_and_analysis` **still** reports
+`secret_scanning: disabled` and `secret_scanning_push_protection: disabled`. So the per-secret allowance is a
+bypass recorded against the two specific blobs, not an enablement of the feature — the repo-level
+`security_and_analysis` block remains a misleading place to look for whether push protection is in force on
+this repository. Both facts stand together and neither cancels the other.
+
 ## D-19-C — pre-commit Gitleaks hook is structurally a no-op (carried from 19-02 Handoff Note 7)
 
 `stages: [pre-push]` + an entry of `gitleaks git --pre-commit --redact --staged --verbose` means the hook
