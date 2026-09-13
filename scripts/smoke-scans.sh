@@ -246,6 +246,44 @@ print(f'    semgrep findings: {len(results)}')
 for r in results:
     print(f\"      rule={r.get('check_id')} path={r.get('path')}\")
 " || true
+# Verdict assertion, not an informational print. The print above ends in
+# `|| true` and deliberately swallows its own result, so on its own it reports
+# a SILENT SAST fixture as a healthy run. The assertion is on a RULE ID AND A
+# PATH, never on a count, for two reasons. First, `p/default` resolves its
+# rules from the semgrep.dev registry at scan time, so a rule can be renamed or
+# retired without anything in this repository changing. Second, this repository
+# carries a three-finding pre-existing baseline — `.github/dependabot.yml`,
+# `cicd/.github/workflows/security.yml` and `fixtures/Dockerfile`, measured
+# 2026-09-12 before the fixture landed — so a bare "at least one finding" check
+# passes with `fixtures/vulnerable.py` completely silent.
+sast_rc=0
+python3 - "$OUT/semgrep-results.json" <<'PY' || sast_rc=$?
+import json
+import sys
+
+path = sys.argv[1]
+WANT_RULE = "eval-detected"
+WANT_PATH = "fixtures/vulnerable.py"
+try:
+    with open(path) as handle:
+        data = json.load(handle)
+except Exception as exc:  # noqa: BLE001 - any parse/IO failure is a hard fail
+    print("    semgrep report unreadable: {} ({})".format(path, exc))
+    sys.exit(2)
+
+hits = sorted(
+    result.get("check_id")
+    for result in (data.get("results") or [])
+    if result.get("path") == WANT_PATH
+    and WANT_RULE in (result.get("check_id") or ""))
+print("    semgrep SAST-fixture rule ids at {}: {}".format(WANT_PATH, hits))
+if not hits:
+    print("    semgrep reported no {} finding at {}".format(WANT_RULE, WANT_PATH))
+    sys.exit(3)
+PY
+if [ "$sast_rc" -ne 0 ]; then
+  FAILURES+=("semgrep: no eval-detected finding at fixtures/vulnerable.py (${OUT}/semgrep-results.json)")
+fi
 echo
 
 # --- 2. IaC: Checkov ------------------------------------------------------
@@ -604,6 +642,52 @@ print(f'    gitleaks findings: {len(data)}')
 for finding in data:
     print(f\"      rule={finding.get('RuleID')} file={finding.get('File')} line={finding.get('StartLine')}\")
 " || true
+# Verdict assertion, not an informational print, and the File clause is
+# load-bearing rather than decorative. Measured 2026-09-12: EIGHT of the nine
+# pre-fixture gitleaks findings in this repository's history are ALREADY
+# `aws-access-token` (in `.planning/STATE.md` and the Phase 05 summaries), so
+# an assertion on the rule id alone passes against a history containing no
+# fixture at all. The rule id must be ANDed with the file.
+# The assertion names `aws-access-token` and not `generic-api-key` because only
+# the former is a named, deterministic rule; `generic-api-key` is an entropy
+# match (5.22 on this fixture) and is NOT stable across gitleaks versions, so
+# gating on it would make this gate flaky against a gitleaks upgrade.
+# Rule id and file path only — a secret VALUE is never matched or printed.
+secrets_rc=0
+python3 - "$OUT/gitleaks-results.json" <<'PY' || secrets_rc=$?
+import json
+import sys
+
+path = sys.argv[1]
+WANT_RULE = "aws-access-token"
+WANT_FILE = "secret.env"
+try:
+    with open(path) as handle:
+        data = json.load(handle)
+except Exception as exc:  # noqa: BLE001 - any parse/IO failure is a hard fail
+    print("    gitleaks report unreadable: {} ({})".format(path, exc))
+    sys.exit(2)
+
+# The gitleaks JSON report is a top-level LIST of findings, not an object with
+# a "results" key. Anything else is a tool error object, not a report.
+if not isinstance(data, list):
+    print("    gitleaks report is not a top-level list: {}".format(path))
+    sys.exit(2)
+
+hits = sorted(
+    "{} at {}".format(finding.get("RuleID"), finding.get("File"))
+    for finding in data
+    if finding.get("RuleID") == WANT_RULE
+    and WANT_FILE in (finding.get("File") or ""))
+print("    gitleaks Secrets-fixture hits: {}".format(hits))
+if not hits:
+    print("    gitleaks reported no {} finding in a file containing {}".format(
+        WANT_RULE, WANT_FILE))
+    sys.exit(3)
+PY
+if [ "$secrets_rc" -ne 0 ]; then
+  FAILURES+=("gitleaks: no aws-access-token finding at fixtures/secret.env (${OUT}/gitleaks-results.json)")
+fi
 echo
 
 # --- Criterion 4: clean-skip negative test --------------------------------
