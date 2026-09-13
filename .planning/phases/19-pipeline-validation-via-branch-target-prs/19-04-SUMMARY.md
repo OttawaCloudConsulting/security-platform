@@ -404,7 +404,7 @@ Re-check on resume, after Task 2 was closed:
 | The operator's reply is recorded VERBATIM | the *Operator Reply* table's reply cell reads exactly `approved`, the plan's resume-signal token, with no words added to it | PASS |
 | SC3 UI half flipped to its measured outcome | `grep -n 'SC3 UI half'` → `**OBSERVED**` | PASS |
 | No stale halt language survives the flip | `grep -nE 'PENDING\|NOT YET OBSERVED\|HALTED here'` | **1 hit, and it is this very table row quoting the pattern.** Zero hits in the body. Recorded as observed rather than as a clean `0` the command did not print. |
-| The cross-reference anchor still resolves | `grep -n 'operator-reply-task-2--pending'` | **1 hit, and it is this very table row.** Both real links (lines 64, 334) now read `#operator-reply-task-2--received`, matching the renamed heading at line 261. |
+| The cross-reference anchor still resolves | `grep -n 'operator-reply-task-2--pending'` | **1 hit, and it is this very table row.** Both real links (lines 64 and 351) now read `#operator-reply-task-2--received`, matching the renamed heading at line 261. Line numbers re-read after the final edit, not carried over from an earlier pass. |
 | Task 1's evidence was not re-run on resume | no `gh` command was issued during the continuation; alert 98, run `34786019516` and analysis `1769518474` are as committed in `2e51d43` | PASS |
 | `requirements-completed` still `[]` | frontmatter | PASS — withheld on purpose (deviation 5, handoff note 6) |
 
