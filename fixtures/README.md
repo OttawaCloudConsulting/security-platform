@@ -15,12 +15,14 @@ fixtures/
 │                         #   group + unconstrained `random` provider + unpinned registry module
 ├── package.json          # SCA-scan target: vulnerable lodash + minimist pins
 ├── package-lock.json     # Generated lockfile — never hand-write this file
-└── requirements.txt      # SCA-scan target: vulnerable requests + jinja2 pins — nothing installs it
+├── requirements.txt      # SCA-scan target: vulnerable requests + jinja2 pins — nothing installs it
+├── secret.env            # Secrets-scan target (Gitleaks): synthetic AWS credentials — also read by the SAST scan
+└── vulnerable.py         # SAST-scan target (Semgrep CE): eval/exec/subprocess shell=True — never imported or run
 ```
 
 ## Fixture Reference
 
-| File | Consuming Job | Measured Finding Count (2026-09-11) |
+| File | Consuming Job | Measured Finding Count (2026-09-11 unless the row states another date) |
 |---|---|---|
 | `Dockerfile` | Container scan (Trivy image) | 222 vulnerabilities (4 CRITICAL, 52 HIGH, 88 MEDIUM, 72 LOW, 6 UNKNOWN) |
 | `main.tf` | IaC scan (Checkov) | 12 failed terraform checks (was 10 — the unpinned module adds `CKV_TF_1` + `CKV_TF_2`) |
@@ -29,6 +31,9 @@ fixtures/
 | `package.json` + `package-lock.json` | SCA sub-scan (npm audit `--audit-level=high`) | 2 advisories: 1 critical (minimist), 1 high (lodash) |
 | `requirements.txt` | SCA scan (Trivy fs) | 10 pip vulnerabilities (1 HIGH, 9 MEDIUM) |
 | `requirements.txt` | SCA sub-scan (pip-audit) | 46 advisory entries / 23 unique IDs across 4 vulnerable packages of 7 resolved dependencies |
+| `secret.env` | Secrets scan (Gitleaks) | Measured 2026-09-12 against gitleaks 8.30.1 — 2 findings: `aws-access-token` (named rule, deterministic) and `generic-api-key` (entropy 5.22, NOT version-stable) |
+| `secret.env` | SAST scan (Semgrep CE) | Measured 2026-09-12 against semgrep 1.177.0 — 2 findings: `generic.secrets.security.detected-aws-access-key-id-value.detected-aws-access-key-id-value` and `generic.secrets.security.detected-aws-secret-access-key.detected-aws-secret-access-key` |
+| `vulnerable.py` | SAST scan (Semgrep CE) | Measured 2026-09-12 against semgrep 1.177.0 — 3 findings, all named: `python.lang.security.audit.eval-detected.eval-detected`, `python.lang.security.audit.exec-detected.exec-detected`, `python.lang.security.audit.subprocess-shell-true.subprocess-shell-true` |
 
 The two `requirements.txt` rows report different numbers on purpose: `pip-audit -r` resolves the
 transitive closure (`urllib3`, `idna`, `MarkupSafe`, …) while `trivy fs` reads only the two direct
@@ -40,11 +45,25 @@ vulnerabilities in two ID namespaces (`PYSEC-*` vs `CVE-*`), not a discrepancy. 
 wrong and the gap is not a broken scan. Note also that pip-audit emits no severity or CVSS field at
 all, so no severity split can be quoted for that row.
 
+`vulnerable.py` reports THREE findings, not five, and that is the correct number. `os.system()`
+and `os.popen()` in that file are DELIBERATELY SILENT under `p/default` — measured 2026-09-12,
+zero findings each — and are kept for shape, not for signal, the same convention as the exact
+provider pin in `main.tf`. Three is not a fixture that half-broke; do not "fix" it, and do not
+raise the expected count to five. The two `secret.env` rows are also not a duplicate: one file
+is read by two different jobs, so it carries one row per consuming job exactly as `main.tf` and
+`package.json` do.
+
 Tool versions used for the 2026-09-11 measurement: Trivy 0.74.0, Checkov 3.2.396, tflint 0.61.0
 (ruleset.terraform 0.14.1-bundled), pip-audit 2.10.1, npm 11.7.0.
 
+Tool versions used for the 2026-09-12 measurement of the three rows that carry that date:
+semgrep 1.177.0 and gitleaks 8.30.1 — the versions the `sast` and `secrets` CI jobs pin.
+
 Counts will drift upward over time as new CVEs publish against the pinned digest and
-package versions — that is expected and does not indicate a broken fixture.
+package versions — that is expected and does not indicate a broken fixture; and for Semgrep
+the drift source is not only the CVE feed but the `p/default` RULESET itself, which is
+resolved from the semgrep.dev registry at scan time, so a rule can be renamed, retired or
+added without anything in this repository changing.
 
 ## Pre-commit Scoping
 
@@ -57,14 +76,49 @@ without a blanket bypass:
 - `hadolint`
 - `npm-audit`
 
-The Gitleaks secrets hook is NOT excluded — no fixture ever contains a real secret, so
-it is unaffected and continues to run normally.
+The Gitleaks secrets hook is NOT excluded, and that is deliberate. `fixtures/secret.env` does
+now carry credential-shaped values, but they are SYNTHETIC and have never existed in any AWS
+account, so "no fixture contains a real secret" remains true.
+
+Measured 2026-09-13, not assumed: **the pre-commit hook does not block this fixture, and that is
+a property of the hook, not of the fixture.** The hook is `stages: [pre-push]`, so it never runs
+at `git commit`; and its entry is `gitleaks git --pre-commit --redact --staged --verbose`, which
+scans the STAGED diff — at push time nothing is staged, so it reports `0 commits scanned` /
+`no leaks found` and Passes. Observed: `pre-commit run gitleaks --hook-stage pre-push
+--all-files` exits 0 on a tree containing this fixture.
+
+Do not read that as the fixture being undetectable. The CI `secrets` job runs `gitleaks git .`
+over full history with gitleaks 8.30.1 and DOES report `aws-access-token` at
+`fixtures/secret.env` (measured 2026-09-12). The pre-push hook pins v8.30.0 and is a different
+invocation from the CI job — never quote one as evidence about the other.
+
+Bypass, should the hook ever fire: `git push --no-verify` skips it — CI is the compensating
+control. Do NOT add this file's fingerprint to `.gitleaksignore`: CI reads that file too, so the
+suppression would silence the `secrets` job, which is the exact detection this fixture exists to
+produce.
 
 **No hook fires on `requirements.txt`, and the four-hook list above is deliberately unchanged.**
 Verified, not assumed: `ruff`/`ruff-format` are `types_or: [python, pyi]`, which does not match a
 bare `requirements.txt`, and the `npm-audit` hook is `files: package-lock\.json$`. Running
 `pre-commit run --files fixtures/requirements.txt` skips every hook. Do not "fix" this by adding a
 fifth `exclude: ^fixtures/` entry — there is nothing to exclude.
+
+**`ruff` and `ruff-format` DO match `fixtures/vulnerable.py`, and they PASS on it.** Measured
+2026-09-12 against the pinned hooks (ruff-pre-commit v0.15.7): `pre-commit run ruff --files
+fixtures/vulnerable.py` and `pre-commit run ruff-format --files fixtures/vulnerable.py` both
+report Passed, not Skipped. The fixture is authored ruff-clean ON PURPOSE so that the four-hook
+`exclude: ^fixtures/` list above stays at four. This matters more than style: the `ruff` hook
+carries `args: [--fix]`, so an unclean fixture would be SILENTLY REWRITTEN IN PLACE at commit
+time — the vulnerable construct could be edited away by the hook and the SAST fixture would go
+quiet with nothing in the diff to explain it. If a future edit makes `vulnerable.py` trip ruff,
+fix the style, never the vulnerability, and never add a fifth exclude entry.
+
+**`fixtures/secret.env` is permanent once it is on `main`, by design.** The `secrets` job runs
+`gitleaks git .` with `fetch-depth: 0` — a HISTORY scan, not a working-tree scan — so the moment
+this file is in `main`'s history it is in the history of every branch cut from `main`, and the
+`secrets` job will report it on every future run, forever. That is intended by D-04: it is what
+keeps the Secrets detection path continuously exercised. Nobody may "clean up" that history with
+a rebase, a filter-repo run or a `.gitleaksignore` fingerprint.
 
 ## Regenerating the lockfile
 
