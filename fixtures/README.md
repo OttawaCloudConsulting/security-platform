@@ -97,6 +97,29 @@ control. Do NOT add this file's fingerprint to `.gitleaksignore`: CI reads that 
 suppression would silence the `secrets` job, which is the exact detection this fixture exists to
 produce.
 
+**That bypass paragraph is incomplete, and the missing layer is server-side.** Measured 2026-09-13:
+`--no-verify` is a CLIENT-SIDE flag, and GitHub Push Protection runs on the receiving end where no
+client flag reaches it. It rejected a `git push --no-verify` carrying commit `fbfcbe9` with
+`GH013 — repository rule violations`, naming the two credential-shaped lines at `fixtures/secret.env`
+lines 21 and 22 (Amazon AWS Access Key ID and Amazon AWS Secret Access Key). The control stack a
+commit touching this directory traverses is therefore three layers deep, not two:
+
+| Layer | Where it runs | Measured 2026-09-13 |
+|---|---|---|
+| pre-commit Gitleaks hook | client-side, `stages: [pre-push]` | no-op — `0 commits scanned`, `no leaks found`, rc=0; skipped by `--no-verify`, and it would have Passed anyway |
+| GitHub Push Protection | SERVER-SIDE, on the receiving ref | REJECTED the push with `GH013`; `--no-verify` cannot skip it |
+| CI `secrets` job (`gitleaks git .`) | GitHub Actions, on the pull request | reached once the push landed, and DID report on `fixtures/secret.env` |
+
+The block was cleared on 2026-09-13 by the repository operator approving two per-secret unblock URLs
+with the reason "used in tests". Nothing in this repository was changed to make the push succeed — no
+fixture edit, no `.gitleaksignore` fingerprint, no rebase, no history rewrite. Approving those URLs
+did NOT enable Secret Scanning: `gh api repos/OWNER/REPO --jq .security_and_analysis` still reports
+`secret_scanning: disabled` and `secret_scanning_push_protection: disabled`, because free push
+protection for PUBLIC repositories is controlled at the account level rather than by the repo-level
+`security_and_analysis` block — so that block is a misleading place to look for whether push
+protection is in force here. Expect Push Protection to block any future push that introduces a new
+credential-shaped fixture, regardless of `--no-verify`, and plan a human unblock step for it.
+
 **No hook fires on `requirements.txt`, and the four-hook list above is deliberately unchanged.**
 Verified, not assumed: `ruff`/`ruff-format` are `types_or: [python, pyi]`, which does not match a
 bare `requirements.txt`, and the `npm-audit` hook is `files: package-lock\.json$`. Running
