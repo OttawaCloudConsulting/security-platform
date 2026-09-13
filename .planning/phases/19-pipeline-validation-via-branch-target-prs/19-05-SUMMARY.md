@@ -264,9 +264,33 @@ the five byte-exact frozen names:
 | `security / Secrets — Gitleaks` | **success** |
 
 Green here is **report-only tolerance, not zero findings** — `continue-on-error: true` on every scan step.
-The Checkov job's scan step is visibly `Process completed with exit code 1` in the run log while its check
-concludes `success`. The seven non-`security / ` check runs, recorded so a later unfiltered query does not
-read them as drift:
+Measured from the saved log rather than read off the `gh run watch` tail, whose annotation lines are easy to
+mis-attribute: `grep -c 'Process completed with exit code'` → **10**, distributed across **four** of the five
+jobs. This is run 1's per-job non-zero-exit baseline, and Task 2's "which step failed first" comparison pairs
+against it:
+
+| Job | `##[error]Process completed with exit code …` lines |
+|---|---|
+| `security / SCA — Trivy Filesystem` | **6** — four `exit code 1`, two `exit code 2` |
+| `security / Secrets — Gitleaks` | **2** — both `exit code 1` |
+| `security / SAST — Semgrep CE` | **1** — `exit code 1` |
+| `security / Container — Trivy Image` | **1** — `exit code 1` |
+| `security / IaC — Checkov` | **0** |
+
+Four jobs exit non-zero and all five conclude `success` — that is exactly what report-only tolerance means.
+
+**Checkov's zero is a property of the GREP, not of the job, and it was chased down rather than reported as
+an asymmetry.** The `Process completed with exit code N` string is the format the Actions runner uses for
+**`run:` shell steps**; Checkov's scan is a `uses:` step
+(`bridgecrewio/checkov-action@a8664e3a…`), so a failing action never produces that line. Measured two ways:
+the Checkov job emits its own `##[error] | File: /fixtures/main.tf:…` annotations for the failed checks, and
+`security.yml` L229-236 sets **`soft_fail: false`** with the comment *"D-04: keep native failing exit code"*
+under `continue-on-error: ${{ env.GATE_MODE == 'report-only' }}`. So Checkov **does** fail its step under
+report-only and is tolerated like the other four. **Five red under blocking remains the expected result.**
+Had this been left as the "four of five" warning the raw grep first suggested, Task 2 would have been handed
+a false expectation — recorded here because the near-miss is the useful part.
+
+The seven non-`security / ` check runs, recorded so a later unfiltered query does not read them as drift:
 
 | Check run | App | Conclusion |
 |---|---|---|
@@ -396,9 +420,23 @@ None unresolved. Two observations that could be misread and are not problems:
 - **`GitGuardian Security Checks` and `Semgrep OSS` are GREEN on PR #11 but were RED on PR #10.** Documented
   under "Check runs" above. Both are outside the five `security / ` checks and neither is gated by
   `GATE_MODE`.
-- **`security / IaC — Checkov` concluded `success` while its scan step logged `Process completed with exit
-  code 1`.** That is `continue-on-error: true` working exactly as report-only intends — the same contrast
-  19-03 recorded on the Gitleaks job. Under blocking, that step turning its check red is SC2's evidence.
+- **Four jobs logged `##[error]Process completed with exit code 1`/`2` and all five checks still concluded
+  `success`.** That is `continue-on-error: true` working exactly as report-only intends — the same contrast
+  19-03 recorded on the Gitleaks job. Under blocking, those steps turning their checks red is SC2's evidence.
+
+### A measurement error that was caught before it reached the operator
+
+The first pass of this SUMMARY attributed a `Process completed with exit code 1` line to the Checkov job,
+read off the `gh run watch` tail — where an annotation's *message* line and its `job: path#line` attribution
+line print adjacently and are trivially mis-paired. Re-measured against the saved log, that line belongs to
+`security / Container — Trivy Image`. The corrected per-job table above is grepped from
+`$SCRATCH/r34790727189.log`, whose every line carries its own job prefix.
+
+The correction then produced a second, subtler false reading — Checkov at **0** — which looked like a real
+asymmetry that would have made Task 2 expect four red checks instead of five. That was a grep-pattern
+artifact, resolved above against `security.yml` L229-236. Both are recorded because this phase's entire
+discipline is that a figure must come from a command's output with its attribution intact, and the failure
+mode here was reading a real command's output the wrong way round rather than inventing one.
 
 ## Post-state — what Task 2 inherits, and what a resumer must not redo
 
