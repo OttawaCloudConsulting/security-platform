@@ -76,15 +76,26 @@ without a blanket bypass:
 - `hadolint`
 - `npm-audit`
 
-The Gitleaks secrets hook is NOT excluded, and that is deliberate. `fixtures/secret.env`
-does now carry credential-shaped values, so the hook DOES fire on it — but the values are
-SYNTHETIC and have never existed in any AWS account, so "no fixture contains a real secret"
-remains true. The hook is `stages: [pre-push]`, so it fires on `git push`, never on
-`git commit`. Bypass: `git push --no-verify` skips this hook — CI is the compensating
-control. Do NOT add this file's fingerprint to `.gitleaksignore`: CI reads that file too, so
-the suppression would silence the `secrets` job, which is the exact detection this fixture
-exists to produce. Measured 2026-09-12 against the pinned hook (gitleaks v8.30.0) and the CI
-version (gitleaks 8.30.1): `aws-access-token` at `fixtures/secret.env`.
+The Gitleaks secrets hook is NOT excluded, and that is deliberate. `fixtures/secret.env` does
+now carry credential-shaped values, but they are SYNTHETIC and have never existed in any AWS
+account, so "no fixture contains a real secret" remains true.
+
+Measured 2026-09-13, not assumed: **the pre-commit hook does not block this fixture, and that is
+a property of the hook, not of the fixture.** The hook is `stages: [pre-push]`, so it never runs
+at `git commit`; and its entry is `gitleaks git --pre-commit --redact --staged --verbose`, which
+scans the STAGED diff — at push time nothing is staged, so it reports `0 commits scanned` /
+`no leaks found` and Passes. Observed: `pre-commit run gitleaks --hook-stage pre-push
+--all-files` exits 0 on a tree containing this fixture.
+
+Do not read that as the fixture being undetectable. The CI `secrets` job runs `gitleaks git .`
+over full history with gitleaks 8.30.1 and DOES report `aws-access-token` at
+`fixtures/secret.env` (measured 2026-09-12). The pre-push hook pins v8.30.0 and is a different
+invocation from the CI job — never quote one as evidence about the other.
+
+Bypass, should the hook ever fire: `git push --no-verify` skips it — CI is the compensating
+control. Do NOT add this file's fingerprint to `.gitleaksignore`: CI reads that file too, so the
+suppression would silence the `secrets` job, which is the exact detection this fixture exists to
+produce.
 
 **No hook fires on `requirements.txt`, and the four-hook list above is deliberately unchanged.**
 Verified, not assumed: `ruff`/`ruff-format` are `types_or: [python, pyi]`, which does not match a
