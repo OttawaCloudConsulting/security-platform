@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 19-02-PLAN.md
-last_updated: "2026-09-13T21:34:51.939Z"
+stopped_at: Completed 19-03-PLAN.md
+last_updated: "2026-09-13T22:18:08.470Z"
 last_activity: 2026-09-13
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 37
-  completed_plans: 32
+  completed_plans: 33
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 19 (pipeline-validation-via-branch-target-prs) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-09-13
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -129,6 +129,11 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 19]: 19-01: measured deltas 2026-09-12 — semgrep p/default 3 to 8 (3 new on fixtures/vulnerable.py, 2 on fixtures/secret.env) and gitleaks 9 to 11 (aws-access-token line 21, generic-api-key line 22); committed blobs verified byte-identical to the measured files — No registry drift from RESEARCH predictions — the 3-rule Semgrep baseline reproduced exactly and the 2/2 Gitleaks split held. ruff --fix did NOT rewrite the fixture at commit (sha256 unchanged, git show piped to diff empty), and the pinned v0.15.7 hook agreed with the local 0.14.8 binary. The semgrep binary self-reports 1.155.0 while pip metadata says 1.177.0 (assumption A5 confirmed, deliberately not resolved).
 - [Phase 19]: 19-02: smoke-gate rule-id assertions were discretionary per RESEARCH and taken deliberately — p/default resolves from the registry at scan time, so an informational print that swallows its own result is a live false-pass mechanism
 - [Phase 19]: 19-02: VAL-01 still not marked complete — it needs the live branch-target PR runs in 19-03+, following the 17-01 reverted-mark precedent
+- [Phase 19-03]: The push blocker was SERVER-SIDE GitHub Push Protection (GH013) on fixtures/secret.env lines 21-22, not the local pre-push hook — --no-verify is client-side and cannot reach it. Cleared by the user approving two per-secret unblock URLs (reason: used in tests); no .gitleaksignore fingerprint, no rebase, no fixture edit.
+- [Phase 19-03]: Approving the unblock allowances did NOT enable Secret Scanning — security_and_analysis still reports secret_scanning and secret_scanning_push_protection disabled, so the allowance is a per-blob bypass and the measurement conditions for plans 19-04..06 are unchanged.
+- [Phase 19-03]: PR #10 is the long-lived D-05 validation PR, OPEN at head d8bd09b with exactly ONE run (34786019516) — plan 19-04's SC3 trace and plan 19-05's blocking re-run must both reference that run id.
+- [Phase 19-03]: Five green 'security / ' checks are report-only tolerance (continue-on-error: true), NOT zero findings — the Secrets step itself exited 1 while its check concluded success; SC1 rests on rule-id-plus-path reads from all five downloaded artifacts.
+- [Phase 19-03]: VAL-01 still NOT marked complete (19-01/19-02/17-01 precedent) — SC2 and SC3 remain unmeasured until plans 19-05 and 19-04.
 
 ### Pending Todos
 
@@ -186,11 +191,12 @@ Carried forward from v1.1 close:
 | Phase 18 P08 | 25min | 2 tasks | 1 files |
 | Phase 19 P01 | 18min | 3 tasks | 2 files |
 | Phase 19 P02 | 24min | 2 tasks | 2 files |
+| Phase 19 P03 | 22min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-13T21:34:51.931Z
-Stopped at: Completed 19-02-PLAN.md
+Last session: 2026-09-13T22:17:36.092Z
+Stopped at: Completed 19-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
