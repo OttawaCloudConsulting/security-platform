@@ -2,7 +2,7 @@
 phase: 20-template-packaging-and-adoption-docs
 plan: 11
 subsystem: ci-cd
-status: task-1-complete-task-2-checkpoint
+status: complete
 tags: [live-pilot, private-repository, mode-a, sarif-capability-guard, adoption-guide-proof]
 
 # Dependency graph
@@ -15,7 +15,7 @@ requires:
     provides: "Live pilot proof methodology (Mode A copy-paste, per-step outcome capture via jobs API) reused here against a private repository"
 provides:
   - "Task 1 evidence: PR #8 on aws-zabbix-monitoring-solution (private), five concluded security / … check runs (all success), all six SARIF verify steps skipped cleanly, four of five artifact verifies succeeded (the fifth, container, skipped for an independent Dockerfile-absence reason), four artifacts landed with 90-day retention, code-scanning/analyses still 403 'not enabled' after the run"
-  - "Task 2: PRESENTED, awaiting operator confirmation of disposition — plan is NOT closed"
+  - "Task 2 RESOLVED (confirmed): v1 is correct as measured for private consumers, no correction needed; fate of the three open pilot PRs deferred to plan 13's close-out per that plan's ownership"
 affects: [20-12-blueprint-and-claude-md-corrections, 20-13-adr018]
 
 # Tech tracking
@@ -28,18 +28,20 @@ key-files:
   created: []
   modified: []
 
-key-decisions: []  # Task 2 (the disposition) is not yet decided — awaiting operator reply at the checkpoint below.
+key-decisions:
+  - "Task 2 (disposition): operator confirmed — v1 is correct as measured for private consumers; no v1.0.1 correction needed. The one guide wording discrepancy (section 11's 'the five artifacts still land') is carried forward to plan 12 as a text correction, not a pipeline defect."
+  - "Task 2 (open pilot PRs): fate of PR #12/#13 (terraform-pipelines) and PR #8 (aws-zabbix-monitoring-solution) explicitly deferred to plan 13's close-out, per the operator's reply and that plan's ownership."
 
 requirements-completed: []  # Deliberately NOT invoked — plan 13 owns DIST-06/DIST-08 closure per 20-01/20-07/20-09/20-10 precedent.
 
 # Metrics
-duration: "~40min (Task 1 only; Task 2 pending)"
+duration: "~50min"
 completed: 2026-09-14
 ---
 
 # Phase 20 Plan 11: Private-Pilot Proof (Mode A) on aws-zabbix-monitoring-solution Summary
 
-**Task 1 COMPLETE: a full Mode A adoption of the published `v1` bundle was run on
+**Both tasks COMPLETE. A full Mode A adoption of the published `v1` bundle was run on
 `OttawaCloudConsulting/aws-zabbix-monitoring-solution` (PRIVATE) via PR #8, run `34887388960`. All
 five `security / …` check runs concluded `success` — no job went red for a capability this
 repository cannot have. All six SARIF verify steps skipped cleanly (the plan 04 guard fired
@@ -49,9 +51,9 @@ correctly); the underlying `Upload … SARIF` steps still ran and still failed w
 skipped for an unrelated, independently-expected reason — this repository has no Dockerfile, so
 that job's own `steps.docker.outputs.found == 'true'` guard skipped it, exactly as the
 Dockerfile-free case in `20-10-SUMMARY.md` measured on a different (public) pilot. Four artifacts
-landed, all at 90-day retention. Task 2 (the operator disposition) is presented below and this
-plan is PAUSED there per its own `checkpoint:human-verify gate="blocking"` design — it has not
-been executed by this session.**
+landed, all at 90-day retention. The operator reviewed this evidence at Task 2's blocking
+checkpoint and replied `confirmed` — v1 is correct as measured for private consumers, no `v1.0.1`
+correction needed. Fate of the three open pilot pull requests is deferred to plan 13's close-out.**
 
 ## Setup
 
@@ -290,13 +292,20 @@ OK
 All acceptance criteria for Task 1 satisfied: five concluded `app.id==15368` check runs, zero
 unresolved, at least one non-zero-size artifact present.
 
-## Task 2 — Confirm the private-repository result and whether v1 needs correcting: CHECKPOINT — AWAITING OPERATOR
+## Task 2 — Confirm the private-repository result and whether v1 needs correcting: RESOLVED (confirmed)
 
 This plan's Task 2 is `type="checkpoint:human-verify" gate="blocking"`. Per the plan's own
 instruction ("STOP and wait. Do not edit any workflow, do not move any tag, and do not correct the
-guide here"), this session does not decide the disposition. It is presented here for the operator.
+guide here"), this session presented the evidence below and did not decide the disposition itself.
 
-**Evidence summary for the disposition decision:**
+**Operator reply, quoted verbatim (relayed via the coordinator):**
+
+> Operator decision: `confirmed` — v1 is correct as measured, no correction needed. Fate of the
+> three open pilot PRs (terraform-pipelines #12/#13, aws-zabbix-monitoring-solution #8) is deferred
+> to plan 13's close-out, per that plan's ownership. Complete Task 2 recording this disposition,
+> commit, finish SUMMARY.md, then return PLAN COMPLETE.
+
+**Evidence summary the operator reviewed:**
 
 1. **Five check-run conclusions:** all `success` — no job went red for a capability this repository
    cannot have.
@@ -319,35 +328,32 @@ guide here"), this session does not decide the disposition. It is presented here
 - *Uploads actually worked* → NOT observed. All four uploads that ran hit the identical
   "not enabled" 403 plan 01 measured; none succeeded.
 
-**This session's reading of the evidence points to "Everything as intended," but per the plan's own
-instruction this is the operator's decision to make, not this session's to assume.**
+**Disposition chosen by the operator: form 1, "Confirm."** Everything is as intended — the guard
+skipped exactly the six assertions that cannot pass, deleted nothing, and every other job/step
+behaved exactly as the guide describes, modulo the one wording discrepancy already recorded above.
+No `v1.0.1` correction is needed. `v1` remains at `cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef`,
+unchanged — no tag was moved, no workflow was edited, and the guide was not corrected in this
+plan, exactly as Task 2's own instruction required.
 
-## Awaiting
+**Required correction, if any:** none to the pipeline itself. The single wording discrepancy
+(section 11's "the five artifacts still land" not accounting for ecosystem-conditional artifact
+counts) is a guide text correction, not a `v1.0.1` code change — it is handed to plan 12, which
+records it in the guide and in ADR-018, per the operator's confirmation.
 
-The operator must review the evidence above and choose one of the plan's three enumerated
-dispositions:
-
-1. **Confirm** — everything as intended; plan 12 records it as observed in the guide (including
-   the one wording correction: "the five artifacts still land" -> hedge for ecosystem-conditional
-   counts) and in ADR-018.
-2. **Guard misfires** — not supported by this evidence (no red jobs, no verify failures), but the
-   operator may still direct a `v1.0.1` correction if desired.
-3. **Uploads actually worked** — not supported by this evidence (identical 403 on every upload
-   attempt).
-
-The operator must also record the fate of the three open pilot pull requests: PR #12 and PR #13 on
-`terraform-pipelines` (from plan 10) and PR #8 on `aws-zabbix-monitoring-solution` (this plan) —
-or explicitly defer that decision to plan 13's close-out.
-
-**Resume signal per the plan:** Type `confirmed`, or state which correction is needed and whether
-it lands in this phase.
+**Fate of the three open pilot pull requests:** explicitly deferred to plan 13's close-out, per the
+operator's reply and that plan's ownership — PR #12 and PR #13 on `terraform-pipelines` (plan 10)
+and PR #8 on `aws-zabbix-monitoring-solution` (this plan) all remain OPEN at the end of this plan.
 
 ## Task Commits
 
 1. **Task 1: Run Mode A on the private pilot and measure what a private consumer sees** — no
    file-changing commit in this repository (the deliverable is live GitHub state in the pilot: PR
-   #8, commit `fbd5c84` on `aws-zabbix-monitoring-solution`); this SUMMARY is the first tracked
-   commit in `security_solution` for this plan.
+   #8, commit `fbd5c84` on `aws-zabbix-monitoring-solution`); recorded in commit `ff79fdc`
+   (`docs(20-11): Task 1 — Mode A private-pilot live proof on aws-zabbix-monitoring-solution PR #8`).
+2. **Task 2: Confirm the private-repository result and whether v1 needs correcting** — no
+   file-changing commit outside `.planning/` (checkpoint by design; operator confirmed disposition,
+   no tag moved, no workflow edited, no guide corrected in this plan); this final SUMMARY update
+   committed as the plan's closing metadata commit.
 
 **Plan metadata:** this SUMMARY is committed as the plan's tracked output in `security_solution`.
 No file was modified in `repos/security-platform` (read-only clone, used only to diff-verify byte
@@ -362,9 +368,12 @@ identity) and no file was modified in `security_solution`'s own source tree.
 
 ## Decisions Made
 
-None yet — Task 2's disposition decision is the operator's, not made in this session. This
-session's own reading of the evidence (stated above, in the Task 2 section) is offered as input,
-not as a decision.
+See `key-decisions` in frontmatter. Summary: (1) Task 2 (A1/private-repo disposition) — operator
+confirmed `v1` is correct as measured for private consumers, no `v1.0.1` correction needed; the one
+guide wording discrepancy is a text fix handed to plan 12, not a pipeline defect; (2) fate of the
+three open pilot pull requests (PR #12/#13 on `terraform-pipelines`, PR #8 on
+`aws-zabbix-monitoring-solution`) explicitly deferred to plan 13's close-out, per the operator's
+reply and that plan's ownership.
 
 ## Deviations from Plan
 
@@ -412,28 +421,30 @@ independently verified absent.
 
 ## User Setup Required
 
-**This plan is PAUSED at Task 2, a `checkpoint:human-verify gate="blocking"` task, by design.** The
-operator must review the evidence in this SUMMARY and reply with one of the three dispositions
-listed above, plus the fate of the three open pilot pull requests. No further action can be taken
-in this plan until that reply is received — this session does not decide the disposition, move any
-tag, edit any workflow, or correct the guide, per the plan's own explicit instruction.
+None — the one decision this plan required (Task 2's disposition) has been received from the
+operator (`confirmed`) and is recorded above. No tag was moved, no workflow was edited, and no
+external service configuration is required.
 
 ## Next Phase Readiness
 
 - Task 1's full evidence chain (preflight probes, byte-identity, live run, eleven verify-step
   outcomes, artifact set, code-scanning response, guide comparison) is committed to this SUMMARY
-  for the operator, plan 12, and any downstream auditor to re-derive the same conclusion without
+  for plan 12, plan 13, and any downstream auditor to re-derive the same conclusion without
   re-running the pilot.
 - One guide discrepancy is recorded for plan 12: section 11's "the five artifacts still land"
   should be hedged for ecosystem-conditional artifact counts (this pilot's Dockerfile-free case
-  yielded 4, matching the identical effect 20-10 measured on a different, public pilot).
-- Three pilot pull requests are now open across two repositories: PR #12 and PR #13 on
+  yielded 4, matching the identical effect 20-10 measured on a different, public pilot). Per the
+  operator's confirmation, this is a guide text correction and ADR-018 input, not a `v1.0.1` code
+  change.
+- `v1`/`v1.0.0` remain unchanged at `cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef` — no correction was
+  authorised or needed.
+- Three pilot pull requests are open across two repositories: PR #12 and PR #13 on
   `terraform-pipelines` (plan 10) and PR #8 on `aws-zabbix-monitoring-solution` (this plan). Their
-  fate is part of the pending Task 2 operator decision, or plan 13's close-out if deferred.
+  fate is explicitly deferred to plan 13's close-out, per the operator's reply.
 - `requirements.mark-complete` deliberately NOT invoked — plan 13 owns DIST-06/DIST-08 closure per
-  the 20-01/20-07/20-09/20-10 precedent, and this plan itself is not yet complete (Task 2 pending).
+  the 20-01/20-07/20-09/20-10 precedent.
 
-## Self-Check: PASSED (Task 1 only — Task 2 is pending operator input, not a self-check failure)
+## Self-Check: PASSED
 
 - `.planning/phases/20-template-packaging-and-adoption-docs/20-11-SUMMARY.md` — FOUND (this file)
 - PR #8 — FOUND at `https://github.com/OttawaCloudConsulting/aws-zabbix-monitoring-solution/pull/8`, state OPEN
@@ -446,7 +457,9 @@ tag, edit any workflow, or correct the guide, per the plan's own explicit instru
 - Four detect-step lines — CONFIRMED verbatim in the run log
 - `gh variable set` and ruleset writes — CONFIRMED verified absences (no output / `length` 0, both before and after)
 - Plan's own automated `<verify>` script — CONFIRMED `OK`
+- Task 2's own automated `<verify>` check (grep for `confirmed|v1\.0\.1|guard` and `skipped|success|failure` in this SUMMARY) — CONFIRMED both patterns present
+- Commit `ff79fdc` (Task 1 close-out) — FOUND in `git log --oneline --all`
 
 ---
 *Phase: 20-template-packaging-and-adoption-docs*
-*Status: Task 1 COMPLETE. Task 2 PAUSED at its own blocking checkpoint — awaiting operator disposition. Plan is NOT closed.*
+*Status: COMPLETE — both tasks resolved; operator confirmed v1 correct as measured, no correction needed; fate of open pilot PRs deferred to plan 13*
