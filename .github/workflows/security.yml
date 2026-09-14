@@ -6,6 +6,13 @@
 # Gate mode is `gate_mode` ("blocking" or "report-only"), defaulting to
 # "report-only". Supply it either as a `workflow_call` input or as the
 # caller repo's `GATE_MODE` variable — switching modes needs no YAML edit.
+#
+# ADOPTION: this file IS the canonical copy. A Mode A consumer fetches it
+# byte-identical at a published tag (alongside pr-security.yml) and edits
+# NOTHING in it. There is exactly ONE per-repo substitution point across the
+# whole bundle, `gate_mode`, and it lives in the CALLER repository, set with
+# `gh variable set GATE_MODE --body blocking -R OWNER/REPO`; `report-only`
+# is the default and needs no action from a consumer that wants it.
 
 name: Security Scans
 
