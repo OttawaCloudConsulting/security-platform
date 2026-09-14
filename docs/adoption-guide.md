@@ -213,3 +213,144 @@ Before you consider switching to `blocking`, internalise this corollary: `blocki
 severity-agnostic — it fails the run on ANY finding, regardless of severity. A repository that
 already carries pre-existing HIGH or CRITICAL findings cannot go blocking until those findings are
 fixed, because the very first run under `blocking` will fail on them.
+
+## 7. Gate-Mode Selection
+
+`report-only` is the default and needs no action — every scan step tolerates its own findings via
+`continue-on-error`, so the five checks conclude green regardless of what they find. Going to
+`blocking` is one command, not a YAML edit:
+
+```bash
+gh variable set GATE_MODE --body blocking -R OWNER/REPO
+```
+
+This is measured, not a hypothesis: 18-05 recorded three commits sharing one identical tree hash
+across all three `gate_mode` states, and 19-05 measured that same identical tree producing five
+FAILURE checks under `blocking` and five SUCCESS checks under `report-only`, with only the
+repository variable changed between runs.
+
+`gate_mode` resolves as an enum, `blocking` or `report-only`, validated by a `case` statement as
+the very first step of all five jobs:
+
+```bash
+case "${GATE_MODE}" in
+  blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;
+  *) echo "invalid gate_mode: '${GATE_MODE}' (expected blocking|report-only)"; exit 1 ;;
+esac
+```
+
+A misspelling or a blank value FAILS the job rather than being silently tolerated as either
+state — fail-closed by design.
+
+Two caveats:
+
+- **`blocking` is severity-agnostic.** It fails the run on ANY finding, from any of the four SCA
+  sub-scanners (Trivy filesystem, npm audit, pip-audit, tflint) as well as from the other four jobs
+  (SAST, IaC, container, secrets). There is no pipeline-level severity knob.
+- **A fork pull request cannot read repository variables — UNVERIFIED.** This project's only
+  source for that claim is a January 2023 GitHub staff forum answer, and it was deliberately never
+  measured here (19-07). A public repository that genuinely needs `blocking` enforced on fork PRs
+  must pass a literal `with: gate_mode: blocking` from its caller rather than relying on
+  `vars.GATE_MODE`, because a fork PR resolving that variable to empty would silently fall through
+  to `report-only` while a required check still reports green.
+
+## 8. Branch Protection
+
+Adopt in this order — a numbered sequence, not general advice:
+
+1. **Run in `report-only` and confirm the five contexts appear and conclude.** This step cannot
+   observe red: a report-only run is green by definition (ADR-017's correction to the original
+   ordering). All it confirms is that the checks appear at all.
+2. **Flip to `blocking`** (section 7's one command) **and confirm the same five contexts turn
+   red** on a pull request that has findings.
+3. **Only then make the five contexts required** in the repository ruleset.
+
+Requiring a context before confirming it can actually turn red (step 3 before step 2) leaves
+merges effectively un-gated while the repository settings claim otherwise.
+
+**Reading the contexts.** Never retype them — read them from the live check-runs endpoint for a
+real commit SHA:
+
+```bash
+gh api repos/$REPO/commits/$SHA/check-runs --jq '.check_runs[] | select(.app.id == 15368) | .name'
+## Expected:
+## security / SAST — Semgrep CE
+## security / IaC — Checkov
+## security / SCA — Trivy Filesystem
+## security / Container — Trivy Image
+## security / Secrets — Gitleaks
+```
+
+The check-runs endpoint (`app.id == 15368`, the GitHub Actions app) is the only correct source.
+The code-scanning `analyses` endpoint disagrees with it on case for two of the five tools
+(`checkov` vs `Checkov`, `Gitleaks` vs `gitleaks`), and branch protection matches the check-run
+name, not the analysis name. The naming rule is `<caller job id> / <called workflow job name>`;
+the caller job itself (`security`) emits no check run of its own, so there are five contexts here,
+not six.
+
+**Two ruleset paths.** A repository that already has a ruleset (`gh api repos/$REPO/rulesets`
+returns a row) is read-modify-written at that id. A repository with `[]` — no ruleset yet — must
+create one first with `POST /repos/OWNER/REPO/rulesets`; `scripts/set-required-checks.sh` does
+not implement that create path, so say so plainly rather than implying the script covers it.
+
+**What the script actually does**, run as `bash scripts/set-required-checks.sh [flags]` (never
+chmod it executable):
+
+- **Dry run by default.** Reads the ruleset, builds the merged document, writes it to `--out`
+  (default `/tmp/set-required-checks-out.json`), prints a before/after rule-type comparison, and
+  touches nothing on GitHub.
+- **`--apply` refuses without `--verify-sha`** (exit 4) — confirms all five contexts appear live
+  in `commits/<sha>/check-runs` with `app.id 15368` before any write is attempted.
+- **`--apply` refuses without `--yes-i-understand-lockout`** (exit 5) — see the self-lockout
+  warning below.
+- **Exit 3** when the merged document would drop a pre-existing rule type — never written
+  anywhere.
+- **Exit 6** when `--verify-sha` finds a context missing from the live check-runs for that SHA —
+  a context GitHub has never seen becomes a permanently-pending required check, not a failing one,
+  so the script refuses rather than create that trap.
+
+These refusals are features, not friction — teach them as such, never as a workaround to bypass.
+
+**Why the read-modify-write matters.** A bare `PUT /repos/{owner}/{repo}/rulesets/{id}` carrying
+only `required_status_checks` silently deletes every other rule type already on `main`, including
+`deletion` and `non_fast_forward` — a security regression dressed as an improvement.
+`bypass_actors` must be carried forward verbatim from the existing document, never synthesised.
+Read back from `rules/branches/main` — never the classic `branches/main/protection` endpoint,
+which 404s by design on a ruleset-governed repository (that 404 is a false negative, not evidence
+of anything).
+
+**Self-lockout warning.** Rulesets do not auto-exempt repository admins: measured on
+`security-platform`, `bypass_actors: []` and `current_user_can_bypass: "never"`. Under `blocking`
+with the five checks required, a repository whose scanners always find something can never merge
+into `main` again — including the pull request that would revert the change. Add a bypass actor
+first if you are unsure, and require the checks only after a clean pull request has actually gone
+green under `blocking`. This is exactly why `security-platform`'s own `main` deliberately leaves
+the five checks unrequired — `security-platform`'s validation-only `fixtures/` tree guarantees
+findings on every run.
+
+See the blueprint's [§Phase 2 — CI/CD Security Gate](development-security-stack-option-1.md) for
+the underlying branch-protection rationale; this section does not restate it.
+
+## 9. Dependabot Wiring
+
+The same 13-line `dependabot.yml` file works in both modes, with one differing consequence:
+
+- **Mode A** — Dependabot keeps roughly eight SHA-pinned actions inside your copied `security.yml`
+  current.
+- **Mode B** — Dependabot keeps exactly one `@v1` reference current; the canonical repository's
+  own Dependabot keeps those action SHAs current on your behalf.
+
+Both halves of the local-versus-external rule matter:
+
+- `uses: ./.github/workflows/security.yml` (a local, relative reference) is **never** proposed for
+  update, by design — Dependabot does not resolve relative workflow paths.
+- `uses: OWNER/REPO/.github/workflows/<workflow>.yml@v1` (an external reusable-workflow
+  reference) **is** supported and updated, since 2023-03-13.
+
+`directory: "/"` in `dependabot.yml` is required for `.github/workflows` discovery and must not be
+"corrected" to `/.github/workflows`.
+
+**The Dependabot consequence you will meet:** a Dependabot pull request receives a read-only
+token, so the SARIF uploads on that run cannot land and the verify steps that check they landed
+skip by design (17-03). A Dependabot PR showing fewer annotations than a normal PR is expected
+behaviour, not a broken pipeline.
