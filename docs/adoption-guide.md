@@ -5,6 +5,17 @@ scanning pipeline built and validated in Phases 14-19 of this project. It covers
 how to check in advance whether it will work in your repository, how to pick a consumption mode,
 what each mode costs in files, and what a green first run does and does not prove.
 
+**Proven in:** every command in this guide has been executed against a real repository, not
+merely reviewed — except where an inline note directly beneath the command states otherwise
+(`gh variable set GATE_MODE` in section 7 was deliberately never run against any pilot; its
+effect is measured separately, on this project's own repository) — across three live pull
+requests on repositories outside this project, 2026-09-14: Mode A on
+`OttawaCloudConsulting/terraform-pipelines` (PR #12, run `34884582425`, public), Mode B on
+`OttawaCloudConsulting/terraform-pipelines` (PR #13, run `34885287142`, public), and Mode A on
+`OttawaCloudConsulting/aws-zabbix-monitoring-solution` (PR #8, run `34887388960`, private). The
+published `v1`/`v1.0.0` tags resolved to commit `cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef` on all
+three runs.
+
 ## 1. Who This Is For and What You Get
 
 You maintain a GitHub repository and want automated security scanning on every pull request, with
@@ -14,7 +25,9 @@ no new accounts, no secrets to manage, and no ongoing cost. After adopting this 
   misconfiguration (Checkov), software composition analysis (Trivy filesystem, plus npm audit,
   pip-audit, and tflint where a matching manifest exists), container vulnerabilities (Trivy image,
   conditional on a discovered Dockerfile), and secrets detection (Gitleaks).
-- Five JSON/SARIF artifacts retained for 90 days on every run, downloadable from the run page.
+- Up to five JSON/SARIF artifacts retained for 90 days on every run, downloadable from the run
+  page — the exact count is ecosystem-conditional (section 6): a repository with no Dockerfile
+  never produces `trivy-image-results`, for example.
 - Code-scanning annotations on changed lines, on repositories that support code scanning.
 - Advisory (report-only) behaviour by default — findings are visible but never block a merge
   until you explicitly opt in to blocking.
@@ -26,7 +39,7 @@ the `GITHUB_TOKEN` GitHub already issues to every workflow run; nothing else is 
 
 ## 2. Preflight
 
-Run these four checks before changing anything in your repository. Each command below carries the
+Run these five checks before changing anything in your repository. Each command below carries the
 expected output for both branches, because every failure in this domain fails silently green — a
 wrong pathspec, a dropped ruleset rule, a mistyped em dash, or a missing caller permission produces
 a run that still looks fine at a glance.
@@ -38,11 +51,15 @@ a run that still looks fine at a glance.
 | GitHub CLI (`gh`), authenticated with `repo` scope | any recent version | `gh auth status` |
 | Admin on the target repository (only if you intend to set required checks later) | — | `gh api repos/OWNER/REPO --jq .permissions.admin` |
 
-The four probes below use `OttawaCloudConsulting/terraform-pipelines` as the worked example,
+The five probes below use `OttawaCloudConsulting/terraform-pipelines` as the worked example,
 because its responses were measured live against this exact pipeline.
 
 ```bash
 REPO=OttawaCloudConsulting/terraform-pipelines
+
+gh api "repos/$REPO/actions/permissions"
+  ## Expected: {"enabled":true,"allowed_actions":"all",...} -> Actions is enabled and can run
+  ## at all; a disabled or restricted result silently blocks every job with no other symptom.
 
 gh api "repos/$REPO" --jq '.private, .visibility'
   ## Expected: "false" then "public" -> SARIF uploads will land normally.
@@ -52,6 +69,9 @@ gh api "repos/$REPO/code-scanning/analyses" 2>&1 | head -2
   ## Expected: 404 "no analysis found" -> code scanning is AVAILABLE on this repository.
   ## Expected: 403 "Code scanning is not enabled ..." -> NOT available (measured on a private
   ## repository in this account; the Private repositories section explains why and what happens).
+  ## This call may also print a secondary line, "gh: This API operation needs the
+  ## \"admin:repo_hook\" scope" — that is a CLI decoration on the error, not a fact about the
+  ## API response; ignore it and read the JSON body's message instead.
 
 gh api "repos/$REPO/rulesets" --jq '.[] | "\(.id)\t\(.name)\t\(.enforcement)"'
   ## Expected: a row -> a ruleset already exists; you will read-modify-write that id later,
@@ -79,6 +99,12 @@ otherwise Mode B is one file instead of three and updates itself.
 | Can a job be removed locally without editing the canonical source | Yes | Yes — an absent ecosystem (no Dockerfile, no `package-lock.json`, and so on) is detected and skipped cleanly, with the skip stated in the run log, so there is nothing to remove even in Mode B |
 | Auditability | Pin any commit you copied; nothing to re-fetch | Can pin the immutable `@v1.0.0` tag for an audit-stable reference |
 
+**Measured, not assumed: the two modes are check-run-identical.** A Mode A pilot and a Mode B
+pilot run against the same repository produced sorted check-run name lists that diffed
+byte-identical — the same five check runs, same names, same branch-protection contexts, from
+either mode. This is why section 8's branch-protection procedure is written once and serves both
+modes without a mode-specific variant.
+
 The one substitution point in either mode is `gate_mode` — see sections 4 and 5.
 
 ## 4. Mode A — Copy the Files
@@ -95,6 +121,9 @@ curl -fsSL -o .github/workflows/pr-security.yml \
 curl -fsSL -o .github/dependabot.yml \
   https://raw.githubusercontent.com/OttawaCloudConsulting/security-platform/v1/.github/dependabot.yml
 git add .github && git commit -m "ci: adopt security scanning pipeline (report-only)"
+  ## Executed and observed on all three pilot runs: each fetched file diffed byte-identical
+  ## (exit 0) against the same path read via `gh api .../contents/<path>?ref=v1`, no moving-tag
+  ## staleness encountered.
 ```
 
 `pr-security.yml`'s `uses: ./.github/workflows/security.yml` line is a relative reference. It
@@ -120,7 +149,10 @@ with the offline check below rather than trusting the fetch alone.
 actionlint .github/workflows/security.yml .github/workflows/pr-security.yml
   ## Expected: no output, exit code 0.
 yamllint -d relaxed .github/workflows/security.yml .github/workflows/pr-security.yml
-  ## Expected: no output, exit code 0.
+  ## Expected: exit code 0. `line too long` warnings on security.yml's long inline comments
+  ## explaining its `if:` guards are expected and non-blocking (measured: 96 on security.yml, 1
+  ## on pr-security.yml — the exit-code contract holds, the file is not silent). pr-security.yml
+  ## alone (Mode B) is short enough to produce no output at all.
 ```
 
 ## 5. Mode B — Reusable Workflow Call
@@ -189,8 +221,21 @@ Open a pull request after adopting either mode. You should see:
 
 - Five check runs, prefixed by your caller job's id, on the pull request.
 - The pull request stays mergeable.
-- Five artifacts downloadable from the run page.
+- Up to five artifacts downloadable from the run page — the applicable subset for your
+  repository's ecosystems (see below).
 - Code-scanning annotations on changed lines, on repositories where code scanning is available.
+
+**The artifact count is ecosystem-conditional, not fixed at five.** Measured on a Terraform-only
+public pilot: exactly four artifacts landed (`sca-results`, `gitleaks-results`,
+`semgrep-results`, `checkov-results`) and `trivy-image-results` was absent entirely — not
+present-and-empty — because the container job's own artifact-upload step is guarded by
+`steps.docker.outputs.found == 'true'`, which never fires without a Dockerfile. The same run
+produced six code-scanning analyses across five categories (`semgrep`, `checkov`, `trivy-fs`,
+`tflint` — twice, since tflint's single SARIF carries two drivers and yields two analyses under
+the same category — and `gitleaks`), with no `trivy-image` category, for the identical reason. A
+repository
+carrying every ecosystem (Dockerfile, npm, Python, Terraform) will see all five artifacts; a
+narrower repository will see fewer, and that is expected, not a fault.
 
 **Green does not mean clean.** Under the default `report-only` gate mode, every scan step carries
 `continue-on-error: true`, so a run that reports dozens of findings still shows five green checks.
@@ -204,7 +249,9 @@ run artifacts (always, regardless of visibility). To list and download them:
 
 ```bash
 gh run view <RUN_ID> --json artifacts --jq '.artifacts[].name'
-  ## Expected: five artifact names, one per scan job.
+  ## Expected: one artifact name per applicable scan job (up to five; fewer on a repository
+  ## missing an ecosystem — see section 6's note above, measured verbatim on a Terraform-only
+  ## pilot: sca-results, gitleaks-results, semgrep-results, checkov-results).
 gh run download <RUN_ID> --dir ./scan-results
   ## Expected: the artifact contents extracted under ./scan-results, one subdirectory per artifact.
 ```
@@ -222,6 +269,10 @@ fixed, because the very first run under `blocking` will fail on them.
 
 ```bash
 gh variable set GATE_MODE --body blocking -R OWNER/REPO
+  ## Never executed against any pilot repository in this guide's own proving runs — writing
+  ## GATE_MODE on a repository this project does not own was explicitly out of scope for the
+  ## pilots. Its effect is measured elsewhere, on this project's own repository (19-05: cited
+  ## next), not on the three pilots this guide's "Proven in" note names.
 ```
 
 This is measured, not a hypothesis: 18-05 recorded three commits sharing one identical tree hash
@@ -416,8 +467,18 @@ compounded onto its existing `if:` condition. **This never deletes a verify step
 assertion that cannot pass on a repository with no code-scanning capability, and it never removes
 a check that could pass. On a private consumer today you should see: the SARIF upload step still
 runs and its verify step skips cleanly (no red job for that reason), the scan step and the
-artifact upload/verify pair still work normally, and the five artifacts still land — the findings
-live in the run artifacts rather than in the Security tab.
+artifact upload/verify pair still work normally, and the applicable artifacts still land — the
+findings live in the run artifacts rather than in the Security tab.
+
+**Measured end to end on the private pilot** (`aws-zabbix-monitoring-solution`, PR #8, run
+`34887388960`): all five check runs concluded success; all six SARIF verify steps skipped cleanly
+(the guard above firing exactly as intended, on every one); four of the five artifact verify
+steps succeeded, and the fifth (container) skipped for a reason independent of privacy — this
+repository has no Dockerfile, the identical ecosystem-conditional effect measured on the public
+pilot in section 6. Four artifacts landed at 90-day retention. `code-scanning/analyses` remained
+403 "not enabled" after the run, unchanged from before it. **v1 needs no correction for this
+behaviour** — the operator reviewed this evidence and confirmed it is correct as measured; there
+is no pending fix version.
 
 Do not tell a private consumer to delete the verify steps instead — that trades a visible,
 understood skip for an invisible hole where a genuinely broken upload would go unnoticed.
@@ -524,7 +585,8 @@ elevate.` Add the missing permission to the caller's job-level `permissions:` bl
 
 - [ ] Confirm the five required check-run contexts (section 8) appear on a pull request and
   conclude.
-- [ ] Confirm five artifacts are downloadable from the run page.
+- [ ] Confirm the applicable artifacts (up to five, ecosystem-conditional — section 6) are
+  downloadable from the run page.
 - [ ] Confirm code-scanning annotations appear, on a public repository.
 - [ ] Confirm the D-07 ordering (section 8) before making anything required: report-only green,
   then blocking red, then required.
