@@ -5,8 +5,11 @@ scanning pipeline built and validated in Phases 14-19 of this project. It covers
 how to check in advance whether it will work in your repository, how to pick a consumption mode,
 what each mode costs in files, and what a green first run does and does not prove.
 
-**Proven in:** every instruction in this guide has been executed, not merely reviewed, against
-three live pull requests on repositories outside this project, 2026-09-14: Mode A on
+**Proven in:** every command in this guide has been executed against a real repository, not
+merely reviewed — except where an inline note directly beneath the command states otherwise
+(`gh variable set GATE_MODE` in section 7 was deliberately never run against any pilot; its
+effect is measured separately, on this project's own repository) — across three live pull
+requests on repositories outside this project, 2026-09-14: Mode A on
 `OttawaCloudConsulting/terraform-pipelines` (PR #12, run `34884582425`, public), Mode B on
 `OttawaCloudConsulting/terraform-pipelines` (PR #13, run `34885287142`, public), and Mode A on
 `OttawaCloudConsulting/aws-zabbix-monitoring-solution` (PR #8, run `34887388960`, private). The
@@ -227,8 +230,10 @@ public pilot: exactly four artifacts landed (`sca-results`, `gitleaks-results`,
 `semgrep-results`, `checkov-results`) and `trivy-image-results` was absent entirely — not
 present-and-empty — because the container job's own artifact-upload step is guarded by
 `steps.docker.outputs.found == 'true'`, which never fires without a Dockerfile. The same run
-produced six code-scanning categories (`tflint`, `tflint-errors`, `Semgrep OSS`, `checkov`,
-`Trivy`, `Gitleaks`), with no `trivy-image` category, for the identical reason. A repository
+produced six code-scanning analyses across five categories (`semgrep`, `checkov`, `trivy-fs`,
+`tflint` — twice, since tflint's single SARIF carries two drivers and yields two analyses under
+the same category — and `gitleaks`), with no `trivy-image` category, for the identical reason. A
+repository
 carrying every ecosystem (Dockerfile, npm, Python, Terraform) will see all five artifacts; a
 narrower repository will see fewer, and that is expected, not a fault.
 
