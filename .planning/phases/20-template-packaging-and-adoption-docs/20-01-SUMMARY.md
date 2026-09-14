@@ -9,7 +9,7 @@ requires:
   - phase: 19-pipeline-validation-via-branch-target-prs
     provides: fully validated blocking/report-only gate behavior on OttawaCloudConsulting/security-platform
 provides:
-  - Nothing yet — plan is paused at Task 1's blocking decision checkpoint before any work executes
+  - Task 1 resolved — option-a confirmed, pilot repositories named and operator-authorised for live proofs
 affects: [20-04-canonical-workflow-guard, 20-08-adoption-guide, 20-09-adoption-guide, 20-10-pilot-prs]
 
 # Tech tracking
@@ -22,120 +22,87 @@ key-files:
   modified: []
 
 key-decisions:
-  - "None yet — Task 1's pilot-repository decision is unresolved; nothing in this plan can proceed until it is answered"
+  - "Task 1 (Q4): option-a confirmed — terraform-pipelines (public) and aws-zabbix-monitoring-solution (private) are the pilots for SC1/SC2 and the A1 probe; branch protection changes remain unauthorized"
 
 patterns-established: []
 
-requirements-completed: []  # Deliberately empty — DIST-06/07 are marked complete only by plan 12 per 17-01/19-01 precedent, and no task has completed here yet.
+requirements-completed: []  # Deliberately empty — DIST-06/07 are marked complete only by plan 12 per 17-01/19-01 precedent.
 
 # Metrics
-duration: 0min (paused before first task completed)
+duration: IN PROGRESS
 completed: PENDING
 ---
 
 # Phase 20 Plan 01: Settle A1/Q4/Q2 (Pilot Repos and SARIF Capability) Summary
 
-**PAUSED at Task 1 — a blocking `checkpoint:decision` requires the operator to name the pilot repositories before any measurement or file changes can happen.**
+**Task 1 resolved (option-a); Task 2's live A1 measurement is now in progress against the confirmed pilots.**
 
 ## Performance
 
-- **Duration so far:** 0 min of executed work (checkpoint hit immediately on Task 1, the plan's first task)
+- **Duration so far:** IN PROGRESS
 - **Started:** 2026-09-14T03:23:19Z
 - **Completed:** N/A — plan not complete
-- **Tasks:** 0 of 3 completed
-- **Files modified:** 0 (no tracked file in `security_solution` or `repos/security-platform` was touched, per plan constraint)
+- **Tasks:** 1 of 3 completed (Task 1 closed by operator decision)
+- **Files modified:** 0 tracked files in `security_solution` or `repos/security-platform` (per plan constraint); evidence files will land under `.planning/phases/20-template-packaging-and-adoption-docs/20-01-evidence/`
 
 ## Accomplishments
 
 - Read and understood the plan's objective, threat model, and acceptance criteria.
 - Verified worktree branch/base integrity before any action (per `worktree_branch_check`).
-- Confirmed this plan is explicitly marked `autonomous: false` and its Task 1 is `type="checkpoint:decision" gate="blocking"` — execution correctly halts here rather than guessing an answer to an open design question.
+- Confirmed this plan is explicitly marked `autonomous: false` and its Task 1 is `type="checkpoint:decision" gate="blocking"` — execution correctly halted there rather than guessing an answer to an open design question.
+- Received the operator's decision (relayed by the coordinator) and closed out Task 1.
+
+## Task 1: Operator Decision (Q4) — RESOLVED
+
+**Operator reply, quoted verbatim (relayed via the coordinator):**
+
+> Operator decision: option-a. Use terraform-pipelines (public) and aws-zabbix-monitoring-solution (private) as the pilot repos for live proofs. Branch protection changes remain unauthorized. Resume plan 20-01 from Task 1 with this decision and continue through remaining tasks, committing each atomically, updating SUMMARY.md, then return.
+
+**Chosen option:** option-a (RESEARCH Q4 recommendation / default).
+
+**Confirmed pilots:**
+- SC1/SC2 proofs: `OttawaCloudConsulting/terraform-pipelines` (PUBLIC)
+- A1 private-repo probe: `OttawaCloudConsulting/aws-zabbix-monitoring-solution` (PRIVATE)
+
+**Authorization scope confirmed:** Branch, PR, and workflow-run activity in both named pilots is authorised for this phase's live proofs. Branch protection / ruleset writes and `gh variable set` remain explicitly UNAUTHORIZED in both repos, per Task 1's acceptance criteria.
+
+**Preflight checks performed before touching the private pilot (all read-only):**
+- `gh auth status`: authenticated as `OttawaCloudConsulting`, token scopes `gist, read:org, repo, workflow` (no `security_events` — consistent with 17-05's prior finding).
+- `gh repo view OttawaCloudConsulting/aws-zabbix-monitoring-solution --json isPrivate,defaultBranchRef,name`: confirmed `isPrivate: true`, default branch `main`.
+- `gh repo view OttawaCloudConsulting/terraform-pipelines --json isPrivate,defaultBranchRef,name`: confirmed `isPrivate: false`, default branch `main`.
+- `gh api repos/OttawaCloudConsulting/aws-zabbix-monitoring-solution/actions/permissions`: `{"enabled":true,"allowed_actions":"all","sha_pinning_required":false}` — Actions is enabled, the probe run will not be silently blocked.
+- Fetched `repos/security-platform` `.github/workflows/security.yml` via `gh api .../contents/... -H "Accept: application/vnd.github.raw"` (this worktree has no local `repos/` clone) and cross-checked both pinned SHAs against the plan's Task 2 instructions: `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1` and `github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0` — both match exactly, reused verbatim per the threat register (T-20-SC).
 
 ## Task Commits
 
-No task commits — Task 1 is a decision checkpoint and by design executes no file changes and produces no commit. Only this SUMMARY is committed (metadata-only commit, per worktree-mode protocol).
+1. **Task 1: Confirm pilot repositories (Q4)** — no file-changing commit (decision checkpoint by design); this SUMMARY update is committed as `docs(20-01)`.
+
+(Task 2 and Task 3 commits recorded below as they land.)
 
 ## Files Created/Modified
 
-- `.planning/phases/20-template-packaging-and-adoption-docs/20-01-SUMMARY.md` — this checkpoint-status record.
+- `.planning/phases/20-template-packaging-and-adoption-docs/20-01-SUMMARY.md` — this record, updated per task.
 
 ## Decisions Made
 
-None — the plan's Task 1 explicitly withholds any executor decision. See CHECKPOINT REACHED section below for the exact question and options that need an operator reply.
+- Task 1 (Q4): option-a — `terraform-pipelines` (public) + `aws-zabbix-monitoring-solution` (private) confirmed as pilots; branch protection changes remain unauthorized.
 
 ## Deviations from Plan
 
-None — plan executed exactly as written up to the point where it requires a human decision. No auto-fix, no bug, no missing functionality was found; the halt is intentional per Task 1's own `<action>`: "Present the decision... then STOP and wait. Do not pick an option, do not proceed to Task 2, and do not touch any pilot repository before the reply arrives."
+(updated as Task 2/3 proceed — see below)
 
 ## Issues Encountered
 
-None — this is the expected first-task outcome for a `checkpoint:decision` gated plan with no completed_tasks context supplied.
+None so far.
 
 ## User Setup Required
 
-None — no external service configuration required. This checkpoint requires an operator decision, not environment setup.
+None — no external service configuration required.
 
 ## Next Phase Readiness
 
-Not ready. Task 2 (the A1 SARIF-upload-capability measurement) and Task 3 (the Q2 disposition confirmation) both depend directly on Task 1's answer:
-
-- If **option-a** (RESEARCH's default: `terraform-pipelines` public / `aws-zabbix-monitoring-solution` private) or **option-b** (a different named pair) is chosen, Task 2 measures A1 live against the named private pilot.
-- If **option-c** is chosen, Task 2 is SKIPPED entirely, A1 stays UNMEASURED, and Task 3's disposition becomes RESEARCH mitigation (c) — scope SC2 to public consumers, and the adoption guide's private-repo section must be labelled as inferred rather than measured.
-
-No downstream plan in this phase (04, 08, 09, 10) can proceed with certainty about the guard expression or the pilot repository names until this checkpoint is answered.
-
----
-
-## CHECKPOINT REACHED
-
-**Type:** decision
-**Plan:** 20-01
-**Progress:** 0/3 tasks complete
-
-### Completed Tasks
-
-| Task | Name | Commit | Files |
-|------|------|--------|-------|
-| — | none completed | — | — |
-
-### Current Task
-
-**Task 1:** Confirm the pilot repositories and authorise live activity in them (Q4)
-**Status:** awaiting decision
-**Blocked by:** operator has not yet named the pilot repositories
-
-### Checkpoint Details
-
-**Decision:** Which repositories does this phase touch for its live proofs, and is branch/PR/workflow-run activity in them authorised?
-
-**Context:** Every live criterion in this phase (SC1 copy-paste proof, SC2 `uses:` proof, and the A1/Q2 private-repo measurement in Task 2) requires opening a branch and running GitHub Actions inside a repository that is NOT one of this phase's two owned repos (`security_solution`, `repos/security-platform`). RESEARCH already probed two candidates live: both are cloned under `repos/`, neither has a `.github/` directory, and their measured shapes differ usefully:
-- `terraform-pipelines` — PUBLIC, 36 `.tf` files, zero `package-lock.json`/`requirements*.txt`/Dockerfiles (exercises the public/SARIF path, tflint findings, three clean ecosystem skips).
-- `aws-zabbix-monitoring-solution` — PRIVATE, one `package-lock.json` (exercises the private 403 path).
-
-Branch protection is explicitly OUT OF SCOPE for these pilots — no ruleset write, no `gh variable set` is authorised by this checkpoint for any pilot.
-
-**Options:**
-
-| Option | Name | Pros | Cons |
-|--------|------|------|------|
-| option-a | RESEARCH Q4 recommendation (default) | Both already cloned and probed; public/private split covers every measured failure mode; no new repo needed; `terraform-pipelines` carries an existing ruleset to read (never write) | Two of the operator's real repositories carry a probe branch and one or two pull requests until closed |
-| option-b | Different pilot(s) named by the operator | Operator may prefer a lower-traffic or throwaway repo | Needs re-probing (visibility, ruleset state, ecosystems present) before plan 10 can assert anything; RESEARCH's measured facts would not transfer |
-| option-c | Public pilot only — skip the private measurement | Nothing is run inside a private repo | A1 stays unmeasured, so Q2 can only be answered by RESEARCH's mitigation (c) ("scope SC2 to public consumers, record private adoption as a follow-up"); the adoption guide's private-repo section ships as an unverified inference; 37 of the account's 60 repos are private |
-
-### Awaiting
-
-Operator reply naming:
-1. The repository used for the SC1/SC2 proofs.
-2. The repository (or explicitly "none") used for the A1 private-repo probe.
-3. Which option (`option-a`, `option-b` + names, or `option-c`) this corresponds to.
-
-**Resume-signal (from plan):** Reply with `option-a`, `option-b` plus the repository names, or `option-c`.
-
-Once the reply arrives, a continuation agent should:
-1. Quote the operator's reply verbatim into this SUMMARY.
-2. Record the confirmed pilot repositories.
-3. Proceed to Task 2 (or record the Task 2 SKIP if option-c) and then Task 3, updating this SUMMARY's frontmatter, decisions, and completion fields accordingly.
+Task 1 resolved. Task 2 (A1 live measurement) now proceeding against the confirmed private pilot `aws-zabbix-monitoring-solution`. Task 3 remains a blocking `checkpoint:human-verify` and will halt this execution again once Task 2's measurement is captured — the executor will present the disposition and await operator confirmation rather than fabricating an `approved`.
 
 ---
 *Phase: 20-template-packaging-and-adoption-docs*
-*Status: PAUSED at Task 1 checkpoint:decision — awaiting operator reply*
+*Status: Task 1 resolved; Task 2 in progress*
