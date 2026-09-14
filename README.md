@@ -37,3 +37,5 @@ bash path/to/security-platform/workstation/setup.sh
 ```
 
 See [`workstation/README.md`](workstation/README.md) for the full guide.
+
+Every pull request against `main` runs the CI security pipeline — five parallel scan jobs covering SAST, IaC, SCA, container images and secrets. The pipeline runs in report-only mode: each job publishes its findings to the repository Security tab and retains them as build artifacts, and reports them without blocking the merge.
