@@ -11,6 +11,7 @@ requires:
 provides:
   - Task 1 resolved — option-a confirmed, pilot repositories named and operator-authorised for live proofs
   - Task 2 resolved — A1 measured CONFIRMED (upload-sarif fails on this private repo; root cause is code-scanning-not-enabled, not a generic token-scope 403); evidence committed under 20-01-evidence/
+  - Task 3 resolved — Q2 disposition operator-approved verbatim; guard expression and step list finalized for plan 04 to apply
 affects: [20-04-canonical-workflow-guard, 20-08-adoption-guide, 20-09-adoption-guide, 20-10-pilot-prs]
 
 # Tech tracking
@@ -25,27 +26,28 @@ key-files:
 key-decisions:
   - "Task 1 (Q4): option-a confirmed — terraform-pipelines (public) and aws-zabbix-monitoring-solution (private) are the pilots for SC1/SC2 and the A1 probe; branch protection changes remain unauthorized"
   - "Task 2 (A1): CONFIRMED — upload-sarif fails on the private pilot with 'Code scanning is not enabled for this repository' (GHAS licensing gate), measured via run 34802848411; both the tolerant upload step and an in-workflow GITHUB_TOKEN read hit the identical error, ruling out the ii/iii ambiguity"
+  - "Task 3 (Q2): operator-approved disposition — plan 04 compounds '&& github.event.repository.private == false' onto the six SARIF verify steps only (semgrep, checkov, trivy-fs, tflint, trivy-image, gitleaks); the five artifact verify steps stay untouched"
 
 patterns-established: []
 
 requirements-completed: []  # Deliberately empty — DIST-06/07 are marked complete only by plan 12 per 17-01/19-01 precedent.
 
 # Metrics
-duration: IN PROGRESS (Tasks 1-2 complete; Task 3 checkpoint pending operator reply)
-completed: PENDING
+duration: ~35min
+completed: 2026-09-14
 ---
 
 # Phase 20 Plan 01: Settle A1/Q4/Q2 (Pilot Repos and SARIF Capability) Summary
 
-**A1 measured CONFIRMED live on a private pilot: `upload-sarif` fails with "Code scanning is not enabled for this repository" — a GHAS licensing gate, not a token-scope 403. Task 3's disposition (compound `&& github.event.repository.private == false` onto the six SARIF verify steps only) awaits operator approval.**
+**A1 measured CONFIRMED live on a private pilot — `upload-sarif` fails with "Code scanning is not enabled for this repository" (a GHAS licensing gate, not a token-scope 403) — and the operator approved the resulting Q2 disposition: guard the six SARIF verify steps only, leave the five artifact verify steps untouched.**
 
 ## Performance
 
-- **Duration so far:** ~25 min (Tasks 1-2)
+- **Duration:** ~35 min
 - **Started:** 2026-09-14T03:23:19Z
-- **Completed:** N/A — plan not complete, paused at Task 3 checkpoint
-- **Tasks:** 2 of 3 completed (Task 1 closed by operator decision; Task 2 measured and evidenced)
-- **Files modified:** 0 tracked files in `security_solution` or `repos/security-platform` (per plan constraint); 3 new evidence files under `.planning/phases/20-template-packaging-and-adoption-docs/20-01-evidence/`
+- **Completed:** 2026-09-14 (Task 3 approved)
+- **Tasks:** 3 of 3 completed
+- **Files modified:** 0 tracked files in `security_solution` or `repos/security-platform` (per plan constraint); 3 evidence files under `.planning/phases/20-template-packaging-and-adoption-docs/20-01-evidence/`
 
 ## Accomplishments
 
@@ -105,12 +107,28 @@ gh: Code scanning is not enabled for this repository. Please enable code scannin
 - Scratchpad clone `aws-zabbix-monitoring-solution/` removed (`rm -rf`) after evidence was copied out.
 - No file under `repos/` and no file tracked by `security_solution` or `security-platform` was created or modified by this task.
 
+## Task 3: Q2 Disposition Confirmation — RESOLVED (approved)
+
+**Operator reply, quoted verbatim (relayed via the coordinator):**
+
+> Approved. Disposition confirmed: add `&& github.event.repository.private == false` guard to the six SARIF verify steps only (semgrep, checkov, trivy-fs, tflint, trivy-image, gitleaks); leave the five artifact verify steps untouched. Complete Task 3, commit, finish SUMMARY.md, then return.
+
+**Confirmed disposition (unchanged from what was presented at the checkpoint, per the plan's own three-way table given A1 CONFIRMED):**
+- **Guard expression:** `&& github.event.repository.private == false`
+- **Applies to (six SARIF verify steps only):** `Verify Semgrep SARIF upload landed`, `Verify Checkov SARIF upload landed`, `Verify Trivy Filesystem SARIF upload landed`, `Verify tflint SARIF upload landed`, `Verify Trivy Image SARIF upload landed`, `Verify Gitleaks SARIF upload landed` — in `repos/security-platform/.github/workflows/security.yml`.
+- **Does NOT apply to (five artifact verify steps, left untouched):** the five `Verify … artifact` steps — artifact upload authenticates via `ACTIONS_RUNTIME_TOKEN`, not `GITHUB_TOKEN`, and is unaffected by code-scanning/GHAS availability.
+- **No verify step is deleted.** The guard skips an assertion that cannot pass on a private repo (T-20-05 mitigated — deleting an assertion was explicitly excluded by this task's own acceptance criteria).
+- **`requirements.mark-complete` deliberately NOT invoked** by this plan. DIST-06/DIST-07 remain the responsibility of plan 12, per the 17-01/19-01 precedent already recorded in STATE.md.
+
+**Ownership boundary respected:** No workflow file was edited by this plan. `repos/security-platform/.github/workflows/security.yml` is plan 04's deliverable to modify; this plan only hands plan 04 the exact expression and step list, backed by live measurement (Task 2) rather than inference.
+
 ## Task Commits
 
 1. **Task 1: Confirm pilot repositories (Q4)** — no file-changing commit (decision checkpoint by design); recorded in commit `4440bca` (`docs(20-01): record option-a pilot decision`).
-2. **Task 2: A1 measurement** — evidence files + this SUMMARY update committed together (see commit hash after this file is saved).
+2. **Task 2: A1 measurement** — evidence files + SUMMARY update committed in `e6ab3a7` (`docs(20-01): measure A1 CONFIRMED`).
+3. **Task 3: Q2 disposition confirmation** — no file-changing commit outside `.planning/` (checkpoint by design); this final SUMMARY update committed as `docs(20-01)` (hash recorded after save).
 
-(Task 3 commit recorded below once reached.)
+**Plan metadata:** all three task commits above ARE the plan's metadata commits — this plan produces no tracked change to `security_solution` or `security-platform` source, per its own `<verification>` constraint.
 
 ## Files Created/Modified
 
@@ -123,6 +141,7 @@ gh: Code scanning is not enabled for this repository. Please enable code scannin
 
 - Task 1 (Q4): option-a — `terraform-pipelines` (public) + `aws-zabbix-monitoring-solution` (private) confirmed as pilots; branch protection changes remain unauthorized.
 - Task 2 (A1): CONFIRMED by live measurement — `upload-sarif` fails on this private repository. Root cause is "code scanning not enabled" (GHAS licensing gate on private repos), not merely a token-scope 403 as RESEARCH's Pitfall 1 inferred. Both the upload step and an in-workflow `GITHUB_TOKEN` read (with `security-events: write`) hit the identical error, closing off any ambiguity between "silently dropped" and "confirmed absent."
+- Task 3 (Q2): operator approved the disposition as presented — guard the six SARIF verify steps with `&& github.event.repository.private == false`; leave the five artifact verify steps untouched; no verify step deleted; `requirements.mark-complete` withheld for plan 12.
 
 ## Deviations from Plan
 
@@ -151,50 +170,21 @@ None — no external service configuration required.
 
 ## Next Phase Readiness
 
-Task 1 and Task 2 both resolved with unambiguous, evidenced results. Task 3 is a blocking `checkpoint:human-verify` — the executor will present Task 2's measurement and the disposition that follows from it, then STOP and await operator confirmation rather than fabricating an `approved`. See CHECKPOINT REACHED section below.
+All three tasks resolved with operator sign-off at every gate. Plan 04 can now compound the guard expression onto the six SARIF verify steps in `repos/security-platform/.github/workflows/security.yml` without any further judgement call, and plan 10 knows `terraform-pipelines` (public) and `aws-zabbix-monitoring-solution` (private) are the authorised pilots for its live PRs. No downstream plan in this phase is blocked by an open question from this plan.
 
----
+## Self-Check: PASSED
 
-## CHECKPOINT REACHED
-
-**Type:** human-verify
-**Plan:** 20-01
-**Progress:** 2/3 tasks complete
-
-### Completed Tasks
-
-| Task | Name | Commit | Files |
-|------|------|--------|-------|
-| 1 | Confirm pilot repositories (Q4) | `4440bca` | 20-01-SUMMARY.md |
-| 2 | Measure A1 (SARIF upload capability) | (this commit) | 20-01-SUMMARY.md, 20-01-evidence/*.txt, 20-01-evidence/probe-run.log.txt |
-
-### Current Task
-
-**Task 3:** Confirm the Q2 disposition that follows from the measurement
-**Status:** awaiting operator verification/approval
-**Blocked by:** Task 3 is `type="checkpoint:human-verify" gate="blocking"` — plan 04 owns the actual workflow edit; this plan only records the disposition plan 04 must apply.
-
-### Checkpoint Details
-
-**What was built/measured:** Task 2's live measurement of `upload-sarif` against the private pilot `aws-zabbix-monitoring-solution`:
-- Run id `34802848411`, conclusion `success` (job-level; tolerated by `continue-on-error: true`).
-- Literal line: `upload outcome=failure`.
-- Root cause (from the upload step's own log): `Code scanning is not enabled for this repository. Please enable code scanning in the repository settings.` (HTTP 403 on the underlying ingestion call).
-- In-workflow `GITHUB_TOKEN` (with `security-events: write`) read of `code-scanning/analyses` on the probe ref: identical 403 "not enabled" response — confirms no analysis exists, ruling out a silent-drop ambiguity.
-- Local (session) token read of the same endpoint, captured after the run: identical `403` / "not enabled" (evidence file `20-01-evidence/analyses-after.txt`).
-
-**Disposition that follows (per the plan's own three-way table):** **A1 CONFIRMED (upload failed)** → plan 04 must compound `&& github.event.repository.private == false` onto the **six SARIF verify steps only** in `security.yml` (lines 112, 258, 461, 712, 863, 1006 per the plan's citation) and onto **none** of the five artifact verify steps (185, 311, 773, 916, 1059) — artifact upload uses `ACTIONS_RUNTIME_TOKEN` and is unaffected by code-scanning availability. This is the only disposition option that survives Mode B (reusable `workflow_call`) per RESEARCH Q2. No verify step is deleted — a capability guard skips a check that cannot pass; deleting the assertion would hide a check that could pass on a public repo.
-
-**Exact guard expression:** `&& github.event.repository.private == false` (ANDed onto each of the six existing `if:` conditions on the SARIF verify steps; no new substitution points, D-04 unaffected).
-
-**Exact step list the guard applies to:** the six `Verify … SARIF upload landed` steps (semgrep, checkov, trivy-fs, tflint, trivy-image, gitleaks) in `repos/security-platform/.github/workflows/security.yml`. It does NOT apply to the five artifact verify steps.
-
-**`requirements.mark-complete` was deliberately NOT invoked** by this plan — DIST-06/DIST-07 are marked complete only by plan 12, per the 17-01/19-01 precedent already recorded in STATE.md.
-
-### Awaiting
-
-Operator confirmation that this disposition is correct, per the plan's resume-signal: **Type `approved`, or state a different disposition.**
+- `.planning/phases/20-template-packaging-and-adoption-docs/20-01-SUMMARY.md` — FOUND
+- `.planning/phases/20-template-packaging-and-adoption-docs/20-01-evidence/probe-run.log.txt` — FOUND
+- `.planning/phases/20-template-packaging-and-adoption-docs/20-01-evidence/analyses-after.txt` — FOUND
+- `.planning/phases/20-template-packaging-and-adoption-docs/20-01-evidence/analyses-after-with-headers.txt` — FOUND
+- Commit `0d88ffb` (checkpoint pause record) — FOUND in `git log --oneline --all`
+- Commit `4440bca` (Task 1 close-out) — FOUND in `git log --oneline --all`
+- Commit `e6ab3a7` (Task 2 measurement) — FOUND in `git log --oneline --all`
+- `git status --porcelain` shows no change outside `.planning/` — CONFIRMED
+- `repos/security-platform` untouched: no local clone exists in this worktree, no branch/commit/file created there by this plan — CONFIRMED (only `gh api` reads were used against it)
+- Probe branch `chore/phase-20-sarif-capability-probe` on `aws-zabbix-monitoring-solution`: `gh api .../branches/...` returns 404 — CONFIRMED deleted
 
 ---
 *Phase: 20-template-packaging-and-adoption-docs*
-*Status: Tasks 1-2 complete; PAUSED at Task 3 checkpoint:human-verify — awaiting operator reply*
+*Status: COMPLETE — all three tasks resolved, operator-approved at both checkpoints*
