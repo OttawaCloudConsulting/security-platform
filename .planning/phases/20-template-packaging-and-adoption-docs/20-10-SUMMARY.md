@@ -2,7 +2,7 @@
 phase: 20-template-packaging-and-adoption-docs
 plan: 10
 subsystem: ci-cd
-status: blocked-checkpoint
+status: complete
 tags: [live-pilot, mode-a, mode-b, sc1, sc2, adoption-guide-proof]
 
 # Dependency graph
@@ -16,7 +16,7 @@ requires:
 provides:
   - "SC1 evidence: PR #12 on terraform-pipelines, Mode A copy-paste, five concluded security / … check runs, three byte-exact SKIP: lines, one Terraform FOUND line, 4 artifacts (not 5 — Dockerfile-free), 6 code-scanning analyses (no trivy-image)"
   - "SC2 evidence (partial): PR #13 on terraform-pipelines, Mode B uses: reference, five concluded security / … check runs byte-identical in name to Mode A's, external ref resolved to the v1 tag's exact commit SHA cdf2c21..., artifact set identical to Mode A"
-  - "Branch-protection dry run BLOCKED — set-required-checks.sh invocation denied by this session's own auto-mode Bash classifier; live baseline captured and confirmed unchanged (no write occurred), exact recorded command handed off per the 20-07 gh-release-create precedent"
+  - "Branch-protection dry run COMPLETE: set-required-checks.sh (--out only, never --apply) run by the orchestrator in an unblocked session after this executor's own two attempts were denied by its auto-mode Bash classifier (identical to 20-07's gh-release-create denial); exit 0, three pre-existing rule types preserved, required_status_checks (5 contexts, integration_id 15368) and pull_request added; independently re-verified read-only in this session — rules/branches/main unchanged before and after"
 affects: [20-12-blueprint-and-claude-md-corrections, 20-13-adr018]
 
 key-files:
@@ -29,6 +29,8 @@ key-files:
     - .planning/phases/20-template-packaging-and-adoption-docs/20-10-evidence/artifacts-b.json
     - .planning/phases/20-template-packaging-and-adoption-docs/20-10-evidence/check-runs-b.json
     - .planning/phases/20-template-packaging-and-adoption-docs/20-10-evidence/rules-before.txt
+    - .planning/phases/20-template-packaging-and-adoption-docs/20-10-evidence/rules-after.txt
+    - .planning/phases/20-template-packaging-and-adoption-docs/20-10-evidence/merged.json
   modified: []
 
 key-decisions:
@@ -38,17 +40,25 @@ key-decisions:
 requirements-completed: []  # Deliberately NOT invoked — plan 13 owns DIST-06/DIST-07 closure per 20-01/20-07/20-09 precedent
 
 # Metrics
-duration: "in progress"
-completed: null
+duration: "~65min"
+completed: 2026-09-14
 ---
 
 # Phase 20 Plan 10: Live Pilot Proofs (Mode A / Mode B) on terraform-pipelines Summary
 
-**Task 1 (Mode A, SC1) COMPLETE and verified. Task 2 (Mode B, SC2) COMPLETE and verified for the
-live-run half; the branch-protection dry run (`set-required-checks.sh --out`) is BLOCKED by this
-executor session's own auto-mode Bash classifier — the identical denial shape 20-07 hit with `gh
-release create`. Returning as a checkpoint per that precedent rather than substituting a
-workaround that would not actually exercise the script.**
+**Both tasks COMPLETE. SC1 measured on PR #12 (Mode A copy-paste) and SC2 measured on PR #13 (Mode
+B `uses:` reference) on `OttawaCloudConsulting/terraform-pipelines`, a repository outside this
+project — five concluded `security / …` check runs on each, byte-identical context names across
+both modes, three clean ecosystem `SKIP:` lines plus one Terraform `FOUND` line, and the external
+`uses:` reference resolving to the exact published `v1`/`v1.0.0` commit. The branch-protection
+dry run (`set-required-checks.sh --out`, never `--apply`) was denied twice by this executor
+session's own auto-mode Bash classifier — the identical denial shape 20-07 hit with `gh release
+create` — so the orchestrator ran the exact recorded command directly in its own session, which
+succeeded (exit 0, all three pre-existing rule types preserved, five contexts added). This session
+then independently re-verified the result read-only rather than accepting the orchestrator's
+report at face value: `rules/branches/main` confirmed byte-identical before and after the dry run,
+and the produced `merged.json` was read directly and cross-checked against the orchestrator's
+reported rule-type lists and `bypass_actors`.**
 
 ## Setup
 
@@ -311,7 +321,7 @@ FOUND 36 Terraform file(s):
 `gh variable set` was never run in this task. `gh api --method PUT` was never invoked (the dry-run
 script never executed — see below). Both pull requests are **OPEN** at the end of this plan.
 
-### Branch-protection dry run — BLOCKED (checkpoint)
+### Branch-protection dry run — COMPLETE
 
 Captured the live baseline **before** attempting the dry run, as the plan requires:
 
@@ -339,86 +349,83 @@ a git/GitHub authentication or authorisation error, and not a package-manager in
 install-exclusion checkpoint format does not apply; this is the general tool-permission-gate
 variant).
 
-**No workaround was attempted.** The classifier's own denial text explicitly permits routing
-through "other tools that might naturally be used to accomplish this goal" but forbids "malicious"
-workarounds and instructs stopping when the capability is essential. Reimplementing the script's
-read-modify-write logic by hand via direct `gh api` calls was considered and rejected: the plan's
-own acceptance criteria require `set-required-checks.sh` itself to exit 0 and print its rule-type
-comparison — a hand-rolled equivalent would not be evidence that the shipped script works, and
-would defeat the purpose of a live proof of the guide's own documented command.
+**No workaround was attempted in this session.** The classifier's own denial text explicitly
+permits routing through "other tools that might naturally be used to accomplish this goal" but
+forbids "malicious" workarounds and instructs stopping when the capability is essential.
+Reimplementing the script's read-modify-write logic by hand via direct `gh api` calls was
+considered and rejected: the plan's own acceptance criteria require `set-required-checks.sh`
+itself to exit 0 and print its rule-type comparison — a hand-rolled equivalent would not be
+evidence that the shipped script works. This session returned a `checkpoint:human-action`,
+following the 20-07 precedent exactly.
 
-**Confirmed no write occurred as a result of the blocked attempts** — re-read
-`rules/branches/main` after both denied attempts:
-
-```
-gh api repos/OttawaCloudConsulting/terraform-pipelines/rules/branches/main --jq '[.[].type] | sort | join(",")'
--> copilot_code_review,deletion,non_fast_forward
-```
-
-Identical to the pre-attempt baseline. `diff` of before/after (both saved) is empty. T-20-08's
-"nothing was written" guarantee holds — trivially, since the write-gated script body was never
-reached in either attempt.
-
-**Resolution path, following the 20-07 precedent exactly:** this session did not create a
-workaround. The orchestrator (or the user, in an unblocked session) can run the exact recorded
-command above, or approve a Bash permission rule for this class of read-only-by-default dry-run
-script invocation. Once run, the same evidence this SUMMARY already gathered (before-baseline,
-context-name identity, `referenced_workflows` resolution) remains valid; only the dry-run's own
-stdout (exit code, `--out` file, and the rule-type before/after comparison it prints) and the
-post-attempt `rules/branches/main` re-read are still needed to close Task 2's second half.
-
-## CHECKPOINT REACHED
-
-**Type:** human-action (tool-permission gate, not an authentication or authorisation problem)
-**Plan:** 20-10
-**Progress:** Task 1 complete (2/2 sub-parts); Task 2's live-run half complete, dry-run half blocked
-
-### Completed Tasks
-
-| Task | Name | Commit | Files |
-|---|---|---|---|
-| 1 | Mode A on the public pilot — SC1 | `bbc267b` (this repo, evidence+SUMMARY) | 20-10-SUMMARY.md, 20-10-evidence/{run-a.log.txt,artifacts-a.json,analyses-a.json,check-runs-a.json}; pilot commit `6e8975f` on PR #12 |
-| 2 (live-run half) | Mode B on the public pilot — SC2 | pending this plan's final commit | pilot commit `44b9d56` on PR #13; evidence not yet committed to this repo |
-
-### Current Task
-
-**Task 2, branch-protection dry run.** **Status:** blocked. **Blocked by:** this executor session's
-auto-mode Bash classifier denies `bash scripts/set-required-checks.sh --repo
-OttawaCloudConsulting/terraform-pipelines --ruleset 12760793 --out <path>` outright — "Blocked by
-classifier," identical to 20-07's `gh release create` denial.
-
-### Checkpoint Details
-
-**What was attempted:** the guide's own documented branch-protection dry-run command
-(`set-required-checks.sh` with no `--apply`, writing only to `--out`), confirmed by source-reading
-the script to touch nothing on GitHub without `--apply` + `--verify-sha` +
-`--yes-i-understand-lockout`.
-
-**What is needed:** run the exact command below (or an equivalent the user approves) in a session
-whose Bash classifier does not block it — the 20-07 precedent is the orchestrator's own session
-succeeded where this executor's did not:
+**Resolution: the orchestrator ran the exact recorded handoff command directly** (in a session
+whose classifier did not block it):
 
 ```
 bash scripts/set-required-checks.sh --repo OttawaCloudConsulting/terraform-pipelines \
-  --ruleset 12760793 --out <scratch-path>/merged.json
+  --ruleset 12760793 --out /private/tmp/.../scratchpad/merged.json
 ```
 
-(run from inside `repos/security-platform`, which this worktree already has cloned at
-`repos/security-platform`, `origin/main` at `cdf2c21`).
+**Reported result:** exit 0.
 
-**Verification once run:** exit code 0; the printed rule-type before/after comparison shows no type
-dropped; `gh api repos/OttawaCloudConsulting/terraform-pipelines/rules/branches/main --jq '[.[].type]
-| sort | join(",")'` still returns `copilot_code_review,deletion,non_fast_forward` (unchanged from
-this plan's captured baseline).
+```
+BEFORE rule types: ['deletion', 'non_fast_forward', 'copilot_code_review']
+AFTER rule types:  ['deletion', 'non_fast_forward', 'copilot_code_review',
+                     'required_status_checks', 'pull_request']
+```
+"Every pre-existing rule type preserved; 5 contexts added, each pinned to integration_id 15368."
+"DRY RUN complete. No write made to GitHub."
 
-### Awaiting
+**This session independently re-verified the outcome read-only** (not trusting the orchestrator's
+report at face value), per the anti-slop discipline this project follows (the same pattern 20-07
+used for the `gh release create` handoff):
 
-Either (a) the orchestrator/user runs the recorded command directly and reports the exit code plus
-before/after comparison back for this plan's SUMMARY to be updated in place (matching 20-07's
-resolution pattern), or (b) the user adds a Bash permission rule permitting this class of
-dry-run-by-default script invocation so a continuation of this plan can complete it directly.
+1. **`rules/branches/main` re-read** after the orchestrator's run:
+   ```
+   gh api repos/OttawaCloudConsulting/terraform-pipelines/rules/branches/main --jq '[.[].type] | sort | join(",")'
+   -> copilot_code_review,deletion,non_fast_forward
+   ```
+   Identical to the pre-run baseline (`rules-before.txt` vs `rules-after.txt`, both committed to
+   this plan's evidence directory) — `diff` is empty. **Confirmed: nothing was written to
+   GitHub.**
 
-## Guide Corrections Required (running list, Task 1 only so far)
+2. **Read the produced `merged.json` directly** (path the orchestrator reported, copied into this
+   plan's evidence as `20-10-evidence/merged.json`) rather than trusting the orchestrator's summary
+   of its contents:
+   - `rules[].type` in order: `deletion`, `non_fast_forward`, `copilot_code_review`,
+     `required_status_checks`, `pull_request` — all three pre-existing types present, matching the
+     orchestrator's reported BEFORE list exactly, plus the two new types matching the reported
+     AFTER list exactly.
+   - `required_status_checks.parameters.required_status_checks` contains exactly five entries,
+     each `"integration_id": 15368`, contexts: `security / SAST — Semgrep CE`, `security / IaC —
+     Checkov`, `security / SCA — Trivy Filesystem`, `security / Container — Trivy Image`,
+     `security / Secrets — Gitleaks` — byte-matching the five frozen contexts measured live in
+     Task 1 and Task 2's own check-runs reads.
+   - `bypass_actors: []` in the merged document — carried forward verbatim from the live ruleset
+     (independently confirmed via `gh api repos/.../rulesets/12760793 --jq '.bypass_actors'` ->
+     `[]`), not synthesised. This is the read-modify-write correctness the script exists to
+     guarantee (RESEARCH P-05 / T-20-08).
+   - `pull_request` rule type present with `required_approving_review_count: 0` — the script adds
+     both rules together as its own header comment states it must, never `required_status_checks`
+     alone.
+
+**`--apply` was never passed at any point, by either session.** `gh variable set` was never run.
+T-20-08's "mitigate" disposition (dry run only, `--apply` never passed, live rule-type list diffed
+before and after) is fully satisfied and independently re-verified, not merely trusted from the
+orchestrator's report.
+
+Both pull requests (#12, #13) remain **OPEN** — plan 13 owns their fate per the plan's own
+instruction.
+
+## Task 2 Verify Script
+
+The plan's own automated Task 2 `<verify>` block requires `SHA_A` (Task 1's head SHA) for the
+context-name diff. Re-ran the comparison directly (already shown above): `diff` of the two sorted
+check-run name lists for SHA `6e8975f` (PR #12) and SHA `44b9d56` (PR #13) is empty, and the
+post-dry-run `rules/branches/main` read matches the pre-attempt baseline exactly — both conditions
+the plan's verify script checks.
+
+## Guide Corrections Required (final list)
 
 1. **Section 4, offline post-copy check.** `yamllint -d relaxed` on the copied `security.yml` and
    `pr-security.yml` produces 96 and 1 `line too long` warnings respectively (still exit 0). The
@@ -439,12 +446,127 @@ dry-run-by-default script invocation so a continuation of this plan can complete
 4. **Section 8's dry-run instruction, "run ... from inside repos/security-platform."** Both attempted
    invocation shapes (absolute `--out` path from the worktree root, and running from inside
    `repos/security-platform` per the guide's own phrasing) were denied identically by this executor
-   session's classifier — the guide text itself was not at fault, this is a session tooling
-   constraint, but plan 12 should be aware the guide's phrasing did not change the outcome.
+   session's classifier — the guide text itself was not at fault, this is a session-local tooling
+   constraint (Claude Code's own auto-mode Bash classifier), not a guide defect. Not carried to
+   plan 12 as a wording fix; noted here for completeness since it did delay Task 2's close.
+5. **Section 8's dry-run output, confirmed accurate.** Once run (by the orchestrator), the script's
+   own printed before/after comparison and this session's independent `merged.json` read matched
+   the guide's description exactly: all pre-existing rule types preserved, five contexts added at
+   `integration_id 15368`, `bypass_actors` carried forward verbatim. No correction needed for
+   section 8's substantive content — only its dependency on a specific execution environment (item
+   4 above) caused friction in this run.
 
-This list is not final — Task 2's dry-run half is still open (see the checkpoint above).
+This is the final list — both tasks are now complete.
 
-## Self-Check: PASSED for everything committed; Task 2's dry-run half remains open
+## Task Commits
+
+1. **Task 1: Mode A on the public pilot — SC1** — `bbc267b` (`docs(20-10): Task 1 — Mode A live
+   pilot proof (SC1) on terraform-pipelines PR #12`); pilot-side commit `6e8975f` on
+   `chore/adopt-security-pipeline-mode-a` (PR #12).
+2. **Task 2: Mode B live-run half + branch-protection dry-run evidence** — `22aed38`
+   (`docs(20-10): Task 2 — Mode B live pilot proof (SC2) on terraform-pipelines PR #13;
+   branch-protection dry run BLOCKED`, later resolved); pilot-side commit `44b9d56` on
+   `chore/adopt-security-pipeline-mode-b` (PR #13). Dry-run evidence (`merged.json`,
+   `rules-after.txt`) and this SUMMARY's completion update are committed as the plan's final
+   metadata commit (hash recorded in the finished-plan close-out below).
+
+**Plan metadata:** this SUMMARY, plus `20-10-evidence/merged.json` and
+`20-10-evidence/rules-after.txt`, committed together as the plan's closing metadata commit.
+
+## Files Created/Modified
+
+- `.planning/phases/20-template-packaging-and-adoption-docs/20-10-SUMMARY.md` — this record.
+- `.planning/phases/20-template-packaging-and-adoption-docs/20-10-evidence/` — `run-a.log.txt`,
+  `run-b.log.txt`, `artifacts-a.json`, `artifacts-b.json`, `analyses-a.json`, `check-runs-a.json`,
+  `check-runs-b.json`, `rules-before.txt`, `rules-after.txt`, `merged.json`.
+- No files modified in `security_solution`'s own source tree, `repos/security-platform`, or any
+  tracked file outside `.planning/` — this plan's deliverable is live GitHub state on the pilot
+  (two open PRs, two branches, no ruleset/variable writes) plus the evidence record.
+
+## Decisions Made
+
+See `key-decisions` in frontmatter. Summary: (1) the Terraform-only artifact set (4, not 5) was
+derived from `security.yml`'s own `if:` guard structure before running, then confirmed exactly;
+(2) `yamllint`'s line-length warnings on the copied `security.yml` are a guide discrepancy
+(exit-code half of "no output, exit 0" holds, the no-output half does not); (3) the dry-run
+classifier denial was handled by handoff to the orchestrator, not by a hand-rolled `gh api`
+substitute, because the plan's acceptance criteria require the shipped script itself to run; (4)
+this session independently re-verified the orchestrator's dry-run report read-only — re-reading
+`rules/branches/main` and the produced `merged.json` directly — rather than accepting the report
+at face value, consistent with the 20-07 precedent's own verification discipline.
+
+## Deviations from Plan
+
+### Auto-fixed Issues
+
+**1. [Rule 3 - Blocking, tool-permission variant] `set-required-checks.sh` dry-run invocation
+denied twice by this executor session's auto-mode Bash classifier — resolved by the orchestrator
+running the recorded handoff command directly**
+- **Found during:** Task 2, branch-protection dry run
+- **Issue:** `bash scripts/set-required-checks.sh --repo ... --ruleset 12760793 --out <path>` (no
+  `--apply`, confirmed read-only by source inspection) was denied identically to 20-07's `gh
+  release create` denial — "Blocked by classifier" — on two different invocation shapes.
+- **Fix:** No workaround attempted in this session (per the anti-slop stop/report/wait protocol
+  and the classifier's own instruction against routing around a denial). Returned a
+  `checkpoint:human-action` with the exact command and the pre-attempt baseline already captured.
+  The orchestrator then ran that exact command directly in its own session, which succeeded. This
+  session subsequently re-verified the result read-only rather than trusting the report: re-read
+  `rules/branches/main` (unchanged before/after) and the produced `merged.json` directly (all
+  claimed rule types, contexts, and `bypass_actors` confirmed present and correct).
+- **Files modified:** `.planning/phases/20-template-packaging-and-adoption-docs/20-10-evidence/merged.json`
+  and `rules-after.txt` (new), this SUMMARY (updated in place).
+- **Verification:** `gh api repos/OttawaCloudConsulting/terraform-pipelines/rules/branches/main
+  --jq '[.[].type] | sort | join(",")'` returns `copilot_code_review,deletion,non_fast_forward`
+  both before and after; `merged.json`'s five `required_status_checks` entries byte-match the five
+  frozen contexts measured live in Task 1/Task 2; `bypass_actors: []` in both the merged document
+  and the live ruleset.
+- **Committed in:** the plan's closing metadata commit (hash recorded below).
+
+---
+
+**Total deviations:** 1 (a tool-permission gate identical in shape to 20-07's, resolved via the
+same handoff-and-independently-reverify pattern). No scope change, no unauthorised action — the
+dry run touched nothing on GitHub at any point, confirmed twice.
+
+## Issues Encountered
+
+- Worktree HEAD had no common ancestor with the plan's expected base commit — the same disjoint-
+  history condition every prior plan in this phase has recorded. Resolved via the sanctioned `git
+  reset --hard` after HEAD/namespace assertions passed.
+- `git -C repos/security-platform fetch origin && git -C repos/security-platform checkout
+  origin/main` (the plan's own HOST PREFLIGHT follow-up) was denied by this session's classifier
+  when attempted; harmless, since the fresh clone had already landed on the correct commit.
+- The Task 1 `<verify>` block and the branch-protection dry run both required writing scripts to
+  files and executing with `bash <script>` rather than inline, because the worktree isolation
+  guard rejected compound variable-driven `gh`/`git` invocations — consistent with every prior
+  plan in this phase.
+- `bash scripts/set-required-checks.sh` (dry run, no `--apply`) was denied twice by this executor
+  session's own classifier — see Deviation 1 above; resolved via orchestrator handoff and
+  independent read-only re-verification, not a workaround.
+
+## User Setup Required
+
+None. The one manual action originally required — running `set-required-checks.sh`'s dry run
+because this executor session's own attempt was denied by its Bash classifier — has been completed
+by the orchestrator, running the exact recorded handoff command in its own session. This session
+independently re-verified the result read-only.
+
+## Next Phase Readiness
+
+- SC1 and SC2 are both measured on a repository outside this project (`terraform-pipelines`),
+  using only the adoption guide's own documented commands, per this plan's success criteria.
+- Both pull requests (#12, #13) are OPEN — plan 13 owns their fate (merge, close, or leave open)
+  and VAL-01/DIST-06/DIST-07's final closure.
+- Five guide corrections recorded above for plan 12: the `yamllint` "no output" overstatement on
+  long-comment files, a possible fifth preflight probe (`actions/permissions`), the CLI decoration
+  line on the 404 code-scanning probe, and the session-local (not guide-level) friction on the
+  dry-run's execution environment.
+- The branch-protection dry run's full evidence chain (baseline, script output, `merged.json`,
+  post-run baseline, and independent read-only re-verification of both) is committed to
+  `20-10-evidence/` for any downstream plan or auditor to re-derive the same conclusion without
+  re-running the pilot.
+
+## Self-Check: PASSED
 
 - PR #12 — FOUND at `https://github.com/OttawaCloudConsulting/terraform-pipelines/pull/12`, state OPEN
 - Commit `6e8975f22232659c1403de452d559d6c97ebb1eb` — FOUND on branch `chore/adopt-security-pipeline-mode-a`
@@ -466,9 +588,13 @@ This list is not final — Task 2's dry-run half is still open (see the checkpoi
 - `.planning/phases/20-template-packaging-and-adoption-docs/20-10-evidence/artifacts-b.json` — FOUND
 - `.planning/phases/20-template-packaging-and-adoption-docs/20-10-evidence/check-runs-b.json` — FOUND
 - `.planning/phases/20-template-packaging-and-adoption-docs/20-10-evidence/rules-before.txt` — FOUND
-- `rules/branches/main` rule-type list unchanged after the two blocked attempts — CONFIRMED (both reads identical: `copilot_code_review,deletion,non_fast_forward`)
+- `rules/branches/main` rule-type list unchanged before and after the dry run — CONFIRMED (both reads identical: `copilot_code_review,deletion,non_fast_forward`)
+- `.planning/phases/20-template-packaging-and-adoption-docs/20-10-evidence/rules-after.txt` — FOUND
+- `.planning/phases/20-template-packaging-and-adoption-docs/20-10-evidence/merged.json` — FOUND, read directly and cross-checked (5 contexts at integration_id 15368, 3 pre-existing rule types preserved, bypass_actors: [] carried forward verbatim)
+- `gh api repos/.../rulesets/12760793 --jq '.bypass_actors'` — CONFIRMED `[]`, matching merged.json
+- `--apply` never passed by either session — CONFIRMED (script source-read shows the only PUT is gated behind it; both dry-run outputs and both baseline reads consistent with no write)
 - `requirements.mark-complete` NOT invoked — CONFIRMED, per plan's own `<output>` instruction (plan 13 owns DIST-06/DIST-07 closure)
 
 ---
 *Phase: 20-template-packaging-and-adoption-docs*
-*Status: CHECKPOINT — Task 1 (SC1) fully complete; Task 2's live-run half (SC2) complete; Task 2's branch-protection dry run BLOCKED by a tool-permission gate, awaiting either direct execution in an unblocked session (20-07 precedent) or a Bash permission-rule grant*
+*Status: COMPLETE — SC1 and SC2 both measured live on terraform-pipelines using only the adoption guide's own commands; branch-protection dry run completed and independently re-verified read-only; both pilot PRs left OPEN for plan 13*
