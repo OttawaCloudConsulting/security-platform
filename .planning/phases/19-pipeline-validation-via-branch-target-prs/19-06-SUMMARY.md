@@ -464,9 +464,13 @@ None unresolved. Three observations that could be misread and are not problems:
 | `gsd-sdk query state.advance-plan` | `{"advanced":true,"previous_plan":6,"current_plan":7,"total_plans":7}` |
 | `gsd-sdk query state.record-metric --phase 19 --plan 06 …` | `{"recorded":true,…}` |
 | `gsd-sdk query state.add-decision …` (x2) | `{"added":true,…}` each |
+| `git diff .planning/ROADMAP.md` | exactly two lines: `- [ ] 19-06-PLAN.md` → `- [x]`, and the progress row `5/7` → **`6/7`**, still `In Progress` |
 | `gsd-sdk query state.record-session …` | `updated: ["Last session","Stopped At","Resume File"]` — the `updated` array read, not the `recorded` boolean (D-19-D) |
+| `gsd-sdk query state.sync` | `{"synced":true,"changes":["Progress: [██████████] 95% -> [██████████] 97%"]}` — one change, the bar; frontmatter otherwise already in line |
 | `gsd-sdk query state.update-progress` | `{"updated":true,"percent":97,"completed":36,"total":37}` |
 | `gsd-sdk query state.validate` | `{"valid":true,"warnings":[],"drift":{}}` |
+
+STATE.md now reads `Plan: 7 of 7` with the resume file pointing at `19-07-PLAN.md`.
 
 `requirements.mark-complete` was **deliberately not invoked** — VAL-01 is plan 07's to close (deviation 6).
 

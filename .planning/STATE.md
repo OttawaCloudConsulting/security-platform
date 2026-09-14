@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 19-05-PLAN.md (SC2 measured, D-09 executed, operator approved)
-last_updated: "2026-09-14T00:21:27.138Z"
+stopped_at: "Completed 19-06-PLAN.md (SC4 measured on PR #12, closed; PR #11 untouched)"
+last_updated: "2026-09-14T00:36:07.210Z"
 last_activity: 2026-09-14
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 37
-  completed_plans: 35
+  completed_plans: 36
   percent: 71
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 19 (pipeline-validation-via-branch-target-prs) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-09-14
 
-Progress: [██████████] 95%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -139,6 +139,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 19]: [19-04]: VAL-01 still NOT marked complete, superseding the 19-03 note. SC1 (19-03) and SC3 (19-04, both halves) are closed; SC2 is unmeasured until plan 05 and SC4 until plan 06. Plan 07 owns VAL-01's closure. — Follows the 19-01/19-02/19-03 and 17-01 precedent. requirements.mark-complete was deliberately not invoked by 19-04 — an executor or verifier reading requirements-completed: [] on 19-04-SUMMARY should read it as withheld on purpose, not as a missed step.
 - [Phase 19]: SC2 measured on PR #11, the REPLACEMENT gate-mode proof PR: one tree 895c1bdf, five security checks FAILURE under GATE_MODE=blocking (run 34791497579) and SUCCESS under report-only (runs 34790727189, 34791562222). PR #10 was merged out of band 2026-09-13T22:34:18Z (merge commit 80e91de) and its branch deleted, so STATE's earlier 'PR #10 is OPEN at d8bd09b' note is superseded — 19-06 and 19-07 must use PR #11 (OPEN, head 426c84c), not PR #10.
 - [Phase 19]: D-09 EXECUTED and human-confirmed: GATE_MODE was DELETED (not set to report-only) after a 63s repo-wide window (2026-09-14T00:04:10Z -> 00:05:13Z, exactly one run inside it). gh variable list prints nothing and the REST endpoint 404s. Required-checks adoption (Phase 18 D-07 step 3) stays deferred past this phase.
+- [Phase 19]: [Phase 19-06]: SC4 recorded as FIVE security / ... check runs concluding success on PR #12 — never as zero findings. Zero findings is impossible here: fixtures/ is permanent on main, so every PR scans a vulnerable tree. The run reported 8 semgrep / 11 gitleaks / 14 checkov / 58 trivy-image / 6 trivy-fs / 3 tflint findings and all five checks still went green, because report-only sets continue-on-error: true on every scan step.
+- [Phase 19]: [Phase 19-06]: PR #12 (the SC4 clean probe) is CLOSED, not merged. PR #11 is untouched and still OPEN at 426c84c — plan 07 owns its fate and VAL-01's closure. Phase 20 input recorded: fixture permanence blocks this repo's own live blocking-mode adoption until fixtures/ is excluded from the scanners.
 
 ### Pending Todos
 
@@ -199,12 +201,13 @@ Carried forward from v1.1 close:
 | Phase 19 P03 | 22min | 2 tasks | 1 files |
 | Phase 19 P04 | 11min | 2 tasks | 1 files |
 | Phase 19 P05 | 18min + 14min + 6min | 3 tasks | 1 files |
+| Phase 19 P06 | 5min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-14T00:21:26.811Z
-Stopped at: Completed 19-05-PLAN.md (SC2 measured, D-09 executed, operator approved)
-Resume file: .planning/phases/19-pipeline-validation-via-branch-target-prs/19-06-PLAN.md
+Last session: 2026-09-14T00:36:06.880Z
+Stopped at: Completed 19-06-PLAN.md (SC4 measured on PR #12, closed; PR #11 untouched)
+Resume file: .planning/phases/19-pipeline-validation-via-branch-target-prs/19-07-PLAN.md
 
 ## Operator Next Steps
 
