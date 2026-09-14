@@ -385,23 +385,96 @@ jobs:
       # Detection is its own step rather than a bare `if: hashFiles(…) != ''`
       # on each scan step: a step skipped by `if:` produces no log output at
       # all, and the skip path has to say out loud that the ecosystem is absent
-      # (Criterion 4). The logic lives in shared scripts, not inline here, so
-      # that CI and scripts/smoke-scans.sh exercise the same implementation —
-      # the smoke gate's negative test then proves the real CI code path.
+      # (Criterion 4). Phase 20: the logic is now inlined here rather than
+      # delegated, so this file is self-contained for a consumer repository
+      # that has no `scripts/` directory at all (neither copy-paste nor
+      # `uses:` consumption mode can rely on repo-local helper scripts
+      # existing). `scripts/detect-*.sh` remain in THIS repository as
+      # `scripts/smoke-scans.sh`'s helpers — that gate still needs a callable
+      # implementation of the same logic to run offline — and
+      # `scripts/check-detector-parity.sh` is what now proves the inlined
+      # bodies below and those scripts agree on the same tree.
       # No continue-on-error on a detect step: the detectors are contractually
       # exit-0 on BOTH branches, so a non-zero exit is an infrastructure
       # failure and must fail the job.
+      # Pathspec: '*package-lock.json'. Git's default (non-':(glob)') pathspec
+      # wildcards already cross '/', so a single leading '*' matches every
+      # depth. The two wrong forms, both measured (16-RESEARCH Pitfall 9):
+      #   'package-lock.json'      -> root-anchored, matches nothing in a
+      #                                subdirectory
+      #   '**/package-lock.json'   -> matches nested files ONLY, misses the
+      #                                repo root
+      # A missed manifest would produce a "SKIP:" line on a repo that really
+      # does have npm dependencies — a false pass that is invisible in the
+      # log. The one legitimate `|| true` here: `grep -v` exits 1 when its
+      # input is empty, and under `set -o pipefail` that would abort the
+      # detector on a repository with no lockfiles at all. This `|| true` is
+      # on the discovery pipeline only — never on a branch that decides
+      # whether files were found.
       - name: Detect npm lockfiles
         id: npm
-        run: bash scripts/detect-npm.sh npm-lockfiles.txt
+        run: |
+          git ls-files -- '*package-lock.json' \
+            | grep -v -e '/node_modules/' -e '^node_modules/' > npm-lockfiles.txt || true
+          count=$(grep -c . npm-lockfiles.txt || true)
+          if [ "${count:-0}" -eq 0 ]; then
+            echo "SKIP: no package-lock.json found — npm sub-scan not applicable to this repository"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "FOUND ${count} npm lockfile(s):"
+          cat npm-lockfiles.txt
+          echo "found=true" >> "$GITHUB_OUTPUT"
 
+      # Pathspec: '*requirements*.txt'. Git's default (non-':(glob)') pathspec
+      # wildcards already cross '/', so a single leading '*' matches every
+      # depth. The two wrong forms, both measured (16-RESEARCH Pitfall 9):
+      #   'requirements*.txt'      -> root-anchored, matches NEITHER root nor
+      #                                nested
+      #   '**/requirements*.txt'   -> matches nested files ONLY, misses the
+      #                                repo root
+      # A missed manifest would produce a "SKIP:" line on a repo that really
+      # does have Python dependencies — a false pass that is invisible in the
+      # log. The leading wildcard also matches dev-requirements.txt and
+      # requirements-test.txt, which is desirable: those pin real
+      # dependencies too.
       - name: Detect Python requirements files
         id: py
-        run: bash scripts/detect-python.sh py-reqs.txt
+        run: |
+          git ls-files -- '*requirements*.txt' > py-reqs.txt || true
+          count=$(grep -c . py-reqs.txt || true)
+          if [ "${count:-0}" -eq 0 ]; then
+            echo "SKIP: no requirements*.txt found — Python sub-scan not applicable to this repository"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "FOUND ${count} Python requirements file(s):"
+          cat py-reqs.txt
+          echo "found=true" >> "$GITHUB_OUTPUT"
 
+      # Pathspec: '*.tf'. Git's default (non-':(glob)') pathspec wildcards
+      # already cross '/', so a single leading '*' matches every depth. The
+      # two wrong forms, by analogy with the measured matrix in 16-RESEARCH
+      # Pitfall 9:
+      #   '.tf' / 'main.tf'        -> root-anchored, matches nothing in a
+      #                                subdirectory
+      #   '**/*.tf'                -> matches nested files ONLY, misses the
+      #                                repo root
+      # A missed manifest would produce a "SKIP:" line on a repo that really
+      # has Terraform — a false pass that is invisible in the log.
       - name: Detect Terraform files
         id: tf
-        run: bash scripts/detect-terraform.sh tf-files.txt
+        run: |
+          git ls-files -- '*.tf' > tf-files.txt || true
+          count=$(grep -c . tf-files.txt || true)
+          if [ "${count:-0}" -eq 0 ]; then
+            echo "SKIP: no .tf files found — Terraform pinning sub-scan not applicable to this repository"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "FOUND ${count} Terraform file(s):"
+          cat tf-files.txt
+          echo "found=true" >> "$GITHUB_OUTPUT"
 
       # --scanners vuln only, deliberately: misconfig is the IaC job's remit and
       # secrets are Gitleaks' remit. No per-ecosystem plugin or .trivyignore — this
