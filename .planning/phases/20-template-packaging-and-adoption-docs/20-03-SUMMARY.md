@@ -268,3 +268,9 @@ None — no external service configuration required.
 ---
 *Phase: 20-template-packaging-and-adoption-docs*
 *Completed: 2026-09-14*
+
+## Self-Check: PASSED
+
+All files and commits verified present:
+- repos/security-platform/.github/workflows/security.yml (commits 3f6d343, 42e204a, pushed to origin/feature/phase-20-template-packaging — verified via `git log --oneline -3` in repos/security-platform)
+- .planning/phases/20-template-packaging-and-adoption-docs/20-03-SUMMARY.md (this repo, commit d60adfd)
