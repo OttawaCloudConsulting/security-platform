@@ -109,8 +109,20 @@ jobs:
       # a Dependabot PR is expected here, because Phase 14 pinned
       # actions/checkout one patch behind on purpose. Guarding the upload
       # instead would silently publish nothing on those runs.
+      # Private-repo capability guard (all six SARIF verify steps below): this
+      # account is a User account, so no repository it owns carries GitHub
+      # Advanced Security. `private == true` and "code scanning unavailable"
+      # were measured equivalent for every consumer that exists today (Phase
+      # 20 plan 01, run 34802848411 — upload-sarif failed with "Code scanning
+      # is not enabled for this repository"). This guard SKIPS a check that
+      # cannot pass on a private repo; it never DELETES a check that could —
+      # that distinction keeps the broken-but-green protection intact. If a
+      # GHAS-bearing organisation consumer ever appears, the correct evolution
+      # is a new `workflow_call` boolean input naming that expectation, deliberately
+      # not built speculatively here because it would add a second per-repo
+      # substitution point and break D-04 (`gate_mode` stays the only one).
       - name: Verify Semgrep SARIF upload landed
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.repository.private == false
         run: |
           python3 - semgrep.sarif <<'PY'
           import json
@@ -256,7 +268,7 @@ jobs:
       # and the fork/Dependabot guard sits on the verify step, never on the
       # upload.
       - name: Verify Checkov SARIF upload landed
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.repository.private == false
         run: |
           python3 - checkov.sarif <<'PY'
           import json
@@ -532,7 +544,7 @@ jobs:
       # and the fork/Dependabot guard sits on the verify step, never on the
       # upload.
       - name: Verify Trivy filesystem SARIF upload landed
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.repository.private == false
         run: |
           python3 - trivy-fs.sarif <<'PY'
           import json
@@ -783,7 +795,7 @@ jobs:
       # (`tflint` and `tflint-errors`, the second normally empty), so no
       # assertion anywhere may require len(runs) == 1.
       - name: Verify tflint SARIF upload landed
-        if: always() && steps.tf.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && steps.tf.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.repository.private == false
         run: |
           if [ "${{ steps.sarif-tflint.outcome }}" != "success" ]; then
             echo "upload outcome=${{ steps.sarif-tflint.outcome }} — the upload did not land."
@@ -975,7 +987,7 @@ jobs:
       # and the fork/Dependabot guard sits on the verify step, never on the
       # upload. The Dockerfile guard is compounded in front of both.
       - name: Verify Trivy image SARIF upload landed
-        if: always() && steps.docker.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && steps.docker.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.repository.private == false
         run: |
           python3 - trivy-image.sarif <<'PY'
           import json
@@ -1121,7 +1133,7 @@ jobs:
       # and the fork/Dependabot guard sits on the verify step, never on the
       # upload.
       - name: Verify Gitleaks SARIF upload landed
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.repository.private == false
         run: |
           python3 - gitleaks.sarif <<'PY'
           import json
