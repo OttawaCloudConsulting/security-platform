@@ -887,36 +887,77 @@ jobs:
           version: v0.74.0
           cache: true
 
-      # D-06: unconditional build. No "does a Dockerfile exist" check, no
-      # conditional skip — a skipped job fails Success Criteria #2.
+      # Phase 15 D-06's "unconditional build" was correct for security-platform,
+      # whose fixtures/Dockerfile always exists. A consumer repository adopting
+      # this file may have no Dockerfile at all — an unconditional
+      # `docker build -f fixtures/Dockerfile` would fail there 100% of the
+      # time. The detect step below, plus the guard compounded onto every
+      # subsequent step in this job, are what make a Dockerfile-free
+      # repository skip cleanly instead.
       # The only context interpolations in any run: block in this workflow are
-      # ${{ github.sha }} and GitHub-generated step outcomes and ids (the
-      # steps.<id>.outcome, .outputs.sarif-id and .outputs.artifact-id/-url
-      # values read by the upload verify steps). None is attacker-controlled:
-      # outcome is one of four literal GitHub strings and the ids are
-      # server-generated. 17-03 added the first of those and left this comment
-      # saying "only" — true when it was written, stale from that plan onward.
-      - name: Build fixture image
-        run: docker build -f fixtures/Dockerfile -t scan-fixture:${{ github.sha }} fixtures/
+      # ${{ github.sha }}, ${{ steps.docker.outputs.path }} (read from
+      # `git ls-files` on the checked-out tree, not an event payload), and
+      # GitHub-generated step outcomes and ids (the steps.<id>.outcome,
+      # .outputs.sarif-id and .outputs.artifact-id/-url values read by the
+      # upload verify steps). None is attacker-controlled: outcome is one of
+      # four literal GitHub strings and the ids are server-generated. 17-03
+      # added the first of those and left this comment saying "only" — true
+      # when it was written, stale from that plan onward.
+      #
+      # Pathspec: the corrected five-item form measured in 20-02 (A4) —
+      # 'Dockerfile' '*/Dockerfile' 'Dockerfile.*' '*/Dockerfile.*'
+      # '*.dockerfile' — NOT the naive three-item form ('*Dockerfile'
+      # '*Dockerfile.*' '*.dockerfile'), which was measured to also match a
+      # docs/ decoy file because git's default pathspec wildcards cross '/'.
+      # The one legitimate `|| true` here is on the discovery pipeline only,
+      # never on a branch that decides found=. A multi-Dockerfile repository
+      # scans the first one only (`head -1`, alphabetical git ls-files order).
+      - name: Detect Dockerfile
+        id: docker
+        run: |
+          git ls-files -- 'Dockerfile' '*/Dockerfile' 'Dockerfile.*' '*/Dockerfile.*' '*.dockerfile' > dockerfiles.txt || true
+          count=$(grep -c . dockerfiles.txt || true)
+          if [ "${count:-0}" -eq 0 ]; then
+            echo "SKIP: no Dockerfile found — container sub-scan not applicable to this repository"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          first=$(head -1 dockerfiles.txt)
+          echo "FOUND ${count} Dockerfile(s); building the first: ${first}"
+          { echo "found=true"; echo "path=${first}"; } >> "$GITHUB_OUTPUT"
+
+      - name: Build image from discovered Dockerfile
+        if: steps.docker.outputs.found == 'true'
+        run: |
+          ctx=$(dirname "${{ steps.docker.outputs.path }}")
+          docker build -f "${{ steps.docker.outputs.path }}" \
+            -t scan-target:${{ github.sha }} "$ctx"
 
       - name: Run Trivy image scan
+        if: steps.docker.outputs.found == 'true'
         continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
-          trivy image scan-fixture:${{ github.sha }} --scanners vuln \
+          trivy image scan-target:${{ github.sha }} --scanners vuln \
             --format json --output trivy-image.json \
             --exit-code 1 --severity HIGH,CRITICAL
 
+      # `always()` alone would run this (and every step below) after a
+      # SKIPPED build: `trivy image` would have no image, `ls -l` would fail
+      # on missing files, and the artifact upload's error-on-missing-file
+      # setting below would turn a clean skip red — the exact failure 18-02
+      # fixed for the three SCA sub-scans. Compounding
+      # steps.docker.outputs.found == 'true' restores the intended semantics.
       - name: Convert to SARIF
-        if: always()
+        if: always() && steps.docker.outputs.found == 'true'
         run: trivy convert --format sarif --output trivy-image.sarif trivy-image.json
 
       - name: Show scan output files
-        if: always()
+        if: always() && steps.docker.outputs.found == 'true'
         run: ls -l trivy-image.json trivy-image.sarif
 
       - name: Upload Trivy image SARIF
         id: sarif-trivy-image
-        if: always()                     # scanners exit non-zero by design (D-04)
+        if: always() && steps.docker.outputs.found == 'true'  # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
         uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
         with:
@@ -932,9 +973,9 @@ jobs:
       # Same contract as `Verify Semgrep SARIF upload landed` in the sast job:
       # no continue-on-error (ADR-001 governs the upload, not the assertion),
       # and the fork/Dependabot guard sits on the verify step, never on the
-      # upload.
+      # upload. The Dockerfile guard is compounded in front of both.
       - name: Verify Trivy image SARIF upload landed
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && steps.docker.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
         run: |
           python3 - trivy-image.sarif <<'PY'
           import json
@@ -966,7 +1007,7 @@ jobs:
       # Same retention-format contract as `Upload SAST reports` in the sast job.
       - name: Upload container reports
         id: artifact-container
-        if: always()                     # scanners exit non-zero by design (D-04)
+        if: always() && steps.docker.outputs.found == 'true'  # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
@@ -975,7 +1016,9 @@ jobs:
             trivy-image.json
             trivy-image.sarif
           # error, not warn: the scan writes the JSON and the conversion step
-          # writes the SARIF, both unconditionally, so a missing one is real.
+          # writes the SARIF, both unconditionally when the Dockerfile guard
+          # is satisfied, so a missing one there is real. The guard — not a
+          # downgrade to warn — is what makes a Dockerfile-free skip clean.
           if-no-files-found: error
           # Explicit — Criterion 3 requires a stated period, and 90 is the
           # maximum without a repository-settings change. See the sast job.
@@ -985,9 +1028,10 @@ jobs:
       # no continue-on-error (ADR-001 governs the upload, not the assertion),
       # and the fork/Dependabot guard is applied for uniformity with the SARIF
       # verify steps rather than because upload-artifact was measured to fail
-      # on those runs — see that step for the full note.
+      # on those runs — see that step for the full note. The Dockerfile guard
+      # is compounded in front of both.
       - name: Verify container artifact upload landed
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && steps.docker.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
         run: |
           if [ "${{ steps.artifact-container.outcome }}" != "success" ]; then
             echo "upload outcome=${{ steps.artifact-container.outcome }} — the artifact did not land."
