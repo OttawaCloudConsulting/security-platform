@@ -2,7 +2,7 @@
 phase: 20-template-packaging-and-adoption-docs
 plan: 13
 subsystem: docs
-status: checkpoint
+status: complete
 tags: [adr, requirements-closure, roadmap, pilot-pr-fate, phase-close-out]
 
 # Dependency graph
@@ -19,7 +19,7 @@ provides:
   - "ROADMAP.md Phase 20 and REQUIREMENTS.md DIST-07 corrected: the org identifier that never existed is gone, replaced with OttawaCloudConsulting/security-platform and the correction's authority (D-01 amendment / RESEARCH C-1)"
   - "DIST-06, DIST-07, DIST-08 marked Complete (checkbox and Traceability row, both grep-verified) via requirements.mark-complete invoked exactly once"
   - "ROADMAP Phase 20 entry finalised: all 13 plans checked off, four success criteria annotated with PR/run/file evidence, progress table at 13/13 Complete"
-  - "Task 3 (pilot PR fate + requirement sign-off) presented to the operator and AWAITING REPLY — not resolved in this session"
+  - "Task 3 RESOLVED: operator decided close-not-merge for all three pilot PRs, executed by the orchestrator directly; requirement completions and ADR-018's deferred-items list both operator-confirmed as-is, no correction"
 affects: []
 
 # Tech tracking
@@ -39,12 +39,12 @@ key-files:
 key-decisions:
   - "ADR-018's guard-compounding count corrected from the plan text's 'six downstream steps' to the measured eight occurrences (build step plus seven always()-guarded steps) per 20-03-SUMMARY.md's own count — evidence outranks plan text, per this project's own ADR-017/ADR-018 precedent."
   - "DIST-07's checkbox was transiently set to [x] by hand while drafting the wording fix, then reverted to [ ] before commit so requirements.mark-complete was the only actor that flipped it — avoiding a second, uncoordinated write to the same state."
-  - "Task 3 is NOT resolved in this session. Per the plan's own gate='blocking' checkpoint and this plan's explicit parallel_execution instruction, the three pilot PRs' fate is presented below with live-reverified state, and this SUMMARY records AWAITING OPERATOR, not a decision."
+  - "Task 3 was presented as a blocking checkpoint (no PR merged or closed by this session, per the plan's own gate and the parallel_execution instruction), then RESOLVED via the coordinator relaying an operator reply: close-not-merge for all three pilot PRs, executed by the orchestrator directly, not by this worktree agent. This session's contribution to Task 3's resolution is read-only re-verification (gh pr view + gh api branches) after the orchestrator's action, never the merge/close/delete calls themselves."
 
 requirements-completed: [DIST-06, DIST-07, DIST-08]  # Invoked via requirements.mark-complete in Task 2 of this plan — see Task Commits and the JSON output quoted below
 
 # Metrics
-duration: "~55min (Tasks 1-2 through this checkpoint; Task 3 unresolved)"
+duration: "~70min (Tasks 1-3, including the Task 3 checkpoint round-trip)"
 completed: 2026-09-14
 ---
 
@@ -56,9 +56,13 @@ correction, dual-tag versioning, the private-repo capability guard, and an eight
 not-verified list. `docs/adr/README.md` gained one row. The dead `OCC-github` path is gone from
 `ROADMAP.md` and `REQUIREMENTS.md`, replaced with the real host and the correction's authority.
 `requirements.mark-complete` was invoked exactly once, marking DIST-06/07/08 complete with both
-representations grep-verified. Task 3 — the fate of three still-OPEN pilot pull requests and
-operator sign-off on the three completions — is presented below and AWAITING REPLY; no PR was
-merged or closed in this session.**
+representations grep-verified. Task 3 — the fate of three pilot pull requests — is RESOLVED: the
+operator decided close-not-merge for all three, executed by the orchestrator directly (not by
+this worktree agent), and independently re-verified read-only in this session via `gh pr view`
+(all three `CLOSED`, `mergedAt: null`) and `gh api .../branches/<name>` (all three source branches
+404, confirmed deleted). The three requirement completions and ADR-018's eight-item deferred list
+were both operator-confirmed as-is, with no correction. Phase 20 and the v2.0 milestone's planned
+scope are complete.**
 
 ## Worktree Setup
 
@@ -185,70 +189,93 @@ no "**Plans**: TBD" in ROADMAP.md                     -> passes (was never TBD; 
 OK
 ```
 
-## Task 3 — Phase close-out: pilot pull request fate and requirement sign-off — AWAITING OPERATOR
+## Task 3 — Phase close-out: pilot pull request fate and requirement sign-off — RESOLVED (confirmed)
 
-**This task is NOT resolved.** Per this plan's own `type="checkpoint:human-verify" gate="blocking"`
-and the explicit `parallel_execution` instruction governing this session ("If closing/merging any
-of these PRs … is ambiguous or requires a judgment call the plan doesn't fully specify, STOP and
-report as a blocking checkpoint rather than guessing. Do not delete or merge these PRs without
-explicit confirmation of intent"), no PR was merged, closed, or otherwise modified in this session.
-The word **confirmed** in this section is deliberately used only in the negative: operator
-confirmation of the three requirement completions has **NOT** been received, and no per-pull-request
-decision (merge / close / leave open) has been recorded.
+**Checkpoint history:** this task first presented the evidence below to the operator and STOPPED,
+per this plan's own `type="checkpoint:human-verify" gate="blocking"` and the explicit
+`parallel_execution` instruction governing this session ("If closing/merging any of these PRs … is
+ambiguous or requires a judgment call the plan doesn't fully specify, STOP and report as a
+blocking checkpoint rather than guessing"). No PR was merged, closed, or otherwise modified by
+this worktree agent at any point. The coordinator then relayed the operator's reply.
 
-### The three pilot pull requests — LIVE STATE RE-VERIFIED THIS SESSION (not read from the prior SUMMARYs alone)
+**Operator reply, quoted verbatim (relayed via the coordinator):**
 
-| # | Repository | Head SHA | State (re-checked live, this session) | Mode / Evidence |
-|---|---|---|---|---|
-| [#12](https://github.com/OttawaCloudConsulting/terraform-pipelines/pull/12) | `terraform-pipelines` (public) | `6e8975f22232659c1403de452d559d6c97ebb1eb` | **OPEN**, `mergedAt: null` | Mode A copy-paste, run `34884582425`, five checks `success` (SC1) — 20-10-SUMMARY.md |
-| [#13](https://github.com/OttawaCloudConsulting/terraform-pipelines/pull/13) | `terraform-pipelines` (public) | `44b9d56a3d97ea1ca108f5df167cb246de47bb25` | **OPEN**, `mergedAt: null` | Mode B `uses:` reference, run `34885287142`, five checks `success` (SC2) — 20-10-SUMMARY.md |
-| [#8](https://github.com/OttawaCloudConsulting/aws-zabbix-monitoring-solution/pull/8) | `aws-zabbix-monitoring-solution` (private) | `fbd5c847a32e2eca5c2cb372661ca537a8af9db4` | **OPEN**, `mergedAt: null` | Mode A copy-paste, run `34887388960`, five checks `success`, six SARIF verifies skipped cleanly — 20-11-SUMMARY.md |
+> Operator decision: close all three pilot PRs (do not merge), delete their remote branches. Done
+> by the orchestrator directly:
+> - terraform-pipelines#12 — closed, branch chore/adopt-security-pipeline-mode-a deleted
+> - terraform-pipelines#13 — closed, branch chore/adopt-security-pipeline-mode-b deleted
+> - aws-zabbix-monitoring-solution#8 — closed, branch chore/adopt-security-pipeline-private-pilot deleted
+>
+> Requirement completions (DIST-06/07/08): confirmed as-is, no correction — merge state doesn't
+> gate them, evidence already came from the live runs.
+>
+> ADR-018 deferred items: confirmed, all 8 stay deferred — none need to move into this phase.
 
-Re-verified via `gh pr view <n> -R <repo> --json state,mergedAt,headRefOid` immediately before
-writing this section — all three head SHAs match the prior SUMMARYs exactly, confirming no drift
-occurred between 20-10/20-11 and this plan's execution (STATE.md and 20-06-SUMMARY.md both record
-a precedent of operators merging pilot PRs out of band before a later plan ran, so this re-check
-was not skipped as redundant).
+### The three pilot pull requests — CLOSED, not merged, branches deleted; independently re-verified read-only in this session
 
-**Decision required for each, per the plan's own three-way table:** merge (adopts the pipeline in
-that repository now), close (defers adoption), or leave open (no decision yet). Adopting is a real
-change to another project's CI, which is why no plan in this phase merged any of them.
+| # | Repository | Head SHA | State before this plan | State after operator's decision (re-verified `gh pr view`) | Branch deleted (re-verified `gh api .../branches/<name>` → 404) |
+|---|---|---|---|---|---|
+| [#12](https://github.com/OttawaCloudConsulting/terraform-pipelines/pull/12) | `terraform-pipelines` (public) | `6e8975f` OPEN | **CLOSED**, `mergedAt: null`, `closedAt: 2026-09-14T23:29:49Z` | `chore/adopt-security-pipeline-mode-a` — CONFIRMED 404 |
+| [#13](https://github.com/OttawaCloudConsulting/terraform-pipelines/pull/13) | `terraform-pipelines` (public) | `44b9d56` OPEN | **CLOSED**, `mergedAt: null`, `closedAt: 2026-09-14T23:29:51Z` | `chore/adopt-security-pipeline-mode-b` — CONFIRMED 404 |
+| [#8](https://github.com/OttawaCloudConsulting/aws-zabbix-monitoring-solution/pull/8) | `aws-zabbix-monitoring-solution` (private) | `fbd5c84` OPEN | **CLOSED**, `mergedAt: null`, `closedAt: 2026-09-14T23:29:53Z` | `chore/adopt-security-pipeline-private-pilot` — CONFIRMED 404 |
 
-### The three requirement completions — evidence to confirm or correct
+Verification performed by this session, read-only, AFTER the orchestrator's action and BEFORE this
+SUMMARY was finalised (not merely trusting the coordinator's relayed report):
 
-- **DIST-06** (copy-paste template): PR #12 (Mode A) proves a dropped-in copy produces a working
-  scan run — five `security / …` checks `success`, run `34884582425`.
-- **DIST-07** (reusable `workflow_call` reference against a stable ref): PR #13 (Mode B) — the
-  `uses:` reference resolved to `cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef`, the exact commit both
-  `v1` and `v1.0.0` point to, run `34885287142`.
-- **DIST-08** (adoption docs covering both modes): `docs/adoption-guide.md` sections 1-13,
-  corrected against all three pilot runs in plan 12, standing gate `bash
-  scripts/check-adoption-guide.sh` at 15/15 PASS.
+```
+$ gh pr view 12 -R OttawaCloudConsulting/terraform-pipelines --json state,mergedAt,headRefOid,closedAt
+{"closedAt":"2026-09-14T23:29:49Z","headRefOid":"6e8975f22232659c1403de452d559d6c97ebb1eb","mergedAt":null,"state":"CLOSED"}
 
-`requirements.mark-complete` was invoked exactly once, in this plan (Task 2 above) — this is
-stated here per the plan's own acceptance criterion for Task 3.
+$ gh pr view 13 -R OttawaCloudConsulting/terraform-pipelines --json state,mergedAt,headRefOid,closedAt
+{"closedAt":"2026-09-14T23:29:51Z","headRefOid":"44b9d56a3d97ea1ca108f5df167cb246de47bb25","mergedAt":null,"state":"CLOSED"}
 
-### ADR-018's `## What was NOT verified` list — presented for operator review
+$ gh pr view 8 -R OttawaCloudConsulting/aws-zabbix-monitoring-solution --json state,mergedAt,headRefOid,closedAt
+{"closedAt":"2026-09-14T23:29:53Z","headRefOid":"fbd5c847a32e2eca5c2cb372661ca537a8af9db4","mergedAt":null,"state":"CLOSED"}
 
-Eight items (fork-PR `vars` access; the account's unknown plan tier; the two `if:`/`with:`
-context fields never exercised; whether a GHAS-bearing organisation consumer behaves differently;
-the `Containerfile` pathspec gap; whether the `cicd/` Azure DevOps/GitLab members were ever built
-or validated; whether any repository has required checks actually enabled — deferred since
-ADR-017/18-05, reaffirmed at 19-07; and whether `upload-artifact` succeeds on fork/Dependabot
-runs). None of these were measured in this phase; the operator should confirm none should have
-been measured here instead of deferred, in particular whether required-check adoption should stay
-deferred.
+$ gh api repos/OttawaCloudConsulting/terraform-pipelines/branches/chore/adopt-security-pipeline-mode-a
+{"message":"Branch not found",...,"status":"404"}
 
-### What the operator needs to reply with (per this plan's own resume-signal)
+$ gh api repos/OttawaCloudConsulting/terraform-pipelines/branches/chore/adopt-security-pipeline-mode-b
+{"message":"Branch not found",...,"status":"404"}
 
-1. A decision for **each** of the three pull requests: merge / close / leave open.
-2. `confirmed` for the three requirement completions (or a correction, if the evidence above does
-   not hold up under review).
-3. Confirmation (or correction) that ADR-018's not-verified list correctly defers everything it
-   defers — in particular required-check adoption.
+$ gh api repos/OttawaCloudConsulting/aws-zabbix-monitoring-solution/branches/chore/adopt-security-pipeline-private-pilot
+{"message":"Branch not found",...,"status":"404"}
+```
 
-**No merge, close, or ruleset action will be taken until that reply arrives in a continuation
-session.**
+All three head SHAs are byte-identical to the ones this plan's checkpoint presented and to
+20-10-SUMMARY.md/20-11-SUMMARY.md — the closed state reflects the exact commits the live pilot
+proofs ran against, not a different tree. Head SHAs are still readable via `gh pr view` on a closed
+PR (GitHub retains the PR record and its head SHA after close, unlike a deleted branch); only the
+underlying branch ref itself is gone, confirmed 404 on all three.
+
+### The three requirement completions — operator-confirmed as-is, no correction
+
+Per the operator's reply: merge state does not gate DIST-06/07/08's completion — the evidence
+supporting each came from the live pilot runs themselves (SC1/SC2 measured on runs
+`34884582425`/`34885287142`/`34887388960`), not from the PRs' eventual disposition. No change was
+made to `.planning/REQUIREMENTS.md` as a result of this reply (it was already correctly marked
+Complete in Task 2, and closing rather than merging the pilot PRs does not invalidate that
+evidence).
+
+### ADR-018's `## What was NOT verified` list — operator-confirmed, all 8 items stay deferred
+
+Per the operator's reply, none of the eight not-verified items (fork-PR `vars` access; the
+account's unknown plan tier; the two unexercised `if:`/`with:` context fields; GHAS-organisation
+consumer behaviour; the `Containerfile` pathspec gap; the unvalidated `cicd/` Azure DevOps/GitLab
+drafts; required-check adoption, deferred since ADR-017/18-05 and reaffirmed at 19-07; and
+`upload-artifact`-on-fork-runs) move into this phase's scope. No change was made to ADR-018 as a
+result — the append-only rule was never at issue here since the ADR's own text already stated
+these items as deferred, and the operator confirmed that disposition rather than asking for a
+correction.
+
+### Disposition summary
+
+- **PR fate:** close-not-merge, all three, branches deleted — executed by the orchestrator, not by
+  this worktree agent; independently re-verified read-only in this session.
+- **Requirement completions:** confirmed as-is.
+- **ADR-018 deferred items:** confirmed as-is, all 8 stay deferred.
+- **This plan, this phase (20-template-packaging-and-adoption-docs), and the v2.0 milestone's
+  currently-planned scope are now COMPLETE.**
 
 ## Task Commits
 
@@ -259,9 +286,10 @@ session.**
    complete`)
 3. **Self-review follow-up: correct ADR-018 accuracy defects found before returning** — `f578d7d`
    (`docs(20-13): correct accuracy defects in ADR-018 found at self-review`)
-4. **Task 3: checkpoint by design** — no file-changing commit; this SUMMARY (committed with the
-   plan's closing metadata commit) records the presented evidence and the AWAITING OPERATOR
-   status.
+4. **Task 3: checkpoint by design, resolved via operator reply relayed by the coordinator** — no
+   PR merge/close commit exists in this repository (the disposition is live GitHub state on three
+   external repositories, executed by the orchestrator, not by this worktree agent); this
+   SUMMARY's update recording the resolution is committed as this plan's closing metadata commit.
 
 ## Files Created/Modified
 
@@ -280,9 +308,13 @@ session.**
 See `key-decisions` in frontmatter. Summary: (1) ADR-018's guard-compounding count corrected to
 match 20-03's own measurement (eight, not six) rather than the plan text's unverified figure; (2)
 DIST-07's checkbox was transiently hand-set then reverted so `requirements.mark-complete` was the
-sole actor flipping it; (3) Task 3 is explicitly NOT resolved — the three pilot PRs' fate and the
-requirement-completion sign-off are presented for the operator, per this plan's own blocking
-checkpoint and the parallel_execution instruction governing this session.
+sole actor flipping it; (3) Task 3 was presented as a blocking checkpoint with no PR touched by
+this worktree agent, then resolved when the coordinator relayed the operator's reply — close (not
+merge) all three pilot PRs with their branches deleted, requirement completions confirmed as-is
+(merge state does not gate them), and ADR-018's eight deferred items confirmed to stay deferred.
+This session's only actions after the reply were read-only re-verification (`gh pr view`, `gh api
+.../branches/<name>`) — no merge, close, or delete call was issued by this worktree agent; those
+were executed by the orchestrator directly, per the reply's own text.
 
 ## Deviations from Plan
 
@@ -353,19 +385,18 @@ otherwise modified.
 
 ## User Setup Required
 
-None — no external service configuration required by this plan's own deliverables. Task 3 requires
-an **operator decision**, not a service-configuration step; see the "What the operator needs to
-reply with" section above.
+None — no external service configuration required. The one operator decision this plan required
+(Task 3's pilot-PR disposition) has been received via the coordinator and is recorded above,
+independently re-verified read-only in this session.
 
 ## Next Phase Readiness
 
-This is the final plan of Phase 20 and of the v2.0 milestone's currently-planned scope. Tasks 1
-and 2 are fully complete and committed. **Task 3 remains open** — a continuation session must
-receive the operator's reply (per-PR decision for #12/#13/#8, plus `confirmed` or a correction for
-the three requirement completions) before this plan, this phase, and the v2.0 milestone can be
-declared closed. STATE.md and ROADMAP.md milestone-level status are explicitly NOT updated by this
-worktree agent per the orchestrator's instruction — that update is the orchestrator's
-responsibility after this plan's Task 3 resolves.
+This is the final plan of Phase 20 and of the v2.0 milestone's currently-planned scope. All three
+tasks are complete: ADR-018 is Accepted, DIST-06/07/08 are marked Complete with both
+representations grep-verified, and the three pilot pull requests are closed (not merged) with
+their branches deleted, independently re-verified. STATE.md and the milestone-level ROADMAP status
+are explicitly NOT updated by this worktree agent, per the orchestrator's instruction — that
+update is the orchestrator's responsibility now that this plan (and the phase) are complete.
 
 ## Self-Check: PASSED
 
@@ -383,11 +414,15 @@ responsibility after this plan's Task 3 resolves.
 - Commit `f578d7d` — FOUND in `git log --oneline`
 - `gsd-sdk query requirements.mark-complete DIST-06 DIST-07 DIST-08` — CONFIRMED via its own JSON
   output (`updated: true`, all three in `marked_complete`, `not_found: []`)
-- PR #12, #13, #8 — CONFIRMED live `OPEN` state and head SHAs via `gh pr view` immediately before
-  writing this SUMMARY, matching 20-10/20-11-SUMMARY.md exactly (no drift)
+- PR #12, #13, #8 — CONFIRMED live `OPEN` state and head SHAs via `gh pr view` at the checkpoint,
+  matching 20-10/20-11-SUMMARY.md exactly (no drift); CONFIRMED `CLOSED` (`mergedAt: null`) via a
+  second `gh pr view` after the operator's reply was executed
+- Branches `chore/adopt-security-pipeline-mode-a`, `chore/adopt-security-pipeline-mode-b`,
+  `chore/adopt-security-pipeline-private-pilot` — CONFIRMED all three 404 (deleted) via
+  `gh api .../branches/<name>`
 - Worktree base correction — CONFIRMED `b4cb207` reachable via `origin/main`/`origin/HEAD` before
   the reset; `git rev-parse HEAD` == `5ea684c308505880c5ac9ffa796a09c017c151d7` after
 
 ---
 *Phase: 20-template-packaging-and-adoption-docs*
-*Status: CHECKPOINT — Tasks 1-2 complete and committed; Task 3 (pilot PR fate, requirement sign-off) AWAITING OPERATOR REPLY*
+*Status: COMPLETE — ADR-018 Accepted, DIST-06/07/08 marked Complete, three pilot PRs closed (not merged) with branches deleted per operator decision, independently re-verified read-only. Final plan of Phase 20 and the v2.0 milestone's currently-planned scope.*
