@@ -191,7 +191,23 @@ Plans:
   3. Adoption docs walk through both consumption modes end to end, covering gate-mode selection, branch protection setup, and Dependabot wiring.
   4. Docs state which scan jobs apply to which repo types and how to disable the ones that do not apply.
 
-**Plans**: TBD
+**Plans**: 13 plans
+
+Plans:
+
+- [ ] 20-01-PLAN.md — Confirm pilot repos (Q4), measure whether upload-sarif works on a private repo (A1), decide the Q2 disposition
+- [ ] 20-02-PLAN.md — Wave 0 gates: detector-parity + Dockerfile-pathspec harness in the host repo, adoption-guide invariant gate here; both observed red
+- [ ] 20-03-PLAN.md — Portability pass P-1..P-6 on the canonical `security.yml`: inline the three detectors, make the container job Dockerfile-conditional, correct the falsified comments
+- [ ] 20-04-PLAN.md — Apply the Q2 capability guard, add the DIST-06 adoption banners, correct the stale comments in `pr-security.yml` and `dependabot.yml`
+- [ ] 20-05-PLAN.md — Delete the stale third template (`cicd/.github/workflows/security.yml`, `cicd/renovate.json`), correct `cicd/README.md` and the host front-page README
+- [ ] 20-06-PLAN.md — Live proof PR on the canonical host: five concluding checks, per-scanner comparison against the Phase 19 baseline, operator merge + tag authorisation
+- [ ] 20-07-PLAN.md — Publish `v1.0.0` (annotated) and `v1` (lightweight, moving) plus the release; prove both modes' refs resolve byte-identically
+- [ ] 20-08-PLAN.md — `docs/adoption-guide.md` sections 1-6: audience and outcome, preflight with expected output, mode decision table, Mode A, Mode B, first run
+- [ ] 20-09-PLAN.md — `docs/adoption-guide.md` sections 7-13: gate mode, branch protection, Dependabot, applicability matrix and removal recipe, private repos, troubleshooting, cross-references
+- [ ] 20-10-PLAN.md — Public pilot: Mode A (SC1) and Mode B (SC2) live runs following the guide, plus a write-nothing branch-protection dry run
+- [ ] 20-11-PLAN.md — Private pilot: observe what a private consumer sees end to end and confirm the capability guard's actual effect
+- [ ] 20-12-PLAN.md — Correct the guide against the three pilot runs; retitle the blueprint's illustrative workflow section (Q3) and record the structure facts in CLAUDE.md
+- [ ] 20-13-PLAN.md — ADR-018, ADR index row, correct the dead `OCC-github` path in ROADMAP/REQUIREMENTS, mark DIST-06/07/08 complete, decide the pilot PRs' fate
 
 ## Progress
 
@@ -219,4 +235,4 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 17. SARIF Upload and Artifact Retention | v2.0 | 7/7 | Complete    | 2026-09-11 |
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 8/8 | Complete   | 2026-09-12 |
 | 19. Pipeline Validation via Branch-Target PRs | v2.0 | 7/7 | Complete   | 2026-09-14 |
-| 20. Template Packaging and Adoption Docs | v2.0 | 0/? | Not started | - |
+| 20. Template Packaging and Adoption Docs | v2.0 | 0/13 | Planned | - |
