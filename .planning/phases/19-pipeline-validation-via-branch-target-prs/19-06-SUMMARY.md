@@ -59,8 +59,9 @@ completed: 2026-09-14
 
 **SC4 is measured. [PR #12](https://github.com/OttawaCloudConsulting/security-platform/pull/12) — a pull
 request that seeds NOTHING new, changing exactly one non-fixture file — has all five `security / …` check
-runs concluding `success` (run **34792868246**), with `GATE_MODE` verified ABSENT at four separate reads,
-two of them bracketing the run itself. And the findings were NOT zero: 8 Semgrep results, 11 Gitleaks
+runs concluding `success` (run **34792868246**), with `GATE_MODE` verified ABSENT at four separate reads —
+two bracketing the run and one concurrent with four jobs' gate-mode resolution, each read carrying both the
+empty-list and the REST-`404` proof. And the findings were NOT zero: 8 Semgrep results, 11 Gitleaks
 findings, 14 failed Checkov checks, 58 Trivy image vulnerabilities, 6 Trivy filesystem vulnerabilities and
 3 tflint results. The five checks are green because report-only sets `continue-on-error: true` on every
 scan step — NOT because the tree is clean.**
