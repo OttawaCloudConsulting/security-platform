@@ -99,6 +99,11 @@ in 20-07/20-09/20-10/20-11 — no drift.
    structure facts in CLAUDE.md`)
 2. **Task 1: Correct the adoption guide against the three live pilot runs** — `6475acc`
    (`docs(20-12): correct adoption guide against three live pilot runs`)
+3. **Follow-up correction (caught at self-review, before returning):** `c1aee90`
+   (`docs(20-12): correct section 6 category/analysis distinction and scope the Proven-in claim`)
+   — fixed two accuracy defects found by re-verifying section 6's category claim against the
+   committed `20-10-evidence/analyses-a.json` directly, and narrowed the "Proven in" note's scope
+   to match what was actually executed (see Deviations, item 3).
 
 **Plan metadata:** this SUMMARY, committed as the plan's closing metadata commit (hash recorded
 by the worktree-completion process).
@@ -109,14 +114,24 @@ acceptance criteria are independently satisfied regardless of commit order.
 ## Files Created/Modified
 
 - `docs/adoption-guide.md` — corrected against 20-10/20-11's discrepancy lists; "Proven in" note
-  added; fifth preflight probe added; Mode A/Mode B context-parity fact added.
+  added (later scoped down, see Deviations item 3); fifth preflight probe added; Mode A/Mode B
+  context-parity fact added; section 6's category/analysis distinction corrected.
 - `docs/development-security-stack-option-1.md` — `## Complete GitHub Actions Workflow` retitled
   to `## Complete GitHub Actions Workflow (Illustrative — Not the Deployable Template)` with a
-  pointer paragraph inserted before the existing framing text. No other line in the file changed
-  (`git diff --stat` shows one hunk, at the section's opening).
+  pointer paragraph inserted before the existing framing text. `git diff` shows a single hunk
+  (`@@ -1453,7 +1453,24 @@`, the section's opening); §Phase 2's body (lines 2008–2068), the ASCII
+  diagrams, the tool coverage matrices, and the comparison table all lie entirely outside that
+  hunk's line range and are therefore byte-unchanged — verified by the hunk boundaries directly,
+  not by inspecting `git diff --stat`'s summary line.
 - `CLAUDE.md` — two new Project Structure bullets (`docs/adoption-guide.md`, `scripts/`), one new
   sentence in "What This Repository Is" naming `security-platform` as the canonical workflow
   host, and the ADR range corrected from "ADR-001 through ADR-014" to "ADR-001 through ADR-017".
+
+**Blueprint lint before/after (plan's `<output>` requirement):** `markdownlint-cli2
+docs/development-security-stack-option-1.md` reported 0 violations before any edit in this plan
+and 0 violations after — no rule fired in either run, so no per-rule count could increase; the
+"count must not increase for any rule" acceptance criterion holds trivially and is recorded here
+explicitly rather than only as a single "zero violations" statement.
 
 ## Decisions Made
 
@@ -154,13 +169,24 @@ Every item from `20-10-SUMMARY.md`'s "Guide Corrections Required" section and
    (six SARIF verifies skipped, four of five artifact verifies succeeded, the fifth skipped for
    the independent Dockerfile-absence reason) and an explicit statement that v1 needs no
    correction, per the operator's confirmed disposition.
+7. **Section 12 troubleshooting table entries.** CHECKED, NO CHANGE. All eight entries compared
+   against 20-10's and 20-11's verbatim log lines: the SKIP-line symptom text matches byte-exact
+   (`SKIP: no Dockerfile found — …`, etc.); the "job is red with a green scan step above it"
+   symptom is the verify step's own echoed error text and was never exercised on any of the three
+   pilot runs (no job went red on any of them), so it could not be corrected against a
+   contradicting observation — left as originally written, since nothing measured contradicts it.
 
 Additional corrections made beyond the two SUMMARYs' explicit lists, all traceable to the same
 measurements: the "five artifacts" overclaim also appeared in sections 1, 6, and 13's checklist
 (not just section 11) and was hedged consistently in all four locations; section 6 gained the
-measured Terraform-only artifact set (4 artifacts) and code-scanning category set (6 categories,
-no `trivy-image`); section 3 gained the Mode A/Mode B context-parity fact; a "Proven in" note was
-added per the plan's own acceptance criteria, naming all three pilot PRs, run ids, and the date.
+measured Terraform-only artifact set (4 artifacts) and code-scanning analysis set (6 analyses
+across 5 categories — `semgrep`, `checkov`, `trivy-fs`, `tflint` twice, `gitleaks` — verified
+directly against the committed `20-10-evidence/analyses-a.json` via `jq -r '.[].category'`, not
+recalled from prose, after a first draft conflated `tool.driver.name` values like `Semgrep OSS`
+with the `category` field); section 3 gained the Mode A/Mode B context-parity fact; a "Proven in"
+note was added per the plan's own acceptance criteria, naming all three pilot PRs, run ids, and
+the date, later scoped down (see Deviations item 3) to exclude the one command deliberately never
+executed against any pilot.
 
 ## Fenced-Block Accounting (acceptance criterion 6)
 
@@ -221,12 +247,42 @@ preflight-failing at exit 2**
   15/15 PASS after the clone.
 - **Committed in:** not applicable — no tracked file change.
 
+**3. [Rule 1 - Bug] Section 6 conflated `tool.driver.name` with `category` in the code-scanning
+result description; "Proven in" note overclaimed a command deliberately never run**
+- **Found during:** final self-review, before returning PLAN COMPLETE, after re-verifying every
+  claim against the committed evidence one more time rather than trusting the drafted text
+- **Issue:** (a) Section 6 stated the Terraform-only pilot "produced six code-scanning categories
+  (`tflint`, `tflint-errors`, `Semgrep OSS`, `checkov`, `Trivy`, `Gitleaks`)" — `tflint-errors`,
+  `Semgrep OSS`, `Trivy`, and `Gitleaks` are `tool.driver.name`/`tool.name` values, not `category`
+  values; a reader running `gh api .../code-scanning/analyses --jq '.[].category'` would get five
+  distinct values, none of them `Semgrep OSS`. (b) The "Proven in" note claimed "every instruction
+  in this guide has been executed," which directly contradicted this plan's own section 7
+  annotation stating `gh variable set GATE_MODE` was deliberately never run against any pilot.
+- **Fix:** (a) Re-derived the correct fact directly from `.planning/phases/20-template-packaging-
+  and-adoption-docs/20-10-evidence/analyses-a.json` via `jq -r '.[].category' | sort | uniq -c`
+  (six analyses, five categories: `semgrep`, `checkov`, `trivy-fs`, `tflint` ×2, `gitleaks`) and
+  reworded section 6 to state that fact, explaining tflint's two-analyses-one-category behaviour
+  explicitly rather than repeating the earlier conflation. (b) Narrowed the "Proven in" claim to
+  "every command in this guide has been executed against a real repository … except where an
+  inline note directly beneath the command states otherwise," pointing at the exact command it
+  excepts.
+- **Files modified:** `docs/adoption-guide.md`
+- **Verification:** `jq -r '.[].category' 20-10-evidence/analyses-a.json | sort | uniq -c`
+  confirmed 5 distinct categories, 6 total rows, cross-checked against `jq -r '.[0]'`'s raw
+  structure (`category: "tflint"`, `tool.name: "tflint-errors"`, confirming the two fields are
+  genuinely distinct). Re-ran `bash scripts/check-adoption-guide.sh` (15/15 PASS) and
+  `markdownlint-cli2 docs/adoption-guide.md` (zero violations) after the fix.
+- **Committed in:** `c1aee90`
+
 ---
 
-**Total deviations:** 2 auto-fixed (1 self-caught bug in this session's own draft, 1 blocking
-tooling-setup fix identical in kind to every prior plan in this phase's HOST PREFLIGHT step).
-**Impact on plan:** Both auto-fixes were necessary to satisfy the plan's own acceptance criteria
-and verification commands; neither represents scope creep.
+**Total deviations:** 3 auto-fixed (2 self-caught accuracy bugs in this session's own drafted
+text, 1 blocking tooling-setup fix identical in kind to every prior plan in this phase's HOST
+PREFLIGHT step). **Impact on plan:** All three auto-fixes were necessary to satisfy the plan's
+own acceptance criteria and this project's anti-slop evidence standards; neither represents scope
+creep. Notably, two of the three deviations were caught by this session re-verifying its own
+prior claims against primary evidence before returning, rather than accepting a first draft as
+correct — consistent with the project's documented verification discipline.
 
 ## Issues Encountered
 
@@ -268,9 +324,12 @@ documentation edits inside `security_solution`.
   (count 2)
 - Commit `a54f23c` — FOUND in `git log --oneline`
 - Commit `6475acc` — FOUND in `git log --oneline`
-- `bash scripts/check-adoption-guide.sh` — CONFIRMED 15/15 PASS after final edit
+- Commit `c1aee90` — FOUND in `git log --oneline` (follow-up accuracy correction)
+- `jq -r '.[].category' 20-10-evidence/analyses-a.json | sort -u | wc -l` — CONFIRMED 5 (matching
+  section 6's corrected "five categories" text, not the earlier incorrect "six categories")
+- `bash scripts/check-adoption-guide.sh` — CONFIRMED 15/15 PASS after the final edit (`c1aee90`)
 - `markdownlint-cli2 docs/adoption-guide.md docs/development-security-stack-option-1.md CLAUDE.md`
-  — CONFIRMED zero violations on all three files
+  — CONFIRMED zero violations on all three files, re-checked after the follow-up commit
 - `grep -c "@<SHA>" docs/development-security-stack-option-1.md` — CONFIRMED 21 (unchanged from
   pre-edit baseline)
 - `grep -c "^### Phase 2 — CI/CD Security Gate (GitHub Actions)$"` and `grep -c "^### Phase 3 —
