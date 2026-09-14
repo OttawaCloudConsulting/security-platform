@@ -6,6 +6,13 @@
 # Gate mode is `gate_mode` ("blocking" or "report-only"), defaulting to
 # "report-only". Supply it either as a `workflow_call` input or as the
 # caller repo's `GATE_MODE` variable — switching modes needs no YAML edit.
+#
+# ADOPTION: this file IS the canonical copy. A Mode A consumer fetches it
+# byte-identical at a published tag (alongside pr-security.yml) and edits
+# NOTHING in it. There is exactly ONE per-repo substitution point across the
+# whole bundle, `gate_mode`, and it lives in the CALLER repository, set with
+# `gh variable set GATE_MODE --body blocking -R OWNER/REPO`; `report-only`
+# is the default and needs no action from a consumer that wants it.
 
 name: Security Scans
 
@@ -109,8 +116,20 @@ jobs:
       # a Dependabot PR is expected here, because Phase 14 pinned
       # actions/checkout one patch behind on purpose. Guarding the upload
       # instead would silently publish nothing on those runs.
+      # Private-repo capability guard (all six SARIF verify steps below): this
+      # account is a User account, so no repository it owns carries GitHub
+      # Advanced Security. `private == true` and "code scanning unavailable"
+      # were measured equivalent for every consumer that exists today (Phase
+      # 20 plan 01, run 34802848411 — upload-sarif failed with "Code scanning
+      # is not enabled for this repository"). This guard SKIPS a check that
+      # cannot pass on a private repo; it never DELETES a check that could —
+      # that distinction keeps the broken-but-green protection intact. If a
+      # GHAS-bearing organisation consumer ever appears, the correct evolution
+      # is a new `workflow_call` boolean input naming that expectation, deliberately
+      # not built speculatively here because it would add a second per-repo
+      # substitution point and break D-04 (`gate_mode` stays the only one).
       - name: Verify Semgrep SARIF upload landed
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.repository.private == false
         run: |
           python3 - semgrep.sarif <<'PY'
           import json
@@ -256,7 +275,7 @@ jobs:
       # and the fork/Dependabot guard sits on the verify step, never on the
       # upload.
       - name: Verify Checkov SARIF upload landed
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.repository.private == false
         run: |
           python3 - checkov.sarif <<'PY'
           import json
@@ -385,23 +404,96 @@ jobs:
       # Detection is its own step rather than a bare `if: hashFiles(…) != ''`
       # on each scan step: a step skipped by `if:` produces no log output at
       # all, and the skip path has to say out loud that the ecosystem is absent
-      # (Criterion 4). The logic lives in shared scripts, not inline here, so
-      # that CI and scripts/smoke-scans.sh exercise the same implementation —
-      # the smoke gate's negative test then proves the real CI code path.
+      # (Criterion 4). Phase 20: the logic is now inlined here rather than
+      # delegated, so this file is self-contained for a consumer repository
+      # that has no `scripts/` directory at all (neither copy-paste nor
+      # `uses:` consumption mode can rely on repo-local helper scripts
+      # existing). `scripts/detect-*.sh` remain in THIS repository as
+      # `scripts/smoke-scans.sh`'s helpers — that gate still needs a callable
+      # implementation of the same logic to run offline — and
+      # `scripts/check-detector-parity.sh` is what now proves the inlined
+      # bodies below and those scripts agree on the same tree.
       # No continue-on-error on a detect step: the detectors are contractually
       # exit-0 on BOTH branches, so a non-zero exit is an infrastructure
       # failure and must fail the job.
+      # Pathspec: '*package-lock.json'. Git's default (non-':(glob)') pathspec
+      # wildcards already cross '/', so a single leading '*' matches every
+      # depth. The two wrong forms, both measured (16-RESEARCH Pitfall 9):
+      #   'package-lock.json'      -> root-anchored, matches nothing in a
+      #                                subdirectory
+      #   '**/package-lock.json'   -> matches nested files ONLY, misses the
+      #                                repo root
+      # A missed manifest would produce a "SKIP:" line on a repo that really
+      # does have npm dependencies — a false pass that is invisible in the
+      # log. The one legitimate `|| true` here: `grep -v` exits 1 when its
+      # input is empty, and under `set -o pipefail` that would abort the
+      # detector on a repository with no lockfiles at all. This `|| true` is
+      # on the discovery pipeline only — never on a branch that decides
+      # whether files were found.
       - name: Detect npm lockfiles
         id: npm
-        run: bash scripts/detect-npm.sh npm-lockfiles.txt
+        run: |
+          git ls-files -- '*package-lock.json' \
+            | grep -v -e '/node_modules/' -e '^node_modules/' > npm-lockfiles.txt || true
+          count=$(grep -c . npm-lockfiles.txt || true)
+          if [ "${count:-0}" -eq 0 ]; then
+            echo "SKIP: no package-lock.json found — npm sub-scan not applicable to this repository"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "FOUND ${count} npm lockfile(s):"
+          cat npm-lockfiles.txt
+          echo "found=true" >> "$GITHUB_OUTPUT"
 
+      # Pathspec: '*requirements*.txt'. Git's default (non-':(glob)') pathspec
+      # wildcards already cross '/', so a single leading '*' matches every
+      # depth. The two wrong forms, both measured (16-RESEARCH Pitfall 9):
+      #   'requirements*.txt'      -> root-anchored, matches NEITHER root nor
+      #                                nested
+      #   '**/requirements*.txt'   -> matches nested files ONLY, misses the
+      #                                repo root
+      # A missed manifest would produce a "SKIP:" line on a repo that really
+      # does have Python dependencies — a false pass that is invisible in the
+      # log. The leading wildcard also matches dev-requirements.txt and
+      # requirements-test.txt, which is desirable: those pin real
+      # dependencies too.
       - name: Detect Python requirements files
         id: py
-        run: bash scripts/detect-python.sh py-reqs.txt
+        run: |
+          git ls-files -- '*requirements*.txt' > py-reqs.txt || true
+          count=$(grep -c . py-reqs.txt || true)
+          if [ "${count:-0}" -eq 0 ]; then
+            echo "SKIP: no requirements*.txt found — Python sub-scan not applicable to this repository"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "FOUND ${count} Python requirements file(s):"
+          cat py-reqs.txt
+          echo "found=true" >> "$GITHUB_OUTPUT"
 
+      # Pathspec: '*.tf'. Git's default (non-':(glob)') pathspec wildcards
+      # already cross '/', so a single leading '*' matches every depth. The
+      # two wrong forms, by analogy with the measured matrix in 16-RESEARCH
+      # Pitfall 9:
+      #   '.tf' / 'main.tf'        -> root-anchored, matches nothing in a
+      #                                subdirectory
+      #   '**/*.tf'                -> matches nested files ONLY, misses the
+      #                                repo root
+      # A missed manifest would produce a "SKIP:" line on a repo that really
+      # has Terraform — a false pass that is invisible in the log.
       - name: Detect Terraform files
         id: tf
-        run: bash scripts/detect-terraform.sh tf-files.txt
+        run: |
+          git ls-files -- '*.tf' > tf-files.txt || true
+          count=$(grep -c . tf-files.txt || true)
+          if [ "${count:-0}" -eq 0 ]; then
+            echo "SKIP: no .tf files found — Terraform pinning sub-scan not applicable to this repository"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "FOUND ${count} Terraform file(s):"
+          cat tf-files.txt
+          echo "found=true" >> "$GITHUB_OUTPUT"
 
       # --scanners vuln only, deliberately: misconfig is the IaC job's remit and
       # secrets are Gitleaks' remit. No per-ecosystem plugin or .trivyignore — this
@@ -459,7 +551,7 @@ jobs:
       # and the fork/Dependabot guard sits on the verify step, never on the
       # upload.
       - name: Verify Trivy filesystem SARIF upload landed
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.repository.private == false
         run: |
           python3 - trivy-fs.sarif <<'PY'
           import json
@@ -710,7 +802,7 @@ jobs:
       # (`tflint` and `tflint-errors`, the second normally empty), so no
       # assertion anywhere may require len(runs) == 1.
       - name: Verify tflint SARIF upload landed
-        if: always() && steps.tf.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && steps.tf.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.repository.private == false
         run: |
           if [ "${{ steps.sarif-tflint.outcome }}" != "success" ]; then
             echo "upload outcome=${{ steps.sarif-tflint.outcome }} — the upload did not land."
@@ -814,36 +906,77 @@ jobs:
           version: v0.74.0
           cache: true
 
-      # D-06: unconditional build. No "does a Dockerfile exist" check, no
-      # conditional skip — a skipped job fails Success Criteria #2.
+      # Phase 15 D-06's "unconditional build" was correct for security-platform,
+      # whose fixtures/Dockerfile always exists. A consumer repository adopting
+      # this file may have no Dockerfile at all — an unconditional
+      # `docker build -f fixtures/Dockerfile` would fail there 100% of the
+      # time. The detect step below, plus the guard compounded onto every
+      # subsequent step in this job, are what make a Dockerfile-free
+      # repository skip cleanly instead.
       # The only context interpolations in any run: block in this workflow are
-      # ${{ github.sha }} and GitHub-generated step outcomes and ids (the
-      # steps.<id>.outcome, .outputs.sarif-id and .outputs.artifact-id/-url
-      # values read by the upload verify steps). None is attacker-controlled:
-      # outcome is one of four literal GitHub strings and the ids are
-      # server-generated. 17-03 added the first of those and left this comment
-      # saying "only" — true when it was written, stale from that plan onward.
-      - name: Build fixture image
-        run: docker build -f fixtures/Dockerfile -t scan-fixture:${{ github.sha }} fixtures/
+      # ${{ github.sha }}, ${{ steps.docker.outputs.path }} (read from
+      # `git ls-files` on the checked-out tree, not an event payload), and
+      # GitHub-generated step outcomes and ids (the steps.<id>.outcome,
+      # .outputs.sarif-id and .outputs.artifact-id/-url values read by the
+      # upload verify steps). None is attacker-controlled: outcome is one of
+      # four literal GitHub strings and the ids are server-generated. 17-03
+      # added the first of those and left this comment saying "only" — true
+      # when it was written, stale from that plan onward.
+      #
+      # Pathspec: the corrected five-item form measured in 20-02 (A4) —
+      # 'Dockerfile' '*/Dockerfile' 'Dockerfile.*' '*/Dockerfile.*'
+      # '*.dockerfile' — NOT the naive three-item form ('*Dockerfile'
+      # '*Dockerfile.*' '*.dockerfile'), which was measured to also match a
+      # docs/ decoy file because git's default pathspec wildcards cross '/'.
+      # The one legitimate `|| true` here is on the discovery pipeline only,
+      # never on a branch that decides found=. A multi-Dockerfile repository
+      # scans the first one only (`head -1`, alphabetical git ls-files order).
+      - name: Detect Dockerfile
+        id: docker
+        run: |
+          git ls-files -- 'Dockerfile' '*/Dockerfile' 'Dockerfile.*' '*/Dockerfile.*' '*.dockerfile' > dockerfiles.txt || true
+          count=$(grep -c . dockerfiles.txt || true)
+          if [ "${count:-0}" -eq 0 ]; then
+            echo "SKIP: no Dockerfile found — container sub-scan not applicable to this repository"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          first=$(head -1 dockerfiles.txt)
+          echo "FOUND ${count} Dockerfile(s); building the first: ${first}"
+          { echo "found=true"; echo "path=${first}"; } >> "$GITHUB_OUTPUT"
+
+      - name: Build image from discovered Dockerfile
+        if: steps.docker.outputs.found == 'true'
+        run: |
+          ctx=$(dirname "${{ steps.docker.outputs.path }}")
+          docker build -f "${{ steps.docker.outputs.path }}" \
+            -t scan-target:${{ github.sha }} "$ctx"
 
       - name: Run Trivy image scan
+        if: steps.docker.outputs.found == 'true'
         continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
-          trivy image scan-fixture:${{ github.sha }} --scanners vuln \
+          trivy image scan-target:${{ github.sha }} --scanners vuln \
             --format json --output trivy-image.json \
             --exit-code 1 --severity HIGH,CRITICAL
 
+      # `always()` alone would run this (and every step below) after a
+      # SKIPPED build: `trivy image` would have no image, `ls -l` would fail
+      # on missing files, and the artifact upload's error-on-missing-file
+      # setting below would turn a clean skip red — the exact failure 18-02
+      # fixed for the three SCA sub-scans. Compounding
+      # steps.docker.outputs.found == 'true' restores the intended semantics.
       - name: Convert to SARIF
-        if: always()
+        if: always() && steps.docker.outputs.found == 'true'
         run: trivy convert --format sarif --output trivy-image.sarif trivy-image.json
 
       - name: Show scan output files
-        if: always()
+        if: always() && steps.docker.outputs.found == 'true'
         run: ls -l trivy-image.json trivy-image.sarif
 
       - name: Upload Trivy image SARIF
         id: sarif-trivy-image
-        if: always()                     # scanners exit non-zero by design (D-04)
+        if: always() && steps.docker.outputs.found == 'true'  # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
         uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
         with:
@@ -859,9 +992,9 @@ jobs:
       # Same contract as `Verify Semgrep SARIF upload landed` in the sast job:
       # no continue-on-error (ADR-001 governs the upload, not the assertion),
       # and the fork/Dependabot guard sits on the verify step, never on the
-      # upload.
+      # upload. The Dockerfile guard is compounded in front of both.
       - name: Verify Trivy image SARIF upload landed
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && steps.docker.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.repository.private == false
         run: |
           python3 - trivy-image.sarif <<'PY'
           import json
@@ -893,7 +1026,7 @@ jobs:
       # Same retention-format contract as `Upload SAST reports` in the sast job.
       - name: Upload container reports
         id: artifact-container
-        if: always()                     # scanners exit non-zero by design (D-04)
+        if: always() && steps.docker.outputs.found == 'true'  # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
@@ -902,7 +1035,9 @@ jobs:
             trivy-image.json
             trivy-image.sarif
           # error, not warn: the scan writes the JSON and the conversion step
-          # writes the SARIF, both unconditionally, so a missing one is real.
+          # writes the SARIF, both unconditionally when the Dockerfile guard
+          # is satisfied, so a missing one there is real. The guard — not a
+          # downgrade to warn — is what makes a Dockerfile-free skip clean.
           if-no-files-found: error
           # Explicit — Criterion 3 requires a stated period, and 90 is the
           # maximum without a repository-settings change. See the sast job.
@@ -912,9 +1047,10 @@ jobs:
       # no continue-on-error (ADR-001 governs the upload, not the assertion),
       # and the fork/Dependabot guard is applied for uniformity with the SARIF
       # verify steps rather than because upload-artifact was measured to fail
-      # on those runs — see that step for the full note.
+      # on those runs — see that step for the full note. The Dockerfile guard
+      # is compounded in front of both.
       - name: Verify container artifact upload landed
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && steps.docker.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
         run: |
           if [ "${{ steps.artifact-container.outcome }}" != "success" ]; then
             echo "upload outcome=${{ steps.artifact-container.outcome }} — the artifact did not land."
@@ -1004,7 +1140,7 @@ jobs:
       # and the fork/Dependabot guard sits on the verify step, never on the
       # upload.
       - name: Verify Gitleaks SARIF upload landed
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+        if: always() && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.repository.private == false
         run: |
           python3 - gitleaks.sarif <<'PY'
           import json

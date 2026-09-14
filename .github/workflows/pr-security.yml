@@ -2,6 +2,22 @@
 # Repo-local trigger policy: invokes the callable security workflow on every
 # pull request, all branches. The relative reference takes no @ref and resolves
 # to the caller's own commit, so a PR exercises its own workflow changes.
+#
+# ADOPTION: this file is the Mode A/B caller. It has exactly ONE per-repo
+# substitution point, `gate_mode`, set with
+# `gh variable set GATE_MODE --body blocking -R OWNER/REPO` — never by
+# editing this YAML; `report-only` is the default and needs no action.
+# `name: security` on the job below must never be renamed: it is the job ID
+# and therefore the prefix of all five branch-protection required-context
+# names. Mode A (this repo carries its own copy of security.yml alongside
+# this file) keeps the `uses:` line below as
+# `uses: ./.github/workflows/security.yml`, unchanged. Mode B (no local
+# copy) replaces that single line with
+# `uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1`
+# and copies nothing else. No owner-name, repo-name, or branch-name
+# placeholder token exists anywhere in this file: `github.repository` is
+# resolved by the runner at trigger time, and the trigger below is
+# `pull_request: {}` — all branches.
 
 name: PR Security
 
@@ -55,7 +71,11 @@ jobs:
     #     an unset variable resolves to "", which counts as a PROVIDED input
     #     and suppresses the callee's own default. Any literal added here
     #     must carry its own `|| 'report-only'` fallback.
-    #   - A public repo that genuinely intends to run blocking may need a
-    #     literal `with: gate_mode: blocking` instead of the vars path,
-    #     because whether a fork PR's job can even read repo `vars` at all
-    #     is UNVERIFIED. That question is handed to Phase 19 (VAL-01).
+    #   - A public repo that genuinely intends to run blocking on fork PRs
+    #     may need a literal `with: gate_mode: blocking` instead of the vars
+    #     path: whether a fork PR's job can even read repository `vars` at
+    #     all remains UNVERIFIED by this project. Phase 19 deliberately did
+    #     not test it (19-07); the claim that a fork PR cannot read
+    #     repository variables rests on a single GitHub staff forum answer
+    #     from January 2023, unresolved and absent from GitHub's own
+    #     documentation.
