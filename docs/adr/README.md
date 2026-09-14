@@ -25,3 +25,4 @@ For the full findings that prompted ADR-001 through ADR-012, see [`red-team/00-c
 | [ADR-015](adr015-tflint-terraform-pin-checking.md) | Adopt tflint for Terraform Provider and Module Pin Checking | 2026-09-11 | Accepted |
 | [ADR-016](adr016-sarif-upload-attribution-and-artifact-retention.md) | SARIF Upload Attribution and Scan Artifact Retention | 2026-09-11 | Accepted |
 | [ADR-017](adr017-configurable-gate-mode-and-required-checks.md) | Configurable Gate Mode and Required Checks | 2026-09-12 | Accepted |
+| [ADR-018](adr018-workflow-packaging-canonical-host-and-versioning.md) | Workflow Packaging, Canonical Host, and Versioning | 2026-09-14 | Accepted |

@@ -7,7 +7,7 @@ A **reference documentation project** (not buildable software). The primary arti
 ## Project Structure
 
 - `development-security-stack-option-1.md` — primary document (~2,300 lines), contains copy-pasteable configs and ASCII architecture diagrams
-- `docs/adr/` — individual architectural decision records (ADR-001 through ADR-017); see `docs/adr/README.md` for index
+- `docs/adr/` — individual architectural decision records (ADR-001 through ADR-018); see `docs/adr/README.md` for index
 - `docs/adoption-guide.md` — the adoption procedure for both consumption modes (copy-paste and reusable `workflow_call`) of the canonical `security-platform` pipeline
 - `scripts/` — standing documentation gates, including `bash scripts/check-adoption-guide.sh`
 - `red-team/` — three-agent red-team analysis and consolidated findings
