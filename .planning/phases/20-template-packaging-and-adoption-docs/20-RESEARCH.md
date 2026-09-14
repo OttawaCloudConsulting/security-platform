@@ -10,12 +10,18 @@
 ### Locked Decisions
 
 **Reusable workflow location**
-- **D-01:** The canonical reusable workflow files move into THIS repo — `security_solution/.github/workflows/` —
+- **D-01 [SUPERSEDED — see 20-CONTEXT.md "D-01 (AMENDED 2026-09-14, post-RESEARCH.md Q1)"]:** The text below
+  is the pre-amendment decision this research was written against; it is quoted verbatim for history but is
+  no longer in force. Do not act on it. The amended decision: `security-platform` is the canonical host repo
+  (not `security_solution`/`OCC-github`, which does not exist), because that org/repo target was found to be
+  a 404 and this repo's own git history carries 16 gitleaks findings across 320 commits, blocking safe public
+  push. See CONTEXT.md D-01 AMENDED and PATTERNS.md's reconciliation table for what the plans actually do.
+  ~~The canonical reusable workflow files move into THIS repo — `security_solution/.github/workflows/` —
   not left only in `security-platform`. DIST-07's `uses: OCC-github/security_solution/.github/workflows/<name>.yml@ref`
   requires the file to physically exist at that path. `security-platform`'s copies (`security.yml`, `pr-security.yml`)
   were the build/validation ground (Phases 14-19); Phase 20 copies the validated version into `security_solution`
   as the new canonical source repeat repos call. Keep them in sync going forward — planner's call on whether
-  `security-platform` re-points to `uses:` the new canonical copy or keeps its own local copy for self-scanning.
+  `security-platform` re-points to `uses:` the new canonical copy or keeps its own local copy for self-scanning.~~
 
 **Versioning / ref strategy**
 - **D-02:** Consumer repos pin to tagged releases (`@v1`, `@v2`, ...), not `@main` and not a raw SHA. Matches
@@ -881,7 +887,24 @@ bash scripts/check-workflow-uploads.sh      # exit 0 pass / 1 workflow defect / 
 | A6 | Publishing this repo publicly is acceptable to the operator (it contains `.planning/`, `red-team/`, and 16 gitleaks findings in history) | Q1 Option A, Pitfall 7 | A privacy objection would force Option B or a fresh-history variant. **Operator decision, not an inference** |
 | A7 | `job.workflow_repository` / `job.workflow_file_path` are usable in `if:`/`with:` expressions (they appear in the contexts table; not exercised here) | Alternatives Considered | Only affects the rejected alternative |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+Resolved by operator decision (2026-09-14) and the plan set committed for this phase — kept below for
+history. Do not re-open any of these during execution.
+
+- **Q1 → RESOLVED:** Option B (fallback) chosen, not the recommended Option A. `security-platform` is the
+  canonical host. See CONTEXT.md D-01 AMENDED.
+- **Q2 → RESOLVED procedurally:** measured in Plan 01 Task 3 (private-pilot probe), mitigated in Plan 04
+  Task 1 (`&& github.event.repository.private == false` guard on the six verify steps, per the recommendation
+  below), confirmed live in Plan 11.
+- **Q3 → RESOLVED:** Option (a) — retitle as illustration + pointer — applied in Plan 12 Task 2, alongside the
+  same treatment for the previously-undiscovered stale `repos/security-platform/cicd/` template (a PATTERNS.md
+  finding, not anticipated here).
+- **Q4 → RESOLVED procedurally:** confirmed via Plan 01 Task 1 checkpoint; `terraform-pipelines` (public) and
+  `aws-zabbix-monitoring-solution` (private) used exactly as recommended below.
+- **Q5 → INVERTED:** under the Q1 amendment, `security-platform` IS the canonical host, so "does it become
+  consumer #1" is moot — the recommendation below (written for the pre-amendment Option A world) no longer
+  applies. See PATTERNS.md's reconciliation table.
 
 ### Q1 — Where does the canonical reusable workflow physically live? **BLOCKING for DIST-07 / SC2**
 
