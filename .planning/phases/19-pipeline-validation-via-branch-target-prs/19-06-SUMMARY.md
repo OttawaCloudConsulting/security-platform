@@ -402,7 +402,8 @@ deviation 1. The working directory is the outer docs repo, whose remote is a dif
 
 **4. `GATE_MODE` read FOUR times, not twice, and each read carries BOTH proofs.** The plan requires two
 reads (start of plan, at run time). Two more were added — one immediately at PR creation and one at plan
-close — so that reads 2 and 3 **bracket** the run rather than sandwiching it loosely, and the REST `404`
+close. The result is tighter than the plan asked for: reads 1 and 3 **bracket** the run and read 2 lands
+**inside** it, concurrent with four jobs' gate-mode resolution. The REST `404`
 was queried alongside every `gh variable list` because an empty list is indistinguishable from a silently
 failed command. This follows 19-05's deviation 11 and the project's anti-slop rule that a silent empty
 result is not evidence.
