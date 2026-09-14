@@ -175,3 +175,10 @@ None — no external service configuration required.
 ---
 *Phase: 20-template-packaging-and-adoption-docs*
 *Completed: 2026-09-14*
+
+## Self-Check: PASSED
+
+All files and commits verified present:
+- scripts/check-adoption-guide.sh (this repo, commit ce34ef1)
+- repos/security-platform/scripts/check-detector-parity.sh (commit 6cd5d07, pushed to origin/feature/phase-20-template-packaging)
+- .planning/phases/20-template-packaging-and-adoption-docs/20-02-SUMMARY.md (commit 9148910)
