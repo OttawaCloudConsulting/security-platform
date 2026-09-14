@@ -19,12 +19,19 @@ what Phases 14-19 already built and validated live against `OttawaCloudConsultin
 ## Implementation Decisions
 
 ### Reusable workflow location
-- **D-01:** The canonical reusable workflow files move into THIS repo — `security_solution/.github/workflows/` —
-  not left only in `security-platform`. DIST-07's `uses: OCC-github/security_solution/.github/workflows/<name>.yml@ref`
-  requires the file to physically exist at that path. `security-platform`'s copies (`security.yml`, `pr-security.yml`)
-  were the build/validation ground (Phases 14-19); Phase 20 copies the validated version into `security_solution`
-  as the new canonical source repeat repos call. Keep them in sync going forward — planner's call on whether
-  `security-platform` re-points to `uses:` the new canonical copy or keeps its own local copy for self-scanning.
+- **D-01 (AMENDED 2026-09-14, post-RESEARCH.md Q1):** `OCC-github/security_solution` does not exist —
+  `OCC-github` is not a real org (404), the real account is `OttawaCloudConsulting` (a User, not an Org),
+  and this documentation repo's own git history is disjoint from any GitHub remote. `security-platform`
+  is already public, already hosts the Phase 14-19 validated `security.yml`/`pr-security.yml`, and has no
+  leaked-secret history to scrub (this repo's gitleaks scan found 16 findings across 320 commits — a real
+  blocker to making *this* repo public). **Decision: `security-platform` is the canonical host repo.**
+  `security-platform`'s existing `.github/workflows/security.yml` and `pr-security.yml` ARE the canonical
+  files — no copy into `security_solution` is needed. DIST-07's `uses:` reference becomes
+  `uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@<ref>`. This repo
+  (`security_solution`) keeps only documentation (`docs/adoption-guide.md`) and the copy-paste template
+  (referencing/embedding the same canonical YAML, kept in sync manually) — it does not host a second copy
+  as source of truth. Update all D-02 tagging, the adoption doc's `uses:` examples, and any ADR text
+  accordingly.
 
 ### Versioning / ref strategy
 - **D-02:** Consumer repos pin to tagged releases (`@v1`, `@v2`, ...), not `@main` and not a raw SHA. Matches
