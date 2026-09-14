@@ -14,10 +14,14 @@ requires:
     provides: the four-table evidence shape and the ~2.5 minute flip-window precedent
 provides:
   - "the PR #10 out-of-band-merge deviation record, read live: MERGED 2026-09-13T22:34:18Z, merge commit 80e91de, head branch deleted"
-  - "PR #11 — the REPLACEMENT Phase 19 gate-mode validation PR, OPEN at head 35ca46c"
+  - "PR #11 — the REPLACEMENT Phase 19 gate-mode validation PR, OPEN at head 426c84c, three commits, ONE tree 895c1bdf"
   - "run 34790727189 — the report-only BASELINE this plan's blocking run is paired against"
   - "the D-19-A action: fixtures/README.md now documents the server-side Push Protection layer"
   - "run 1's code-scanning category set and artifact manifest, the comparison targets for the blocking run"
+  - "SC2 MEASURED: run 34791497579 — five security / … checks all FAILURE under GATE_MODE=blocking on tree 895c1bdf"
+  - "run 34791562222 — five success under the restored absent-variable fallback, same tree 895c1bdf"
+  - "D-09 EXECUTED: GATE_MODE deleted (not set to report-only); gh variable list empty and the REST endpoint 404s"
+  - "the bounded flip window 2026-09-14T00:04:10Z → 00:05:13Z (63s) with its collateral-run enumeration: exactly one run, the measurement's own"
 affects: [19-06, 19-07]
 
 # Tech tracking
@@ -35,6 +39,11 @@ key-files:
     - repos/security-platform/fixtures/README.md
 
 key-decisions:
+  - "HALTED again at Task 3's blocking checkpoint, the D-09 restore CONFIRMATION. Task 2 ran to completion first; the restore is already done and verified by command, but the plan's must_haves require a human to confirm it, so the plan is not marked complete and roadmap.update-plan-progress was again NOT run."
+  - "The whole set→measure→delete window ran inside ONE shell invocation, chained with ';' rather than '&&', so gh variable delete executes whatever any earlier command returns. Shell state does not persist between tool calls in this harness, so splitting the window across calls would make a session death between set and delete leave the repository permanently gating every PR — exactly T-19-20."
+  - "The blocking empty commit was created BEFORE the variable was set, so no commit-time hook work happened inside the live window."
+  - "All detailed measurement was done AFTER the delete. A completed run's logs, check runs, artifacts and analyses are immutable, so nothing measured needed the variable live; this cut the window to 63s against 18-05's ~2.5min precedent."
+  - "Per-step evidence was taken from the jobs REST API, not from a log grep. 'Which step failed first' and 'was any post-scan step skipped' are structured fields there; run 1's near-miss (a mis-attributed annotation, then a grep-pattern artifact) was caused by reading step outcomes out of log text."
   - "HALTED at Task 1's blocking checkpoint. auto_advance is unset and workflow._auto_chain_active is false, the plan is autonomous:false, and the checkpoint AUTHORISES a repository-wide blocking window before it opens. Auto-approving would have opened that window on the executor's own authority."
   - "Pushed WITHOUT --no-verify, deliberately. The plan asked for the hook's ACTUAL behaviour rather than a prediction; bypassing it would have produced no observation. The hook ran (`Detect hardcoded secrets`) and Passed, re-confirming D-19-C at push scope for a third time."
   - "GATE_MODE was NOT set. Nothing was flipped, merged, closed, or written to the ruleset in this task."
@@ -42,27 +51,40 @@ key-decisions:
 
 patterns-established:
   - "When the pull request an evidence chain is scoped to disappears out of band, record the disappearance as a live-read fact and rebuild the claim on a substitute whose equivalence is SHOWN (six fixture paths asserted present) rather than argued"
+  - "A repo-wide destructive-by-default toggle is opened and closed inside a SINGLE shell invocation, ';'-chained so the restore cannot be orphaned by a failure or a session death; everything that does not need the toggle live is moved outside the window"
+  - "Isolate the variable under test by making the tree byte-identical: three commits, two of them empty, one tree hash, an empty git diff between the outer two — the opposite verdicts then have exactly one possible cause"
+  - "Read step-level outcomes from the Actions jobs REST API rather than grepping run logs; 'first failing step' and 'skipped' are structured fields, and log text invites mis-attribution"
 
 requirements-completed: []
 
 # Metrics
-duration: 18min (Task 1 to the checkpoint halt)
-completed: 2026-09-13
+duration: 18min (Task 1) + 14min (Task 2 and the second halt)
+completed: 2026-09-14
 ---
 
 # Phase 19 Plan 05: Prove the Gate Actually Gates Summary
 
-**PR #10 was merged out of band before SC2 could be measured, so a REPLACEMENT validation pull request —
-**[PR #11](https://github.com/OttawaCloudConsulting/security-platform/pull/11)**, cut from post-merge
-`origin/main` and carrying all five seeded fixture categories — is OPEN and GREEN under report-only: run
-**34790727189**, five `security / …` checks all `success`, five anchored `gate_mode=report-only` lines, zero
-`blocking`, five artifacts, seven code-scanning analyses. That is the baseline the blocking run will be
-paired against. Nothing has been flipped.**
+**SC2 is measured. One pull request — [PR
+#11](https://github.com/OttawaCloudConsulting/security-platform/pull/11) — three commits, ONE tree hash
+`895c1bdf`, an empty `git diff` between the outer two, and OPPOSITE VERDICTS: five `security / …` checks all
+`failure` under `GATE_MODE=blocking` (run **34791497579**) and all `success` under report-only both before
+(run **34790727189**) and after (run **34791562222**). Nothing was edited between them — one `gh variable
+set` and one `gh variable delete` are the entire difference. The reporting guarantees were COUNTED under
+blocking, not inferred: five artifacts, seven code-scanning analyses with identical `results_count` on every
+row, and all eleven intolerant upload-verify assertions green with ZERO skipped steps anywhere in the run.**
 
-**STATUS: HALTED at Task 1's blocking `checkpoint:human-verify`.** Tasks 2 and 3 have not run.
-`gh variable list` prints nothing — `GATE_MODE` has not been touched. The operator's authorisation to open
-the repository-wide blocking window is outstanding; see [Operator Reply (Task 1) —
-PENDING](#operator-reply-task-1--pending).
+**D-09 is executed. `GATE_MODE` is DELETED, not set back to a string** — `gh variable list` prints nothing
+and `GET /actions/variables/GATE_MODE` returns `404`, which is the repository's original state and is what
+exercises Phase 18 D-03's fallback terminating at the literal. The repository-wide window ran
+**2026-09-14T00:04:10Z → 00:05:13Z, 63 seconds**, and exactly **one** run was created inside it: the
+measurement's own.
+
+**STATUS: HALTED at Task 3's blocking `checkpoint:human-verify`.** Task 1's checkpoint was authorised
+(`go`) and Task 2 ran to completion. Task 3 is the **D-09 restore CONFIRMATION** — it does not gate the
+restore, which already happened unconditionally inside Task 2; it asks a human to confirm the paired verdicts
+and that no variable remains. See [Operator Reply (Task 3) —
+PENDING](#operator-reply-task-3--pending). **PR #11 is deliberately left OPEN** — plan 07 owns its fate, and
+plan 06 needs it open.
 
 ## The deviation this plan exists to absorb — PR #10, read live
 
@@ -347,10 +369,10 @@ named. No difference to explain.
 Open pull requests enumerated by number and branch rather than summarised as a count, per the plan: **#11 /
 `feature/phase-19-gate-mode-proof`** is the only one. **There is no open Dependabot pull request.**
 
-## Operator Reply (Task 1) — PENDING
+## Operator Reply (Task 1) — RECEIVED
 
 Task 1 is `checkpoint:human-verify` with `gate="blocking"`, and its acceptance criteria require the
-operator's reply **verbatim**. The plan halted here. Nothing has been flipped.
+operator's reply **verbatim**. The plan halted here across a session boundary and resumed on authorisation.
 
 | Field | Value |
 |---|---|
@@ -359,13 +381,328 @@ operator's reply **verbatim**. The plan halted here. Nothing has been flipped.
 | Expected window length | **minutes** — 18-05 measured ~2.5 |
 | Restore commitment | `gh variable delete GATE_MODE` runs **unconditionally**, including if the measurement fails; the variable is **deleted**, never set back to the string `report-only` |
 | Resume signal | `go` to authorise, or a description of the concern |
-| **Operator reply (VERBATIM)** | **_pending — not yet received_** |
+| **Operator reply (VERBATIM)** | **`go`** |
+
+A second instruction was relayed in the same breath, in answer to an explicit question about PR #11's fate:
+**leave PR #11 OPEN — do not merge it and do not close it in this plan.** That decision belongs to plan 07 at
+phase close, after both SC2 (this plan) and SC4 (plan 06, which needs PR #11 still open) are captured. It was
+obeyed: PR #11 is `OPEN` and `MERGEABLE` at the end of this plan.
+
+**Provenance, stated rather than blurred.** Both the `go` and the leave-open instruction reached this
+executor **relayed through the orchestrating agent's prompt**, not read by this executor from the operator
+directly. They are recorded verbatim as received. The paired-evidence confirmation that Task 3 asks for is a
+separate signal and has **not** been received — see [Operator Reply (Task 3) —
+PENDING](#operator-reply-task-3--pending).
 
 **Why this was not auto-approved.** `.planning/config.json` has `workflow._auto_chain_active: false` and no
 `workflow.auto_advance`; the plan is `autonomous: false`; and the orchestrator instructed a clean halt at any
 defined checkpoint. More than any of those: this checkpoint **authorises** opening a repository-wide gating
 window before it opens. Auto-approving it would mean the executor authorising its own repo-wide write — the
 exact thing T-19-19's mitigation exists to prevent.
+
+## Task 2 — the flip, the paired verdicts, and the unconditional restore
+
+### How the window was made un-orphanable
+
+The plan's hardest constraint is that **no task boundary and no plan boundary may separate the `set` from the
+`delete`**. In this harness shell state does not persist between tool calls, so a boundary between them is
+not merely a plan-structure question: a session death, a tool timeout or a raised error between two calls
+would leave `GATE_MODE=blocking` live on the repository indefinitely, gating every pull request. That is
+T-19-20 exactly.
+
+So the entire window — set, read back, push, poll to completion, delete, read back — ran as **one shell
+invocation** of a single script, deliberately **without `set -e`** and chained with `;` rather than `&&`, so
+that `gh variable delete` runs whatever any earlier command returns. Two further reductions:
+
+- **The empty commit was created BEFORE the variable was set.** Commit-time hook work (the repo's pre-commit
+  suite runs on `--allow-empty` too) therefore happened outside the live window.
+- **All detailed measurement was done AFTER the delete.** A completed run's logs, check runs, artifacts and
+  code-scanning analyses are immutable; none of it needs the variable live. Only the *poll to completion* had
+  to stay inside.
+
+Measured result: **63 seconds**, against 18-05's ~2.5 minute precedent.
+
+### Flip window
+
+| Event | Source | Timestamp |
+|---|---|---|
+| `gh variable set GATE_MODE --body blocking` | rc=`0` | — |
+| **`SET_TS`** (GitHub's own `updated_at`) | `gh api repos/…/actions/variables/GATE_MODE` | **`2026-09-14T00:04:10Z`** |
+| Local clock at set | `date -u` | `2026-09-14T00:04:09Z` |
+| Read-back | `gh variable list` | `GATE_MODE	blocking	2026-09-14T00:04:10Z` |
+| Push (same tree) | `35ca46c..41d676f` | rc=`0` |
+| Blocking run created → completed | run `34791497579` | `00:04:17Z` → `00:05:06Z` |
+| `gh variable delete GATE_MODE` | rc=`0` | — |
+| **`DEL_TS`** (local clock; the delete API returns no timestamp) | `date -u` | **`2026-09-14T00:05:13Z`** |
+| **Window length** | `DEL_TS − SET_TS` | **63 seconds** |
+
+Two clock sources are recorded because they are not the same clock: `SET_TS` is GitHub's server-side
+`updated_at`, `DEL_TS` is this machine's UTC clock, and `DELETE` returns no timestamp to read. They agreed to
+within one second at the set, which is the only cross-check available.
+
+The full read-back JSON, verbatim:
+
+```
+{"name":"GATE_MODE","value":"blocking","created_at":"2026-09-14T00:04:10Z","updated_at":"2026-09-14T00:04:10Z"}
+```
+
+`created_at == updated_at` confirms this variable was **created** by this command, not overwritten — the
+repository genuinely had none, as Task 1's preflight recorded.
+
+**The variable covered the whole blocking run.** Set `00:04:10Z`, run created `00:04:17Z`, run completed
+`00:05:06Z`, deleted `00:05:13Z`. There is no window edge inside the run.
+
+### Blast radius — enumerated, not asserted
+
+```
+$ gh run list -R … --limit 50 --json databaseId,createdAt,headBranch,conclusion,event,name \
+    --jq '[.[] | select(.createdAt >= "2026-09-14T00:04:10Z" and .createdAt <= "2026-09-14T00:05:13Z")]'
+```
+
+| Run id | Created | Branch | Event | Workflow | Conclusion |
+|---|---|---|---|---|---|
+| **34791497579** | `2026-09-14T00:04:17Z` | `feature/phase-19-gate-mode-proof` | `pull_request` | `PR Security` | **failure** |
+
+**Exactly one run was created inside the window, and it is the measurement's own.** No collateral run on any
+other branch, no Dependabot run — consistent with Task 1's enumeration, which found PR #11 to be the only
+open pull request. This is a query result, not a "none".
+
+### Run identity — three commits, ONE tree
+
+The whole argument rests here. If the trees differed, something other than the gate could explain the
+verdict change (T-19-22).
+
+```
+commit 426c84c3fcc3207af2a4dd90263b2f7dd0a17df5 tree 895c1bdf42f32676b732dee10ec6cc36458568fc
+commit 41d676f590a0dcd6cd8c5408e402a3faa4b6953b tree 895c1bdf42f32676b732dee10ec6cc36458568fc
+commit 35ca46cc825d0c8180f4e6cdd0b1f44902e1c1d6 tree 895c1bdf42f32676b732dee10ec6cc36458568fc
+
+$ git diff --stat HEAD~2 HEAD
+(no output)
+```
+
+| # | Commit | Message | **Tree** | Run id | `GATE_MODE` | Conclusion |
+|---|---|---|---|---|---|---|
+| 1 | `35ca46c` | `docs(19-05): record the server-side push-protection layer…` | **`895c1bdf`** | `34790727189` | absent → `report-only` | **success** |
+| 2 | `41d676f` | `chore(19-05): trigger a blocking-mode run on an identical tree` (EMPTY) | **`895c1bdf`** | `34791497579` | **`blocking`** | **failure** |
+| 3 | `426c84c` | `chore(19-05): restore report-only after the blocking measurement` (EMPTY) | **`895c1bdf`** | `34791562222` | absent → `report-only` | **success** |
+
+One tree hash across all three. `git diff` between the outer two produces **no output at all**. And
+`git diff origin/main --name-only` still lists **exactly `fixtures/README.md`** — the two extra commits are
+genuinely empty. **The only thing that changed between verdicts was one repository variable.**
+
+Empty commits rather than `gh run rerun`, per the plan and RESEARCH P-2: a re-run is a new *attempt* of the
+same run id, and `actions/upload-artifact` v4 artifacts are immutable and name-unique per run, so
+re-uploading the five fixed names risks a conflict with nothing to do with gate mode — corrupting exactly the
+measurement this plan exists to make. `pr-security.yml` is `on: pull_request: {}` only, so `gh workflow run`
+cannot drive it either.
+
+### Gate-mode resolution, anchored
+
+| Run | `gate_mode=blocking$` | `gate_mode=report-only$` | unanchored `gate_mode=` |
+|---|---|---|---|
+| 1 — `34790727189` | **0** | **5** | 10 |
+| 2 — `34791497579` | **5** | **0** | 10 |
+| 3 — `34791562222` | **0** | **5** | 10 |
+
+The anchor stays load-bearing: the unanchored count is 10 in every run because each job's `Validate
+gate_mode` step echoes its own source line into the log's Run group. The five anchored blocking lines, one
+per job, with their log timestamps:
+
+| Job | Log line |
+|---|---|
+| `security / Secrets — Gitleaks` | `00:04:20.9178600Z gate_mode=blocking` |
+| `security / SAST — Semgrep CE` | `00:04:20.9304637Z gate_mode=blocking` |
+| `security / Container — Trivy Image` | `00:04:21.9607088Z gate_mode=blocking` |
+| `security / SCA — Trivy Filesystem` | `00:04:22.0627038Z gate_mode=blocking` |
+| `security / IaC — Checkov` | `00:04:34.4162445Z gate_mode=blocking` |
+
+Run 3's five `report-only` lines re-prove Phase 18 D-03's fallback **after** a variable has existed and been
+removed — not merely before one ever did.
+
+### Check runs — the five frozen names under each mode
+
+The head SHA carries **12** check runs in both cases; filtering on `startswith("security / ")` yields exactly
+**5**. Never assumed to be five — counted.
+
+| Check run (byte-exact, em dash U+2014) | Run 1 report-only | **Run 2 blocking** | Run 3 report-only |
+|---|---|---|---|
+| `security / Container — Trivy Image` | success | **failure** | success |
+| `security / IaC — Checkov` | success | **failure** | success |
+| `security / SAST — Semgrep CE` | success | **failure** | success |
+| `security / SCA — Trivy Filesystem` | success | **failure** | success |
+| `security / Secrets — Gitleaks` | success | **failure** | success |
+
+**Five red under blocking is the SUCCESS condition of this task.** All five jobs also concluded `failure` at
+the job level, so no check run is red for a reason its job is not.
+
+The seven non-`security / ` check runs on the blocking SHA, recorded so a later unfiltered query does not
+read them as drift — all seven **success**, none gated by `GATE_MODE`:
+
+| Check run | App |
+|---|---|
+| `GitGuardian Security Checks` | gitguardian |
+| `Checkov`, `Semgrep OSS`, `Trivy`, `gitleaks`, `tflint`, `tflint-errors` | github-advanced-security |
+
+### Which step failed FIRST in each job — from the jobs API, not a log grep
+
+The plan requires the first failing step to be the **scan** step: tolerance off, nothing else broken. Taken
+from `GET /actions/runs/34791497579/jobs`, where `conclusion` is a structured per-step field:
+
+| Job | First failing step | Is it the scan step? |
+|---|---|---|
+| `security / SAST — Semgrep CE` | 5. **`Run Semgrep`** | yes |
+| `security / IaC — Checkov` | 5. **`Run Checkov`** | yes |
+| `security / SCA — Trivy Filesystem` | 10. **`Run Trivy filesystem scan (JSON for retention)`** | yes |
+| `security / Container — Trivy Image` | 6. **`Run Trivy image scan`** | yes |
+| `security / Secrets — Gitleaks` | 5. **`Run Gitleaks (SARIF)`** | yes |
+
+Not one is a `Verify …` step and not one is `Validate gate_mode` — which is the point: the gate turned the
+checks red, a broken assertion did not.
+
+All eleven failing steps across the run, every one a `GATE_MODE`-conditioned scan step, matching the eleven
+`continue-on-error: ${{ env.GATE_MODE == 'report-only' }}` tolerances Phase 18 plan 02 installed:
+
+| Job | Failing steps |
+|---|---|
+| `security / SCA — Trivy Filesystem` | 10. `Run Trivy filesystem scan (JSON for retention)`; 11. `Run Trivy filesystem scan (SARIF for code scanning)`; 15. `SCA-01 — npm audit`; 18. `SCA-02 — pip-audit`; 21. `SCA-03 — tflint (SARIF)`; 22. `SCA-03 — tflint (human-readable log)` |
+| `security / Secrets — Gitleaks` | 5. `Run Gitleaks (SARIF)`; 6. `Run Gitleaks (JSON)` |
+| `security / SAST — Semgrep CE` | 5. `Run Semgrep` |
+| `security / IaC — Checkov` | 5. `Run Checkov` |
+| `security / Container — Trivy Image` | 6. `Run Trivy image scan` |
+
+**Eleven flipped tolerances, eleven failing steps, exactly.** That correspondence is a stronger statement
+than the plan asked for and it is a count, not a reading.
+
+**Checkov's step failed — settling run 1's open question.** Run 1's SUMMARY recorded that
+`grep -c 'Process completed with exit code'` returned **0** for the Checkov job, and reasoned from
+`security.yml` L229-236 (`soft_fail: false`) that this was a grep artifact — that string is the Actions
+runner's format for `run:` shell steps, and Checkov's scan is a `uses:` step. The reasoning is now
+**confirmed by measurement**: under blocking, `Run Checkov` carries `conclusion: failure` in the jobs API.
+Had that been left as the raw grep's apparent "four of five", this task would have been handed a false
+expectation of four red checks.
+
+### The reporting guarantees, COUNTED under blocking
+
+T-19-23 is the risk that a red run silently publishes nothing. Every figure below is read from the
+**blocking** run, never inferred from a report-only one.
+
+**Skipped steps across the entire blocking run: ZERO.** Queried directly
+(`select(.conclusion=="skipped")` over every step of every job) and the result set is empty — no post-scan
+step was skipped, which is what the `if: always()` guards exist to secure.
+
+**All eleven intolerant `Verify … upload landed` assertions — green, none skipped:**
+
+| # | Job | Assertion | Conclusion |
+|---|---|---|---|
+| 1 | SAST — Semgrep CE | `Verify Semgrep SARIF upload landed` | success |
+| 2 | SAST — Semgrep CE | `Verify SAST artifact upload landed` | success |
+| 3 | IaC — Checkov | `Verify Checkov SARIF upload landed` | success |
+| 4 | IaC — Checkov | `Verify IaC artifact upload landed` | success |
+| 5 | SCA — Trivy Filesystem | `Verify Trivy filesystem SARIF upload landed` | success |
+| 6 | SCA — Trivy Filesystem | `Verify tflint SARIF upload landed` | success |
+| 7 | SCA — Trivy Filesystem | `Verify SCA artifact upload landed` | success |
+| 8 | Container — Trivy Image | `Verify Trivy image SARIF upload landed` | success |
+| 9 | Container — Trivy Image | `Verify container artifact upload landed` | success |
+| 10 | Secrets — Gitleaks | `Verify Gitleaks SARIF upload landed` | success |
+| 11 | Secrets — Gitleaks | `Verify secrets artifact upload landed` | success |
+
+The file carries **14** `Verify …` steps; the other three are report-*content* checks rather than
+upload-landed assertions, and they are green under blocking too: `Verify npm audit reports`, `Verify
+pip-audit reports`, `Verify tflint SARIF`. Recorded so the eleven is a defined set rather than a number
+carried over from 19-03.
+
+**Artifacts — `total_count` = 5 under blocking, the same five names as run 1:**
+
+| Artifact | Id | Bytes (run 2) | Bytes (run 1) | Expired |
+|---|---|---|---|---|
+| `semgrep-results` | 10328397790 | 197,859 | 197,853 | false |
+| `sca-results` | 10328387820 | 19,916 | 19,915 | false |
+| `checkov-results` | 10327932303 | 5,167 | 5,141 | false |
+| `trivy-image-results` | 10327792614 | 65,238 | 65,232 | false |
+| `gitleaks-results` | 10327789076 | 10,396 | 10,386 | false |
+
+All five retained to `2026-12-13T00:04:17Z`. Run 3 likewise reports `total=5` with the identical five names.
+
+**The few-byte size differences are recorded rather than smoothed over, and they are not findings drift.**
+The reports embed run- and commit-specific values — scan timestamps, the commit SHA, the image tag
+`scan-fixture:<github.sha>` which differs per commit by construction, and absolute runner paths. The
+authoritative check on whether the *findings* changed is the code-scanning `results_count`, which is
+identical on every row across all three runs (next table). A byte-identical artifact across two different
+commits would in fact have been the surprising result.
+
+**Code-scanning analyses — identical category set and identical counts under blocking:**
+
+| Category | Tool | Run 1 (`b9db5a1d`) | **Run 2 blocking (`3dcdcd33`)** | Run 3 (`50c80ae8`) |
+|---|---|---|---|---|
+| `checkov` | checkov | 14 | **14** | 14 |
+| `gitleaks` | Gitleaks | 11 | **11** | 11 |
+| `semgrep` | Semgrep OSS | 8 | **8** | 8 |
+| `tflint` | tflint | 3 | **3** | 3 |
+| `tflint` | tflint-errors | 0 | **0** | 0 |
+| `trivy-fs` | Trivy | 6 | **6** | 6 |
+| `trivy-image` | Trivy | 58 | **58** | 58 |
+
+**Seven analyses, six unique categories, in all three runs.** The SARIF pipeline is entirely unaffected by
+gate mode — the checks go red and the Security tab still fills. That is the whole content of ADR-001's
+"upload failures must not block", now measured from the failing side.
+
+### Finding-count cross-check against 19-03's PR #10 — a cross-check, not a pass condition
+
+The scanned fixture files are byte-identical on `main`, so the counts are *expected* to agree; a difference
+would be explained, not failed on. They agree on every row: Semgrep **8**; Gitleaks **11**; Checkov **14**
+failed checks; Trivy image **58**; Trivy fs **6** (19-03's 5 npm + 1 pip); tflint **3**. **No difference to
+explain.**
+
+### The restore — `delete`, not `set --body report-only`
+
+| Check | Result |
+|---|---|
+| `gh variable delete GATE_MODE -R …` | rc=`0` |
+| `gh variable list -R …` | **nothing printed** |
+| `gh api repos/…/actions/variables/GATE_MODE` | **`{"message":"Not Found",…,"status":"404"}`** — `gh: Not Found (HTTP 404)` |
+| Run 3 anchored `gate_mode=report-only$` | **5** |
+| Run 3 five `security / …` checks | **all success** |
+
+The variable is **absent**, not set to a string. Setting `report-only` would have left a variable that never
+existed before this plan and would have quietly stopped exercising Phase 18 D-03's fallback chain
+`inputs.gate_mode || vars.GATE_MODE || 'report-only'` at its terminating literal — T-19-21. Run 3's five
+anchored `report-only` lines are that fallback working with no variable present, and they were produced
+**after** a variable had existed and been removed, which is strictly more than 18-05 could show.
+
+Two independent absence proofs are recorded because `gh variable list` printing nothing is also what a failed
+command looks like; the explicit `404` from the REST endpoint is the positive form of the same fact.
+
+### Nothing else was touched
+
+| Invariant | Check | Result |
+|---|---|---|
+| Ruleset unchanged from Task 1's preflight | `gh api repos/…/rules/branches/main --jq '.[].type'` | `deletion`, `non_fast_forward` — **no required checks**, nothing written |
+| No workflow file edited | `git diff origin/main --name-only` | `fixtures/README.md` only |
+| No fixture other than the README edited | same | same |
+| PR #11 not merged, not closed | `gh pr view 11 --json state,mergeable` | **`OPEN`**, `MERGEABLE`, head `426c84c` |
+| Stale local branch `feature/phase-19-pipeline-validation` | untouched | still at `d8bd09b` |
+
+## Operator Reply (Task 3) — PENDING
+
+Task 3 is a second `checkpoint:human-verify` with `gate="blocking"`. **It does not gate the restore** — the
+`gh variable delete` already ran, unconditionally, inside Task 2, precisely so that an unanswered prompt
+could never leave a live repository gating every pull request. Task 3 **confirms** the restore and the paired
+verdicts.
+
+| Field | Value |
+|---|---|
+| What is being asked | Confirmation that the paired verdicts are real and that no `GATE_MODE` variable remains |
+| What to check | One tree hash `895c1bdf` across three commits; run `34791497579` five RED; runs `34790727189` and `34791562222` five GREEN; a red job showing `gate_mode=blocking` with its upload steps still green below the red scan step; five artifacts and a populated Security tab on the red run; `gh variable list` printing nothing when the operator runs it themselves; PR #11 still OPEN |
+| Resume signal | `approved` to continue, or a description of what does not match |
+| **Operator reply (VERBATIM)** | **_pending — not yet received_** |
+
+**Why this was not auto-approved either.** `.planning/config.json` still has
+`workflow._auto_chain_active: false` and no `workflow.auto_advance`, and the plan is `autonomous: false`. The
+plan's own `must_haves.truths` include *"A human has confirmed the paired evidence and that no GATE_MODE
+variable remains"* — a truth no executor can make true on its own behalf. The authorisation received for
+Task 1 was `go`, scoped to opening the window; it is not a confirmation of evidence that did not exist when
+it was given.
 
 ## Deviations from Plan
 
@@ -396,18 +733,55 @@ value rather than one re-derived after the blocking run has replaced it.
 
 **6. VAL-01 NOT marked complete.** The plan frontmatter lists `requirements: [VAL-01]` and the executor
 template marks listed requirements complete. Withheld, following 19-01 through 19-04 and the 17-01
-precedent: **SC2 is not yet measured** — this plan halted before the flip — and plan 07 owns VAL-01's
-closure. `requirements.mark-complete` was deliberately not invoked.
+precedent: plan 07 owns VAL-01's closure, and this plan is still halted at Task 3.
+`requirements.mark-complete` was deliberately not invoked.
+
+**7. Task 2's two pushes DID use `--no-verify`,** unlike Task 1's. The plan prescribes it there, and the
+reason the divergence does not extend to Task 2 is that the observation was already made: Task 1 ran the hook
+un-bypassed and recorded it Passing. Repeating it inside the live blocking window would have added seconds to
+a repository-wide gating window in exchange for a third copy of a known result. The pushes carry **empty
+commits** — there is no content for a secret scanner to see in either case.
+
+**8. The whole set→measure→delete window ran as ONE shell invocation of a script,** rather than as the
+sequence of separate commands the plan's interfaces block lays out line by line. The sequence is identical;
+only the packaging differs, and it differs for a reason the plan itself argues: "no task boundary and no plan
+boundary may ever separate the `set` from the `delete`". In this harness, shell state does not persist
+between tool calls, so *every* tool-call boundary is a point where a timeout or a session death orphans the
+variable. The script is `;`-chained and deliberately not `set -e`, so `gh variable delete` executes whatever
+any earlier command returns.
+
+**9. Per-step evidence came from the jobs REST API rather than from log greps.** The plan's `<action>` asks
+"WHICH STEP FAILED FIRST" and whether any post-scan step skipped. `GET /actions/runs/{id}/jobs` carries
+`steps[].conclusion` as a structured field; a log grep infers the same thing from runner message text. Run
+1's two near-misses were both log-reading errors, so the structured source was preferred. The log is still
+used where it is the only source — the anchored `gate_mode=` counts, which the plan specifies as greps.
+
+**10. The empty commit for the blocking run was created BEFORE the variable was set.** The plan's sequence
+shows `git commit --allow-empty && git push` after the `set`. Creating the commit first moves the repo's
+pre-commit hook suite outside the live window and changes nothing about what is measured: the push, which is
+what triggers the run, still happens inside it.
+
+**11. Both absence proofs recorded for the delete, not just `gh variable list`.** An empty `gh variable list`
+is indistinguishable from a command that silently produced nothing, so `GET
+/actions/variables/GATE_MODE` was queried as well and its `404` recorded. The anti-slop rule that a silent
+empty result is not evidence applies to the most important assertion in this plan.
 
 ### Auto-fixed Issues
 
-None. No Rule 1, 2 or 3 fix was required: every command behaved as the plan predicted, including the
-prediction that `GH013` would not fire.
+None. No Rule 1, 2 or 3 fix was required across either session. Every command behaved as the plan
+predicted — including the predictions that `GH013` would not fire, that five checks would go red under
+blocking, and that the artifacts and SARIF categories would survive the red run.
 
 ### Checkpoints
 
-**Task 1 — REACHED and HALTED.** See [Operator Reply (Task 1) — PENDING](#operator-reply-task-1--pending).
-The halt is the plan working as designed. Tasks 2 and 3 have not run.
+**Task 1 — REACHED, HALTED across a session boundary, then AUTHORISED.** The operator replied **`go`**, plus
+a relayed instruction to leave PR #11 open. See [Operator Reply (Task 1) —
+RECEIVED](#operator-reply-task-1--received).
+
+**Task 3 — REACHED and HALTED.** See [Operator Reply (Task 3) — PENDING](#operator-reply-task-3--pending).
+The halt is the plan working as designed; unlike Task 1's, this checkpoint gates nothing operational — the
+restore is already done and verified — so a delay here costs nothing and leaves the repository in its
+original state.
 
 ### Authentication gates
 
@@ -438,64 +812,99 @@ artifact, resolved above against `security.yml` L229-236. Both are recorded beca
 discipline is that a figure must come from a command's output with its attribution intact, and the failure
 mode here was reading a real command's output the wrong way round rather than inventing one.
 
-## Post-state — what Task 2 inherits, and what a resumer must not redo
+Both readings are now **settled by measurement** rather than by argument: the blocking run's jobs API shows
+`Run Checkov` with `conclusion: failure`, so Checkov's step does fail and is tolerated under report-only
+exactly like the other four. Five red under blocking was the right expectation.
+
+## Post-state — what plan 06 and plan 07 inherit, and what a resumer must not redo
 
 | Item | State |
 |---|---|
-| **`GATE_MODE`** | **ABSENT** — `gh variable list` prints nothing. **Not touched by this session.** |
-| PR **#11** | **OPEN**, `MERGEABLE`, head `35ca46c`, tree `895c1bdf…` |
-| Runs on `feature/phase-19-gate-mode-proof` | **1** — `34790727189`, `success` |
-| `rules/branches/main` | `deletion`, `non_fast_forward` — unchanged, nothing written |
-| Inner working tree | clean; branch vs `origin/main` = exactly `fixtures/README.md` |
+| **`GATE_MODE`** | **ABSENT** — `gh variable list` prints nothing and the REST endpoint returns `404`. Set at `00:04:10Z`, deleted at `00:05:13Z`, gone. |
+| PR **#11** | **OPEN**, `MERGEABLE`, head `426c84c`, tree `895c1bdf…` — **left open deliberately**; plan 06 needs it open for SC4 and plan 07 owns its fate |
+| Runs on `feature/phase-19-gate-mode-proof` | **3** — `34790727189` success, `34791497579` **failure (blocking)**, `34791562222` success |
+| `rules/branches/main` | `deletion`, `non_fast_forward` — unchanged across both sessions, nothing written |
+| Inner working tree | clean; branch vs `origin/main` = exactly `fixtures/README.md`; three commits ahead, two of them empty |
 | Stale local branch `feature/phase-19-pipeline-validation` | present at `d8bd09b`, deliberately untouched |
-| Artifacts from run 1 | retained until **2026-12-12T23:47:51Z** |
+| Artifacts | run 1 to `2026-12-12T23:47:51Z`; run 2 to **`2026-12-13T00:04:17Z`**; run 3 likewise 5 artifacts |
+| D-09 | **EXECUTED.** Required-checks adoption (Phase 18 D-07 step 3) remains deferred past this phase — untouched here |
 
-**Resume instructions for Task 2.** On `go`: `gh variable set GATE_MODE --body blocking`, read back and
-record `updatedAt` as `SET_TS`, push ONE empty commit, measure, then **`gh variable delete GATE_MODE`
-unconditionally**, record `DEL_TS`, push a SECOND empty commit, and enumerate every run created between the
-two timestamps. Do not re-open a PR, do not re-run run 1, and do not re-derive anything in this SUMMARY.
-**Do not merge or close PR #11** — plan 07 owns its fate.
+**What a resumer must NOT redo.** Do not re-run the flip: SC2 is measured and the evidence is above. Do not
+push further commits to this branch — three commits with one tree hash *are* the evidence, and a fourth adds
+nothing while risking the run set a reader has to reconcile. **Do not merge or close PR #11.** Do not touch
+the ruleset. The only outstanding item is the Task 3 operator confirmation.
 
-### State bookkeeping at a halt — what was run, and what was deliberately undone
+### State bookkeeping at the second halt — and the instruction conflict that was NOT resolved silently
 
-`state.advance-plan` was **not** run and `requirements.mark-complete` was **not** invoked: the plan is halted
-at Task 1 of 3. `state.record-session` was run with **named** flags (`--stopped-at`, `--resume-file`) per
-D-19-D, and its `updated` array was read rather than its `recorded` boolean — it listed all three fields
-including `Stopped At`. `state.sync` then brought the frontmatter into line. `state.validate` returns
-`{"valid": true, "warnings": [], "drift": {}}`. STATE.md now reads
-`Stopped at: HALTED at 19-05-PLAN.md Task 1 checkpoint …` with `Plan: 5 of 7` unchanged.
+`state.record-session` was run with **named** flags per D-19-D and its `updated` array read rather than its
+`recorded` boolean: `["Last session", "Stopped At", "Resume File"]`. `state.sync` reported one change,
+`Last Activity: 2026-09-13 -> 2026-09-14`. `state.validate` returns
+`{"valid": true, "warnings": [], "drift": {}}`. STATE.md now reads:
 
-**`roadmap.update-plan-progress --phase 19` was run and then REVERTED, deliberately.** It returned
-`{"summary_count": 5}` and, deriving completion from the existence of this SUMMARY file, checked
-`19-05-PLAN.md` off as `[x]` and advanced the progress row to `5/7`. That is not true: SC2 — the entire point
-of this plan — has not been measured. Leaving the tick would have made the phase record read as if the
-gate-mode proof were captured, which is precisely the failure T-19-36 exists to prevent. The file was
-restored byte-for-byte from a pre-command copy and `.planning/ROADMAP.md` again reads `[ ]` and `4/7`.
-**Re-run `roadmap.update-plan-progress --phase 19` on resume, after Task 3 closes.**
+```
+Plan: 5 of 7
+Stopped at: HALTED at 19-05-PLAN.md Task 3 checkpoint (SC2 measured, GATE_MODE deleted;
+            awaiting operator confirmation of the paired verdicts)
+```
 
-One related side effect is recorded rather than hand-edited, following D-19-E: `state.sync` raised
-STATE.md's `completed_plans` from 34 to 35 and its progress bar from 92% to 95% by the same
-SUMMARY-file-counting logic. It was left alone because `state.sync` recomputes it from disk, so an edit would
-be clobbered by the next sync; the halt is instead made unmissable in `Stopped at`, in this SUMMARY's banner
-and in its title-line status.
+`state.advance-plan` was **not** run and `requirements.mark-complete` was **not** invoked. The plan is halted
+at Task 3 of 3.
+
+**`roadmap.update-plan-progress --phase 19` was deliberately NOT run — and this contradicts an explicit
+instruction, so it is surfaced rather than decided quietly.** The orchestrating agent's resume instructions
+said to re-run it "now that this plan is genuinely complete, not reverted this time". The previous session's
+reason for reverting the tick was "SC2 has not been measured", and **that reason no longer holds** — SC2 is
+measured, in full, above. But it is not the only reason:
+
+- Task 3 is `type="checkpoint:human-verify"` with `gate="blocking"` and the resume signal `approved`. That
+  signal has not been received. The same instructions also said, one item earlier, *"if the plan defines this
+  as another human checkpoint, stop and report"* — which is the branch that applies.
+- The plan's own `must_haves.truths` include **"A human has confirmed the paired evidence and that no
+  GATE_MODE variable remains"**. No executor can make that truth true on its own behalf.
+- Ticking `19-05-PLAN.md` as `[x]` asserts the *plan* is complete, which is a stronger claim than "SC2 is
+  captured". Both claims deserve to be readable separately, and this SUMMARY states each one plainly.
+
+`.planning/ROADMAP.md` therefore still reads `- [ ] 19-05-PLAN.md …` and `| 19. … | v2.0 | 4/7 | In
+Progress|`. **On `approved`, run `gsd-sdk query roadmap.update-plan-progress 19` — it is the single
+outstanding bookkeeping action, and there is no longer any reason to revert it.**
+
+The side effect recorded at the first halt persists and is again left alone rather than hand-edited, per
+D-19-E: `state.sync` counts SUMMARY files on disk, so STATE.md's `completed_plans: 35` and its 95% progress
+bar already include this plan. Editing them would be clobbered by the next sync. The halt is instead made
+unmissable in `Stopped at`, in this SUMMARY's banner and in its title-line status.
 
 ## Self-Check: PASSED
 
 | Claim | Verification | Result |
 |---|---|---|
 | This SUMMARY exists at the path the plan names | `[ -f .planning/phases/19-…/19-05-SUMMARY.md ]` | FOUND |
-| `must_haves.artifacts[0].contains: blocking` | the word appears in the frontmatter, the halt banner, the operator table and the resume instructions | FOUND |
+| `must_haves.artifacts[0].contains: blocking` | frontmatter, banner, flip-window table, check-run table | FOUND |
 | `key_links[0].pattern: fixtures/vulnerable.py` | the `origin/main` header read and the six-path presence assertion | FOUND in both |
-| `key_links[2].pattern: gate_mode=report-only` | run 1's anchored grep, 5 occurrences, one per job | FOUND |
-| Inner-repo commit `35ca46c` exists | `git -C repos/security-platform log --oneline origin/main..HEAD` | `35ca46c docs(19-05): record the server-side push-protection layer…` |
+| `key_links[1].pattern: gate_mode=blocking` | run 2's anchored grep, **5** occurrences, one per job, listed with timestamps | FOUND |
+| `key_links[2].pattern: gate_mode=report-only` | runs 1 and 3's anchored greps, **5** each | FOUND in both |
+| Inner-repo commit `35ca46c` exists | `git log --oneline origin/main..HEAD` | `docs(19-05): record the server-side push-protection layer…` |
+| Inner-repo commit `41d676f` exists (blocking trigger) | same | `chore(19-05): trigger a blocking-mode run on an identical tree` |
+| Inner-repo commit `426c84c` exists (restore trigger) | same | `chore(19-05): restore report-only after the blocking measurement` |
+| All three commits share ONE tree | `git rev-parse <c>^{tree}` x3 | **`895c1bdf…`** x3 |
+| `git diff` between the outer two is empty | `git diff --stat HEAD~2 HEAD` | **no output** |
 | Exactly one path differs from `origin/main` | `git diff origin/main --name-only` | `fixtures/README.md` |
 | No measured count changed | four `grep -c` pairs, main vs branch | `1/1`, `1/1`, `2/2`, `1/1` |
 | markdownlint passes on the edited file | `pre-commit run markdownlint --files fixtures/README.md` | **Passed**, rc=0 |
-| PR #11 read back, not predicted | `gh pr view 11 --json number,url,state,headRefOid` | `11`, OPEN, `35ca46c…` |
-| `GATE_MODE` absent at task end | `gh variable list -R …` | **nothing printed** |
+| Five checks RED under blocking | `commits/41d676f/check-runs`, filtered on `security / ` | **5 × failure** |
+| Five checks GREEN after restore | `commits/426c84c/check-runs`, filtered | **5 × success** |
+| Artifacts survive blocking | `runs/34791497579/artifacts` | `total_count` = **5**, same five names |
+| SARIF survives blocking | `code-scanning/analyses?ref=refs/pull/11/merge` | **7** analyses, 6 categories, counts identical to runs 1 and 3 |
+| Eleven intolerant verify assertions green | `runs/34791497579/jobs`, `steps[]` filter | **11 × success**, 0 skipped |
+| No step skipped anywhere in the blocking run | same, `select(.conclusion=="skipped")` | **empty result set** |
+| `GATE_MODE` absent at plan end | `gh variable list -R …` | **nothing printed** |
+| `GATE_MODE` absent — positive proof | `gh api repos/…/actions/variables/GATE_MODE` | **HTTP `404` Not Found** |
+| Window bounded and enumerated | `SET_TS` `00:04:10Z`, `DEL_TS` `00:05:13Z`, run-list filter | **63s**, **1** run inside, the measurement's own |
 | Ruleset not written | `gh api …/rules/branches/main --jq '.[].type'` | `deletion`, `non_fast_forward` |
+| PR #11 still OPEN, not merged, not closed | `gh pr view 11 --json state,mergeable` | **`OPEN`**, `MERGEABLE`, head `426c84c` |
 | `requirements-completed` still `[]` | frontmatter | PASS — withheld on purpose (deviation 6) |
+| ROADMAP deliberately NOT ticked | `grep '19-05-PLAN' .planning/ROADMAP.md` | `- [ ] 19-05-PLAN.md …`, progress row `4/7` |
 
-Every figure in this SUMMARY was read from a command's recorded output in **this** session. The one item
-that is not a measurement is the operator's reply, which is marked **pending** rather than written on their
-behalf.
+Every figure in this SUMMARY was read from a command's recorded output. The one item that is not a
+measurement is the operator's Task 3 reply, which is marked **pending** rather than written on their behalf.
+Task 1's reply (`go`, plus the leave-PR-#11-open instruction) is recorded verbatim as received and explicitly
+labelled as relayed through the orchestrating agent rather than read from the operator directly.
