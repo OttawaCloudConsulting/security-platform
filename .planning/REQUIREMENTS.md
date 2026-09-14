@@ -29,7 +29,7 @@
 
 ### Validation
 
-- [ ] **VAL-01**: Full pipeline validated in this repo using branch-target PRs (no second repo required to prove it out)
+- [x] **VAL-01**: Full pipeline validated in this repo using branch-target PRs (no second repo required to prove it out)
 
 ## v2 Requirements
 
@@ -69,7 +69,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DIST-06 | Phase 20 | Pending |
 | DIST-07 | Phase 20 | Pending |
 | DIST-08 | Phase 20 | Pending |
-| VAL-01 | Phase 19 | Pending |
+| VAL-01 | Phase 19 | Complete |
 
 **Coverage:**
 - v1 requirements: 14 total

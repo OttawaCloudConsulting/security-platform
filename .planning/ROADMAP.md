@@ -44,7 +44,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] **Phase 16: SCA Ecosystem Coverage** - SCA job audits npm, Python, and Terraform dependencies alongside the generic filesystem sweep (completed 2026-09-11)
 - [x] **Phase 17: SARIF Upload and Artifact Retention** - Findings reach the GitHub Security tab and persist as JSON artifacts (completed 2026-09-11)
 - [x] **Phase 18: Configurable Gate Mode and Branch Protection** - Each repo picks block-merge or report-only via a flag, with branch protection guidance (completed 2026-09-12)
-- [ ] **Phase 19: Pipeline Validation via Branch-Target PRs** - Full pipeline proven end-to-end against seeded findings in this repo
+- [x] **Phase 19: Pipeline Validation via Branch-Target PRs** - Full pipeline proven end-to-end against seeded findings in this repo (completed 2026-09-14)
 - [ ] **Phase 20: Template Packaging and Adoption Docs** - Both consumption modes packaged and documented for rollout to the remaining repos
 
 ## Phase Details
@@ -177,7 +177,7 @@ Plans:
 - [x] 19-04-PLAN.md — Trace the seeded `eval()` finding source → Security tab entry → retained artifact (SC3), with a human confirming the rendered alert
 - [x] 19-05-PLAN.md — Flip `GATE_MODE` to blocking, prove opposite verdicts on an identical tree (SC2), and restore unconditionally (D-09)
 - [x] 19-06-PLAN.md — Open a clean PR with no fixture changes and capture SC4: five `security / …` check runs concluded success
-- [ ] 19-07-PLAN.md — D-10 merge-vs-close decision, verify from `origin/main`, and close the phase with VAL-01 complete
+- [x] 19-07-PLAN.md — D-10 merge-vs-close decision, verify from `origin/main`, and close the phase with VAL-01 complete
 
 ### Phase 20: Template Packaging and Adoption Docs
 
@@ -218,5 +218,5 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 16. SCA Ecosystem Coverage | v2.0 | 7/7 | Complete    | 2026-09-11 |
 | 17. SARIF Upload and Artifact Retention | v2.0 | 7/7 | Complete    | 2026-09-11 |
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 8/8 | Complete   | 2026-09-12 |
-| 19. Pipeline Validation via Branch-Target PRs | v2.0 | 6/7 | In Progress|  |
+| 19. Pipeline Validation via Branch-Target PRs | v2.0 | 7/7 | Complete   | 2026-09-14 |
 | 20. Template Packaging and Adoption Docs | v2.0 | 0/? | Not started | - |

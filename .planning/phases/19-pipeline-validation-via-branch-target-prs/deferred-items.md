@@ -23,6 +23,11 @@ The measured layering is the **inverse** of what the repo documents:
 **Not actioned here:** plan 19-03 requires the branch to be exactly what 19-02 left (four paths), so the
 README must not be amended before the push. Owner: a later plan in this phase, or Phase 20.
 
+**RESOLVED 2026-09-14 by plan 19-07.** The correction was carried by PR #11 and merged into `main` as merge
+commit `b4cb207` on the operator's D-10 decision. Verified from `origin/main`:
+`git show origin/main:fixtures/README.md | grep -c 'GH013\|Push Protection'` → **4** (was **0** before the
+merge). This item is closed; it is not handed to Phase 20.
+
 ## D-19-B — Secret Scanning is eligible but disabled (found: plan 19-03, Task 1)
 
 `repos/OttawaCloudConsulting/security-platform` reports
