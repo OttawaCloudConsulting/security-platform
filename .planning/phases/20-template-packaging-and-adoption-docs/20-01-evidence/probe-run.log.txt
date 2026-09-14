@@ -1,0 +1,252 @@
+probe	Set up job	﻿2026-09-14T03:30:40.9808398Z Current runner version: '2.337.0'
+probe	Set up job	2026-09-14T03:30:40.9826012Z ##[group]Runner Image Provisioner
+probe	Set up job	2026-09-14T03:30:40.9826712Z Hosted Compute Agent
+probe	Set up job	2026-09-14T03:30:40.9827155Z Version: 20260828.587
+probe	Set up job	2026-09-14T03:30:40.9827629Z Commit: abac92662cab4cc7352de4f9f9d2e2419aad9c29
+probe	Set up job	2026-09-14T03:30:40.9828102Z Build Date: 2026-08-28T16:44:25Z
+probe	Set up job	2026-09-14T03:30:40.9828579Z Worker ID: {f75d1b98-c458-4cc4-81b1-93f99e6aa570}
+probe	Set up job	2026-09-14T03:30:40.9829079Z Azure Region: centralus
+probe	Set up job	2026-09-14T03:30:40.9829466Z ##[endgroup]
+probe	Set up job	2026-09-14T03:30:40.9830422Z ##[group]Operating System
+probe	Set up job	2026-09-14T03:30:40.9830811Z Ubuntu
+probe	Set up job	2026-09-14T03:30:40.9831221Z 24.04.5
+probe	Set up job	2026-09-14T03:30:40.9831580Z LTS
+probe	Set up job	2026-09-14T03:30:40.9832255Z ##[endgroup]
+probe	Set up job	2026-09-14T03:30:40.9832653Z ##[group]Runner Image
+probe	Set up job	2026-09-14T03:30:40.9833067Z Image: ubuntu-24.04
+probe	Set up job	2026-09-14T03:30:40.9833459Z Version: 20260907.300.1
+probe	Set up job	2026-09-14T03:30:40.9834181Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260907.300/images/ubuntu/Ubuntu2404-Readme.md
+probe	Set up job	2026-09-14T03:30:40.9835662Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260907.300
+probe	Set up job	2026-09-14T03:30:40.9836298Z ##[endgroup]
+probe	Set up job	2026-09-14T03:30:40.9837216Z ##[group]GITHUB_TOKEN Permissions
+probe	Set up job	2026-09-14T03:30:40.9839066Z Actions: read
+probe	Set up job	2026-09-14T03:30:40.9839507Z Contents: read
+probe	Set up job	2026-09-14T03:30:40.9839878Z Metadata: read
+probe	Set up job	2026-09-14T03:30:40.9840262Z SecurityEvents: write
+probe	Set up job	2026-09-14T03:30:40.9840674Z ##[endgroup]
+probe	Set up job	2026-09-14T03:30:40.9842320Z Secret source: Actions
+probe	Set up job	2026-09-14T03:30:40.9842973Z Cache mode: write
+probe	Set up job	2026-09-14T03:30:40.9843496Z Prepare workflow directory
+probe	Set up job	2026-09-14T03:30:41.0121289Z Prepare all required actions
+probe	Set up job	2026-09-14T03:30:41.0169269Z Getting action download info
+probe	Set up job	2026-09-14T03:30:41.2970040Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+probe	Set up job	2026-09-14T03:30:41.4211385Z Download action repository 'github/codeql-action@b96794f015dfd88f77b49b1c93e0fa7110f94c63' (SHA:b96794f015dfd88f77b49b1c93e0fa7110f94c63)
+probe	Set up job	2026-09-14T03:30:42.3281940Z Complete job name: probe
+probe	Checkout	﻿2026-09-14T03:30:42.3868584Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+probe	Checkout	2026-09-14T03:30:42.3869927Z with:
+probe	Checkout	2026-09-14T03:30:42.3870798Z   repository: OttawaCloudConsulting/aws-zabbix-monitoring-solution
+probe	Checkout	2026-09-14T03:30:42.3877067Z   token: ***
+probe	Checkout	2026-09-14T03:30:42.3877753Z   ssh-strict: true
+probe	Checkout	2026-09-14T03:30:42.3878414Z   ssh-user: git
+probe	Checkout	2026-09-14T03:30:42.3879097Z   persist-credentials: true
+probe	Checkout	2026-09-14T03:30:42.3879830Z   clean: true
+probe	Checkout	2026-09-14T03:30:42.3880514Z   sparse-checkout-cone-mode: true
+probe	Checkout	2026-09-14T03:30:42.3881297Z   fetch-depth: 1
+probe	Checkout	2026-09-14T03:30:42.3882023Z   fetch-tags: false
+probe	Checkout	2026-09-14T03:30:42.3882718Z   show-progress: true
+probe	Checkout	2026-09-14T03:30:42.3883376Z   lfs: false
+probe	Checkout	2026-09-14T03:30:42.3884037Z   submodules: false
+probe	Checkout	2026-09-14T03:30:42.3884749Z   set-safe-directory: true
+probe	Checkout	2026-09-14T03:30:42.3885492Z   allow-unsafe-pr-checkout: false
+probe	Checkout	2026-09-14T03:30:42.3886476Z ##[endgroup]
+probe	Checkout	2026-09-14T03:30:42.4731222Z Syncing repository: OttawaCloudConsulting/aws-zabbix-monitoring-solution
+probe	Checkout	2026-09-14T03:30:42.4734197Z ##[group]Getting Git version info
+probe	Checkout	2026-09-14T03:30:42.4735583Z Working directory is '/home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution'
+probe	Checkout	2026-09-14T03:30:42.4737536Z [command]/usr/bin/git version
+probe	Checkout	2026-09-14T03:30:42.6334104Z git version 2.55.0
+probe	Checkout	2026-09-14T03:30:42.6337252Z ##[endgroup]
+probe	Checkout	2026-09-14T03:30:42.6352736Z Temporarily overriding HOME='/home/runner/work/_temp/48a449cf-831c-47e3-959f-381e3d981fb8' before making global git config changes
+probe	Checkout	2026-09-14T03:30:42.6355529Z Adding repository directory to the temporary git global config as a safe directory
+probe	Checkout	2026-09-14T03:30:42.6360044Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution
+probe	Checkout	2026-09-14T03:30:42.6403572Z Deleting the contents of '/home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution'
+probe	Checkout	2026-09-14T03:30:42.6413048Z ##[group]Determining repository object format
+probe	Checkout	2026-09-14T03:30:42.6415290Z ##[endgroup]
+probe	Checkout	2026-09-14T03:30:42.6417270Z ##[group]Initializing the repository
+probe	Checkout	2026-09-14T03:30:42.6419311Z [command]/usr/bin/git init /home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution
+probe	Checkout	2026-09-14T03:30:42.6506305Z hint: Using 'master' as the name for the initial branch. This default branch name
+probe	Checkout	2026-09-14T03:30:42.6509526Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+probe	Checkout	2026-09-14T03:30:42.6513422Z hint: to use in all of your new repositories, which will suppress this warning,
+probe	Checkout	2026-09-14T03:30:42.6515226Z hint: call:
+probe	Checkout	2026-09-14T03:30:42.6516301Z hint:
+probe	Checkout	2026-09-14T03:30:42.6517525Z hint: 	git config --global init.defaultBranch <name>
+probe	Checkout	2026-09-14T03:30:42.6518827Z hint:
+probe	Checkout	2026-09-14T03:30:42.6520102Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+probe	Checkout	2026-09-14T03:30:42.6522474Z hint: 'development'. The just-created branch can be renamed via this command:
+probe	Checkout	2026-09-14T03:30:42.6524156Z hint:
+probe	Checkout	2026-09-14T03:30:42.6525241Z hint: 	git branch -m <name>
+probe	Checkout	2026-09-14T03:30:42.6526278Z hint:
+probe	Checkout	2026-09-14T03:30:42.6527635Z hint: Disable this message with "git config set advice.defaultBranchName false"
+probe	Checkout	2026-09-14T03:30:42.6530267Z Initialized empty Git repository in /home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution/.git/
+probe	Checkout	2026-09-14T03:30:42.6534789Z [command]/usr/bin/git remote add origin https://github.com/OttawaCloudConsulting/aws-zabbix-monitoring-solution
+probe	Checkout	2026-09-14T03:30:42.6565283Z ##[endgroup]
+probe	Checkout	2026-09-14T03:30:42.6566850Z ##[group]Disabling automatic garbage collection
+probe	Checkout	2026-09-14T03:30:42.6568074Z [command]/usr/bin/git config --local gc.auto 0
+probe	Checkout	2026-09-14T03:30:42.6588076Z ##[endgroup]
+probe	Checkout	2026-09-14T03:30:42.6590153Z ##[group]Setting up auth
+probe	Checkout	2026-09-14T03:30:42.6591362Z Removing SSH command configuration
+probe	Checkout	2026-09-14T03:30:42.6593139Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+probe	Checkout	2026-09-14T03:30:42.6610467Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+probe	Checkout	2026-09-14T03:30:42.6884747Z Removing HTTP extra header
+probe	Checkout	2026-09-14T03:30:42.6886722Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+probe	Checkout	2026-09-14T03:30:42.6907777Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+probe	Checkout	2026-09-14T03:30:42.7052592Z Removing includeIf entries pointing to credentials config files
+probe	Checkout	2026-09-14T03:30:42.7056989Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+probe	Checkout	2026-09-14T03:30:42.7073301Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+probe	Checkout	2026-09-14T03:30:42.7220456Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-bcd993e6-a736-40bc-bf97-beb4cba6c132.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+probe	Checkout	2026-09-14T03:30:42.7247557Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution/.git.path /home/runner/work/_temp/git-credentials-bcd993e6-a736-40bc-bf97-beb4cba6c132.config
+probe	Checkout	2026-09-14T03:30:42.7271035Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-bcd993e6-a736-40bc-bf97-beb4cba6c132.config
+probe	Checkout	2026-09-14T03:30:42.7298210Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-bcd993e6-a736-40bc-bf97-beb4cba6c132.config
+probe	Checkout	2026-09-14T03:30:42.8756832Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-bcd993e6-a736-40bc-bf97-beb4cba6c132.config
+probe	Checkout	2026-09-14T03:30:42.8774421Z ##[endgroup]
+probe	Checkout	2026-09-14T03:30:42.8775839Z ##[group]Fetching the repository
+probe	Checkout	2026-09-14T03:30:42.8782037Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +c0c797136e4077f4687fb4ce6e9a3da2a6acc1f9:refs/remotes/origin/chore/phase-20-sarif-capability-probe
+probe	Checkout	2026-09-14T03:30:43.9195526Z From https://github.com/OttawaCloudConsulting/aws-zabbix-monitoring-solution
+probe	Checkout	2026-09-14T03:30:43.9197027Z  * [new ref]         c0c797136e4077f4687fb4ce6e9a3da2a6acc1f9 -> origin/chore/phase-20-sarif-capability-probe
+probe	Checkout	2026-09-14T03:30:43.9204933Z [command]/usr/bin/git branch --list --remote origin/chore/phase-20-sarif-capability-probe
+probe	Checkout	2026-09-14T03:30:43.9226164Z   origin/chore/phase-20-sarif-capability-probe
+probe	Checkout	2026-09-14T03:30:43.9235448Z [command]/usr/bin/git rev-parse refs/remotes/origin/chore/phase-20-sarif-capability-probe
+probe	Checkout	2026-09-14T03:30:43.9251967Z c0c797136e4077f4687fb4ce6e9a3da2a6acc1f9
+probe	Checkout	2026-09-14T03:30:43.9260180Z ##[endgroup]
+probe	Checkout	2026-09-14T03:30:43.9265054Z ##[group]Determining the checkout info
+probe	Checkout	2026-09-14T03:30:43.9266144Z ##[endgroup]
+probe	Checkout	2026-09-14T03:30:43.9266818Z [command]/usr/bin/git sparse-checkout disable
+probe	Checkout	2026-09-14T03:30:43.9301820Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+probe	Checkout	2026-09-14T03:30:43.9323973Z ##[group]Checking out the ref
+probe	Checkout	2026-09-14T03:30:43.9325384Z [command]/usr/bin/git checkout --progress --force -B chore/phase-20-sarif-capability-probe refs/remotes/origin/chore/phase-20-sarif-capability-probe
+probe	Checkout	2026-09-14T03:30:44.1026762Z Switched to a new branch 'chore/phase-20-sarif-capability-probe'
+probe	Checkout	2026-09-14T03:30:44.1031824Z branch 'chore/phase-20-sarif-capability-probe' set up to track 'origin/chore/phase-20-sarif-capability-probe'.
+probe	Checkout	2026-09-14T03:30:44.1082962Z ##[endgroup]
+probe	Checkout	2026-09-14T03:30:44.1112577Z [command]/usr/bin/git log -1 --format=%H
+probe	Checkout	2026-09-14T03:30:44.1113920Z c0c797136e4077f4687fb4ce6e9a3da2a6acc1f9
+probe	Write synthetic SARIF	﻿2026-09-14T03:30:44.1287926Z ##[group]Run cat > phase20-probe.sarif <<'SARIF'
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1288456Z ^[[36;1mcat > phase20-probe.sarif <<'SARIF'^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1288744Z ^[[36;1m{^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1289225Z ^[[36;1m  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1289735Z ^[[36;1m  "version": "2.1.0",^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1289991Z ^[[36;1m  "runs": [^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1290246Z ^[[36;1m    {^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1290478Z ^[[36;1m      "tool": {^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1290751Z ^[[36;1m        "driver": {^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1291060Z ^[[36;1m          "name": "phase20-probe",^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1291471Z ^[[36;1m          "informationUri": "https://github.com/OttawaCloudConsulting/security_solution",^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1292247Z ^[[36;1m          "version": "1.0.0",^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1292639Z ^[[36;1m          "rules": []^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1292909Z ^[[36;1m        }^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1293146Z ^[[36;1m      },^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1293484Z ^[[36;1m      "results": [^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1293743Z ^[[36;1m        {^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1294017Z ^[[36;1m          "ruleId": "phase20-probe-rule",^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1294303Z ^[[36;1m          "message": {^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1294710Z ^[[36;1m            "text": "Synthetic phase 20 capability probe result. Not a real finding."^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1295070Z ^[[36;1m          },^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1295317Z ^[[36;1m          "locations": [^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1295588Z ^[[36;1m            {^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1295828Z ^[[36;1m              "physicalLocation": {^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1296142Z ^[[36;1m                "artifactLocation": {^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1296430Z ^[[36;1m                  "uri": "README.md"^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1296749Z ^[[36;1m                },^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1297064Z ^[[36;1m                "region": {^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1297317Z ^[[36;1m                  "startLine": 1^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1297600Z ^[[36;1m                }^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1297964Z ^[[36;1m              }^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1298213Z ^[[36;1m            }^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1298474Z ^[[36;1m          ]^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1298697Z ^[[36;1m        }^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1298926Z ^[[36;1m      ]^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1299146Z ^[[36;1m    }^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1299391Z ^[[36;1m  ]^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1299631Z ^[[36;1m}^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1299845Z ^[[36;1mSARIF^[[0m
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1324028Z shell: /usr/bin/bash -e {0}
+probe	Write synthetic SARIF	2026-09-14T03:30:44.1324385Z ##[endgroup]
+probe	Upload SARIF	﻿2026-09-14T03:30:44.1463775Z ##[group]Run github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63
+probe	Upload SARIF	2026-09-14T03:30:44.1464248Z with:
+probe	Upload SARIF	2026-09-14T03:30:44.1464542Z   sarif_file: phase20-probe.sarif
+probe	Upload SARIF	2026-09-14T03:30:44.1464831Z   category: phase20-probe
+probe	Upload SARIF	2026-09-14T03:30:44.1465235Z   checkout_path: /home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution
+probe	Upload SARIF	2026-09-14T03:30:44.1467275Z   token: ***
+probe	Upload SARIF	2026-09-14T03:30:44.1467511Z   matrix: null
+probe	Upload SARIF	2026-09-14T03:30:44.1467779Z   wait-for-processing: true
+probe	Upload SARIF	2026-09-14T03:30:44.1468029Z ##[endgroup]
+probe	Upload SARIF	2026-09-14T03:30:44.3313222Z Job run UUID is ac4a9ea2-4577-468c-b5ee-1e20a8287138.
+probe	Upload SARIF	2026-09-14T03:30:59.4405589Z ##[warning]This run of the CodeQL Action does not have permission to access the CodeQL Action API endpoints. This could be because the Action is running on a pull request from a fork. If not, please ensure the workflow has at least the 'security-events: read' permission. Details: Code scanning is not enabled for this repository. Please enable code scanning in the repository settings. - https://docs.github.com/rest
+probe	Upload SARIF	2026-09-14T03:30:59.4417993Z Post-processing sarif files: ["phase20-probe.sarif"]
+probe	Upload SARIF	2026-09-14T03:30:59.4418532Z Validating phase20-probe.sarif
+probe	Upload SARIF	2026-09-14T03:30:59.4483385Z Adding fingerprints to SARIF file. See https://docs.github.com/en/code-security/reference/code-scanning/sarif-support-for-code-scanning#data-for-preventing-duplicated-alerts for more information.
+probe	Upload SARIF	2026-09-14T03:30:59.4743060Z ##[group]Uploading code scanning results
+probe	Upload SARIF	2026-09-14T03:30:59.4920709Z Uploading results
+probe	Upload SARIF	2026-09-14T03:31:14.0550922Z ##[warning]Code scanning is not enabled for this repository. Please enable code scanning in the repository settings. - https://docs.github.com/rest
+probe	Upload SARIF	2026-09-14T03:31:14.0557913Z ##[error]Please verify that the necessary features are enabled: Code scanning is not enabled for this repository. Please enable code scanning in the repository settings. - https://docs.github.com/rest
+probe	Upload SARIF	2026-09-14T03:31:28.6116910Z ##[warning]This run of the CodeQL Action does not have permission to access the CodeQL Action API endpoints. This could be because the Action is running on a pull request from a fork. If not, please ensure the workflow has at least the 'security-events: read' permission. Details: Code scanning is not enabled for this repository. Please enable code scanning in the repository settings. - https://docs.github.com/rest
+probe	Print upload outcome	﻿2026-09-14T03:31:28.6240560Z ##[group]Run echo "upload outcome=failure"
+probe	Print upload outcome	2026-09-14T03:31:28.6240900Z ^[[36;1mecho "upload outcome=failure"^[[0m
+probe	Print upload outcome	2026-09-14T03:31:28.6260184Z shell: /usr/bin/bash -e {0}
+probe	Print upload outcome	2026-09-14T03:31:28.6260445Z env:
+probe	Print upload outcome	2026-09-14T03:31:28.6260729Z   CODEQL_ACTION_JOB_RUN_UUID: ac4a9ea2-4577-468c-b5ee-1e20a8287138
+probe	Print upload outcome	2026-09-14T03:31:28.6261053Z   CODEQL_ACTION_FEATURE_MULTI_LANGUAGE: false
+probe	Print upload outcome	2026-09-14T03:31:28.6261337Z   CODEQL_ACTION_FEATURE_SANDWICH: false
+probe	Print upload outcome	2026-09-14T03:31:28.6261627Z   CODEQL_ACTION_FEATURE_SARIF_COMBINE: true
+probe	Print upload outcome	2026-09-14T03:31:28.6262055Z   CODEQL_ACTION_FEATURE_WILL_UPLOAD: true
+probe	Print upload outcome	2026-09-14T03:31:28.6262317Z   CODEQL_ACTION_VERSION: 4.38.0
+probe	Print upload outcome	2026-09-14T03:31:28.6262700Z   CODEQL_ACTION_ANALYSIS_KEY: .github/workflows/sarif-capability-probe.yml:probe
+probe	Print upload outcome	2026-09-14T03:31:28.6263050Z   CODEQL_WORKFLOW_STARTED_AT: 2026-09-14T03:30:44.328Z
+probe	Print upload outcome	2026-09-14T03:31:28.6263462Z   CODEQL_UPLOAD_SARIF_PHASE20_PROBE__PHASE20_PROBE: CODEQL_UPLOAD_SARIF_PHASE20_PROBE__PHASE20_PROBE
+probe	Print upload outcome	2026-09-14T03:31:28.6263868Z   CODEQL_ACTION_JOB_STATUS: JOB_STATUS_CONFIGURATION_ERROR
+probe	Print upload outcome	2026-09-14T03:31:28.6264370Z ##[endgroup]
+probe	Print upload outcome	2026-09-14T03:31:28.6299926Z upload outcome=failure
+probe	Read code-scanning analyses in-workflow	﻿2026-09-14T03:31:28.6326695Z ##[group]Run echo "--- in-workflow analyses read (ref=refs/heads/chore/phase-20-sarif-capability-probe) ---"
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6327259Z ^[[36;1mecho "--- in-workflow analyses read (ref=refs/heads/chore/phase-20-sarif-capability-probe) ---"^[[0m
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6328034Z ^[[36;1mgh api "repos/OttawaCloudConsulting/aws-zabbix-monitoring-solution/code-scanning/analyses?ref=refs/heads/chore/phase-20-sarif-capability-probe" || echo "in-workflow analyses read FAILED (exit $?)"^[[0m
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6343882Z shell: /usr/bin/bash -e {0}
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6344152Z env:
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6344464Z   CODEQL_ACTION_JOB_RUN_UUID: ac4a9ea2-4577-468c-b5ee-1e20a8287138
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6344806Z   CODEQL_ACTION_FEATURE_MULTI_LANGUAGE: false
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6345069Z   CODEQL_ACTION_FEATURE_SANDWICH: false
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6345356Z   CODEQL_ACTION_FEATURE_SARIF_COMBINE: true
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6345631Z   CODEQL_ACTION_FEATURE_WILL_UPLOAD: true
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6345889Z   CODEQL_ACTION_VERSION: 4.38.0
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6346332Z   CODEQL_ACTION_ANALYSIS_KEY: .github/workflows/sarif-capability-probe.yml:probe
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6346694Z   CODEQL_WORKFLOW_STARTED_AT: 2026-09-14T03:30:44.328Z
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6347089Z   CODEQL_UPLOAD_SARIF_PHASE20_PROBE__PHASE20_PROBE: CODEQL_UPLOAD_SARIF_PHASE20_PROBE__PHASE20_PROBE
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6347509Z   CODEQL_ACTION_JOB_STATUS: JOB_STATUS_CONFIGURATION_ERROR
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6349237Z   GH_TOKEN: ***
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6349446Z ##[endgroup]
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:28.6378974Z --- in-workflow analyses read (ref=refs/heads/chore/phase-20-sarif-capability-probe) ---
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:29.9036844Z gh: Code scanning is not enabled for this repository. Please enable code scanning in the repository settings. (HTTP 403)
+probe	Read code-scanning analyses in-workflow	2026-09-14T03:31:29.9048651Z {"message":"Code scanning is not enabled for this repository. Please enable code scanning in the repository settings.","documentation_url":"https://docs.github.com/rest/code-scanning/code-scanning#list-code-scanning-analyses-for-a-repository","status":"403"}in-workflow analyses read FAILED (exit 1)
+probe	Post Upload SARIF	﻿2026-09-14T03:31:29.9121418Z Post job cleanup.
+probe	Post Upload SARIF	2026-09-14T03:31:30.0790806Z ##[group]Uploading combined SARIF debug artifact
+probe	Post Upload SARIF	2026-09-14T03:31:30.0792196Z ##[endgroup]
+probe	Post Checkout	﻿2026-09-14T03:31:30.0905822Z Post job cleanup.
+probe	Post Checkout	2026-09-14T03:31:30.1732511Z [command]/usr/bin/git version
+probe	Post Checkout	2026-09-14T03:31:30.1772768Z git version 2.55.0
+probe	Post Checkout	2026-09-14T03:31:30.1853160Z Temporarily overriding HOME='/home/runner/work/_temp/2f930922-877a-457f-844e-97768b3ccfde' before making global git config changes
+probe	Post Checkout	2026-09-14T03:31:30.1872528Z Adding repository directory to the temporary git global config as a safe directory
+probe	Post Checkout	2026-09-14T03:31:30.1882921Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution
+probe	Post Checkout	2026-09-14T03:31:30.1889354Z Removing SSH command configuration
+probe	Post Checkout	2026-09-14T03:31:30.1889977Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+probe	Post Checkout	2026-09-14T03:31:30.1891474Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+probe	Post Checkout	2026-09-14T03:31:30.2103351Z Removing HTTP extra header
+probe	Post Checkout	2026-09-14T03:31:30.2104212Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+probe	Post Checkout	2026-09-14T03:31:30.2144748Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+probe	Post Checkout	2026-09-14T03:31:30.2343134Z Removing includeIf entries pointing to credentials config files
+probe	Post Checkout	2026-09-14T03:31:30.2372354Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+probe	Post Checkout	2026-09-14T03:31:30.2392539Z includeif.gitdir:/home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution/.git.path
+probe	Post Checkout	2026-09-14T03:31:30.2393846Z includeif.gitdir:/home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution/.git/worktrees/*.path
+probe	Post Checkout	2026-09-14T03:31:30.2402445Z includeif.gitdir:/github/workspace/.git.path
+probe	Post Checkout	2026-09-14T03:31:30.2418994Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+probe	Post Checkout	2026-09-14T03:31:30.2462732Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution/.git.path
+probe	Post Checkout	2026-09-14T03:31:30.2467197Z /home/runner/work/_temp/git-credentials-bcd993e6-a736-40bc-bf97-beb4cba6c132.config
+probe	Post Checkout	2026-09-14T03:31:30.2512964Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-bcd993e6\-a736\-40bc\-bf97\-beb4cba6c132\.config
+probe	Post Checkout	2026-09-14T03:31:30.2520724Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution/.git/worktrees/*.path
+probe	Post Checkout	2026-09-14T03:31:30.2522019Z /home/runner/work/_temp/git-credentials-bcd993e6-a736-40bc-bf97-beb4cba6c132.config
+probe	Post Checkout	2026-09-14T03:31:30.2535522Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/aws-zabbix-monitoring-solution/aws-zabbix-monitoring-solution/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-bcd993e6\-a736\-40bc\-bf97\-beb4cba6c132\.config
+probe	Post Checkout	2026-09-14T03:31:30.2542872Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+probe	Post Checkout	2026-09-14T03:31:30.2543636Z /github/runner_temp/git-credentials-bcd993e6-a736-40bc-bf97-beb4cba6c132.config
+probe	Post Checkout	2026-09-14T03:31:30.2545113Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-bcd993e6\-a736\-40bc\-bf97\-beb4cba6c132\.config
+probe	Post Checkout	2026-09-14T03:31:30.2569097Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+probe	Post Checkout	2026-09-14T03:31:30.2578200Z /github/runner_temp/git-credentials-bcd993e6-a736-40bc-bf97-beb4cba6c132.config
+probe	Post Checkout	2026-09-14T03:31:30.2585548Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-bcd993e6\-a736\-40bc\-bf97\-beb4cba6c132\.config
+probe	Post Checkout	2026-09-14T03:31:30.2604690Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+probe	Post Checkout	2026-09-14T03:31:30.2733169Z Removing credentials config '/home/runner/work/_temp/git-credentials-bcd993e6-a736-40bc-bf97-beb4cba6c132.config'
+probe	Complete job	﻿2026-09-14T03:31:30.2828753Z Cleaning up orphan processes
