@@ -14,7 +14,7 @@ requires:
     provides: "SC1 and SC3 closed"
 provides:
   - "SC4 MEASURED: PR #12 — the clean-PR probe — five security / … check runs ALL success on head 9483ba5, run 34792868246"
-  - "GATE_MODE verified ABSENT at FOUR separate reads, two of them bracketing the run itself, each with both the empty-list and the REST-404 proof"
+  - "GATE_MODE verified ABSENT at FOUR separate reads — reads 1 and 3 bracket the run, read 2 is CONCURRENT with four jobs' gate_mode resolution — each with both the empty-list and the REST-404 proof"
   - "The POST-merge clean-PR steady state: semgrep 8 total / 3 on fixtures/vulnerable.py; gitleaks 11 total / 2 on fixtures/secret.env"
   - "The full non-zero finding set beside the green verdict: checkov 14 failed, trivy-fs 6, trivy-image 58, tflint 3, npm 2, pip-audit 4 deps / 46 vulns"
   - "PR #12 CLOSED, not merged; PR #11 left OPEN and untouched at 426c84c for plan 07"
@@ -39,7 +39,7 @@ key-decisions:
   - "SC4 is recorded as FIVE security / … CHECK RUNS CONCLUDING success — never as zero findings. Zero findings is impossible in this repository: fixtures/ is permanent and lives on main, so every PR checks out a deliberately vulnerable tree. The jobs are green because report-only sets continue-on-error: true on every scan step."
   - "The clean branch was cut from origin/main (80e91de) and changes exactly ONE non-fixture file, the repo-root README.md. Manufacturing a clean branch by deleting fixtures was explicitly forbidden and was not done — git diff origin/main -- fixtures/ .github/ scripts/ is empty."
   - "fixtures/README.md was deliberately NOT touched. PR #11 carries an open change to that exact file (the D-19-A correction); editing it here would have created a conflict between two open PRs for no reason."
-  - "GATE_MODE was read FOUR times, not once, and each read carries BOTH proofs — the empty gh variable list AND the positive REST 404. Two of the four bracket the run itself (00:29:52Z before it started scanning, 00:31:25Z after it completed), so the at-run-time claim is bracketed rather than inferred."
+  - "GATE_MODE was read FOUR times, not once, and each read carries BOTH proofs — the empty gh variable list AND the positive REST 404. Reads 1 (00:28:08Z) and 3 (00:31:25Z) BRACKET the run (created 00:29:47Z, completed 00:30:38Z), and read 2 (00:29:52Z) is CONCURRENT with four of the five jobs' Validate gate_mode step, so the at-run-time claim is bracketed and witnessed rather than inferred."
   - "Pushed WITHOUT --no-verify, following 19-05's deviation 2. The acceptance criterion asks for the hook's ACTUAL behaviour; a bypassed hook produces no observation. Both hooks Passed and GH013 did not fire."
   - "PR #12 was CLOSED, not merged — its README line is not wanted on main. PR #11 was not touched: still OPEN, mergedAt null, closedAt null, head 426c84c, re-read at close."
   - "VAL-01 still NOT marked complete, following 19-01 through 19-05. SC4 is now measured and plan 07 owns VAL-01's closure. requirements.mark-complete was deliberately not invoked."
@@ -130,10 +130,15 @@ nothing:
 | 3 | **AT RUN TIME — after the run completed** (Task 2) | `2026-09-14T00:31:25Z` | nothing printed | **`404` Not Found** |
 | 4 | **Plan close** | `2026-09-14T00:33:03Z` | nothing printed | **`404` Not Found** |
 
-**Reads 2 and 3 bracket the run.** The run was created `00:29:47Z` and completed `00:30:38Z`; read 2 is at
-`00:29:52Z` and read 3 at `00:31:25Z`. There is no window edge inside the run, so the at-run-time absence
-is bracketed rather than inferred. Task 2's read (#3) is recorded as the at-run-time state **distinct from**
-Task 1's start-of-plan read (#1), exactly as the plan requires.
+**Reads 1 and 3 BRACKET the run, and read 2 is CONCURRENT with it.** The run was created `00:29:47Z` and
+completed `00:30:38Z`. Read 1 (`00:28:08Z`) precedes the run entirely and read 3 (`00:31:25Z`) follows its
+completion, so there is no window edge inside the run and the absence is **bracketed** rather than inferred.
+Read 2 (`00:29:52Z`) is **not** before the run started — it lands *inside* it, within the `00:29:51.9Z` to
+`00:29:53.4Z` span in which four of the five jobs resolved `gate_mode`, and ahead of Checkov's resolution at
+`00:30:11Z`. Stated precisely rather than loosely, because "read 2 bracketed the run" would be a claim the
+timestamps do not support; what read 2 actually gives is a **witness during** gate-mode resolution, which is
+stronger evidence for the same point. Task 2's read (#3) is recorded as the at-run-time state **distinct
+from** Task 1's start-of-plan read (#1), exactly as the plan requires.
 
 ### Anchored gate-mode evidence
 
@@ -224,8 +229,20 @@ RESEARCH Pitfall 6 exactly, and it is the difference a future reader would other
 scanner when comparing this run against a pre-merge one.
 
 `Secret` reads `REDACTED` on every one of the 11 findings — `--redact` is intact on every gitleaks
-invocation. 8 of the 11 are `aws-access-token` in `.planning/` history, which is why the `File` clause in
-the assertion is load-bearing rather than decorative.
+invocation. The other **9** findings were measured on THIS run's artifact rather than carried over from
+19-03, because the `File` clause in the assertion is load-bearing rather than decorative and its
+justification deserves a current number:
+
+| Count | RuleID | File |
+|---|---|---|
+| 5 | `aws-access-token` | `.planning/phases/05-secrets-detection-gate/05-02-SUMMARY.md` |
+| 2 | `aws-access-token` | `.planning/phases/05-secrets-detection-gate/05-VERIFICATION.md` |
+| 1 | `aws-access-token` | `.planning/STATE.md` |
+| 1 | `discord-api-token` | `.claude/gsd-file-manifest.json` |
+
+**8 of the 11 are `aws-access-token` in `.planning/` history** — which matches 19-03's figure exactly, and
+is now a measurement of this run rather than an inherited one. A count- or non-empty-based check would be
+satisfied by those 9 alone, which is precisely why the assertion ANDs the total with the per-file clause.
 
 ### The ordering, and how the project arrived at it
 
@@ -492,7 +509,8 @@ STATE.md now reads `Plan: 7 of 7` with the resume file pointing at `19-07-PLAN.m
 | Check-run list never assumed to be five | `.check_runs | length` | **12** total, 5 after filtering |
 | No step skipped anywhere in the run | `runs/34792868246/jobs`, `select(.conclusion=="skipped")` | **empty result set** |
 | `GATE_MODE` absent at run time | `gh variable list` + REST at `00:31:25Z` | **nothing printed**, **HTTP `404`** |
-| `GATE_MODE` absence bracketed around the run | reads at `00:29:52Z` and `00:31:25Z` vs run `00:29:47Z`→`00:30:38Z` | bracketed |
+| `GATE_MODE` absence bracketed around the run | reads at `00:28:08Z` and `00:31:25Z` vs run `00:29:47Z`→`00:30:38Z` | **bracketed** (reads 1 and 3) |
+| `GATE_MODE` absence witnessed DURING gate-mode resolution | read at `00:29:52Z` vs four jobs resolving `00:29:51.9Z`–`00:29:53.4Z` | **concurrent** (read 2) — not a bracket, stated as such |
 | Anchored gate-mode counts | greps on the saved log | **report-only=5, blocking=0** |
 | Semgrep non-zero, and non-zero on `vulnerable.py` | plan's Python assertion (exits 3 if either is 0) | **8 / 3**, rc=**0** |
 | Gitleaks non-zero, and non-zero on `secret.env` | plan's Python assertion (exits 3 if either is 0) | **11 / 2**, rc=**0** |
