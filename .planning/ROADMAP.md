@@ -45,7 +45,7 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full phase details.
 - [x] **Phase 17: SARIF Upload and Artifact Retention** - Findings reach the GitHub Security tab and persist as JSON artifacts (completed 2026-09-11)
 - [x] **Phase 18: Configurable Gate Mode and Branch Protection** - Each repo picks block-merge or report-only via a flag, with branch protection guidance (completed 2026-09-12)
 - [x] **Phase 19: Pipeline Validation via Branch-Target PRs** - Full pipeline proven end-to-end against seeded findings in this repo (completed 2026-09-14)
-- [ ] **Phase 20: Template Packaging and Adoption Docs** - Both consumption modes packaged and documented for rollout to the remaining repos
+- [x] **Phase 20: Template Packaging and Adoption Docs** - Both consumption modes packaged and documented for rollout to the remaining repos (completed 2026-09-14)
 
 ## Phase Details
 
@@ -186,28 +186,28 @@ Plans:
 **Requirements**: DIST-06, DIST-07, DIST-08
 **Success Criteria** (what must be TRUE):
 
-  1. A copy-paste workflow template exists with every per-repo substitution clearly marked, and dropping it into a repo produces a working scan run.
-  2. Another repo in the org can call the workflow via `uses: OCC-github/security_solution/.github/workflows/<name>.yml@<ref>` against a stable published ref.
-  3. Adoption docs walk through both consumption modes end to end, covering gate-mode selection, branch protection setup, and Dependabot wiring.
-  4. Docs state which scan jobs apply to which repo types and how to disable the ones that do not apply.
+  1. A copy-paste workflow template exists with every per-repo substitution clearly marked, and dropping it into a repo produces a working scan run. **Evidence:** PR #12 on `terraform-pipelines` (Mode A copy-paste), run `34884582425`, five `security / …` checks concluded `success` (20-10-SUMMARY.md).
+  2. Another repo can call the workflow via `uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@<ref>` against a stable published ref (corrected per the D-01 amendment and RESEARCH C-1 — the org identifier this criterion originally named was never a real GitHub account, org or user lookup both 404). **Evidence:** PR #13 on `terraform-pipelines` (Mode B `uses:` reference), run `34885287142`, `referenced_workflows[0].sha` resolved to `cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef` — the exact commit both `v1` and `v1.0.0` point to (20-07-SUMMARY.md, 20-10-SUMMARY.md).
+  3. Adoption docs walk through both consumption modes end to end, covering gate-mode selection, branch protection setup, and Dependabot wiring. **Evidence:** `docs/adoption-guide.md` sections 1-13, corrected against all three pilot runs and passing its own standing gate, `bash scripts/check-adoption-guide.sh` (15/15 PASS) (20-08-SUMMARY.md, 20-09-SUMMARY.md, 20-12-SUMMARY.md).
+  4. Docs state which scan jobs apply to which repo types and how to disable the ones that do not apply. **Evidence:** `docs/adoption-guide.md`'s applicability matrix and removal recipe (section 10), and the four measured `SKIP:`/`FOUND` detect-step lines quoted verbatim from live runs on both pilots (20-03-SUMMARY.md, 20-10-SUMMARY.md, 20-11-SUMMARY.md).
 
 **Plans**: 13 plans
 
 Plans:
 
-- [ ] 20-01-PLAN.md — Confirm pilot repos (Q4), measure whether upload-sarif works on a private repo (A1), decide the Q2 disposition
-- [ ] 20-02-PLAN.md — Wave 0 gates: detector-parity + Dockerfile-pathspec harness in the host repo, adoption-guide invariant gate here; both observed red
-- [ ] 20-03-PLAN.md — Portability pass P-1..P-6 on the canonical `security.yml`: inline the three detectors, make the container job Dockerfile-conditional, correct the falsified comments
-- [ ] 20-04-PLAN.md — Apply the Q2 capability guard, add the DIST-06 adoption banners, correct the stale comments in `pr-security.yml` and `dependabot.yml`
-- [ ] 20-05-PLAN.md — Delete the stale third template (`cicd/.github/workflows/security.yml`, `cicd/renovate.json`), correct `cicd/README.md` and the host front-page README
-- [ ] 20-06-PLAN.md — Live proof PR on the canonical host: five concluding checks, per-scanner comparison against the Phase 19 baseline, operator merge + tag authorisation
-- [ ] 20-07-PLAN.md — Publish `v1.0.0` (annotated) and `v1` (lightweight, moving) plus the release; prove both modes' refs resolve byte-identically
-- [ ] 20-08-PLAN.md — `docs/adoption-guide.md` sections 1-6: audience and outcome, preflight with expected output, mode decision table, Mode A, Mode B, first run
-- [ ] 20-09-PLAN.md — `docs/adoption-guide.md` sections 7-13: gate mode, branch protection, Dependabot, applicability matrix and removal recipe, private repos, troubleshooting, cross-references
-- [ ] 20-10-PLAN.md — Public pilot: Mode A (SC1) and Mode B (SC2) live runs following the guide, plus a write-nothing branch-protection dry run
-- [ ] 20-11-PLAN.md — Private pilot: observe what a private consumer sees end to end and confirm the capability guard's actual effect
-- [ ] 20-12-PLAN.md — Correct the guide against the three pilot runs; retitle the blueprint's illustrative workflow section (Q3) and record the structure facts in CLAUDE.md
-- [ ] 20-13-PLAN.md — ADR-018, ADR index row, correct the dead `OCC-github` path in ROADMAP/REQUIREMENTS, mark DIST-06/07/08 complete, decide the pilot PRs' fate
+- [x] 20-01-PLAN.md — Confirm pilot repos (Q4), measure whether upload-sarif works on a private repo (A1), decide the Q2 disposition
+- [x] 20-02-PLAN.md — Wave 0 gates: detector-parity + Dockerfile-pathspec harness in the host repo, adoption-guide invariant gate here; both observed red
+- [x] 20-03-PLAN.md — Portability pass P-1..P-6 on the canonical `security.yml`: inline the three detectors, make the container job Dockerfile-conditional, correct the falsified comments
+- [x] 20-04-PLAN.md — Apply the Q2 capability guard, add the DIST-06 adoption banners, correct the stale comments in `pr-security.yml` and `dependabot.yml`
+- [x] 20-05-PLAN.md — Delete the stale third template (`cicd/.github/workflows/security.yml`, `cicd/renovate.json`), correct `cicd/README.md` and the host front-page README
+- [x] 20-06-PLAN.md — Live proof PR on the canonical host: five concluding checks, per-scanner comparison against the Phase 19 baseline, operator merge + tag authorisation
+- [x] 20-07-PLAN.md — Publish `v1.0.0` (annotated) and `v1` (lightweight, moving) plus the release; prove both modes' refs resolve byte-identically
+- [x] 20-08-PLAN.md — `docs/adoption-guide.md` sections 1-6: audience and outcome, preflight with expected output, mode decision table, Mode A, Mode B, first run
+- [x] 20-09-PLAN.md — `docs/adoption-guide.md` sections 7-13: gate mode, branch protection, Dependabot, applicability matrix and removal recipe, private repos, troubleshooting, cross-references
+- [x] 20-10-PLAN.md — Public pilot: Mode A (SC1) and Mode B (SC2) live runs following the guide, plus a write-nothing branch-protection dry run
+- [x] 20-11-PLAN.md — Private pilot: observe what a private consumer sees end to end and confirm the capability guard's actual effect
+- [x] 20-12-PLAN.md — Correct the guide against the three pilot runs; retitle the blueprint's illustrative workflow section (Q3) and record the structure facts in CLAUDE.md
+- [x] 20-13-PLAN.md — ADR-018, ADR index row, correct the dead org-path text in ROADMAP/REQUIREMENTS, mark DIST-06/07/08 complete, decide the pilot PRs' fate
 
 ## Progress
 
@@ -235,4 +235,4 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 17. SARIF Upload and Artifact Retention | v2.0 | 7/7 | Complete    | 2026-09-11 |
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 8/8 | Complete   | 2026-09-12 |
 | 19. Pipeline Validation via Branch-Target PRs | v2.0 | 7/7 | Complete   | 2026-09-14 |
-| 20. Template Packaging and Adoption Docs | v2.0 | 0/13 | Planned | - |
+| 20. Template Packaging and Adoption Docs | v2.0 | 13/13 | Complete | 2026-09-14 |

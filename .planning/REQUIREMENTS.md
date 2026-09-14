@@ -23,9 +23,9 @@
 
 ### Distribution
 
-- [ ] **DIST-06**: Copy-paste workflow template packaged for manual adoption into a consumer repo
-- [ ] **DIST-07**: Reusable workflow callable via `uses: OCC-github/security_solution/.github/workflows/<name>.yml@ref` from other repos in the org
-- [ ] **DIST-08**: Adoption docs cover both consumption modes, written for rollout to the remaining 6+ repos
+- [x] **DIST-06**: Copy-paste workflow template packaged for manual adoption into a consumer repo
+- [x] **DIST-07**: Reusable workflow callable via `uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@<ref>` from other repos (corrected per the D-01 amendment and RESEARCH C-1 — the org identifier this requirement originally named was never a real GitHub account, org or user lookup both 404)
+- [x] **DIST-08**: Adoption docs cover both consumption modes, written for rollout to the remaining 6+ repos
 
 ### Validation
 
@@ -66,9 +66,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SCA-02 | Phase 16 | Complete |
 | SCA-03 | Phase 16 | Complete |
 | SCA-04 | Phase 15 | Complete |
-| DIST-06 | Phase 20 | Pending |
-| DIST-07 | Phase 20 | Pending |
-| DIST-08 | Phase 20 | Pending |
+| DIST-06 | Phase 20 | Complete |
+| DIST-07 | Phase 20 | Complete |
+| DIST-08 | Phase 20 | Complete |
 | VAL-01 | Phase 19 | Complete |
 
 **Coverage:**
