@@ -1453,7 +1453,24 @@ pre-commit run --all-files terraform_fmt ruff shellcheck hadolint yamllint markd
 
 ---
 
-## Complete GitHub Actions Workflow
+## Complete GitHub Actions Workflow (Illustrative — Not the Deployable Template)
+
+**This section is illustrative and is NOT the deployable template.** The canonical, live-validated
+workflow is `.github/workflows/security.yml` in
+[`OttawaCloudConsulting/security-platform`](https://github.com/OttawaCloudConsulting/security-platform),
+published at the `v1` tag. The adoption procedure for both consumption modes (copy-paste or
+reusable `workflow_call`) is [`docs/adoption-guide.md`](adoption-guide.md) — use that document, not
+this section, to actually adopt the pipeline.
+
+This illustration differs from what ships in specific, measured ways: it uses the literal
+placeholder-SHA convention rather than real pinned SHAs (deliberate per ADR-004's convention, left
+unchanged below); it passes `--config auto` to Semgrep, whereas the live workflow runs
+`--config p/default --metrics=off` against a fixed registry ruleset instead; it swallows failures
+with `|| true` in places the live workflow does not; its trigger is `on: push: branches: [main]`
+plus `pull_request`, while the canonical workflow exposes no direct trigger of its own and is
+invoked only via `workflow_call` from a thin `pull_request` caller; and it has no `workflow_call`
+interface and no `gate_mode` input at all. Do not copy this YAML into a repository expecting a
+working scan run — follow the adoption guide instead.
 
 This workflow is the primary security gate. It runs on every Pull Request (all branches) and on direct pushes to `main`. The PR trigger is the critical one — it is where Semgrep CE, Checkov, Trivy, and Grype run for the first time on a given change, and where results are surfaced to the developer and reviewer before merge. Running the same jobs on push to `main` provides a safety net for anything merged without a PR.
 
