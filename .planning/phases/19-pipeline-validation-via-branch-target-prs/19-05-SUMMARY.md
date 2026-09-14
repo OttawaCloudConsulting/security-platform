@@ -2,7 +2,7 @@
 phase: 19-pipeline-validation-via-branch-target-prs
 plan: 05
 subsystem: ci-cd
-tags: [gate-mode, blocking, report-only, pull-request, push-protection, sc2, d-09, checkpoint, halted]
+tags: [gate-mode, blocking, report-only, pull-request, push-protection, sc2, d-09, checkpoint, complete]
 
 # Dependency graph
 requires:
@@ -39,15 +39,16 @@ key-files:
     - repos/security-platform/fixtures/README.md
 
 key-decisions:
-  - "HALTED again at Task 3's blocking checkpoint, the D-09 restore CONFIRMATION. Task 2 ran to completion first; the restore is already done and verified by command, but the plan's must_haves require a human to confirm it, so the plan is not marked complete and roadmap.update-plan-progress was again NOT run."
+  - "COMPLETE. Task 3's blocking checkpoint — the D-09 restore CONFIRMATION — was answered `approved`, which is the last must_haves truth ('A human has confirmed the paired evidence and that no GATE_MODE variable remains'). Only then was roadmap.update-plan-progress run, ticking 19-05 to 5/7; the two earlier sessions withheld that tick on purpose and said so."
+  - "The plan halted TWICE at blocking checkpoints across three sessions, and neither halt was auto-approved. Task 1's authorised a repo-wide gating window before it opened; Task 3's confirmed a restore that had already happened. Both replies are recorded verbatim and both are labelled as relayed through the orchestrating agent rather than read from the operator directly."
   - "The whole set→measure→delete window ran inside ONE shell invocation, chained with ';' rather than '&&', so gh variable delete executes whatever any earlier command returns. Shell state does not persist between tool calls in this harness, so splitting the window across calls would make a session death between set and delete leave the repository permanently gating every PR — exactly T-19-20."
   - "The blocking empty commit was created BEFORE the variable was set, so no commit-time hook work happened inside the live window."
   - "All detailed measurement was done AFTER the delete. A completed run's logs, check runs, artifacts and analyses are immutable, so nothing measured needed the variable live; this cut the window to 63s against 18-05's ~2.5min precedent."
   - "Per-step evidence was taken from the jobs REST API, not from a log grep. 'Which step failed first' and 'was any post-scan step skipped' are structured fields there; run 1's near-miss (a mis-attributed annotation, then a grep-pattern artifact) was caused by reading step outcomes out of log text."
-  - "HALTED at Task 1's blocking checkpoint. auto_advance is unset and workflow._auto_chain_active is false, the plan is autonomous:false, and the checkpoint AUTHORISES a repository-wide blocking window before it opens. Auto-approving would have opened that window on the executor's own authority."
+  - "Session 1 HALTED at Task 1's blocking checkpoint, and did not auto-approve it. auto_advance was unset and workflow._auto_chain_active is false, the plan is autonomous:false, and the checkpoint AUTHORISES a repository-wide blocking window before it opens. Auto-approving would have opened that window on the executor's own authority."
   - "Pushed WITHOUT --no-verify, deliberately. The plan asked for the hook's ACTUAL behaviour rather than a prediction; bypassing it would have produced no observation. The hook ran (`Detect hardcoded secrets`) and Passed, re-confirming D-19-C at push scope for a third time."
   - "GATE_MODE was NOT set. Nothing was flipped, merged, closed, or written to the ruleset in this task."
-  - "VAL-01 NOT marked complete — following 19-01 through 19-04 and the 17-01 precedent. SC2 is not yet measured and plan 07 owns VAL-01's closure."
+  - "VAL-01 still NOT marked complete even at plan close — following 19-01 through 19-04 and the 17-01 precedent. SC2 is now measured and SC4 is not; plan 07 owns VAL-01's closure. requirements.mark-complete was deliberately not invoked."
 
 patterns-established:
   - "When the pull request an evidence chain is scoped to disappears out of band, record the disappearance as a live-read fact and rebuild the claim on a substitute whose equivalence is SHOWN (six fixture paths asserted present) rather than argued"
@@ -58,7 +59,7 @@ patterns-established:
 requirements-completed: []
 
 # Metrics
-duration: 18min (Task 1) + 14min (Task 2 and the second halt)
+duration: 18min (Task 1) + 14min (Task 2 and the second halt) + 6min (Task 3 confirmation and close)
 completed: 2026-09-14
 ---
 
@@ -79,12 +80,13 @@ exercises Phase 18 D-03's fallback terminating at the literal. The repository-wi
 **2026-09-14T00:04:10Z → 00:05:13Z, 63 seconds**, and exactly **one** run was created inside it: the
 measurement's own.
 
-**STATUS: HALTED at Task 3's blocking `checkpoint:human-verify`.** Task 1's checkpoint was authorised
-(`go`) and Task 2 ran to completion. Task 3 is the **D-09 restore CONFIRMATION** — it does not gate the
-restore, which already happened unconditionally inside Task 2; it asks a human to confirm the paired verdicts
-and that no variable remains. See [Operator Reply (Task 3) —
-PENDING](#operator-reply-task-3--pending). **PR #11 is deliberately left OPEN** — plan 07 owns its fate, and
-plan 06 needs it open.
+**STATUS: COMPLETE.** Both blocking checkpoints were answered: Task 1 with `go` (authorising the window
+before it opened) and Task 3 with **`approved`** (confirming the paired verdicts and the restore). Task 3 was
+the **D-09 restore CONFIRMATION** — it did not gate the restore, which had already happened unconditionally
+inside Task 2; it asked a human to confirm the paired verdicts and that no variable remains. See [Operator
+Reply (Task 3) — RECEIVED](#operator-reply-task-3--received). **PR #11 is deliberately left OPEN** — plan 07
+owns its fate, and plan 06 needs it open. Re-read at close: `state: OPEN`, `mergedAt: null`,
+`closedAt: null`, head `426c84c`.
 
 ## The deviation this plan exists to absorb — PR #10, read live
 
@@ -391,8 +393,8 @@ obeyed: PR #11 is `OPEN` and `MERGEABLE` at the end of this plan.
 **Provenance, stated rather than blurred.** Both the `go` and the leave-open instruction reached this
 executor **relayed through the orchestrating agent's prompt**, not read by this executor from the operator
 directly. They are recorded verbatim as received. The paired-evidence confirmation that Task 3 asks for is a
-separate signal and has **not** been received — see [Operator Reply (Task 3) —
-PENDING](#operator-reply-task-3--pending).
+separate signal, given in a later session and recorded separately — see [Operator Reply (Task 3) —
+RECEIVED](#operator-reply-task-3--received).
 
 **Why this was not auto-approved.** `.planning/config.json` has `workflow._auto_chain_active: false` and no
 `workflow.auto_advance`; the plan is `autonomous: false`; and the orchestrator instructed a clean halt at any
@@ -683,7 +685,7 @@ command looks like; the explicit `404` from the REST endpoint is the positive fo
 | PR #11 not merged, not closed | `gh pr view 11 --json state,mergeable` | **`OPEN`**, `MERGEABLE`, head `426c84c` |
 | Stale local branch `feature/phase-19-pipeline-validation` | untouched | still at `d8bd09b` |
 
-## Operator Reply (Task 3) — PENDING
+## Operator Reply (Task 3) — RECEIVED
 
 Task 3 is a second `checkpoint:human-verify` with `gate="blocking"`. **It does not gate the restore** — the
 `gh variable delete` already ran, unconditionally, inside Task 2, precisely so that an unanswered prompt
@@ -692,17 +694,23 @@ verdicts.
 
 | Field | Value |
 |---|---|
-| What is being asked | Confirmation that the paired verdicts are real and that no `GATE_MODE` variable remains |
-| What to check | One tree hash `895c1bdf` across three commits; run `34791497579` five RED; runs `34790727189` and `34791562222` five GREEN; a red job showing `gate_mode=blocking` with its upload steps still green below the red scan step; five artifacts and a populated Security tab on the red run; `gh variable list` printing nothing when the operator runs it themselves; PR #11 still OPEN |
+| What was asked | Confirmation that the paired verdicts are real and that no `GATE_MODE` variable remains |
+| What was put in front of the operator | One tree hash `895c1bdf` across three commits; run `34791497579` five RED; runs `34790727189` and `34791562222` five GREEN; a red job showing `gate_mode=blocking` with its upload steps still green below the red scan step; five artifacts and a populated Security tab on the red run; `gh variable list` printing nothing when the operator runs it themselves; PR #11 still OPEN |
 | Resume signal | `approved` to continue, or a description of what does not match |
-| **Operator reply (VERBATIM)** | **_pending — not yet received_** |
+| **Operator reply (VERBATIM)** | **`approved`** |
+
+**Provenance, stated for this reply exactly as it was for Task 1's.** The `approved` reached this executor
+**relayed through the orchestrating agent's prompt**, not read by this executor from the operator directly.
+It is recorded verbatim as received. No mismatch was reported, no condition was attached, and no instruction
+about PR #11's fate was changed — the leave-it-open instruction from Task 1 still stands and was obeyed.
 
 **Why this was not auto-approved either.** `.planning/config.json` still has
 `workflow._auto_chain_active: false` and no `workflow.auto_advance`, and the plan is `autonomous: false`. The
 plan's own `must_haves.truths` include *"A human has confirmed the paired evidence and that no GATE_MODE
 variable remains"* — a truth no executor can make true on its own behalf. The authorisation received for
-Task 1 was `go`, scoped to opening the window; it is not a confirmation of evidence that did not exist when
-it was given.
+Task 1 was `go`, scoped to opening the window; it was not a confirmation of evidence that did not exist when
+it was given. `approved` is that second, separate signal, and it is what makes the final must_haves truth
+true.
 
 ## Deviations from Plan
 
@@ -733,8 +741,10 @@ value rather than one re-derived after the blocking run has replaced it.
 
 **6. VAL-01 NOT marked complete.** The plan frontmatter lists `requirements: [VAL-01]` and the executor
 template marks listed requirements complete. Withheld, following 19-01 through 19-04 and the 17-01
-precedent: plan 07 owns VAL-01's closure, and this plan is still halted at Task 3.
-`requirements.mark-complete` was deliberately not invoked.
+precedent: plan 07 owns VAL-01's closure, and SC4 — the other half of what VAL-01 asserts — is plan 06's to
+measure. Withheld again at plan close, after `approved`: `requirements.mark-complete` was deliberately not
+invoked. `requirements-completed: []` on this SUMMARY should be read as withheld on purpose, not as a missed
+step.
 
 **7. Task 2's two pushes DID use `--no-verify`,** unlike Task 1's. The plan prescribes it there, and the
 reason the divergence does not extend to Task 2 is that the observation was already made: Task 1 ran the hook
@@ -778,10 +788,11 @@ blocking, and that the artifacts and SARIF categories would survive the red run.
 a relayed instruction to leave PR #11 open. See [Operator Reply (Task 1) —
 RECEIVED](#operator-reply-task-1--received).
 
-**Task 3 — REACHED and HALTED.** See [Operator Reply (Task 3) — PENDING](#operator-reply-task-3--pending).
-The halt is the plan working as designed; unlike Task 1's, this checkpoint gates nothing operational — the
-restore is already done and verified — so a delay here costs nothing and leaves the repository in its
-original state.
+**Task 3 — REACHED, HALTED across a second session boundary, then CONFIRMED.** The operator replied
+**`approved`**. See [Operator Reply (Task 3) — RECEIVED](#operator-reply-task-3--received). That halt was the
+plan working as designed; unlike Task 1's, this checkpoint gated nothing operational — the restore was
+already done and verified — so the delay cost nothing and left the repository in its original state
+throughout.
 
 ### Authentication gates
 
@@ -832,46 +843,60 @@ exactly like the other four. Five red under blocking was the right expectation.
 **What a resumer must NOT redo.** Do not re-run the flip: SC2 is measured and the evidence is above. Do not
 push further commits to this branch — three commits with one tree hash *are* the evidence, and a fourth adds
 nothing while risking the run set a reader has to reconcile. **Do not merge or close PR #11.** Do not touch
-the ruleset. The only outstanding item is the Task 3 operator confirmation.
+the ruleset. The Task 3 confirmation has been received (`approved`) and the bookkeeping is closed out below,
+so nothing in this plan is outstanding.
 
-### State bookkeeping at the second halt — and the instruction conflict that was NOT resolved silently
+### State bookkeeping across the two halts — the tick that was withheld twice, and why
 
-`state.record-session` was run with **named** flags per D-19-D and its `updated` array read rather than its
-`recorded` boolean: `["Last session", "Stopped At", "Resume File"]`. `state.sync` reported one change,
-`Last Activity: 2026-09-13 -> 2026-09-14`. `state.validate` returns
-`{"valid": true, "warnings": [], "drift": {}}`. STATE.md now reads:
-
-```
-Plan: 5 of 7
-Stopped at: HALTED at 19-05-PLAN.md Task 3 checkpoint (SC2 measured, GATE_MODE deleted;
-            awaiting operator confirmation of the paired verdicts)
-```
-
-`state.advance-plan` was **not** run and `requirements.mark-complete` was **not** invoked. The plan is halted
-at Task 3 of 3.
-
-**`roadmap.update-plan-progress --phase 19` was deliberately NOT run — and this contradicts an explicit
-instruction, so it is surfaced rather than decided quietly.** The orchestrating agent's resume instructions
-said to re-run it "now that this plan is genuinely complete, not reverted this time". The previous session's
-reason for reverting the tick was "SC2 has not been measured", and **that reason no longer holds** — SC2 is
-measured, in full, above. But it is not the only reason:
+At the **first** halt (Task 1) and again at the **second** (Task 3), `roadmap.update-plan-progress` was
+deliberately NOT run, the second time against an explicit instruction from the orchestrating agent — which
+was surfaced rather than decided quietly. The second session's reasoning, preserved here because the
+withholding is part of this plan's record:
 
 - Task 3 is `type="checkpoint:human-verify"` with `gate="blocking"` and the resume signal `approved`. That
-  signal has not been received. The same instructions also said, one item earlier, *"if the plan defines this
-  as another human checkpoint, stop and report"* — which is the branch that applies.
+  signal had not been received.
 - The plan's own `must_haves.truths` include **"A human has confirmed the paired evidence and that no
   GATE_MODE variable remains"**. No executor can make that truth true on its own behalf.
 - Ticking `19-05-PLAN.md` as `[x]` asserts the *plan* is complete, which is a stronger claim than "SC2 is
   captured". Both claims deserve to be readable separately, and this SUMMARY states each one plainly.
 
-`.planning/ROADMAP.md` therefore still reads `- [ ] 19-05-PLAN.md …` and `| 19. … | v2.0 | 4/7 | In
-Progress|`. **On `approved`, run `gsd-sdk query roadmap.update-plan-progress 19` — it is the single
-outstanding bookkeeping action, and there is no longer any reason to revert it.**
+**The signal has now been received**, so the condition attached to the withholding is met and the tick is
+correct. It was not run on the executor's judgement that the evidence was good enough; it was run because the
+human said `approved`.
 
-The side effect recorded at the first halt persists and is again left alone rather than hand-edited, per
-D-19-E: `state.sync` counts SUMMARY files on disk, so STATE.md's `completed_plans: 35` and its 95% progress
-bar already include this plan. Editing them would be clobbered by the next sync. The halt is instead made
-unmissable in `Stopped at`, in this SUMMARY's banner and in its title-line status.
+### State bookkeeping at close — every figure below is a command's recorded output
+
+| Command | Output |
+|---|---|
+| `gsd-sdk query roadmap.update-plan-progress --phase 19` | `{"updated":true,"phase":"19","plan_count":7,"summary_count":5,"status":"In Progress","complete":false}` |
+| `git diff .planning/ROADMAP.md` | exactly two lines: `- [ ] 19-05-PLAN.md` → `- [x]`, and the progress row `4/7` → **`5/7`**, still `In Progress` |
+| `gsd-sdk query state.advance-plan` | `{"advanced":true,"previous_plan":5,"current_plan":6,"total_plans":7}` |
+| `gsd-sdk query state.record-metric --phase 19 --plan 05 …` | `{"recorded":true,…}` — row `Phase 19 P05 \| 18min + 14min + 6min \| 3 tasks \| 1 files` |
+| `gsd-sdk query state.add-decision --summary … --phase 19` (x2) | `{"added":true,…}` each |
+| `gsd-sdk query state.record-session --stopped-at … --resume-file …` | `updated: ["Last session","Stopped At","Resume File"]` — the `updated` array read, not the `recorded` boolean (D-19-D) |
+| `gsd-sdk query state.sync` | `{"synced":true,"changes":[]}` — frontmatter already in line |
+| `gsd-sdk query state.update-progress` | `{"updated":true,"percent":95,"completed":35,"total":37}` |
+| `gsd-sdk query state.validate` | `{"valid":true,"warnings":[],"drift":{}}` |
+
+STATE.md now reads `Plan: 6 of 7` and
+`Stopped at: Completed 19-05-PLAN.md (SC2 measured, D-09 executed, operator approved)`, with the resume file
+pointing at `19-06-PLAN.md`. **`requirements.mark-complete` was still not invoked** — VAL-01 is plan 07's to
+close (deviation 6).
+
+**`--phase 19` worked, contrary to the local source.** `bin/lib/roadmap-command-router.cjs` in this repo
+passes `args[2]` positionally, which would have made `--phase` the phase name; the **installed global**
+`gsd-sdk v1.42.3` parses named flags instead, exactly as D-19-D found for the `state.*` handlers. The flag
+form was tried first per the resume instruction and returned `updated: true` with the right counts, so no
+positional fallback was needed. Recorded because the repo-local source and the executing binary disagree, and
+a future reader following the local source would get the wrong answer.
+
+Two decisions were added to STATE.md rather than left implicit, because STATE.md's Phase 19-03 note still
+says *"PR #10 is the long-lived D-05 validation PR, OPEN at head d8bd09b"* — which PR #10's out-of-band merge
+falsified. The new decision names PR #11 as the pull request 19-06 and 19-07 must use.
+
+The side effect recorded at the first halt is left alone rather than hand-edited, per D-19-E: `state.sync`
+counts SUMMARY files on disk, so STATE.md's `completed_plans: 35` and its 95% progress bar already included
+this plan while it was still halted. That is now simply correct.
 
 ## Self-Check: PASSED
 
@@ -902,9 +927,13 @@ unmissable in `Stopped at`, in this SUMMARY's banner and in its title-line statu
 | Ruleset not written | `gh api …/rules/branches/main --jq '.[].type'` | `deletion`, `non_fast_forward` |
 | PR #11 still OPEN, not merged, not closed | `gh pr view 11 --json state,mergeable` | **`OPEN`**, `MERGEABLE`, head `426c84c` |
 | `requirements-completed` still `[]` | frontmatter | PASS — withheld on purpose (deviation 6) |
-| ROADMAP deliberately NOT ticked | `grep '19-05-PLAN' .planning/ROADMAP.md` | `- [ ] 19-05-PLAN.md …`, progress row `4/7` |
+| ROADMAP ticked, after `approved` and not before | `grep '19-05-PLAN' .planning/ROADMAP.md` | **`- [x] 19-05-PLAN.md …`**, progress row **`5/7`**, `In Progress` |
+| STATE advanced past this plan | `grep '^Plan:' .planning/STATE.md` | **`Plan: 6 of 7`** |
+| PR #11 untouched at close | `gh pr view 11 --json state,mergedAt,closedAt,headRefOid` | **`OPEN`**, `mergedAt: null`, `closedAt: null`, head `426c84c` |
+| `GATE_MODE` still absent at close | `gh variable list -R …` | **nothing printed** |
+| Operator's Task 3 reply recorded verbatim | this SUMMARY, [Operator Reply (Task 3)](#operator-reply-task-3--received) | **`approved`** |
 
-Every figure in this SUMMARY was read from a command's recorded output. The one item that is not a
-measurement is the operator's Task 3 reply, which is marked **pending** rather than written on their behalf.
-Task 1's reply (`go`, plus the leave-PR-#11-open instruction) is recorded verbatim as received and explicitly
-labelled as relayed through the orchestrating agent rather than read from the operator directly.
+Every figure in this SUMMARY was read from a command's recorded output. The two items that are not
+measurements are the operator's replies — `go` at Task 1 and `approved` at Task 3 — each recorded verbatim as
+received and each explicitly labelled as relayed through the orchestrating agent rather than read from the
+operator directly. Nothing was written on the operator's behalf.

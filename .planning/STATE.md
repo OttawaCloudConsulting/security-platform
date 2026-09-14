@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: HALTED at 19-05-PLAN.md Task 3 checkpoint (SC2 measured, GATE_MODE deleted; awaiting operator confirmation of the paired verdicts)
-last_updated: "2026-09-14T00:12:02.582Z"
+stopped_at: Completed 19-05-PLAN.md (SC2 measured, D-09 executed, operator approved)
+last_updated: "2026-09-14T00:21:27.138Z"
 last_activity: 2026-09-14
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 19 (pipeline-validation-via-branch-target-prs) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-09-14
 
@@ -137,6 +137,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 19]: [19-04]: SC3 closed on BOTH halves — the eval() finding traced source line 20 -> code-scanning alert 98 -> semgrep-results.json line 20, and the operator replied 'approved' at alert 98's own html_url. — RESEARCH Q2's remedy for what cost Phase 17 a criterion: capture the full API evidence AND hand the human exactly one URL with one yes/no question, rather than offering API evidence where a UI observation was asked for. The unfiltered alerts list returning [] was recorded as a deliberate CONTROL (by design under ADR-016 D-02), not treated as a fault.
 - [Phase 19]: [19-04]: code-scanning endpoint-shape quirk — the LIST endpoint returns state:'open' for alert 98 while the SINGLE-alert endpoint code-scanning/alerts/98 returns state:null for the same alert in the same minute. — A difference in the reader, not in the finding: number, rule.id, path, start_line, ref and html_url are identical across both responses. Plan 05 re-queries alerts after the GATE_MODE flip — do not read a null state from the single-alert endpoint as drift or as an alert having been dismissed.
 - [Phase 19]: [19-04]: VAL-01 still NOT marked complete, superseding the 19-03 note. SC1 (19-03) and SC3 (19-04, both halves) are closed; SC2 is unmeasured until plan 05 and SC4 until plan 06. Plan 07 owns VAL-01's closure. — Follows the 19-01/19-02/19-03 and 17-01 precedent. requirements.mark-complete was deliberately not invoked by 19-04 — an executor or verifier reading requirements-completed: [] on 19-04-SUMMARY should read it as withheld on purpose, not as a missed step.
+- [Phase 19]: SC2 measured on PR #11, the REPLACEMENT gate-mode proof PR: one tree 895c1bdf, five security checks FAILURE under GATE_MODE=blocking (run 34791497579) and SUCCESS under report-only (runs 34790727189, 34791562222). PR #10 was merged out of band 2026-09-13T22:34:18Z (merge commit 80e91de) and its branch deleted, so STATE's earlier 'PR #10 is OPEN at d8bd09b' note is superseded — 19-06 and 19-07 must use PR #11 (OPEN, head 426c84c), not PR #10.
+- [Phase 19]: D-09 EXECUTED and human-confirmed: GATE_MODE was DELETED (not set to report-only) after a 63s repo-wide window (2026-09-14T00:04:10Z -> 00:05:13Z, exactly one run inside it). gh variable list prints nothing and the REST endpoint 404s. Required-checks adoption (Phase 18 D-07 step 3) stays deferred past this phase.
 
 ### Pending Todos
 
@@ -196,12 +198,13 @@ Carried forward from v1.1 close:
 | Phase 19 P02 | 24min | 2 tasks | 2 files |
 | Phase 19 P03 | 22min | 2 tasks | 1 files |
 | Phase 19 P04 | 11min | 2 tasks | 1 files |
+| Phase 19 P05 | 18min + 14min + 6min | 3 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-14T00:12:02.379Z
-Stopped at: HALTED at 19-05-PLAN.md Task 3 checkpoint (SC2 measured, GATE_MODE deleted; awaiting operator confirmation of the paired verdicts)
-Resume file: .planning/phases/19-pipeline-validation-via-branch-target-prs/19-05-PLAN.md
+Last session: 2026-09-14T00:21:26.811Z
+Stopped at: Completed 19-05-PLAN.md (SC2 measured, D-09 executed, operator approved)
+Resume file: .planning/phases/19-pipeline-validation-via-branch-target-prs/19-06-PLAN.md
 
 ## Operator Next Steps
 

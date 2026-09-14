@@ -175,7 +175,7 @@ Plans:
 - [x] 19-02-PLAN.md — Document both fixtures in `fixtures/README.md` and add rule-id verdict assertions to the smoke gate
 - [x] 19-03-PLAN.md — Open the validation PR under report-only and capture SC1: a named detection from each of the five jobs
 - [x] 19-04-PLAN.md — Trace the seeded `eval()` finding source → Security tab entry → retained artifact (SC3), with a human confirming the rendered alert
-- [ ] 19-05-PLAN.md — Flip `GATE_MODE` to blocking, prove opposite verdicts on an identical tree (SC2), and restore unconditionally (D-09)
+- [x] 19-05-PLAN.md — Flip `GATE_MODE` to blocking, prove opposite verdicts on an identical tree (SC2), and restore unconditionally (D-09)
 - [ ] 19-06-PLAN.md — Open a clean PR with no fixture changes and capture SC4: five `security / …` check runs concluded success
 - [ ] 19-07-PLAN.md — D-10 merge-vs-close decision, verify from `origin/main`, and close the phase with VAL-01 complete
 
@@ -218,5 +218,5 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 16. SCA Ecosystem Coverage | v2.0 | 7/7 | Complete    | 2026-09-11 |
 | 17. SARIF Upload and Artifact Retention | v2.0 | 7/7 | Complete    | 2026-09-11 |
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 8/8 | Complete   | 2026-09-12 |
-| 19. Pipeline Validation via Branch-Target PRs | v2.0 | 4/7 | In Progress|  |
+| 19. Pipeline Validation via Branch-Target PRs | v2.0 | 5/7 | In Progress|  |
 | 20. Template Packaging and Adoption Docs | v2.0 | 0/? | Not started | - |
