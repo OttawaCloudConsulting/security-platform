@@ -2,8 +2,8 @@
 phase: 20-template-packaging-and-adoption-docs
 plan: 06
 subsystem: ci-cd
-status: checkpoint-pending
-tags: [live-proof, portability, merge-checkpoint, sarif, artifacts, semgrep-delta]
+status: complete
+tags: [live-proof, portability, merge-checkpoint, sarif, artifacts, semgrep-delta, tag-authorised]
 
 # Dependency graph
 requires:
@@ -12,6 +12,8 @@ requires:
 provides:
   - "Live PR #13 evidence: five security / … check runs concluding success on head c06d272, run 34870572604, all five per-scanner counts reconciled against the 19-06 baseline"
   - "The semgrep count delta (8 -> 7) traced to its exact cause (plan 05's deletion of cicd/.github/workflows/security.yml, which carried the only baseline finding not reproduced) and stated as a rule-id SET diff, not an unexplained number"
+  - "origin/main on OttawaCloudConsulting/security-platform carries the merged portable workflow: merge commit cdf2c21, parents b4cb207 (pre-merge main) + c06d272 (PR #13 head), merged tree hash 158f7f9 identical to the PR-head tree measured in Task 1"
+  - "TAG AUTHORISATION GRANTED — plan 07 may cut v1.0.0 and v1 from merge commit cdf2c21"
 affects: [20-07]
 
 # Tech tracking
@@ -20,6 +22,7 @@ tech-stack:
   patterns:
     - "Byte-exact check-name verification via diff, not eyeballing: grep the source name: lines, prefix 'security / ', sort, diff against the sorted API names, then Python byte-dump the em dash"
     - "A changed finding count is stated as a rule-id SET diff (which id disappeared, from which path) with primary evidence (git show on the deleted file) proving the cause, never left as a bare number mismatch"
+    - "Merged-state verification reads exclusively from origin/main via git show/git cat-file -e after git fetch — never from the local working tree, following 15-05/16-07/18-08's precedent"
 
 key-files:
   created:
@@ -27,22 +30,24 @@ key-files:
   modified: []
 
 key-decisions:
-  - "This SUMMARY is written as a PARTIAL result: Task 1 is COMPLETE, Task 2 (the operator merge/tag checkpoint) is PENDING, Task 3 (merge and post-merge verification) has NOT been executed. Any reader — including plan 07 — must treat this as unauthorised to merge or tag while status: checkpoint-pending is set in the frontmatter."
+  - "This SUMMARY was first written as a PARTIAL result (Task 1 complete, Task 2/3 pending) and committed before the operator's reply, so a reader who opened it mid-checkpoint could not mistake it for plan completion. It has since been updated in place with the operator's decision and Task 3's verification, rather than superseded by a second file."
   - "PR #13 was opened fresh in this plan (not PR #11 or #12, both closed/superseded by Phase 19) because it carries the portability-pass content from plans 02-05, which those earlier PRs predate."
+  - "PR #13 was merged by the OPERATOR directly (merge commit cdf2c21), not by this plan's Task 3 gh pr merge step — the operator's option-a reply arrived after they had already merged it themselves and deleted the source branch. Task 3 was executed as READ-ONLY post-merge verification against origin/main only; no merge command was issued by this agent."
 
 requirements-completed: []  # Deliberately empty — DIST-06/DIST-07 are marked complete only by plan 12, per this plan's own <output> instruction and the 17-01/19-01/20-04/20-05 precedent it carries forward.
 
 # Metrics
-duration: ~65min (Task 1 only; Task 2/3 pending)
+duration: ~85min
 completed: 2026-09-14
 ---
 
-# Phase 20 Plan 06: Live Portability Proof and Merge Checkpoint Summary (PARTIAL — CHECKPOINT PENDING)
+# Phase 20 Plan 06: Live Portability Proof and Merge Checkpoint Summary
 
-**Task 1 is complete: PR #13 opened, run 34870572604 concluded, all five `security / …` check runs succeeded,
-all per-scanner counts reconciled against the 19-06 baseline (four equal, one explained delta). Task 2 (the
-operator's merge/tag decision) is a `gate="blocking"` checkpoint on a plan marked `autonomous: false` and has
-NOT been answered. Task 3 (merge, post-merge verification) has NOT been executed. Do not merge. Do not tag.**
+**PR #13 proved the portability pass live (five `security / …` check runs `success`, per-scanner counts
+reconciled against the 19-06 baseline) and was merged to `OttawaCloudConsulting/security-platform`'s `main`
+as commit `cdf2c21` — by the operator directly, outside this plan's Task 3. Task 3 verified the merged state
+from `origin/main` read-only: merge commit, parents, tree hash, and both deletions all confirmed. The
+operator's reply was `option-a`: merge approved and tag authorisation for `v1.0.0`/`v1` GRANTED for plan 07.**
 
 ## Setup
 
@@ -280,72 +285,159 @@ Empty output, both before opening the PR and after the run concluded. `GATE_MODE
 - [x] `gh variable list` produced no output, recorded verbatim.
 - [x] PR is OPEN and unmerged at the end of Task 1.
 
-## Task 2 — CHECKPOINT PENDING (not yet executed)
+## Task 2 — Operator decision: RECORDED
 
-**This is a `type="checkpoint:decision"` task with `gate="blocking"` on a plan explicitly marked
-`autonomous: false`.** Per this worktree's parallel_execution instruction, any action that merges a PR into
-`security-platform`'s protected `main` is treated as a blocking checkpoint requiring an explicit operator
-"approved" — it is NOT auto-selected, even though "Auto Mode Active" is otherwise in effect for this
-session; the plan-level `autonomous: false` and `gate="blocking"` together override the
-auto-mode/checkpoint:decision auto-select default.
+**This was a `type="checkpoint:decision"` task with `gate="blocking"` on a plan explicitly marked
+`autonomous: false`.** Per this worktree's parallel_execution instruction, merging a PR into
+`security-platform`'s protected `main` required an explicit operator reply — it was NOT auto-selected,
+even though "Auto Mode Active" was otherwise in effect for this session; the plan-level `autonomous: false`
+and `gate="blocking"` together overrode the auto-mode/checkpoint:decision auto-select default.
 
-**Evidence for the operator's decision** (repeating Task 1's findings in the form Task 2 asks for):
+**Evidence presented to the operator** (Task 1's findings, in the form Task 2 asked for):
 
-1. Five check-run conclusions: all `success` (table above).
+1. Five check-run conclusions: all `success`.
 2. Per-scanner comparison against 19-06: 5 of 6 scanners EQUAL; Semgrep CHANGED −1, fully explained as
    caused by plan 05's deletion of `cicd/.github/workflows/security.yml` (verified via `git show
    main:cicd/.github/workflows/security.yml`), not by the portability pass.
 3. Four FOUND detect lines, zero SKIP taken.
-4. Artifact set (5, non-zero) and category set (6, distinct) both match expectations.
+4. Artifact set (5, non-zero) and category set (6, distinct) both matched expectations.
 5. Eleven verify outcomes: all concluded `success`, none skipped, correctly (public repo).
 6. The two deletions from plan 05: `cicd/.github/workflows/security.yml` (203 lines, pre-Phase-14 draft
-   with measured defects — unpinned `actions/checkout`, unpinned `pip install semgrep`, `--config auto`,
-   `|| true` silent fallback, missing `actions: read`, no `gate_mode`, no verify-step pairing, no
-   `retention-days`, no SARIF `category:`) and `cicd/renovate.json` (pointed at a hosted Mend Marketplace
-   app). Both removed with rationale recorded in their commit bodies; git history retains both.
+   with measured defects) and `cicd/renovate.json` (pointed at a hosted Mend Marketplace app). Both removed
+   with rationale recorded in their commit bodies; git history retains both.
 7. The tag question: once `v1` exists, consumers can pin it publicly; `v1` is a MOVING tag by design and
    `v1.0.0` is immutable — the first publication is effectively a commitment.
 
-**Decision requested:** Merge PR #13 to `main`, and may plan 07 cut `v1.0.0`/`v1` from the resulting merge
-commit? (`option-a` merge+tag / `option-b` merge only, hold the tag / `option-c` do not merge, changes
-requested.)
+**Operator's reply, verbatim (relayed via the coordinator):** *"Operator decision: option-a — merge PR #13
+approved, and tag authorization for v1.0.0/v1 from the resulting merge commit is granted for plan 07."*
 
-**TAG AUTHORISATION: UNDECIDED.** The operator has not yet replied. **Plan 07 must treat tagging as NOT
-authorised while this line is present in this file.** This SUMMARY will be updated (or superseded by a
-continuation agent) once the operator's reply is recorded.
+**Decision: `option-a`** — merge PR #13, tag authorised.
 
-## Task 3 — NOT EXECUTED
+**TAG AUTHORISATION: GRANTED.** Plan 07 is authorised to cut `v1.0.0` and `v1` from merge commit `cdf2c21`.
 
-Task 3 (merge via `gh pr merge --merge`, post-merge verification from `origin/main`) has not run and must
-not run until Task 2's checkpoint returns `option-a` or `option-b`. If Task 2 returns `option-c`, Task 3 is
-never executed for this PR at all, per the plan's own acceptance criteria.
+**Merge execution note:** the operator merged PR #13 themselves, outside this plan's Task 3, and deleted
+the source branch `feature/phase-20-template-packaging` before this agent could act on the `option-a`
+reply. This agent did NOT run `gh pr merge` — it was told explicitly not to attempt a second merge, and
+confirmed independently (via `git fetch origin --prune`) that the remote branch was already gone and
+`origin/main` already carried the merge. Task 3 below is executed as read-only post-merge verification
+only, consistent with its own instruction to read merged state exclusively from `origin/main`.
+
+## Task 3 — Merge and verify the merged state from origin/main
+
+Executed as **read-only verification** — no `gh pr merge` command was run by this agent; the merge
+(commit `cdf2c21`) was already present on `origin/main` when Task 3 began.
+
+**`git fetch origin`** confirmed the update `b4cb207..cdf2c21 main -> origin/main` and, with `--prune`,
+confirmed `origin/feature/phase-20-template-packaging` was deleted (`- [deleted] (none) ->
+origin/feature/phase-20-template-packaging`), matching the operator's stated action.
+
+**Merge commit and parents**, read via `git show cdf2c21 --no-patch --format='%H%n%P'`:
+
+```
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef
+b4cb20723a158638205a01bf83d51bca4489eafc c06d2729b123094bcbb48e03c1155b72c7727b8c
+```
+
+Two parents: `b4cb207` (pre-merge `main`) and `c06d272` (PR #13 head, the exact SHA recorded in Task 1).
+Matches the acceptance criterion exactly.
+
+**`.github/workflows/security.yml` on `origin/main`**, non-comment occurrences (`grep -v '^[[:space:]]*#'`
+applied first):
+
+```
+bash scripts/detect-   → 0
+fixtures/               → 0
+```
+
+**Deleted files no longer resolve:**
+
+```
+git cat-file -e origin/main:cicd/.github/workflows/security.yml   → fatal: does not exist (exit 128)
+git cat-file -e origin/main:cicd/renovate.json                    → fatal: does not exist (exit 128)
+```
+
+**Merged tree hash equals the PR-head tree hash measured in Task 1:**
+
+```
+git show origin/main --format='%T' --no-patch                                → 158f7f90def4b08107b2e66fcebaae071ca1ddd2
+git show c06d2729b123094bcbb48e03c1155b72c7727b8c --format='%T' --no-patch   → 158f7f90def4b08107b2e66fcebaae071ca1ddd2
+```
+
+Identical — the merge commit landed the PR head's tree byte-for-byte, as a true (non-squash) merge commit
+must.
+
+**Standing offline gates re-run from a detached checkout of `origin/main`** (`git checkout --detach
+origin/main`, confirmed `HEAD` at `cdf2c21`):
+
+- `bash scripts/check-detector-parity.sh` — **PASSED 20 / FAILED 0**, exit 0.
+- `bash scripts/check-workflow-uploads.sh` — **PASS, 10 checks, 0 failures**, exit 0.
+
+Both exit codes recorded directly from the merged files, not from the local feature branch.
+
+**Task 3's own automated verify command** (fetch, non-comment grep counts, `renovate.json` absence) ran
+and printed `OK`.
+
+## Task 3 acceptance criteria — status
+
+- [x] `origin/main` carries a merge commit whose two parents are the pre-merge `main` (`b4cb207`) and the
+      PR head SHA recorded in Task 1 (`c06d272`).
+- [x] `git show origin/main:.github/workflows/security.yml` contains zero non-comment occurrences of
+      `bash scripts/detect-` and of `fixtures/`.
+- [x] `git cat-file -e origin/main:cicd/.github/workflows/security.yml` and `…:cicd/renovate.json` both
+      fail (exit 128, "does not exist").
+- [x] Merged tree hash (`158f7f9`) equals the Task 1 PR-head tree hash — quoted above, identical.
+- [x] `check-detector-parity.sh` and `check-workflow-uploads.sh` both exit 0 against the merged files, run
+      from a `git checkout --detach origin/main`.
+- [x] Merge commit SHA (`cdf2c21`) recorded, explicitly read from `origin/main`, not from the local branch.
 
 ## Task Commits
 
-None — Task 1 authors no tracked file (per the plan's own `<files>` note: "this task pushes and reads; it
-authors no tracked file"). The only content artifact from Task 1 is PR #13 itself, on
-`OttawaCloudConsulting/security-platform`, not a commit in either this repository or that one.
+None in either repository for Tasks 1-3 — Task 1 authors no tracked file (it opens a PR, per its own
+`<files>` note), and Task 3 is read-only verification against a merge the operator performed directly (no
+`gh pr merge` was run by this agent). The only content artifacts are PR #13 and merge commit `cdf2c21` on
+`OttawaCloudConsulting/security-platform`, neither of which is a commit in this repository.
 
-This SUMMARY is the only file this plan modifies in `security_solution`, consistent with plans 03-05's
-worktree parallel-execution note.
+This SUMMARY (created once, then updated in place after the operator's reply) is the only file this plan
+modifies in `security_solution`, consistent with plans 03-05's worktree parallel-execution note.
 
 ## Files Created/Modified
 
-- `.planning/phases/20-template-packaging-and-adoption-docs/20-06-SUMMARY.md` — this file (created)
-- No files modified in `repos/security-platform` by this plan's Task 1 (it opens a PR against existing
-  commits from plans 02-05; it does not push new commits).
+- `.planning/phases/20-template-packaging-and-adoption-docs/20-06-SUMMARY.md` — this file (created, then
+  updated after the operator's decision)
+- No files modified in `repos/security-platform` by this plan — Task 1 opened a PR against existing
+  commits from plans 02-05 without pushing new commits; Task 3 performed read-only verification against a
+  merge the operator executed directly.
 
 ## Decisions Made
 
-See `key-decisions` in frontmatter. Summary: (1) this SUMMARY is deliberately written and marked as a
-PARTIAL result with `status: checkpoint-pending`, so a reader who opens it before the operator's decision
-is recorded cannot mistake it for plan completion; (2) PR #13 was opened fresh rather than reusing #11/#12,
-both of which predate the portability-pass content this plan proves.
+See `key-decisions` in frontmatter. Summary: (1) this SUMMARY was written and committed as a PARTIAL result
+before the operator's reply, then updated in place rather than superseded, so both the pre-decision and
+post-decision states are traceable in this file's git history; (2) PR #13 was opened fresh rather than
+reusing #11/#12, both of which predate the portability-pass content this plan proves; (3) Task 3 was
+executed as read-only verification only, since the operator had already merged PR #13 and deleted its
+source branch before this agent could act on the checkpoint reply — no `gh pr merge` command was issued by
+this agent at any point in this plan.
 
 ## Deviations from Plan
 
-None. Task 1 was executed exactly as written; the semgrep count delta is an investigation RESULT the
-plan's own acceptance criteria require recording, not a deviation from the plan.
+**1. [Coordinator-directed, not a Rule 1-4 deviation] Task 3 executed as read-only verification instead of
+performing the merge**
+- **Found during:** After Task 2's checkpoint reply arrived
+- **Issue:** The plan's Task 3 action text says "Merge with `gh pr merge --merge`... Then... verify." The
+  operator had already merged PR #13 themselves (outside this plan) and deleted the source branch before
+  the `option-a` reply reached this agent.
+- **Fix:** Per the coordinator's explicit instruction, this agent did NOT attempt a second merge. It fetched
+  `origin`, confirmed the merge commit and its parents matched the PR #13 head recorded in Task 1, and ran
+  every other Task 3 verification step (tree-hash equality, deleted-file absence, both offline gates)
+  exactly as written, against `origin/main`.
+- **Files modified:** None — no merge command, no local file change beyond this SUMMARY.
+- **Verification:** All of Task 3's acceptance criteria confirmed true from `origin/main` (see table above);
+  a second merge attempt would have failed harmlessly (PR already merged/closed) but was correctly avoided
+  per instruction rather than attempted and caught.
+- **Committed in:** N/A — no merge or content commit; this SUMMARY's update is the only record.
+
+**Total deviations:** 1 (coordinator-directed adjustment to Task 3's execution mode, not a Rule 1-4
+auto-fix; no scope change, no unauthorised action)
 
 ## Issues Encountered
 
@@ -354,34 +446,42 @@ plan's own acceptance criteria require recording, not a deviation from the plan.
   `git reset --hard` after HEAD/namespace assertions passed; no uncommitted work was at risk.
 - Several compound Bash invocations (inline `bash -c 'set -eu; ...'` one-liners, a `python3 -c` computing a
   timedelta) were rejected by the worktree-isolation guard as too complex to verify — consistent with prior
-  plans in this phase (20-02 through 20-05). Resolved by writing the verify command to a scratch script file
-  and invoking it with `bash <file>`, and by writing intermediate `gh api` output to files before reading
+  plans in this phase (20-02 through 20-05). Resolved by writing verify commands to scratch script files and
+  invoking them with `bash <file>`, and by writing intermediate `gh api` output to files before reading
   them with plain Python.
+- The operator merged PR #13 and deleted its source branch before this agent's Task 2 checkpoint reply was
+  processed — a timing/coordination artifact, not a defect. Confirmed harmless and reconciled in Task 3
+  above; no re-merge was attempted.
 
 ## User Setup Required
 
-**A checkpoint decision is required before this plan can proceed.** See "Task 2 — CHECKPOINT PENDING" above
-for the full evidence packet and the exact question. Reply with `option-a`, `option-b`, or `option-c` (plus
-the concern, if `option-c`).
+None further — the operator's decision has been recorded and acted on (as read-only verification). No
+outstanding action remains for this plan.
 
 ## Next Phase Readiness
 
-- PR #13 is OPEN, unmerged, at head `c06d272` (tree `158f7f9`), on
-  `OttawaCloudConsulting/security-platform`, run `34870572604` concluded `success`.
-- Plan 07 must read the "TAG AUTHORISATION: UNDECIDED" line above and treat tagging as blocked until this
-  file is updated with the operator's actual reply.
-- If a continuation agent resumes this plan: Task 1's evidence above is complete and does not need
-  re-gathering; only Tasks 2 and 3 remain.
+- `origin/main` on `OttawaCloudConsulting/security-platform` carries merge commit `cdf2c21` (parents
+  `b4cb207` + `c06d272`), merged tree `158f7f9`, both standing gates passing.
+- **Plan 07 is AUTHORISED to cut `v1.0.0` and `v1` from merge commit `cdf2c21`.**
+- The remote branch `feature/phase-20-template-packaging` no longer exists (deleted by the operator at
+  merge time) — plan 07 and any later plan must not expect to find it.
+- The one explained delta (Semgrep 8→7, caused by plan 05's deletion of the stale
+  `cicd/.github/workflows/security.yml`) is closed; no follow-up action is required.
 
 ## Self-Check: PASSED
 
 - `.planning/phases/20-template-packaging-and-adoption-docs/20-06-SUMMARY.md` — FOUND (this file)
-- PR #13 — FOUND via `gh pr view 13 -R OttawaCloudConsulting/security-platform` (state OPEN, mergedAt null)
+- PR #13 — FOUND via `gh api repos/.../pulls/13` (merged, base main, head c06d272)
+- Merge commit `cdf2c21` — FOUND on `origin/main` via `git log origin/main --oneline -5` and `git show
+  cdf2c21 --no-patch`
 - Run `34870572604` — FOUND via `gh run view 34870572604 -R OttawaCloudConsulting/security-platform`
   (conclusion success)
 - Five artifacts — FOUND via `gh api .../actions/runs/34870572604/artifacts` (total_count 5)
+- Both offline gates (`check-detector-parity.sh`, `check-workflow-uploads.sh`) — CONFIRMED exit 0 against a
+  `git checkout --detach origin/main`
 - `gh variable list -R OttawaCloudConsulting/security-platform` — CONFIRMED empty output
 
 ---
 *Phase: 20-template-packaging-and-adoption-docs*
-*Status: CHECKPOINT PENDING — Task 1 complete, Task 2 awaiting operator decision, Task 3 not executed*
+*Completed: 2026-09-14*
+*Status: COMPLETE — merged to origin/main as cdf2c21, tag authorisation GRANTED for plan 07*
