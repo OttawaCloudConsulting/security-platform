@@ -33,7 +33,7 @@ stable published ref, and adoption docs covering both consumption modes
   Code scanning is not enabled for this repository`** (20-01 Task 2, run `34802848411`) — a GHAS-licensing
   gate on a private repository, not a token-scope problem: both the tolerant `upload-sarif` step and an
   in-workflow `GITHUB_TOKEN` read with `security-events: write` hit the identical error.
-- **This repository has no `docs/` tree in `security-platform`** to hold a release-notes file with a second
+- **The host repository, `security-platform`, has no `docs/` tree** to hold a release-notes file with a second
   reader, and `gate_mode` was already the only per-repo substitution point ADR-017 established — any packaging
   decision in this phase had to preserve that property rather than introduce a second one.
 
@@ -66,7 +66,8 @@ stable published ref, and adoption docs covering both consumption modes
   no such detection existed — the build step ran unconditionally and a Dockerfile-free consumer would have hit
   a hard failure, not a skip). The fix: the three ecosystem detectors (npm, Python, Terraform) inlined into
   `security.yml` itself, and the container job made conditional on a `Detect Dockerfile` step whose
-  `steps.docker.outputs.found == 'true'` output was compounded onto six downstream steps, reusing the identical
+  `steps.docker.outputs.found == 'true'` output was compounded onto the build step and the seven steps after
+  it (eight occurrences total, measured directly against the committed file in plan 03), reusing the identical
   `always() &&`-after-a-guard pattern ADR-017's own Phase 18 blocking-mode work established for a sibling
   problem. Plan 02's A4 pathspec measurement (the naive three-item Dockerfile pathspec matched a `docs/`
   decoy; the corrected five-item form did not) and plan 06's live finding-count comparison against the Phase 19
@@ -87,7 +88,7 @@ stable published ref, and adoption docs covering both consumption modes
 - **`gate_mode` remains the only per-repo substitution point and the only `workflow_call` input**, expressed in
   the consumer-facing files as a header-comment adoption banner plus a `gh variable set GATE_MODE` command,
   never as a placeholder token requiring a YAML edit — carrying forward ADR-017's `""`-counts-as-provided
-  mechanism (D-... in ADR-017) that makes a caller-side passthrough forbidden. Rejected: a placeholder-token
+  mechanism that makes a caller-side passthrough forbidden. Rejected: a placeholder-token
   substitution scheme (e.g. `<OWNER>/<REPO>`), because it would require every consumer to edit YAML, defeating
   the property `gate_mode`-only substitution exists to preserve.
 - **Two stale artifacts were deleted**: `repos/security-platform/cicd/.github/workflows/security.yml` (203
@@ -119,11 +120,12 @@ verify steps skipped cleanly, four artifacts landed at 90-day retention, `code-s
 after the run. The host's own PR #13 (`security-platform`, run `34870572604`) merged the portability pass as
 commit `cdf2c21`, and both `v1`/`v1.0.0` were cut from that exact commit and API-verified.
 
-**Improved:** a `gh variable set`/`gh variable delete` flip on `security-platform`'s own PR #9 (ADR-017,
-inherited) plus this phase's independent branch-protection dry run (`scripts/set-required-checks.sh --out`,
-never `--apply`) on `terraform-pipelines`'s live ruleset — confirmed pre- and post-run identical
-(`rules/branches/main` unchanged, `bypass_actors: []` carried forward verbatim) — together demonstrate the
-required-check mechanism works against a real external ruleset, not only against this project's own.
+**Improved:** ADR-017's own `gh variable set`/`gh variable delete` flip on `security-platform`'s PR #9
+(inherited, not re-measured here) plus this phase's own, independently-run branch-protection dry run
+(`scripts/set-required-checks.sh --out`, never `--apply`) on `terraform-pipelines`'s live ruleset — confirmed
+pre- and post-run identical (`rules/branches/main` unchanged, `bypass_actors: []` carried forward verbatim) —
+together demonstrate the required-check mechanism works against a real external ruleset, not only against this
+project's own.
 
 **Tradeoff — a moving `v1` is mutable by design.** Any future push to `v1` changes what every Mode A
 copy-paste and Mode B `uses: …@v1` consumer resolves to, without their own repository's history recording the
