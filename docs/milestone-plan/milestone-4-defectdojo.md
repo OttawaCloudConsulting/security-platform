@@ -102,7 +102,7 @@ All scan results from CI/CD flow into a single DefectDojo instance that provides
 
 **Done Criteria:**
 
-- Deduplication enabled: import the same CVE from both Trivy and Grype — DefectDojo merges them into a single finding
+- Deduplication enabled: import the same CVE from both the SCA job's Trivy filesystem scan (`trivy-fs.json`) and npm audit (`npm-audit-<N>.json`) for the same npm package — DefectDojo merges them into a single finding
 - Auto-close configured: Info-severity findings from a test import are automatically closed or suppressed
 - A written triage process exists (even a short checklist): what to review, when, and what actions to take
 - DefectDojo finding counts reflect deduplication (not raw scanner output counts)
