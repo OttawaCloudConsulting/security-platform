@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
-status: verifying
-stopped_at: Phase 20 context gathered
-last_updated: "2026-09-14T01:44:01.885Z"
-last_activity: 2026-09-14
+status: Phase 20.1 not planned yet
+stopped_at: Phase 20.1 context gathered
+last_updated: "2026-09-15T00:41:01.490Z"
+last_activity: 2026-09-14 -- Phase 20 marked complete
 progress:
-  total_phases: 7
-  completed_phases: 6
-  total_plans: 37
-  completed_plans: 37
-  percent: 86
+  total_phases: 8
+  completed_phases: 7
+  total_plans: 50
+  completed_plans: 50
+  percent: 88
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 19 — pipeline-validation-via-branch-target-prs
+**Current focus:** Phase 20 — template-packaging-and-adoption-docs
 
 ## Current Position
 
-Phase: 19 (pipeline-validation-via-branch-target-prs) — EXECUTING
-Plan: 7 of 7
-Status: Phase complete — ready for verification
-Last activity: 2026-09-14
+Phase: 20.1 — Not Started
+Plan: 1 of 13
+Status: Phase 20.1 not planned yet
+Last activity: 2026-09-14 -- Phase 20 marked complete
 
 Progress: [██████████] 100%
 
@@ -47,6 +47,10 @@ Progress: [██████████] 100%
 - Trend: Stable
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 20.1 inserted after Phase 20: Close gap: Retroactive VERIFICATION.md for Phases 14, 17, 18 (CICD-02/03/04/05/06) (URGENT)
 
 ### Decisions
 
@@ -207,9 +211,9 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-09-14T01:44:01.725Z
-Stopped at: Phase 20 context gathered
-Resume file: .planning/phases/20-template-packaging-and-adoption-docs/20-CONTEXT.md
+Last session: 2026-09-15T00:41:01.478Z
+Stopped at: Phase 20.1 context gathered
+Resume file: .planning/phases/20.1-close-gap-retroactive-verification-md-for-phases-14-17-18-ci/20.1-CONTEXT.md
 
 ## Operator Next Steps
 
