@@ -236,3 +236,18 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 8/8 | Complete   | 2026-09-12 |
 | 19. Pipeline Validation via Branch-Target PRs | v2.0 | 7/7 | Complete   | 2026-09-14 |
 | 20. Template Packaging and Adoption Docs | v2.0 | 13/13 | Complete | 2026-09-14 |
+
+### Phase 20.1: Close gap: Retroactive VERIFICATION.md for Phases 14, 17, 18 (CICD-02/03/04/05/06) (INSERTED)
+
+**Goal:** Phases 14, 17, and 18 shipped without a VERIFICATION.md (unlike 15/16/19/20) — produce one per phase via live re-query against `origin/main` and GitHub Actions/API (same rigor as Phase 19's VERIFICATION.md), independently reconfirming CICD-02 through CICD-06 are still true today, not just re-asserting SUMMARY.md narrative.
+**Requirements**: CICD-02, CICD-03, CICD-04, CICD-05, CICD-06
+**Depends on:** Phase 20
+**Plans:** 0 plans
+
+**Success Criteria:**
+1. `14-VERIFICATION.md`, `17-VERIFICATION.md`, `18-VERIFICATION.md` each exist in their respective phase directories with a pass/fail status, following the Phase 19 VERIFICATION.md format (Observable Truths table, live evidence, spot-checks).
+2. CICD-02 (SARIF upload), CICD-03 (JSON artifact retention), CICD-04 (branch protection config/guidance), CICD-05 (Dependabot SHA-pin updates), and CICD-06 (configurable gate mode) are each independently re-confirmed against live `origin/main` / GitHub state — not merely re-stated from existing SUMMARY.md/VALIDATION.md text.
+3. Any drift or defect discovered during live re-query is either fixed inline (if trivial) or recorded in that phase's Gaps Summary / `deferred-items.md` — never silently dropped.
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 20.1 to break down)
