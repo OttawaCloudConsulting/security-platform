@@ -54,3 +54,22 @@ command.
 remaining OPEN items block CICD-02 or CICD-03 — all are documentation-drift items on this repo's side, not
 pipeline defects, and all are recorded with an owner (or an explicit no-owner flag) rather than silently
 dropped.
+
+## Status re-check 2026-09-15 (Phase 21)
+
+Items #4 and #6 were closed by Phase 21's two documentation edits. `docs/milestone-plan/milestone-4-defectdojo.md`
+was brought into scope by a user-approved amendment (SE-1), so this phase created no new deferred item for
+that surface. Every verdict below was measured against the current file state, not recalled from an earlier
+report.
+
+| # | Live status | Evidence |
+|---|---|---|
+| 4 | **CLOSED** | `grep -c -i grype docs/milestone-plan/milestone-2-cicd-gate.md` returns `0` (five sites fixed: the M2-F1 feature-table cell, the two M2-F1 bullets, the M2-F3 JSON output list, the M2-F3 DefectDojo parser row). Correction to the 2026-09-14 entry above: its claim that L78 named five filenames that all diverged from the live artifact names was inaccurate — `semgrep-results.json`, `checkov-results.json` and `gitleaks-results.json` matched the live workflow exactly, and only `grype-results.json` and `trivy-results.json` diverged. Both are now fixed: `grype-results.json` is replaced by `trivy-fs.json` plus `npm-audit-<N>.json` / `pip-audit-<N>.json`, and `trivy-results.json` is corrected to `trivy-image.json` |
+| 6 | **CLOSED** | `docs/adoption-guide.md` §6 now carries the `### SARIF Upload Limits at Consumer Scale` subsection, documenting the top 5,000 results-per-run display truncation, the four rejection ceilings (10 MB gzipped per file, 20 runs per file, 25,000 results per run, 25,000 rules per run) and the 1,000,000-alert repository cap with no self-service recovery, cited to `docs.github.com/en/code-security/reference/code-scanning/sarif-files/…`; `bash scripts/check-adoption-guide.sh` still reports `PASSED 15 / FAILED 0` |
+| SE-1 | **CLOSED — added to scope by user-approved amendment** | `grep -c -i grype docs/milestone-plan/milestone-4-defectdojo.md` returns `0`; line 75's parser list now matches milestone-2's, and line 105's dedup example was changed from the now-impossible Trivy-vs-Grype pair to Trivy filesystem plus npm audit for the same npm package |
+| 2 | OPEN — unchanged, still deferred | the blueprint's Syft+Grype illustrative SCA example remains at `docs/development-security-stack-option-1.md`, still present at its originally recorded lines; 21-CONTEXT.md explicitly defers it as an unbounded blueprint change |
+| 7 | CLOSED by Phase 20.1 — re-confirmed, dropped from Phase 21 scope | the seven `actions/checkout@<SHA>  # v4` comments were already corrected to `# v7` in Phase 20.1; the three `# v4` comments remaining in the blueprint are on `github/codeql-action/upload-sarif`, matching the live pin, so they are correct, not stale. ROADMAP.md's Phase 21 goal sentence still names this item; the user dropped it, and no code or doc change was needed |
+
+**Net: 5 items now closed (1, 4, 5, 6, 7) plus SE-1, out of the original seven deferred items and one
+newly-scoped one. Item #2, item #3 and the broken relative ADR links in the blueprint remain OPEN — #3 and
+the ADR links still carry no owner. Phase 21 created no new deferred item.**
