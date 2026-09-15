@@ -22,7 +22,7 @@ this session, and the results are reproduced below next to the SUMMARY's claim. 
 exactly — no figure in the three SUMMARYs (14-01 through 14-03) that this report re-queried differed from
 the live repository.
 
-This report is retroactive, authored ~5 days after Phase 14 closed (2026-09-10), during Phase 20.1. Four
+This report is retroactive, authored ~5 days after Phase 14 closed (2026-09-10), during Phase 20.1. Six
 subsequent phases (15 through 20) and one Dependabot version bump have landed on this configuration in the
 interim without breaking it — that is itself evidence the workflow foundation this phase built is durable,
 not merely evidence it once worked.
@@ -102,7 +102,7 @@ Dependabot job's outcome), not static source-file greps — the same tooling-fit
 
 | Behavior | Command | Result | Status |
 |---|---|---|---|
-| Repo state | `gh api repos/$R --jq '{visibility,default_branch,archived,pushed_at}'` | `visibility: public`, `default_branch: main`, `archived: false` | ✓ PASS (matches SUMMARY) |
+| Repo state | `gh api repos/$R --jq '{visibility,default_branch,archived,pushed_at}'` | `visibility: public`, `default_branch: main`, `archived: false` | ✓ PASS |
 | PR #13 head (pinned snapshot) | `gh pr view 13 -R $R --json number,title,headRefOid,mergedAt,mergeCommit` | `headRefOid: c06d2729b123094bcbb48e03c1155b72c7727b8c`, merged `2026-09-14T17:04:38Z` | ✓ PASS |
 | `origin/main` workflow-definition SHA | `gh api repos/$R/commits/main --jq '.sha'` | `cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef` | ✓ PASS |
 | Reference run success | `gh run view 34870572604 -R $R --json databaseId,name,conclusion,createdAt,headSha` | `PR Security`, `success`, `2026-09-14T16:45:26Z` | ✓ PASS |
@@ -143,19 +143,27 @@ observation, not a failure.
 
 `.planning/phases/14-workflow-foundation-and-action-pinning/deferred-items.md` carries five items, all
 `gsd-sdk` state-handler tooling defects (or a related STATE.md placement issue), none of them pipeline
-defects and none bearing on CICD-05. Their status by inspection this session (no mutating `gsd-sdk`
-handler was invoked to "reproduce" them, per this phase's read-only scope):
+defects and none bearing on CICD-05. Status determined by inspection this session (2026-09-15) — reading
+the ledger, `.planning/STATE.md`, and later phases' own `deferred-items.md`/SUMMARYs, never by invoking a
+mutating `gsd-sdk` handler, per this phase's read-only scope:
 
-1. **`state.record-metric` rejects the documented positional form.** OPEN — out of scope for CICD-05; a
+1. **`state.record-metric` rejects the documented positional form.** OPEN — corroborated live at Phase 19
+   (`19-.../deferred-items.md:74`, same error 3 days after Phase 14 closed). Out of scope for CICD-05; a
    GSD tooling defect, not a pipeline defect.
-2. **`state.add-decision` rejects a positional summary and double-prefixes.** OPEN — out of scope for
-   CICD-05; same tooling class.
-3. **`state.record-session` corrupts frontmatter fields.** OPEN — out of scope for CICD-05; same tooling
+2. **`state.add-decision` rejects a positional summary and double-prefixes.** OPEN — corroborated live at
+   Phase 19 (`19-.../deferred-items.md:75`). Out of scope for CICD-05; same tooling class.
+3. **`state.record-session` corrupts state.** OPEN — the specific symptom shifted (Phase 14 saw
+   `percent`/`last_activity` corruption; Phase 19 saw `Stopped At` silently dropped,
+   `19-.../deferred-items.md:76`) but the defect class persists. Out of scope for CICD-05; same tooling
    class.
-4. **`state.update-progress` does not rewrite frontmatter `percent`.** OPEN — out of scope for CICD-05;
-   same tooling class.
-5. **STATE.md metric rows land in the wrong table.** OPEN — pre-existing, out of scope for CICD-05; a
-   GSD bookkeeping cosmetic issue, not a pipeline defect.
+4. **`state.update-progress` does not rewrite frontmatter `percent`.** OPEN — corroborated live at Phase
+   19 (`19-.../deferred-items.md:95-98`: frontmatter `percent: 71` frozen since Phase 18 while the body bar
+   correctly read 92%). Out of scope for CICD-05; same tooling class.
+5. **STATE.md metric rows land in the wrong table.** OPEN — live-grepped this session:
+   `.planning/STATE.md:181-182` (Phase 14's own `P01`/`P02` rows) still sit under `## Deferred Items`
+   (`STATE.md:173`), not `## Performance Metrics` (`STATE.md:35`), and the same misplacement continues
+   through at least `Phase 16 P03`'s row — never corrected. Out of scope for CICD-05; a GSD bookkeeping
+   cosmetic issue, not a pipeline defect.
 
 See the dated status re-check appended to `deferred-items.md` below for the full evidence trail.
 

@@ -39,18 +39,20 @@ half-corrected.
 
 ## Status re-check 2026-09-14 (Phase 20.1)
 
-Re-checked by inspection only during Phase 20.1's retroactive `14-VERIFICATION.md` authoring. No
-mutating `gsd-sdk` state handler was invoked to "reproduce" these — a write would have polluted
-this phase's own bookkeeping. None of the five items bear on CICD-05 or any of Phase 14's four
-ROADMAP success criteria; all are GSD tooling/bookkeeping defects, not pipeline defects.
+Re-checked by inspection only (inspection performed 2026-09-15) during Phase 20.1's retroactive
+`14-VERIFICATION.md` authoring: the ledger, `.planning/STATE.md`, and later phases' own
+`deferred-items.md`/`SUMMARY.md` files were read; no mutating `gsd-sdk` state handler was invoked
+to "reproduce" these — a write would have polluted this phase's own bookkeeping. None of the five
+items bear on CICD-05 or any of Phase 14's four ROADMAP success criteria; all are GSD
+tooling/bookkeeping defects, not pipeline defects.
 
 | # | Live status | Evidence |
 |---|---|---|
-| 1 | OPEN | `state.record-metric` tooling defect — not re-run (would mutate STATE.md); status inferred unchanged since no fix has landed in `gsd-sdk` between 2026-09-10 and this check |
-| 2 | OPEN | `state.add-decision` tooling defect — not re-run, same reasoning |
-| 3 | OPEN | `state.record-session` tooling defect — not re-run, same reasoning |
-| 4 | OPEN | `state.update-progress` tooling defect — not re-run, same reasoning |
-| 5 | OPEN | STATE.md metric-row placement issue — pre-existing, cosmetic, not re-run |
+| 1 | OPEN | `state.record-metric`'s positional form still fails: `.planning/phases/19-pipeline-validation-via-branch-target-prs/deferred-items.md:74` records `state.record-metric "19" "04" "11min" "2" "1"` → `{"error":"phase, plan, and duration required"}`, live-observed as recently as Phase 19 (2026-09-13/14), 3 days after Phase 14 closed. No fix landed in the interim. |
+| 2 | OPEN | `state.add-decision`'s positional form still fails: same ledger, `:75` — `state.add-decision "<text>"` → `{"error":"summary required"}`, observed at Phase 19. |
+| 3 | OPEN | `state.record-session` still corrupts a field, now a different one: same ledger, `:76` — reports `{"recorded":true}` while silently dropping `Stopped At` from its `updated` array (Phase 14 observed `percent`/`last_activity` corruption instead; the defect class persists across phases even as the specific symptom shifts). |
+| 4 | OPEN | `state.update-progress` still does not repair frontmatter `percent`: same ledger, `:95-98` — Phase 19 observed frontmatter `percent: 71` frozen since Phase 18 close while the body bar correctly reads 92% (34/37 plans). Directly corroborates Phase 14's original finding. |
+| 5 | OPEN | STATE.md metric-row placement issue persists: `.planning/STATE.md:181-182` (`Phase 14 P01`/`P02` rows) sit under the `## Deferred Items` heading (`STATE.md:173`, "Carried forward from v1.1 close" table), not `## Performance Metrics` (`STATE.md:35`) — live-grepped this session. The same misplacement continues through at least `Phase 16 P03` (`STATE.md` rows following P01/P02), confirming the issue was never corrected between Phase 14 and Phase 20.1. |
 
 **Out of scope for CICD-05's verdict.** All four ROADMAP Phase 14 success criteria and CICD-05
 are independently VERIFIED on live GitHub evidence in `14-VERIFICATION.md`, regardless of these
