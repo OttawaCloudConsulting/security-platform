@@ -75,14 +75,14 @@ Security scanning runs automatically on every Pull Request. Findings are visible
 **Key Components:**
 
 - `actions/upload-artifact` action (SHA-pinned) for each scanner
-- JSON output: `semgrep-results.json`, `checkov-results.json`, `grype-results.json`, `trivy-results.json`, `gitleaks-results.json`
+- JSON output: `semgrep-results.json`, `checkov-results.json`, `trivy-fs.json` plus `npm-audit-<N>.json` and `pip-audit-<N>.json` where the matching ecosystem sub-scan fires, `trivy-image.json`, `gitleaks-results.json`
 - `continue-on-error: true` on artifact upload steps
 - `if: always()` to retain artifacts even when scanners find issues
 
 **Done Criteria:**
 
 - After a workflow run, all 5 JSON artifacts are downloadable from the Actions > workflow run > Artifacts section
-- Artifact names match the expected DefectDojo parser input: Semgrep JSON Report, Checkov Scan, Anchore Grype, Trivy Scan, Gitleaks Scan
+- Artifact names match the expected DefectDojo parser input: Semgrep JSON Report, Checkov Scan, Trivy Scan (SCA filesystem — plus NPM Audit v7+ Scan and pip-audit Scan where the ecosystem sub-scans fire), Trivy Scan (container image), Gitleaks Scan
 - Artifacts are retained for the repository's configured retention period
 
 **Dependencies:** M2-F1.

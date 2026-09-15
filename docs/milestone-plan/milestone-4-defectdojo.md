@@ -16,7 +16,7 @@ All scan results from CI/CD flow into a single DefectDojo instance that provides
 |----|---------|------------|
 | M4-F1 | DefectDojo deployment on Kubernetes | Helm chart `defectdojo/defectdojo`, version-pinned, values file |
 | M4-F2 | Product and engagement configuration | Products per repository, engagement naming convention |
-| M4-F3 | CI-to-DefectDojo import automation | Import script, GitHub Actions secret for API token, 5 scanner parsers |
+| M4-F3 | CI-to-DefectDojo import automation | Import script, GitHub Actions secret for API token, scanner parsers |
 | M4-F4 | Deduplication and triage configuration | Dedup algorithm, severity auto-close, weekly triage cadence |
 | M4-F5 | Checkov baseline for existing repos | `checkov --create-baseline` per repository |
 
@@ -72,7 +72,7 @@ All scan results from CI/CD flow into a single DefectDojo instance that provides
 **Key Components:**
 
 - Import script using `curl` and the DefectDojo `/api/v2/import-scan/` endpoint
-- 5 scanner parsers: `Semgrep JSON Report`, `Checkov Scan`, `Anchore Grype`, `Trivy Scan`, `Gitleaks Scan`
+- Scanner parsers, one import call per JSON artifact: `Semgrep JSON Report`, `Checkov Scan`, `Trivy Scan` (SCA filesystem — plus `NPM Audit v7+ Scan` and `pip-audit Scan` where the ecosystem sub-scans fire), `Trivy Scan` (container image), `Gitleaks Scan`
 - `DEFECTDOJO_API_TOKEN` stored as a GitHub Actions repository secret
 - `auto_create_context=True` for automatic Product/Engagement creation
 - Import script added as a post-scan step in `.github/workflows/security.yml` or as a separate job
