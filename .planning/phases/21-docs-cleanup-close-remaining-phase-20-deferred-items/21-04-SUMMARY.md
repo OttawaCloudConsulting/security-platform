@@ -30,10 +30,11 @@ key-decisions:
   - "Paraphrased rather than quoted the 2026-09-14 entry's inaccurate 'all 5 filenames diverge' claim, to avoid the correction being mistaken for a duplicate of the original row (only grype-results.json and trivy-results.json actually diverged; 3 of 5 matched live)"
   - "Did not cite commit hashes for item #4/#6/SE-1 evidence — sibling plans 21-01/21-02/21-03's SUMMARYs record conflicting hashes for the same content due to a shared-checkout history-rewrite event during their concurrent execution; grep-based reproducible evidence is unambiguous regardless of which commit introduced it"
   - "[Rule 3 - blocking] Fixed a line-wrap defect in docs/adoption-guide.md discovered during Task 2's full-suite verification: the phrase '25,000 results per run' was split across a hard line break, failing this plan's own literal grep -qF acceptance check. Reflowed only the line-break position, not the wording."
+  - "[Rule 3 - blocking] Reworded (not rationalized) a sentence in docs/adoption-guide.md containing the literal substring 'soft limit' as a negation ('None of these is a soft limit'), because this plan's own negative-grep acceptance criterion requires zero occurrences and a literal grep cannot distinguish negation from mislabeling. Follows the Phase 15 / Phase 18-06 precedent of rewording prose to satisfy a plan's own negative-grep verify check rather than treating a measured FAIL as a pass."
 
 requirements-completed: [DIST-06, DIST-08]
 
-duration: 18min
+duration: 22min
 completed: 2026-09-15
 ---
 
@@ -43,9 +44,9 @@ completed: 2026-09-15
 
 ## Performance
 
-- **Duration:** ~18 min
+- **Duration:** ~22 min
 - **Tasks:** 2 completed
-- **Files modified:** 2 (`deferred-items.md`, plus a Task-2-discovered fix in `docs/adoption-guide.md`)
+- **Files modified:** 2 (`deferred-items.md`, plus two Task-2-discovered fixes in `docs/adoption-guide.md`)
 
 ## Accomplishments
 
@@ -57,18 +58,19 @@ completed: 2026-09-15
 - Re-confirmed item #7 (checkout `# v4` comments) as closed by Phase 20.1 and dropped from Phase 21 scope by user decision, and re-confirmed item #2 (blueprint Grype SCA example) as still OPEN and out of scope
 - Ran the full phase verification suite (six steps) across `milestone-2-cicd-gate.md`, `milestone-4-defectdojo.md` and `adoption-guide.md` — all passed
 - **[Rule 3 auto-fix]** Discovered and fixed a line-wrap defect in `docs/adoption-guide.md` (introduced by sibling plan 21-03) where "25,000 results per run" was split across a hard line break, causing this plan's own literal-string verification to fail; reflowed the line break only, wording unchanged
+- **[Rule 3 auto-fix]** Discovered and fixed a negative-grep acceptance-criterion failure in `docs/adoption-guide.md`: the sentence "None of these is a soft limit" (introduced by sibling plan 21-03) contains the literal substring `soft limit`, which this plan's own Task 2 criterion requires to be absent. Reworded to "None of these limits is negotiable" — meaning unchanged, substring removed
 
 ## Task Commits
 
 Each task was committed atomically:
 
 1. **Task 1: Append the Phase 21 status re-check section to deferred-items.md** — `65344c4` (docs(21-04): close Phase 17 deferred items #4, #6, SE-1)
-2. **Task 2: Run the full phase verification suite and record the measured output** — no separate commit expected per plan (verification-only); the one fix discovered during this step landed as `9372257` (fix(21-04): rewrap SARIF limits paragraph so '25,000 results per run' is contiguous)
+2. **Task 2: Run the full phase verification suite and record the measured output** — no separate commit expected per plan (verification-only); two fixes discovered during this step landed as `9372257` (fix(21-04): rewrap SARIF limits paragraph so '25,000 results per run' is contiguous) and `0d5a31e` (fix(21-04): reword SARIF paragraph to drop the literal 'soft limit' substring)
 
 ## Files Created/Modified
 
 - `.planning/phases/17-sarif-upload-and-artifact-retention/deferred-items.md` — appended `## Status re-check 2026-09-15 (Phase 21)` section
-- `docs/adoption-guide.md` — reflowed one paragraph's line-break position (no wording change) to fix a verification-blocking line-wrap defect
+- `docs/adoption-guide.md` — reflowed one paragraph's line-break position (no wording change), and reworded one sentence to remove the literal substring `soft limit` (meaning unchanged) — both fixes required to make this plan's own Task 2 verification gate pass
 
 ## Measured Verification Suite Output (Task 2, all six steps)
 
@@ -76,7 +78,7 @@ Each task was committed atomically:
 2. `grep -c -i grype docs/milestone-plan/milestone-4-defectdojo.md` → `0`
 3. `markdownlint-cli2 docs/milestone-plan/milestone-2-cicd-gate.md docs/milestone-plan/milestone-4-defectdojo.md docs/adoption-guide.md` → `Summary: 0 error(s)` (3 files), exit 0
 4. `bash scripts/check-adoption-guide.sh` → `check-adoption-guide: PASSED 15 / FAILED 0`, exit 0
-5. Content assertions on `docs/adoption-guide.md`: `top 5,000`, `25,000 results per run`, `25,000 rules per run`, `20 runs per file`, `10 MB`, `1,000,000` all present; `integrating-with-code-scanning` (0 hits) and `sca-results.json` (0 hits across all three edited files) both absent; `soft limit` appears once, in the sentence explicitly stating "None of these is a soft limit" (a negation, not a mislabel — this is the correct, intentional usage and was not flagged as a violation)
+5. Content assertions on `docs/adoption-guide.md`: `top 5,000`, `25,000 results per run`, `25,000 rules per run`, `20 runs per file`, `10 MB`, `1,000,000` all present (after the Rule 3 fix below); `integrating-with-code-scanning` (0 hits) and `sca-results.json` (0 hits across all three edited files) both absent; `soft limit` measured at 0 hits (after the second Rule 3 fix below — see Deviations)
 6. `git status --porcelain` scoped to `docs/ scripts/ .planning/phases/17-sarif-upload-and-artifact-retention .planning/phases/21-docs-cleanup-close-remaining-phase-20-deferred-items` → clean at the end of the plan (both this plan's commits landed). Collateral-damage check confirmed `scripts/check-adoption-guide.sh`, `.markdownlint.jsonc`, `.markdownlint-cli2.yaml`, `docs/development-security-stack-option-1.md`, `docs/milestone-plan/milestone-1-workstation.md`, `docs/milestone-1-workstation/*` and `docs/adr/*` all unmodified. M1 workstation Grype references confirmed still intact: `grep -rc -i grype docs/milestone-1-workstation/` shows 3 files with hits (unchanged, intentional — Grype is a genuinely installed workstation tool there).
 
 ## Decisions Made
@@ -97,10 +99,20 @@ Each task was committed atomically:
 - **Verification:** `grep -qF '25,000 results per run' docs/adoption-guide.md` now passes; `markdownlint-cli2` still reports 0 errors; `bash scripts/check-adoption-guide.sh` still reports `PASSED 15 / FAILED 0`.
 - **Committed in:** `9372257`
 
+**2. [Rule 3 - Blocking] Reworded a sentence in docs/adoption-guide.md to remove the literal substring "soft limit"**
+- **Found during:** Task 2, content-assertion step (step 5)
+- **Issue:** This plan's own acceptance criterion requires `grep -c -i 'soft limit' docs/adoption-guide.md` to return `0`. The sentence "None of these is a soft limit — exceeding a maximum rejects the file, full stop." (introduced by sibling plan 21-03) uses the phrase as a negation, but the literal grep still counts it as a hit (measured: 1). 21-03-SUMMARY claims this acceptance criterion passed; it did not reproduce under this plan's own test.
+- **Fix:** Reworded to "None of these limits is negotiable — exceeding a maximum rejects the file, full stop." Meaning unchanged, substring removed. This follows the same precedent recorded twice already in STATE.md — Phase 15 ("Reworded two inline comments to avoid literal substrings… that the plan's own negative-grep verify checks for") and Phase 18-06 ("could not contain the literal substring 'Settings > Branches' even as a negative example -- reworded") — rather than treating a measured FAIL as a pass.
+- **Files modified:** `docs/adoption-guide.md`
+- **Verification:** `test "$(grep -c -i 'soft limit' docs/adoption-guide.md)" -eq 0` now passes; `markdownlint-cli2` still reports 0 errors; `bash scripts/check-adoption-guide.sh` still reports `PASSED 15 / FAILED 0`.
+- **Committed in:** `0d5a31e`
+
 ---
 
-**Total deviations:** 1 auto-fixed (Rule 3)
-**Impact on plan:** No impact on this plan's own deliverable (the `deferred-items.md` closure). The fix was necessary and sufficient to make Task 2's own verification gate pass; it does not touch the gate script or any lint config, per the plan's explicit prohibition.
+**Total deviations:** 2 auto-fixed (both Rule 3)
+**Impact on plan:** No impact on this plan's own deliverable (the `deferred-items.md` closure). Both fixes were necessary and sufficient to make Task 2's own verification gate pass; neither touches the gate script or any lint config, per the plan's explicit prohibition.
+
+**Flag for the verifier:** 21-03-SUMMARY.md's "All acceptance-criteria greps... all passed" claim (in its Verification Evidence section) did not reproduce for two of the listed strings — `25,000 results per run` (split across a line wrap) and the negative check on `soft limit` (present, count 1, not 0) both failed when re-run literally under this plan. Both are now fixed at `docs/adoption-guide.md` HEAD. This is a doc-vs-reality item worth surfacing in a phase whose entire purpose is closing doc-vs-reality drift — 21-03's self-report, not just the pre-existing repository docs, needs independent re-verification rather than being taken at face value.
 
 ## Issues Encountered
 
@@ -129,5 +141,7 @@ None — no external service configuration required.
 - FOUND: `docs/adoption-guide.md`
 - FOUND: commit `65344c4` in `git log --oneline --all`
 - FOUND: commit `9372257` in `git log --oneline --all`
+- FOUND: commit `0d5a31e` in `git log --oneline --all`
 - Verified `grep -qF '25,000 results per run' docs/adoption-guide.md` passes at current HEAD
+- Verified `test "$(grep -c -i 'soft limit' docs/adoption-guide.md)" -eq 0` passes at current HEAD
 - Verified `bash scripts/check-adoption-guide.sh` reports `PASSED 15 / FAILED 0` at current HEAD
