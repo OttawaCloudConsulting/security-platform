@@ -13,7 +13,7 @@ Security scanning runs automatically on every Pull Request. Findings are visible
 
 | ID | Feature | Components |
 |----|---------|------------|
-| M2-F1 | GitHub Actions security workflow | 5 parallel scan jobs: Semgrep CE, Checkov, Trivy, Grype, Gitleaks |
+| M2-F1 | GitHub Actions security workflow | 5 parallel scan jobs: Semgrep CE (SAST), Checkov (IaC), Trivy filesystem with npm audit, pip-audit and tflint (SCA), Trivy image (container), Gitleaks (secrets) |
 | M2-F2 | SARIF upload to GitHub Security tab | `github/codeql-action/upload-sarif` for Semgrep, Checkov, Trivy |
 | M2-F3 | JSON artifact retention for DefectDojo | `actions/upload-artifact` for all 5 scanners |
 | M2-F4 | Branch protection enforcement | Required status checks, PR requirement, bypass prevention |
@@ -30,8 +30,8 @@ Security scanning runs automatically on every Pull Request. Findings are visible
 - `.github/workflows/security.yml` with 5 jobs: `sast`, `iac`, `sca`, `container`, `secrets`
 - Semgrep CE with `--error` flag (fails on findings)
 - Checkov with `soft_fail: false` (fails on findings)
-- Grype with `--fail-on high` (fails on high/critical)
-- Trivy with `exit-code: '1'` and `severity: 'HIGH,CRITICAL'`
+- Trivy filesystem with `--scanners vuln --exit-code 1 --severity HIGH,CRITICAL`, plus the ecosystem sub-scans npm audit (`--audit-level=high`), pip-audit and tflint (SARIF only)
+- Trivy image with `exit-code: '1'` and `severity: 'HIGH,CRITICAL'`
 - Gitleaks with full history scan (`fetch-depth: 0`)
 - All GitHub Actions pinned to SHA digests (not mutable version tags)
 
@@ -40,7 +40,7 @@ Security scanning runs automatically on every Pull Request. Findings are visible
 - `.github/workflows/security.yml` committed to each repository
 - A PR triggers all 5 jobs and they run to completion
 - A PR introducing a deliberate IaC misconfiguration (e.g., public S3 bucket) is flagged by Checkov and the job fails
-- A PR introducing a known vulnerable dependency is flagged by Grype
+- A PR introducing a known vulnerable dependency is flagged by the SCA job — Trivy filesystem, or npm audit / pip-audit when the advisory is ecosystem-specific
 - Scanner steps fail the workflow on findings; only upload steps use `continue-on-error: true`
 
 **Dependencies:** M1-F3 (familiarity with tool output formats from local testing).
