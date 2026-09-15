@@ -242,7 +242,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 **Goal:** Phases 14, 17, and 18 shipped without a VERIFICATION.md (unlike 15/16/19/20) — produce one per phase via live re-query against `origin/main` and GitHub Actions/API (same rigor as Phase 19's VERIFICATION.md), independently reconfirming CICD-02 through CICD-06 are still true today, not just re-asserting SUMMARY.md narrative.
 **Requirements**: CICD-02, CICD-03, CICD-04, CICD-05, CICD-06
 **Depends on:** Phase 20
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 **Success Criteria:**
 1. `14-VERIFICATION.md`, `17-VERIFICATION.md`, `18-VERIFICATION.md` each exist in their respective phase directories with a pass/fail status, following the Phase 19 VERIFICATION.md format (Observable Truths table, live evidence, spot-checks).
@@ -250,6 +250,6 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 3. Any drift or defect discovered during live re-query is either fixed inline (if trivial) or recorded in that phase's Gaps Summary / `deferred-items.md` — never silently dropped.
 
 Plans:
-- [ ] 20.1-01-PLAN.md — Pin the evidence snapshot, prove the local clone matches live `origin/main`, author `14-VERIFICATION.md` (CICD-05)
+- [x] 20.1-01-PLAN.md — Pin the evidence snapshot, prove the local clone matches live `origin/main`, author `14-VERIFICATION.md` (CICD-05)
 - [ ] 20.1-02-PLAN.md — Re-query SARIF categories and artifact retention, author `17-VERIFICATION.md`, resolve Phase 17 deferred items (CICD-02, CICD-03)
 - [ ] 20.1-03-PLAN.md — Re-query gate mode and branch-protection guidance, author `18-VERIFICATION.md`, run the cross-document consistency gate (CICD-04, CICD-06)
