@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Phase 21 context gathered
-last_updated: "2026-09-15T19:33:08.024Z"
+stopped_at: Completed 21-03-PLAN.md
+last_updated: "2026-09-15T19:34:46.535Z"
 last_activity: 2026-09-15
 progress:
   total_phases: 10
@@ -155,6 +155,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: 18-VERIFICATION.md re-confirmed CICD-04/CICD-06 live; empty rules/branches/main and empty gh variable list are documented starting states, not failures
 - [Phase ?]: Cross-document consistency gate: all three Phase 20.1 VERIFICATION.md files (14/17/18) cite one identical pinned snapshot and together cover CICD-02 through CICD-06
 - [Phase ?]: 21-02: Corrected line-19 Features-table parser count alongside line 75 (Rule 1) to satisfy the plan's own whole-file grep gate
+- [Phase ?]: SARIF upload limits subsection (21-03): centered on 5,000-result display truncation as the primary silent-data-loss risk, not the 25,000 rejection ceiling; cited 58 not 56 per D-07 amendment; used canonical non-redirecting docs.github.com URLs
 
 ### Pending Todos
 
@@ -221,11 +222,12 @@ Carried forward from v1.1 close:
 | Phase 20.1 P02 | 35min | 2 tasks | 3 files |
 | Phase 20.1 P03 | 40min | 3 tasks | 1 files |
 | Phase 21 P02 | 6min | 2 tasks | 1 files |
+| Phase 21-docs-cleanup-close-remaining-phase-20-deferred-items P03 | 12min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-15T19:33:05.643Z
-Stopped at: Phase 21 context gathered
+Last session: 2026-09-15T19:34:46.527Z
+Stopped at: Completed 21-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
