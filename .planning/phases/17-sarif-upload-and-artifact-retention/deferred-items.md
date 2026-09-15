@@ -31,3 +31,26 @@ owning phase, it is marked **(plan)**; where it did not, the owner was **assigne
   at the start of 17-06 and untouched by it. Both 17-06 commits were staged file-by-file so none of it was
   swept in. Committing or reverting that tooling change is a maintenance decision for the user, not a
   phase deliverable.
+
+## Status re-check 2026-09-14 (Phase 20.1)
+
+Re-checked live against pinned snapshot PR `#13` / head `c06d2729b123094bcbb48e03c1155b72c7727b8c` / run
+`34870572604` / `origin/main` HEAD `cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef`, as part of authoring
+`17-VERIFICATION.md`. Full evidence and Chesterton's-Fence reasoning for the one applied fix is in that
+report's Gaps Summary and Gap Closure table; this table only carries the verdicts and the settling
+command.
+
+| # | Live status | Evidence |
+|---|---|---|
+| 1 | **CLOSED** | `gh api repos/OttawaCloudConsulting/security-platform/contents/cicd/.github/workflows/security.yml` → `404 "Not Found"` |
+| 2 | OPEN — unchanged | `grep -n 'Grype\|grype' docs/development-security-stack-option-1.md` still shows the Syft+Grype illustrative SCA example (lines 41, 61, 130, 304-366, 1580-1594, 2076); not a single-value fix, out of Phase 20.1 scope |
+| 3 | OPEN — owner reassigned | `docs/development-security-stack-option-1.md:1469-1488` still carries `push: branches: [main]`; the section was retitled "Illustrative — Not the Deployable Template" with an explicit divergence paragraph by Phase 20 (commit `a54f23c`), but Phase 19 (originally assigned owner, VAL-01) closed without touching this trigger — no `docs/development-security-stack-option-1.md` edit appears in any 19-0X-SUMMARY.md. No current owner; flagged for a future docs-hygiene pass |
+| 4 | OPEN — unchanged | `grep -n grype docs/milestone-plan/milestone-2-cicd-gate.md` → line 78 still lists `grype-results.json` among 5 filenames that all diverge from the live artifact names; tied to item 2's underlying drift, not a single-value fix |
+| 5 | **CLOSED** | `docs/adoption-guide.md` §11 "Private Repositories" (line 448) and §12 Troubleshooting (line 494) document the licence gate with measured private-pilot evidence and the `github.event.repository.private == false` SARIF-verify guard Phase 20 plan 04 shipped |
+| 6 | OPEN — informational | `grep -in 'SARIF.*limit\|25,000\|25000\|10 MB\|20 runs'` across the blueprint, adoption guide, and ADR-016 returns no hits; undocumented, not yet exercised at fixture scale |
+| 7 | **CLOSED — D-03 fix applied** | `actions/checkout@<SHA>  # v4` → `# v7` at all 7 occurrences in `docs/development-security-stack-option-1.md` (lines 939, 1537, 1564, 1585, 1602, 1632, 1657), matching the live pin `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1` (Dependabot PR #5) |
+
+**Net: 3 CLOSED (1, 5, 7), 3 still OPEN (2, 4, 6), 1 OPEN with an ownership gap (3).** None of the four
+remaining OPEN items block CICD-02 or CICD-03 — all are documentation-drift items on this repo's side, not
+pipeline defects, and all are recorded with an owner (or an explicit no-owner flag) rather than silently
+dropped.

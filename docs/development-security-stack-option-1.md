@@ -936,7 +936,7 @@ Add this job to `.github/workflows/security.yml` after the `container` job:
       packages: write       # Required if pushing to GHCR or another registry
       actions: read         # Required by slsa-github-generator
     steps:
-      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
+      - uses: actions/checkout@<SHA>  # v7 — pin to current SHA: https://github.com/actions/checkout/releases
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@<SHA>  # pin to current SHA: https://github.com/sigstore/cosign-installer/releases
@@ -1534,7 +1534,7 @@ jobs:
     name: SAST — Semgrep CE
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
+      - uses: actions/checkout@<SHA>  # v7 — pin to current SHA: https://github.com/actions/checkout/releases
       - run: pip install semgrep
       - name: Run Semgrep (JSON output for DefectDojo)
         run: semgrep scan --config auto --error --json --output semgrep-results.json .
@@ -1561,7 +1561,7 @@ jobs:
     name: IaC — Checkov
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
+      - uses: actions/checkout@<SHA>  # v7 — pin to current SHA: https://github.com/actions/checkout/releases
       - uses: bridgecrewio/checkov-action@<SHA>  # v12 — pin to current SHA: https://github.com/bridgecrewio/checkov-action/releases
         with:
           directory: .
@@ -1582,7 +1582,7 @@ jobs:
     name: SCA — Grype
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
+      - uses: actions/checkout@<SHA>  # v7 — pin to current SHA: https://github.com/actions/checkout/releases
       - run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
             | sh -s -- -b /usr/local/bin
@@ -1599,7 +1599,7 @@ jobs:
     # Runs on both pull_request and push events so container vulnerabilities
     # are visible to reviewers before merge, not only after.
     steps:
-      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
+      - uses: actions/checkout@<SHA>  # v7 — pin to current SHA: https://github.com/actions/checkout/releases
       - run: docker build -t app:${{ github.sha }} .
       - name: Run Trivy (JSON output for DefectDojo)
         uses: aquasecurity/trivy-action@<SHA>  # pin to current SHA: https://github.com/aquasecurity/trivy-action/releases
@@ -1629,7 +1629,7 @@ jobs:
     name: Secrets — Gitleaks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
+      - uses: actions/checkout@<SHA>  # v7 — pin to current SHA: https://github.com/actions/checkout/releases
         with: { fetch-depth: 0 }
       - run: |
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
@@ -1654,7 +1654,7 @@ jobs:
       packages: write   # Required for pushing attestation to GHCR
       actions: read     # Required by slsa-github-generator
     steps:
-      - uses: actions/checkout@<SHA>  # v4 — pin to current SHA: https://github.com/actions/checkout/releases
+      - uses: actions/checkout@<SHA>  # v7 — pin to current SHA: https://github.com/actions/checkout/releases
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@<SHA>  # pin to current SHA: https://github.com/sigstore/cosign-installer/releases
