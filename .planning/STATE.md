@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 20.1-01-PLAN.md
-last_updated: "2026-09-15T12:40:02.013Z"
+stopped_at: Completed 20.1-02-PLAN.md
+last_updated: "2026-09-15T12:50:07.590Z"
 last_activity: 2026-09-15
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 53
-  completed_plans: 51
-  percent: 96
+  completed_plans: 52
+  percent: 88
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 20.1 — Not Started
-Plan: 2 of 13
+Plan: 3 of 13
 Status: Ready to execute
 Last activity: 2026-09-15
 
-Progress: [██████████] 96%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -148,6 +148,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 19]: D-10 resolved by the operator: PR #11 (the replacement Phase 19 validation PR) was MERGED into main as a merge commit b4cb207, landing the D-19-A push-protection correction on fixtures/README.md. — Operator reply verbatim: 'merge it'. Verified from origin/main: parents 80e91de (PR #10) + 426c84c (PR #11 head), GH013/Push Protection now present on main.
 - [Phase 20.1-01]: actions/checkout SHA drift (v7.0.0 -> v7.0.1) narrated as CICD-05 proof-of-work, not a verification failure
 - [Phase 20.1-01]: 14-VERIFICATION.md deferred-items status determined by cross-phase inspection (Phase 19 ledger, STATE.md), never by invoking mutating gsd-sdk state handlers
+- [Phase ?]: Only deferred item 7 (checkout v4->v7 comments) qualified as a D-03 trivial fix; items 2/4 (Grype SCA example) remain coordinated multi-surface rewrites, still OPEN
+- [Phase ?]: SC2 (inline PR annotations) split: API-verifiable half re-verified live via output.annotations_count; visual-rendering half cited from the already-closed 17-05/17-07 checkpoint, not re-claimed as freshly verified
+- [Phase ?]: Deferred item 3 (blueprint push trigger) resolved OPEN with a newly-surfaced ownership gap: Phase 19 closed without touching it; a later Phase 20 commit labeled the section illustrative without revisiting the trigger
 
 ### Pending Todos
 
@@ -211,11 +214,12 @@ Carried forward from v1.1 close:
 | Phase 19 P06 | 5min | 2 tasks | 1 files |
 | Phase 19 P07 | 20min | 2 tasks | 1 files |
 | Phase 20.1 P01 | 30min | 2 tasks | 2 files |
+| Phase 20.1 P02 | 35min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-09-15T12:39:49.323Z
-Stopped at: Completed 20.1-01-PLAN.md
+Last session: 2026-09-15T12:50:07.582Z
+Stopped at: Completed 20.1-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
