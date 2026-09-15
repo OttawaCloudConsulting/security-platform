@@ -269,7 +269,7 @@ Separately, exceeding any of the following hard maximums rejects the entire SARI
 no alerts appear at all: 10 MB per gzip-compressed SARIF file; 20 runs per file; 25,000 results per run;
 25,000 rules per run. An adopter who crosses one of these sees the code-scanning upload fail
 with `Analysis SARIF file rejected due to result limits` (and the analogous rule- and run-limit
-variants). None of these is a soft limit — exceeding a maximum rejects the file, full stop.
+variants). None of these limits is negotiable — exceeding a maximum rejects the file, full stop.
 
 A repository that accumulates 1,000,000 code-scanning alerts has all further analysis uploads
 blocked. There is no self-service way to delete alerts, so re-enabling code scanning requires
