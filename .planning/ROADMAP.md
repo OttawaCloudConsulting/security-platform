@@ -253,3 +253,16 @@ Plans:
 - [x] 20.1-01-PLAN.md — Pin the evidence snapshot, prove the local clone matches live `origin/main`, author `14-VERIFICATION.md` (CICD-05)
 - [x] 20.1-02-PLAN.md — Re-query SARIF categories and artifact retention, author `17-VERIFICATION.md`, resolve Phase 17 deferred items (CICD-02, CICD-03)
 - [x] 20.1-03-PLAN.md — Re-query gate mode and branch-protection guidance, author `18-VERIFICATION.md`, run the cross-document consistency gate (CICD-04, CICD-06)
+
+### Phase 21: Docs cleanup — close remaining Phase 20 deferred items
+
+**Goal:** Fix the three Phase 20 deferred doc items never picked up: stale Grype reference in `docs/milestone-plan/milestone-2-cicd-gate.md` (L78), missing SARIF size/result ceiling documentation in `docs/adoption-guide.md`, and 7 stale `# v4` action-version comments in the blueprint.
+**Requirements**: DIST-06, DIST-08
+**Depends on:** Phase 20
+**Plans:** 4 plans
+
+Plans:
+- [ ] 21-01-PLAN.md — Remove all 5 Grype references from milestone-2-cicd-gate.md and correct the M2-F3 JSON filename list and DefectDojo parser row
+- [ ] 21-02-PLAN.md — Apply the same live-SCA-tools correction to milestone-4-defectdojo.md L75 parser list and L105 dedup example (SE-1, user-approved scope addition)
+- [ ] 21-03-PLAN.md — Add a SARIF upload limits subsection to adoption-guide.md §6 (5,000 display truncation, four rejection ceilings, 1,000,000 alert cap)
+- [ ] 21-04-PLAN.md — Close Phase 17 deferred items #4 and #6 in deferred-items.md and run the full phase verification suite
