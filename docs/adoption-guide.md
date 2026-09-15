@@ -266,8 +266,8 @@ a Semgrep `p/default` run on a large monorepo producing, say, 8,000 findings wou
 alerts and silently drop the other 3,000 — nothing in the run's own output looks like an error.
 
 Separately, exceeding any of the following hard maximums rejects the entire SARIF file outright, so
-no alerts appear at all: 10 MB per gzip-compressed SARIF file; 20 runs per file; 25,000 results per
-run; 25,000 rules per run. An adopter who crosses one of these sees the code-scanning upload fail
+no alerts appear at all: 10 MB per gzip-compressed SARIF file; 20 runs per file; 25,000 results per run;
+25,000 rules per run. An adopter who crosses one of these sees the code-scanning upload fail
 with `Analysis SARIF file rejected due to result limits` (and the analogous rule- and run-limit
 variants). None of these is a soft limit — exceeding a maximum rejects the file, full stop.
 
