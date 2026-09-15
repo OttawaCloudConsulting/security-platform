@@ -36,3 +36,23 @@ the frontmatter `percent` by eye regardless — neither ordering fully repairs t
 Column semantics do not match that table's header. Pre-existing — Plan 01's `Phase 14 P01` row
 sits in the same wrong place, so this is not a 14-02 regression. Left consistent rather than
 half-corrected.
+
+## Status re-check 2026-09-14 (Phase 20.1)
+
+Re-checked by inspection only during Phase 20.1's retroactive `14-VERIFICATION.md` authoring. No
+mutating `gsd-sdk` state handler was invoked to "reproduce" these — a write would have polluted
+this phase's own bookkeeping. None of the five items bear on CICD-05 or any of Phase 14's four
+ROADMAP success criteria; all are GSD tooling/bookkeeping defects, not pipeline defects.
+
+| # | Live status | Evidence |
+|---|---|---|
+| 1 | OPEN | `state.record-metric` tooling defect — not re-run (would mutate STATE.md); status inferred unchanged since no fix has landed in `gsd-sdk` between 2026-09-10 and this check |
+| 2 | OPEN | `state.add-decision` tooling defect — not re-run, same reasoning |
+| 3 | OPEN | `state.record-session` tooling defect — not re-run, same reasoning |
+| 4 | OPEN | `state.update-progress` tooling defect — not re-run, same reasoning |
+| 5 | OPEN | STATE.md metric-row placement issue — pre-existing, cosmetic, not re-run |
+
+**Out of scope for CICD-05's verdict.** All four ROADMAP Phase 14 success criteria and CICD-05
+are independently VERIFIED on live GitHub evidence in `14-VERIFICATION.md`, regardless of these
+five items' status. None are handed to a future phase by this re-check; they remain exactly where
+the original phase left them, for `gsd-sdk` tooling maintainers.
