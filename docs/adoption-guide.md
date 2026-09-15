@@ -256,6 +256,38 @@ gh run download <RUN_ID> --dir ./scan-results
   ## Expected: the artifact contents extracted under ./scan-results, one subdirectory per artifact.
 ```
 
+### SARIF Upload Limits at Consumer Scale
+
+GitHub imposes upload limits on the SARIF files this pipeline produces, and the failure mode that
+bites first is not the one that looks scariest. Code scanning displays only the top 5,000 results
+per run, prioritized by severity. A run that produces more than that still uploads successfully
+and still shows a green check; the results past 5,000 are accepted but never displayed. Concretely,
+a Semgrep `p/default` run on a large monorepo producing, say, 8,000 findings would show 5,000
+alerts and silently drop the other 3,000 — nothing in the run's own output looks like an error.
+
+Separately, exceeding any of the following hard maximums rejects the entire SARIF file outright, so
+no alerts appear at all: 10 MB per gzip-compressed SARIF file; 20 runs per file; 25,000 results per
+run; 25,000 rules per run. An adopter who crosses one of these sees the code-scanning upload fail
+with `Analysis SARIF file rejected due to result limits` (and the analogous rule- and run-limit
+variants). None of these is a soft limit — exceeding a maximum rejects the file, full stop.
+
+A repository that accumulates 1,000,000 code-scanning alerts has all further analysis uploads
+blocked. There is no self-service way to delete alerts, so re-enabling code scanning requires
+contacting GitHub support — this is the only limit here with no self-service recovery, which is
+why it is worth naming despite sitting far above any plausible first-run scale.
+
+Nothing this pipeline has run comes close to any of these numbers: the largest single-tool count
+measured on this project's own validation pull request, quoted above, is 58 findings (Trivy
+image) — fewer than 60 from any one tool, three orders of magnitude below the display ceiling. The
+consumer repositories that plausibly do cross it look different from this project: a large
+monorepo scanned with Semgrep `p/default`, or a container image built on a large base layer.
+
+These numbers are GitHub's, not this pipeline's; see
+[SARIF support for code scanning](https://docs.github.com/en/code-security/reference/code-scanning/sarif-files/sarif-support)
+for the limits themselves and
+[troubleshooting SARIF results that exceed limits](https://docs.github.com/en/code-security/reference/code-scanning/sarif-files/troubleshoot-sarif-uploads/results-exceed-limit)
+for the consumer-facing error strings and recovery paths.
+
 Before you consider switching to `blocking`, internalise this corollary: `blocking` is
 severity-agnostic — it fails the run on ANY finding, regardless of severity. A repository that
 already carries pre-existing HIGH or CRITICAL findings cannot go blocking until those findings are
