@@ -4,38 +4,6 @@
 **Domain:** Documentation drift reconciliation against a live GitHub Actions pipeline; GitHub code-scanning SARIF upload limits; DefectDojo parser naming
 **Confidence:** HIGH
 
-## Summary
-
-This phase edits two markdown files. Every factual value it needs to write down was verifiable from a
-primary source in this session, and all four were checked: the live callable workflow
-(`OttawaCloudConsulting/security-platform` `.github/workflows/security.yml`, fetched via `gh api` and
-`diff`-confirmed byte-identical to the local clone at `repos/security-platform/.github/workflows/security.yml`),
-this project's own measured-run records in `.planning/STATE.md`, GitHub's docs source repo
-(`github/docs`), and DefectDojo's parser source (`DefectDojo/django-DefectDojo` `dojo/tools/*/parser.py`).
-The research is therefore HIGH confidence throughout, with no LOW-confidence claims and no open
-technical questions.
-
-Three of the seven locked decisions in `21-CONTEXT.md` do not survive contact with the live pipeline and
-need amendment before the planner writes task text. **D-03 is factually wrong:** `sca-results` is the
-*artifact* name, not a JSON filename — no file called `sca-results.json` exists anywhere in the live
-pipeline. The SCA job's JSON outputs are `trivy-fs.json`, `npm-audit-<N>.json` and `pip-audit-<N>.json`
-(plus the SARIF-only `tflint.sarif`). **D-04's proposed "Trivy Scan"** is the correct DefectDojo parser
-for `trivy-fs.json`, but that exact string already occupies the container slot on the same line, so a
-naive substitution produces a list that reads like a typo; a per-job qualified form is needed. **D-06's
-candidate numbers are all correct** (10 MB gzipped, 20 runs/file, 25,000 results/run, 25,000 rules/run)
-but deferred-items.md's framing is incomplete: the number a consumer repo running Semgrep `p/default`
-will actually hit first is the **5,000-result display truncation**, not the 25,000 rejection ceiling.
-
-Two second-order effects sit outside D-01's literal five-line scope but are created *by* this phase's
-edit: `docs/milestone-plan/milestone-4-defectdojo.md` carries the identical `Anchore Grype` parser list
-at L75 and an impossible Trivy-vs-Grype dedup example at L105, and the line being edited
-(`milestone-2-cicd-gate.md` L78) also carries a second wrong filename (`trivy-results.json`; live is
-`trivy-image.json`) that D-01 does not mention.
-
-**Primary recommendation:** Amend D-03, qualify D-04, and extend D-06's wording before planning; then
-execute as two independent single-file edits, each gated by a grep assertion plus `markdownlint-cli2`,
-with `bash scripts/check-adoption-guide.sh` required to stay at PASSED 15 / FAILED 0.
-
 <user_constraints>
 
 ## User Constraints (from CONTEXT.md)
@@ -99,6 +67,38 @@ session. Each is detailed in **Constraint Conflicts** below with the evidence an
 amendment. The planner must not lock D-03's text as written.
 
 </user_constraints>
+
+## Summary
+
+This phase edits two markdown files. Every factual value it needs to write down was verifiable from a
+primary source in this session, and all four were checked: the live callable workflow
+(`OttawaCloudConsulting/security-platform` `.github/workflows/security.yml`, fetched via `gh api` and
+`diff`-confirmed byte-identical to the local clone at `repos/security-platform/.github/workflows/security.yml`),
+this project's own measured-run records in `.planning/STATE.md`, GitHub's docs source repo
+(`github/docs`), and DefectDojo's parser source (`DefectDojo/django-DefectDojo` `dojo/tools/*/parser.py`).
+The research is therefore HIGH confidence throughout, with no LOW-confidence claims and no open
+technical questions.
+
+Three of the seven locked decisions in `21-CONTEXT.md` do not survive contact with the live pipeline and
+need amendment before the planner writes task text. **D-03 is factually wrong:** `sca-results` is the
+*artifact* name, not a JSON filename — no file called `sca-results.json` exists anywhere in the live
+pipeline. The SCA job's JSON outputs are `trivy-fs.json`, `npm-audit-<N>.json` and `pip-audit-<N>.json`
+(plus the SARIF-only `tflint.sarif`). **D-04's proposed "Trivy Scan"** is the correct DefectDojo parser
+for `trivy-fs.json`, but that exact string already occupies the container slot on the same line, so a
+naive substitution produces a list that reads like a typo; a per-job qualified form is needed. **D-06's
+candidate numbers are all correct** (10 MB gzipped, 20 runs/file, 25,000 results/run, 25,000 rules/run)
+but deferred-items.md's framing is incomplete: the number a consumer repo running Semgrep `p/default`
+will actually hit first is the **5,000-result display truncation**, not the 25,000 rejection ceiling.
+
+Two second-order effects sit outside D-01's literal five-line scope but are created *by* this phase's
+edit: `docs/milestone-plan/milestone-4-defectdojo.md` carries the identical `Anchore Grype` parser list
+at L75 and an impossible Trivy-vs-Grype dedup example at L105, and the line being edited
+(`milestone-2-cicd-gate.md` L78) also carries a second wrong filename (`trivy-results.json`; live is
+`trivy-image.json`) that D-01 does not mention.
+
+**Primary recommendation:** Amend D-03, qualify D-04, and extend D-06's wording before planning; then
+execute as two independent single-file edits, each gated by a grep assertion plus `markdownlint-cli2`,
+with `bash scripts/check-adoption-guide.sh` required to stay at PASSED 15 / FAILED 0.
 
 <phase_requirements>
 
@@ -278,7 +278,7 @@ CONTEXT.md's claim "Trivy filesystem + npm audit + pip-audit + tflint" is confir
 | SCA-02 — pip-audit | 670 | `pip-audit -r <req> --format json --progress-spinner=off -o pip-audit-<N>.json`, guarded by `steps.py.outputs.found == 'true'` |
 | SCA-03 — tflint (SARIF) | 735 | SARIF only; contributes **no JSON** |
 
-The job's `name:` is `SCA — Trivy Filesystem`, which is why the milestone doc's own M2-F4 section (L60)
+The job's `name:` is `SCA — Trivy Filesystem`, which is why the milestone doc's own M2-F4 section (L99)
 *already* names `security / SCA — Trivy Filesystem` correctly. The doc is therefore internally
 inconsistent today: M2-F1/F3 say Grype, M2-F4 says Trivy Filesystem. Fixing the five Grype sites
 resolves that inconsistency as a side effect — worth stating in the plan's rationale.
