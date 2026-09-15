@@ -977,7 +977,11 @@ DefectDojo source, an executed command, or this project's own measured-run recor
 are no `[ASSUMED]` factual values — no version number, filename, parser string, or limit relies on
 training recall.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All three were scope decisions, not technical gaps, and the orchestrator collected explicit user
+decisions on each after this research completed. Recorded below for the plan-checker and any future
+reader — the planner has already implemented all three resolutions.
 
 1. **Does `docs/milestone-plan/milestone-4-defectdojo.md` get fixed in this phase?** (SE-1)
    - **What we know:** L75 carries the identical `Anchore Grype` parser list; L105's Trivy-vs-Grype
@@ -985,13 +989,16 @@ training recall.
    - **What's unclear:** D-01 scopes the edit to milestone-2 only. M4 is an unbuilt future milestone.
    - **Recommendation:** L75 in-phase (one line, same contract, prevents doc-vs-doc contradiction);
      L105 as a recorded deferred item with an owner, since choosing a replacement dedup example is
-     editorial. **Needs user confirmation** — a locked decision's scope is not the researcher's to widen.
+     editorial.
+   - **RESOLVED (user, 2026-09-15):** Fix in-phase — both L75 and L105. Implemented in plan 21-02.
 
 2. **Does `trivy-results.json` get corrected on L78?** (SE-2, A4)
    - **What we know:** It is wrong; live is `trivy-image.json`. It sits on the exact line D-01 opens.
    - **What's unclear:** Whether "all 5 Grype mentions" bounds the edit to Grype tokens only.
    - **Recommendation:** Fix it. Leaving a known-wrong filename on a just-edited line is the drift this
-     phase exists to end. If declined, record it.
+     phase exists to end.
+   - **RESOLVED (user, 2026-09-15):** Yes, fix on the same line as the D-01 edit. Implemented in plan
+     21-01, Task 2.
 
 3. **Does the new subsection mention the 1,000,000 alert limit and its no-self-service-recovery
    consequence?**
@@ -999,11 +1006,13 @@ training recall.
      contacting GitHub support.
    - **What's unclear:** D-05 scopes the subsection to "size/result ceilings," which this arguably
      exceeds.
-   - **Recommendation:** One clause at most, or omit. Planner's call under Claude's Discretion; flagged
-     so the omission is deliberate rather than an oversight.
+   - **Recommendation:** One clause at most, or omit.
+   - **RESOLVED (user, 2026-09-15):** Include it, as a fifth data point alongside the four D-06 numbers,
+     with the subsection's framing centered on the 5,000-result-per-run display truncation as the primary
+     failure mode. Implemented in plan 21-03, Task 1.
 
-**No open technical questions.** Every factual value the planner needs is resolved above. All three open
-questions are scope decisions.
+**No open technical questions.** Every factual value the planner needs was resolved above at research
+time. All three scope questions are now resolved per the user decisions recorded above.
 
 ## Sources
 
