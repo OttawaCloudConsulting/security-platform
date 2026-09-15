@@ -236,6 +236,8 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 18. Configurable Gate Mode and Branch Protection | v2.0 | 8/8 | Complete   | 2026-09-12 |
 | 19. Pipeline Validation via Branch-Target PRs | v2.0 | 7/7 | Complete   | 2026-09-14 |
 | 20. Template Packaging and Adoption Docs | v2.0 | 13/13 | Complete | 2026-09-14 |
+| 20.1. Close gap: Retroactive VERIFICATION.md for Phases 14/17/18 | v2.0 | 3/3 | Complete | 2026-09-15 |
+| 21. Docs cleanup — close remaining Phase 20 deferred items | v2.0 | 4/4 | Complete | 2026-09-15 |
 
 ### Phase 20.1: Close gap: Retroactive VERIFICATION.md for Phases 14, 17, 18 (CICD-02/03/04/05/06) (INSERTED)
 
@@ -259,10 +261,10 @@ Plans:
 **Goal:** Fix the three Phase 20 deferred doc items never picked up: stale Grype reference in `docs/milestone-plan/milestone-2-cicd-gate.md` (L78), missing SARIF size/result ceiling documentation in `docs/adoption-guide.md`, and 7 stale `# v4` action-version comments in the blueprint.
 **Requirements**: DIST-06, DIST-08
 **Depends on:** Phase 20
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 21-01-PLAN.md — Remove all 5 Grype references from milestone-2-cicd-gate.md and correct the M2-F3 JSON filename list and DefectDojo parser row
-- [ ] 21-02-PLAN.md — Apply the same live-SCA-tools correction to milestone-4-defectdojo.md L75 parser list and L105 dedup example (SE-1, user-approved scope addition)
-- [ ] 21-03-PLAN.md — Add a SARIF upload limits subsection to adoption-guide.md §6 (5,000 display truncation, four rejection ceilings, 1,000,000 alert cap)
-- [ ] 21-04-PLAN.md — Close Phase 17 deferred items #4 and #6 in deferred-items.md and run the full phase verification suite
+- [x] 21-01-PLAN.md — Remove all 5 Grype references from milestone-2-cicd-gate.md and correct the M2-F3 JSON filename list and DefectDojo parser row
+- [x] 21-02-PLAN.md — Apply the same live-SCA-tools correction to milestone-4-defectdojo.md L75 parser list and L105 dedup example (SE-1, user-approved scope addition)
+- [x] 21-03-PLAN.md — Add a SARIF upload limits subsection to adoption-guide.md §6 (5,000 display truncation, four rejection ceilings, 1,000,000 alert cap)
+- [x] 21-04-PLAN.md — Close Phase 17 deferred items #4 and #6 in deferred-items.md and run the full phase verification suite

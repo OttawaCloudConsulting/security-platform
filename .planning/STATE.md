@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 21-03-PLAN.md
-last_updated: "2026-09-15T19:34:46.535Z"
+stopped_at: Completed 21-04-PLAN.md
+last_updated: "2026-09-15T19:43:38.433Z"
 last_activity: 2026-09-15
 progress:
   total_phases: 10
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 57
-  completed_plans: 56
-  percent: 80
+  completed_plans: 57
+  percent: 90
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 20 — template-packaging-and-adoption-docs
+**Current focus:** Phase 21 — docs-cleanup-close-remaining-phase-20-deferred-items (complete)
 
 ## Current Position
 
-Phase: 20.1 — Not Started
-Plan: 6 of 13
-Status: Ready to execute
+Phase: 21 — Complete
+Plan: 4 of 4
+Status: Phase complete, all requirements closed
 Last activity: 2026-09-15
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -156,6 +156,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: Cross-document consistency gate: all three Phase 20.1 VERIFICATION.md files (14/17/18) cite one identical pinned snapshot and together cover CICD-02 through CICD-06
 - [Phase ?]: 21-02: Corrected line-19 Features-table parser count alongside line 75 (Rule 1) to satisfy the plan's own whole-file grep gate
 - [Phase ?]: SARIF upload limits subsection (21-03): centered on 5,000-result display truncation as the primary silent-data-loss risk, not the 25,000 rejection ceiling; cited 58 not 56 per D-07 amendment; used canonical non-redirecting docs.github.com URLs
+- [Phase ?]: [Phase 21]: 21-04: Corrected the 2026-09-14 deferred-items.md entry's inaccurate 'all 5 filenames diverge' claim for item #4 - only grype-results.json and trivy-results.json actually diverged, 3 of 5 matched live
+- [Phase ?]: [Phase 21]: 21-04: Discovered and fixed (Rule 3) a line-wrap defect in docs/adoption-guide.md splitting '25,000 results per run' across a hard line break, blocking this plan's own verification gate; wording unchanged, only the line-break position moved
 
 ### Pending Todos
 
@@ -223,11 +225,13 @@ Carried forward from v1.1 close:
 | Phase 20.1 P03 | 40min | 3 tasks | 1 files |
 | Phase 21 P02 | 6min | 2 tasks | 1 files |
 | Phase 21-docs-cleanup-close-remaining-phase-20-deferred-items P03 | 12min | 2 tasks | 1 files |
+| Phase 21 P04 | 18min | 2 tasks | 2 files |
+| Phase 21 P01 | 3min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-15T19:34:46.527Z
-Stopped at: Completed 21-03-PLAN.md
+Last session: 2026-09-15T19:43:38.424Z
+Stopped at: Completed 21-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
