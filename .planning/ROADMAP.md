@@ -274,10 +274,10 @@ Plans:
 **Goal:** Witness GitHub refusing a merge because a required scan check is red — the one end-to-end flow the v2.0 milestone audit lists as UNVERIFIED — by making the five `security / ...` contexts required on `OttawaCloudConsulting/terraform-pipelines` for a bounded window, capturing the refusal verbatim, and restoring the repository's ruleset byte-identically afterwards.
 **Requirements**: VAL-02
 **Depends on:** Phase 21
-**Plans:** 6 plans
+**Plans:** 1/6 plans executed
 
 Plans:
-- [ ] 22-01-PLAN.md — Settle-poll helper, before-state capture, and the exercise pull request's baseline verdict
+- [x] 22-01-PLAN.md — Settle-poll helper, before-state capture, and the exercise pull request's baseline verdict
 - [ ] 22-02-PLAN.md — Bounded blocking window on a byte-identical tree, and the control verdict (red but not required)
 - [ ] 22-03-PLAN.md — Operator-run guard rehearsal and live `--apply`, then Claude's independent read-back (checkpoint)
 - [ ] 22-04-PLAN.md — The witnessed refusal, plus the third verdict that isolates the red required check as its cause

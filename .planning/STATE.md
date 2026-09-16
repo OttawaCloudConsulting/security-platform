@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 21-04-PLAN.md
-last_updated: "2026-09-15T19:43:38.433Z"
-last_activity: 2026-09-15
+stopped_at: Completed 22-01-PLAN.md
+last_updated: "2026-09-16T20:13:15.332Z"
+last_activity: 2026-09-16
 progress:
-  total_phases: 10
+  total_phases: 11
   completed_phases: 9
-  total_plans: 57
-  completed_plans: 57
-  percent: 90
+  total_plans: 63
+  completed_plans: 58
+  percent: 82
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 21 — docs-cleanup-close-remaining-phase-20-deferred-items (complete)
+**Current focus:** Phase 22 — branch-protection-apply-live-exercise-needs-explicit-target-
 
 ## Current Position
 
-Phase: 21 — Complete
-Plan: 4 of 4
-Status: Phase complete, all requirements closed
-Last activity: 2026-09-15
+Phase: 22 (branch-protection-apply-live-exercise-needs-explicit-target-) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-09-16
 
-Progress: [██████████] 100%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [██████████] 100%
 
 - Phase 20.1 inserted after Phase 20: Close gap: Retroactive VERIFICATION.md for Phases 14, 17, 18 (CICD-02/03/04/05/06) (URGENT)
 - Phase 21 edited: re-scoped from VERIFICATION.md backfill (already done by Phase 20.1) to docs-only: stale Grype ref, SARIF ceiling doc, stale checkout comments
+- Phase 22 added: branch-protection --apply live exercise (needs explicit target-repo confirm, irreversible-ish)
 
 ### Decisions
 
@@ -158,6 +159,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: SARIF upload limits subsection (21-03): centered on 5,000-result display truncation as the primary silent-data-loss risk, not the 25,000 rejection ceiling; cited 58 not 56 per D-07 amendment; used canonical non-redirecting docs.github.com URLs
 - [Phase ?]: [Phase 21]: 21-04: Corrected the 2026-09-14 deferred-items.md entry's inaccurate 'all 5 filenames diverge' claim for item #4 - only grype-results.json and trivy-results.json actually diverged, 3 of 5 matched live
 - [Phase ?]: [Phase 21]: 21-04: Discovered and fixed (Rule 3) a line-wrap defect in docs/adoption-guide.md splitting '25,000 results per run' across a hard line break, blocking this plan's own verification gate; wording unchanged, only the line-break position moved
+- [Phase 22]: Phase 22 live exercise authorised: operator answered 'proceed' at execution time (recorded in 22-evidence/go-decision.txt) on the target and end state locked in 22-CONTEXT.md — Target OttawaCloudConsulting/terraform-pipelines, end state restore, requirement VAL-02. No amendment proposed. Branch chore/phase-22-required-check-exercise and PR #14 are the only live residue so far; main and the ruleset are untouched.
+- [Phase 22]: 22-poll-merge-state.sh uses the corrected two-condition post-loop assertion, and its failure path was observed firing rather than assumed — 22-RESEARCH.md:595-603 publishes a single-condition guard that passes on a settled-but-stale value, which arms Pitfall 7 (gh pr merge succeeding against a stale BLOCKED read). The stale self-test against PR #14 exited 1 with the settled-but-unchanged message.
+- [Phase 22]: 22-evidence/ is phase-scoped, shared by plans 01-05, rather than plan-scoped like 20-10-evidence/ — Plan 05's non-negotiable gate diffs rules-before.txt (written in plan 01) against rules-restored.txt (written in plan 05); splitting the directory per plan would push that assertion across a directory boundary.
 
 ### Pending Todos
 
@@ -227,11 +231,12 @@ Carried forward from v1.1 close:
 | Phase 21-docs-cleanup-close-remaining-phase-20-deferred-items P03 | 12min | 2 tasks | 1 files |
 | Phase 21 P04 | 18min | 2 tasks | 2 files |
 | Phase 21 P01 | 3min | 2 tasks | 1 files |
+| Phase 22 P01 | 154min | 4 tasks | 13 files |
 
 ## Session Continuity
 
-Last session: 2026-09-15T19:43:38.424Z
-Stopped at: Completed 21-04-PLAN.md
+Last session: 2026-09-16T20:13:15.167Z
+Stopped at: Completed 22-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -58,7 +58,7 @@ patterns-established:
 requirements-completed: []
 
 # Metrics
-duration: ~95min
+duration: 154min (wall clock, including two operator waits: the Task 1 blocking checkpoint and the Task 4 classifier halt)
 completed: 2026-09-16
 ---
 
