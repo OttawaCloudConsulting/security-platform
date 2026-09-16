@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 22-01-PLAN.md
-last_updated: "2026-09-16T20:13:15.332Z"
+stopped_at: Completed 22-02-PLAN.md
+last_updated: "2026-09-16T22:39:25.353Z"
 last_activity: 2026-09-16
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 63
-  completed_plans: 58
-  percent: 82
+  completed_plans: 59
+  percent: 94
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 22 (branch-protection-apply-live-exercise-needs-explicit-target-) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-09-16
 
-Progress: [█████████░] 92%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -162,6 +162,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 22]: Phase 22 live exercise authorised: operator answered 'proceed' at execution time (recorded in 22-evidence/go-decision.txt) on the target and end state locked in 22-CONTEXT.md — Target OttawaCloudConsulting/terraform-pipelines, end state restore, requirement VAL-02. No amendment proposed. Branch chore/phase-22-required-check-exercise and PR #14 are the only live residue so far; main and the ruleset are untouched.
 - [Phase 22]: 22-poll-merge-state.sh uses the corrected two-condition post-loop assertion, and its failure path was observed firing rather than assumed — 22-RESEARCH.md:595-603 publishes a single-condition guard that passes on a settled-but-stale value, which arms Pitfall 7 (gh pr merge succeeding against a stale BLOCKED read). The stale self-test against PR #14 exited 1 with the settled-but-unchanged message.
 - [Phase 22]: 22-evidence/ is phase-scoped, shared by plans 01-05, rather than plan-scoped like 20-10-evidence/ — Plan 05's non-negotiable gate diffs rules-before.txt (written in plan 01) against rules-restored.txt (written in plan 05); splitting the directory per plan would push that assertion across a directory boundary.
+- [Phase 22-02]: The GATE_MODE blocking window was opened and closed by the OPERATOR running a staged script — the auto-mode Bash classifier denied 'gh variable set' against terraform-pipelines, as 22-01 predicted. The hand-back was a bounded script with an EXIT-trap close, not a bare command, because the matching delete faces the identical denial and a bare set would have left the repository-wide window open across a second human round-trip.
+- [Phase 22-02]: Assumption A4 falsified in the safe direction — TWO of five checks are red under blocking (SAST — Semgrep CE and SCA — Trivy Filesystem), not the predicted Semgrep alone. Plan 04 must confirm a refusal names a 'security / ...' context but must not assume it names Semgrep.
+- [Phase 22-02]: Control verdict measured UNSTABLE at head 969dc2c8 with the two red checks NOT required, against a CLEAN baseline on the identical tree hash 57a81e09. Settle-poll passed prev=CLEAN (the 22-01 addendum resettled value), and all 12 check runs were asserted complete before the read so the verdict cannot be a pending third-party check.
 
 ### Pending Todos
 
@@ -232,10 +235,11 @@ Carried forward from v1.1 close:
 | Phase 21 P04 | 18min | 2 tasks | 2 files |
 | Phase 21 P01 | 3min | 2 tasks | 1 files |
 | Phase 22 P01 | 154min | 4 tasks | 13 files |
+| Phase 22 P02 | 65min | 2 tasks | 11 files |
 
 ## Session Continuity
 
-Last session: 2026-09-16T20:13:15.167Z
+Last session: 2026-09-16T22:39:18.814Z
 Stopped at: Completed 22-01-PLAN.md
 Resume file: None
 
