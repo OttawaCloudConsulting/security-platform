@@ -15,7 +15,7 @@ provides:
   - "22-evidence/ruleset-before.json — the only copy of terraform-pipelines ruleset 12760793 outside GitHub; plan 05's rollback is reconstructed from this file and nothing else"
   - "22-evidence/rules-before.txt — the reference for plan 05's `diff rules-before.txt rules-restored.txt` phase gate"
   - "PR #14 on OttawaCloudConsulting/terraform-pipelines, OPEN, five `security / ...` contexts at head a792e1a8, tree 57a81e09"
-  - "The measured pre-apply merge verdict, UNSTABLE, against which plans 03-04 discriminate"
+  - "The measured pre-apply merge verdict: UNSTABLE at 20:05Z (a pending third-party GitGuardian check), resettling to CLEAN at 20:15Z on the same head SHA. Plans 03-04 discriminate against CLEAN — see the SUMMARY addendum"
   - "VAL-02 registered in REQUIREMENTS.md, unchecked, mapped to Phase 22"
 affects: [22-02, 22-03, 22-04, 22-05, 22-06]
 
@@ -41,6 +41,8 @@ key-files:
     - .planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-evidence/pr-baseline.json
     - .planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-evidence/check-runs-baseline.json
     - .planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-evidence/merge-state-baseline.json
+    - .planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-evidence/merge-state-baseline-resettled.json
+    - .planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-evidence/check-runs-all-apps-baseline.json
   modified:
     - .planning/REQUIREMENTS.md
 
@@ -271,6 +273,31 @@ Outstanding across the phase: PR #14 must be **closed unmerged and its branch de
 ---
 *Phase: 22-branch-protection-apply-live-exercise-needs-explicit-target-*
 *Completed: 2026-09-16*
+
+## Addendum — the baseline verdict moved after capture, and why it matters
+
+**Measured after the SUMMARY was first written, during a final read-back.** `mergeStateStatus` on PR #14 now reads **`CLEAN`**, not the `UNSTABLE` recorded in `merge-state-baseline.json`. Three consecutive reads at 2026-09-16T20:15Z all returned `CLEAN / MERGEABLE`, on the **same head SHA** `a792e1a8…` — nothing was pushed, nothing re-ran.
+
+**Root cause, measured not guessed.** The head SHA carries **twelve** check runs, not the eleven seen at baseline. The twelfth is `GitGuardian Security Checks` from app slug `gitguardian`, `completed_at: 2026-09-16T20:08:49Z` — **after** the baseline merge-state read at roughly 20:05Z. A pending third-party check is enough to make `mergeStateStatus` read `UNSTABLE`. When it completed `success`, the verdict settled to `CLEAN`.
+
+Full inventory at the head SHA, captured to `22-evidence/check-runs-all-apps-baseline.json`:
+
+| App | Count | Notes |
+|---|---|---|
+| `app.id 15368` (our reusable workflow) | **5** | the required contexts — unchanged, still exactly five |
+| `github-advanced-security` | 6 | code-scanning runs derived from our own SARIF uploads |
+| `gitguardian` | 1 | **third-party app on the repository, independent of this exercise** |
+
+**What this says about the settle-poll.** The helper did its job exactly as specified — it returned a value that was neither `UNKNOWN` nor equal to the previous value. But "settled" in the poll's sense means *"a real value that differs from the one you told me about"*, which is **not** the same as *"terminal"*. With `prev=""` (a first read) there is no previous value to differ from, so the first non-`UNKNOWN` reading wins, transient or not. This is a genuine limitation of the contract, not a defect in the implementation, and it is now on record rather than latent.
+
+**Both artifacts are kept, and neither is wrong.** `merge-state-baseline.json` is a true measurement of 20:05Z; `merge-state-baseline-resettled.json` is a true measurement of 20:15Z. Recording the verdict *as measured* was the plan's instruction and it is what caught this.
+
+**What plans 02-04 must do differently:**
+
+1. **The pre-apply verdict to discriminate against is `CLEAN`, not `UNSTABLE`.** `22-CONTEXT.md` describes the transition as `UNSTABLE → BLOCKED → CLEAN`; the measured reality on a fully-settled PR is `CLEAN → BLOCKED → CLEAN`. That is a *stronger* deliverable, not a weaker one — with the starting and ending verdicts identical, the ruleset write plus the red check is the only variable that moved.
+2. **Wait for every check run to complete before reading merge state**, not just the five from `app.id == 15368`. GitGuardian lands roughly 4-5 minutes after PR open and independently of our workflow run. A merge-state read taken while it is pending measures GitGuardian, not the gate.
+3. **Pass a non-empty `prev` wherever one exists.** Plan 02 should call the helper with `prev="CLEAN"`, plan 04 with `prev="BLOCKED"`. The two-condition assertion only bites when there is a previous value to compare against.
+4. **A third-party app can turn the PR red for reasons unrelated to the gate.** If plan 04 sees a refusal, confirm it names a `security / …` context; a GitGuardian failure would produce a refusal that reads the same but proves nothing.
 
 ## Self-Check: PASSED
 
