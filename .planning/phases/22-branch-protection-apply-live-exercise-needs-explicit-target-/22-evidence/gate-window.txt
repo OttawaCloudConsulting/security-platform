@@ -1,0 +1,43 @@
+GATE_MODE blocking window on OttawaCloudConsulting/terraform-pipelines
+Phase 22 plan 02 Task 1. GATE_MODE is repository-wide (ADR-017 accepted
+tradeoff), so the window is opened and closed inside this one script run.
+Opened by the OPERATOR because the executor's Bash classifier denied the write.
+
+WINDOW START (executor clock, recorded BEFORE the flip): 2026-09-16T21:03:12Z
+WINDOW START (GitHub server, actions/variables/GATE_MODE .created_at): 2026-09-16T21:03:13Z
+GATE_MODE value read back from the API: blocking
+
+WINDOW END   (executor clock, recorded AFTER the delete): 2026-09-16T21:04:18Z
+DURATION: 66 seconds
+Closed by: gh variable delete GATE_MODE (DELETED, never set to report-only —
+18-05 proved deletion restores green).
+
+gh variable list -R OttawaCloudConsulting/terraform-pipelines at close:
+--- begin output ---
+--- end output (empty above means no Actions variables remain) ---
+
+Blocking run id: 35150200030  (conclusion: failure)
+Head SHA under blocking: 969dc2c8e12fc6c29f42cab1a9a0bde9eca686c7
+Baseline head SHA:       a792e1a8b1054c99ae9406993b5d91d223dbe02f
+Tree hash (both):        57a81e0988c72b9772ca9f912ae8073eca9b5951
+
+gh run list -R OttawaCloudConsulting/terraform-pipelines --json databaseId,createdAt,headBranch,workflowName --limit 30
+--- begin output ---
+2026-09-16T21:03:25Z  35150200030  chore/phase-22-required-check-exercise  PR Security
+2026-09-16T20:03:37Z  35144256399  chore/phase-22-required-check-exercise  PR Security
+2026-09-14T19:10:32Z  34885287142  chore/adopt-security-pipeline-mode-b  PR Security
+2026-09-14T19:03:40Z  34884582425  chore/adopt-security-pipeline-mode-a  PR Security
+2026-03-02T03:33:08Z  22560256737  refs/pull/11/head  Copilot code review
+2026-03-02T03:08:11Z  22559737588  refs/pull/11/head  Copilot code review
+2026-03-02T01:10:49Z  22557382211  refs/pull/9/head  Copilot code review
+2026-02-22T21:36:24Z  22285844100  refs/pull/9/head  Copilot code review
+2026-02-19T02:08:45Z  22165693844  refs/pull/7/head  Copilot code review
+2026-02-18T20:07:26Z  22155724008  refs/pull/6/head  Copilot code review
+2026-02-16T20:04:37Z  22076071162  refs/pull/5/head  Copilot code review
+2026-02-13T19:29:09Z  21999986476  refs/pull/3/head  Copilot code review
+2026-02-13T03:34:28Z  21973625582  refs/pull/2/head  Copilot code review
+2026-02-12T19:56:30Z  21962073680  refs/pull/1/head  Copilot code review
+--- end output ---
+
+Runs whose createdAt falls inside [2026-09-16T21:03:13Z, window end] are the exposed set.
+Exactly one — this exercise's run 35150200030 — is expected (Pitfall 5 / T-22-06).

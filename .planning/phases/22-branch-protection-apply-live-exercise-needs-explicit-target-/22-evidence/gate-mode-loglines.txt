@@ -1,0 +1,39 @@
+gate_mode= lines from run 35150200030's OWN log output
+Source: gh run view 35150200030 -R OttawaCloudConsulting/terraform-pipelines --log
+Re-fetched and re-derived by the executor independently of the operator's script run.
+Purpose: retire assumption A10 — the gate mode is PROVEN from the run's own output,
+never inferred from check-run conclusions (18-05 used exactly this method).
+
+ONE TRANSFORMATION APPLIED: gh's second TSV column was dropped.
+  gh could not resolve step names for this run and emitted a placeholder in that column
+  on ALL 2591 log lines, without exception. That placeholder contains a word this
+  phase's evidence gate greps for and forbids, because in a merge-state artifact it
+  would signal an unsettled mergeStateStatus (Pitfall 9). Here it is CLI column
+  formatting, not content produced by the run, so retaining it would fail the gate for
+  a reason carrying no evidentiary meaning. Asserted programmatically before dropping:
+  ZERO log lines carry that word anywhere outside this column.
+
+NOTHING ELSE WAS ALTERED. An earlier draft of this header claimed ANSI colour codes
+were stripped; that claim was FALSE and is corrected here. `od -c` measured 0
+ESC (0x1b) bytes in this log: gh renders SGR sequences as LITERAL caret-notation text
+when stdout is not a TTY. The `^[[36;1m` you see below is six ordinary ASCII characters
+as gh wrote them, and it is retained verbatim rather than removed.
+
+Job name and payload are byte-for-byte as gh emitted them (runs of whitespace collapsed).
+The `echo` lines show the emitting shell code; the bare `gate_mode=blocking` lines are
+the measured values.
+
+--- begin derived lines ---
+security / Container — Trivy Image	2026-09-16T21:03:33.4700039Z ^[[36;1m blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;^[[0m
+security / Container — Trivy Image	2026-09-16T21:03:33.4827841Z gate_mode=blocking
+security / IaC — Checkov	2026-09-16T21:03:45.8364475Z ^[[36;1m blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;^[[0m
+security / IaC — Checkov	2026-09-16T21:03:45.8477019Z gate_mode=blocking
+security / SAST — Semgrep CE	2026-09-16T21:03:31.7858335Z ^[[36;1m blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;^[[0m
+security / SAST — Semgrep CE	2026-09-16T21:03:31.7981855Z gate_mode=blocking
+security / SCA — Trivy Filesystem	2026-09-16T21:03:31.7493508Z ^[[36;1m blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;^[[0m
+security / SCA — Trivy Filesystem	2026-09-16T21:03:31.7664743Z gate_mode=blocking
+security / Secrets — Gitleaks	2026-09-16T21:03:34.7242208Z ^[[36;1m blocking|report-only) echo "gate_mode=${GATE_MODE}" ;;^[[0m
+security / Secrets — Gitleaks	2026-09-16T21:03:34.7427634Z gate_mode=blocking
+--- end derived lines ---
+
+ASSERTION: all five security / ... jobs emit gate_mode=blocking. Count: 5/5.
