@@ -268,3 +268,18 @@ Plans:
 - [x] 21-02-PLAN.md — Apply the same live-SCA-tools correction to milestone-4-defectdojo.md L75 parser list and L105 dedup example (SE-1, user-approved scope addition)
 - [x] 21-03-PLAN.md — Add a SARIF upload limits subsection to adoption-guide.md §6 (5,000 display truncation, four rejection ceilings, 1,000,000 alert cap)
 - [x] 21-04-PLAN.md — Close Phase 17 deferred items #4 and #6 in deferred-items.md and run the full phase verification suite
+
+### Phase 22: branch-protection --apply live exercise (needs explicit target-repo confirm, irreversible-ish)
+
+**Goal:** Witness GitHub refusing a merge because a required scan check is red — the one end-to-end flow the v2.0 milestone audit lists as UNVERIFIED — by making the five `security / ...` contexts required on `OttawaCloudConsulting/terraform-pipelines` for a bounded window, capturing the refusal verbatim, and restoring the repository's ruleset byte-identically afterwards.
+**Requirements**: VAL-02
+**Depends on:** Phase 21
+**Plans:** 6 plans
+
+Plans:
+- [ ] 22-01-PLAN.md — Settle-poll helper, before-state capture, and the exercise pull request's baseline verdict
+- [ ] 22-02-PLAN.md — Bounded blocking window on a byte-identical tree, and the control verdict (red but not required)
+- [ ] 22-03-PLAN.md — Operator-run guard rehearsal and live `--apply`, then Claude's independent read-back (checkpoint)
+- [ ] 22-04-PLAN.md — The witnessed refusal, plus the third verdict that isolates the red required check as its cause
+- [ ] 22-05-PLAN.md — Close the PR, restore the ruleset, prove it byte-identical, scrub and commit the evidence
+- [ ] 22-06-PLAN.md — ADR-019, adoption-guide section 8 measured update, and VAL-02 closure
