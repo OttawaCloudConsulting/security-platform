@@ -861,7 +861,13 @@ correct shape here.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+*All six questions below were closed on 2026-09-16, before planning finalised. Four were RESOLVED by
+operator decision or by a scoping choice now carried in the plans; two are DEFERRED TO EXECUTION
+because they are unanswerable without performing the live write, which is the exact blind spot this
+phase exists to remove. No question below is still open. The original text is preserved unedited;
+each resolution is appended as a `**RESOLVED**` or `**DEFERRED TO EXECUTION**` line.*
 
 1. **Which requirement ID does this phase close?**
    - Known: ROADMAP says TBD; every v2.0 ID is already `[x]`; the audit names an unverified flow,
@@ -869,6 +875,9 @@ correct shape here.
    - Unclear: whether the operator wants a new ID, a re-opened one, or none.
    - Recommendation: propose `VAL-02` at the discuss/decision checkpoint; do not write it into
      `REQUIREMENTS.md` without confirmation.
+   - **RESOLVED: `VAL-02`, confirmed by the operator via AskUserQuestion — see `22-CONTEXT.md`
+     ("Requirement ID"). Registered UNCHECKED in `REQUIREMENTS.md` by 22-01 Task 3; ticked by 22-06
+     Task 2 only after the refusal is witnessed and the ruleset restored.**
 
 2. **Does the current token scope permit ruleset writes?**
    - Known: `repo` scope + `admin: true`; GET on `/rulesets/{id}` (admin-read) succeeds on both
@@ -876,6 +885,10 @@ correct shape here.
    - Unclear: whether GitHub requires anything beyond `repo` for the PUT.
    - Recommendation: discover at the write checkpoint. A 403 changes no state and costs one
      command. Do not pre-emptively broaden the token.
+   - **DEFERRED TO EXECUTION: unknowable without a live write. Resolved at 22-03 Task 1's blocking
+     checkpoint, where the operator runs the PUT themselves. A 403 changes no state, so the plan
+     branches safely on the outcome — 22-03 Task 1 halts and reports the raw body, and the token is
+     not pre-emptively broadened. Not a planning blocker.**
 
 3. **Should `set-required-checks.sh` gain a `--restore FILE` flag?**
    - Known: no rollback path exists in any script; rollback is currently a hand-built PUT.
@@ -884,23 +897,43 @@ correct shape here.
      `--restore` as a deferred item. Adding a flag means a commit in `repos/security-platform`, an
      adoption-guide §8 update here, and re-running the standing gate — scope the phase does not
      need in order to close the audit finding.
+   - **RESOLVED: no. The rollback is done inline by 22-05 Task 1 as a hand-built PUT from the
+     six-key projection in `ruleset-before.json`; `repos/security-platform` is not touched by this
+     phase. A `--restore FILE` flag is recorded as a DEFERRED item (named as such in 22-01's
+     `<scope_boundaries>`) and belongs to a future phase.**
 
 4. **What is the target repo's end state?**
    - Known: restoring is the smallest blast radius; leaving it required is the stronger adoption
      statement but creates Pitfall 1 on a repo whose `main` has no workflow.
    - Recommendation: default to restore; surface "keep it" as an explicit option at the decision
      checkpoint.
+   - **RESOLVED: RESTORE, and the target is `terraform-pipelines` — both confirmed by the operator
+     via AskUserQuestion — see `22-CONTEXT.md` ("Target repository", "End state after the live
+     exercise"). "Keep it" was surfaced and explicitly rejected: that repo's `main` carries no
+     `.github/workflows/`, so leaving the checks required is Pitfall 1 on a real repository. Because
+     the choice is LOCKED, 22-01 Task 1's `checkpoint:decision` offers `proceed`/`halt` only — it is
+     an execution-time go/no-go on acting on the record, not a re-opening of the choice. The restore
+     is the phase gate: `diff rules-before.txt rules-restored.txt` must be empty.**
 
 5. **Will `copilot_code_review` round-trip through PUT?**
    - Known: it is present on `terraform-pipelines`' ruleset and in `20-10-evidence/merged.json`.
    - Unclear: unanswerable without a write — the exact blind spot a dry run cannot cover.
    - Recommendation: treat as the first thing the `--apply` tests. A 422 here is a *finding*, not
      a failure, and belongs in ADR-019.
+   - **DEFERRED TO EXECUTION: unanswerable without a live write, by the researcher's own statement.
+     Answered at 22-03 Task 1. The plans branch safely on either outcome: a 422 changes no state, so
+     22-03 Task 1 records the raw body and halts, 22-04 is skipped entirely, 22-05 takes its
+     no-forward-write branch, and the result is written up in ADR-019 by 22-06 Task 1 as a finding
+     rather than a failure.**
 
 6. **Does ADR-019 supersede, or merely append to, ADR-017 item 4 and ADR-018 item 7?**
    - Known: ADRs are append-only per CLAUDE.md.
    - Recommendation: ADR-019 references both by identifier and records the new measurement.
      Do not edit 017 or 018. Check `docs/adr/README.md` for the index convention before writing.
+   - **RESOLVED: APPENDS, never supersedes. `CLAUDE.md` makes `docs/adr/` append-only, which settles
+     it without needing an operator decision. 22-06 Task 1 writes ADR-019 as a NEW file referencing
+     ADR-017 item 4 and ADR-018 item 7 by identifier, and 22-06's gate asserts
+     `git diff -- docs/adr/adr017-*.md docs/adr/adr018-*.md` is empty.**
 
 ---
 

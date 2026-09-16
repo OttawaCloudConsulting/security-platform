@@ -391,6 +391,16 @@ required checks". Same question class, one repo over. Copy its element skeleton:
   <resume-signal>Select: leave-unrequired, require-report-only, or require-and-block. If you select require-report-only, add the bypass actor in the GitHub UI first and say so — Claude will then run the script with `--verify-sha` and the lockout acknowledgement, and read back `rules/branches/main`.</resume-signal>
 ```
 
+> **SUPERSEDED (2026-09-16) by `22-CONTEXT.md`.** The paragraph below was written before the
+> operator's decisions were captured. `22-CONTEXT.md` LOCKS the target (`terraform-pipelines`) and
+> the end state (restore); locked decisions are non-negotiable, so the A/B/C/D matrix and the
+> restore/keep pair below are NOT offered as selectable options. `22-01-PLAN.md` Task 1 offers
+> exactly two answers, `proceed` and `halt` — an execution-time go/no-go on acting on the record,
+> not a re-opening of the choice. **The `<context>` requirements below still apply in full**: both
+> measured second-order effects must be stated, and option C's mechanical exclusion is still the
+> right framing for the rationale. Take the element skeleton and the `<context>` facts from here;
+> take the option set from `22-CONTEXT.md`.
+
 **Phase 22 substitutes the target-repo matrix for the three 18-05 options** — A `terraform-pipelines`
 / B `security-platform` / C `aws-zabbix-monitoring-solution` / D throwaway sandbox
 (`22-RESEARCH.md:163-202`), plus a **second** decision the operator must answer in the same task
