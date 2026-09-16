@@ -92,7 +92,7 @@ Commands 1 and 2 are checked before any network call (script lines 130-151); com
 
 Command 3's `--out` file was **not** created — exit 2 fires inside the `python3` stage before `json.dump` — and its absence was stated to the operator in advance and confirmed by Claude afterwards.
 
-## The operator's reply, verbatim
+## The reply, as relayed by the coordinator
 
 > "Operator ran all 4 commands in their own terminal. Result: "applied". All 4 transcripts below."
 
@@ -197,16 +197,16 @@ The plan named five parameters and asked whether plan 04's `CLEAN` expectation s
 
 The third is a review requirement that the plan's five-parameter check would have missed, and it defaults to `true`. Left unexamined it is exactly the hazard the plan warned about: a review requirement holding PR #14 at `BLOCKED` for a reason unrelated to the required checks, which would corrupt plan 04's three-verdict proof.
 
-**It was measured rather than argued about.** Both commits on PR #14 are attributed to a GitHub account (`pr14-commit-attribution.json`):
+**What was measured, and what was not.** Both commits on PR #14 are attributed to a GitHub account (`pr14-commit-attribution.json`):
 
 | SHA | author | committer |
 |---|---|---|
 | `a792e1a8…` | `OttawaCloudConsulting` | `OttawaCloudConsulting` |
 | `969dc2c8…` | `OttawaCloudConsulting` | `OttawaCloudConsulting` |
 
-There are **no unattributed changes on this pull request**, so the flag has nothing to act on. **Plan 04's `CLEAN` expectation survives** — with the caveat below.
+**The parameter's semantics are INFERRED from its name, not verified.** Commit-author-to-account linkage is the most plausible trigger for "unattributed", and by that reading the flag has nothing to act on here and **plan 04's `CLEAN` expectation survives**. But GitHub's published REST documentation for the `pull_request` rule parameters was queried twice through Context7 (`/websites/github_en_rest` and the OpenAPI description) and returned no match for this parameter, so no authoritative definition backs that reading. Treat it as a belief supported by one measurement, not as a verified fact — the distinction the project's own Evidence Standards rule draws.
 
-**Carry-forward for plan 04.** If the third verdict reads `BLOCKED` with all five checks green, `require_extra_approval_for_unattributed_changes` is the first thing to check, not the last — and `allowed_merge_methods` permits `squash`, which is what plan 04's `gh pr merge --squash` attempt needs.
+**Carry-forward for plan 04.** If the third verdict reads `BLOCKED` with all five checks green, `require_extra_approval_for_unattributed_changes` is the first thing to check, not the last — precisely because its semantics are unverified here — and `allowed_merge_methods` permits `squash`, which is what plan 04's `gh pr merge --squash` attempt needs.
 
 ## Task Commits
 
@@ -274,7 +274,7 @@ One paste artifact (deviation 3), caught and diagnosed by the orchestrator rathe
 | `bypass_actors` | `[]` |
 | `current_user_can_bypass` | `"never"` |
 | `pull_request` five named parameters | `0`, `false`, `false`, `false`, `false` |
-| `require_extra_approval_for_unattributed_changes` | `true` — **no unattributed commits on PR #14**, measured |
+| `require_extra_approval_for_unattributed_changes` | `true` — both PR #14 commits attributed to an account (measured); the parameter's semantics inferred, **not** verified against GitHub docs |
 | `diff 22-evidence/merged.json 20-10-evidence/merged.json` | **empty** |
 | `commits/main --jq .sha` vs `main-head-before.txt` | identical — `c490bed0…` |
 | PR #14 | `OPEN`, `mergedAt: null`, head `969dc2c8…` |
