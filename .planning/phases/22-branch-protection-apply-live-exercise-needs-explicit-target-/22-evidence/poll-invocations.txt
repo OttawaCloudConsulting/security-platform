@@ -1,0 +1,28 @@
+22-evidence/poll-invocations.txt — the settle-poll invocations behind this plan's merge-state readings.
+
+Every recorded mergeStateStatus in plan 04 came through 22-poll-merge-state.sh. The exact
+invocation, its exit code, its stdout (the settled value) and its stderr (the per-read trace) are
+reproduced below so the reading can be audited rather than taken on the evidence file's word.
+
+--- Task 1, the BLOCKED verdict ---
+
+  bash .planning/phases/22-.../22-poll-merge-state.sh OttawaCloudConsulting/terraform-pipelines 14 "UNSTABLE"
+
+prev="UNSTABLE" is 22-02's control value, read from merge-state-unstable.json. Passing it is what
+lets the helper's corrected two-condition post-loop assertion reject a stale read: had GitHub
+served the pre-write value, S would have equalled PREV and the helper would have exited 1 rather
+than handing back a value that looks like a measurement.
+
+exit code: 0
+stdout   : BLOCKED
+stderr   : read 1/20: mergeStateStatus=BLOCKED (previous='UNSTABLE')
+
+Settled on the first read. Neither halt condition fired: not "never settled" (the value was never
+UNKNOWN), not "settled but unchanged" (BLOCKED != UNSTABLE).
+
+DISCLOSURE — one direct read preceded this one. While orienting, before the helper existed, a
+single `gh pr view 14 -R … --json …,mergeStateStatus,…,reviewDecision` was run directly rather than
+through the poll, and it already returned BLOCKED. It is disclosed here rather than omitted because
+the poll's value is the measurement and a reader is entitled to know the polled read was not the
+first query of the session. It does not weaken the reading: a direct read cannot make a later
+polled read stale, and the poll compared against UNSTABLE, not against that orientation read.
