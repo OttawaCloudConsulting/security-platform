@@ -1,0 +1,33 @@
+proceed
+
+Recorded: 2026-09-16T17:39:55Z
+Task: 22-01 Task 1 (checkpoint:decision, gate="blocking")
+Decision put to operator: whether to begin executing this phase's writes against
+OttawaCloudConsulting/terraform-pipelines today, on the target and end state recorded in
+22-CONTEXT.md.
+
+Operator answer, verbatim:
+"Operator decision: PROCEED. Record "proceed" verbatim with timestamp into
+.planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-evidence/go-decision.txt
+as the plan specifies, then continue executing Task 1's remaining steps and Tasks 2-4 of plan 22-01
+(settle-poll helper, evidence dir, push branch + open exercise PR on
+OttawaCloudConsulting/terraform-pipelines). Commit each task atomically, write SUMMARY.md, commit it.
+You are on the main working tree, branch feature/phase-12-repo-setup-script (no worktree isolation).
+Continue per the plan and execute-plan.md protocol; halt again only if you hit another blocking
+checkpoint."
+
+Operator reasoning volunteered beyond the selection: none. No alternative target repository and no
+alternative end state was proposed; the three locked decisions in 22-CONTEXT.md stand unamended
+(target OttawaCloudConsulting/terraform-pipelines; end state restore; requirement VAL-02).
+
+This answer authorises, across plans 01-05:
+  1. push branch chore/phase-22-required-check-exercise and open a PR on that repo (plan 01 Task 4)
+  2. set and then delete repository variable GATE_MODE on that repo (plan 02 Task 1)
+  3. PUT repos/OttawaCloudConsulting/terraform-pipelines/rulesets/12760793 adding
+     required_status_checks and pull_request, performed by the OPERATOR at plan 03's checkpoint
+  4. the restoring PUT in plan 05
+
+State of the target repository at the moment this decision was recorded, read back not assumed:
+  gh api repos/OttawaCloudConsulting/terraform-pipelines/rules/branches/main --jq '[.[].type]|sort|join(",")'
+  -> copilot_code_review,deletion,non_fast_forward
+No write of any kind had been made when this file was created.
