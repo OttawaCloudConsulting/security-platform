@@ -30,6 +30,7 @@
 ### Validation
 
 - [x] **VAL-01**: Full pipeline validated in this repo using branch-target PRs (no second repo required to prove it out)
+- [ ] **VAL-02**: Required-check enforcement exercised live — a pull request with a red required check is observably refused by GitHub
 
 ## v2 Requirements
 
@@ -70,12 +71,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DIST-07 | Phase 20 | Complete |
 | DIST-08 | Phase 20 | Complete |
 | VAL-01 | Phase 19 | Complete |
+| VAL-02 | Phase 22 | In Progress |
 
 **Coverage:**
-- v1 requirements: 14 total
-- Mapped to phases: 14 ✓
+- v1 requirements: 15 total
+- Mapped to phases: 15 ✓
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-09-10*
-*Last updated: 2026-09-10 after v2.0 roadmap creation (Phases 14-20)*
+*Last updated: 2026-09-16 after Phase 22 registered VAL-02 (branch-protection --apply live exercise)*
