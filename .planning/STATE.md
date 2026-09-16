@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 22-02-PLAN.md
-last_updated: "2026-09-16T22:39:25.353Z"
+stopped_at: Completed 22-03-PLAN.md
+last_updated: "2026-09-16T23:28:35.862Z"
 last_activity: 2026-09-16
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 63
-  completed_plans: 59
-  percent: 94
+  completed_plans: 60
+  percent: 95
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 22 (branch-protection-apply-live-exercise-needs-explicit-target-) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-09-16
 
-Progress: [█████████░] 94%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -165,6 +165,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 22-02]: The GATE_MODE blocking window was opened and closed by the OPERATOR running a staged script — the auto-mode Bash classifier denied 'gh variable set' against terraform-pipelines, as 22-01 predicted. The hand-back was a bounded script with an EXIT-trap close, not a bare command, because the matching delete faces the identical denial and a bare set would have left the repository-wide window open across a second human round-trip.
 - [Phase 22-02]: Assumption A4 falsified in the safe direction — TWO of five checks are red under blocking (SAST — Semgrep CE and SCA — Trivy Filesystem), not the predicted Semgrep alone. Plan 04 must confirm a refusal names a 'security / ...' context but must not assume it names Semgrep.
 - [Phase 22-02]: Control verdict measured UNSTABLE at head 969dc2c8 with the two red checks NOT required, against a CLEAN baseline on the identical tree hash 57a81e09. Settle-poll passed prev=CLEAN (the 22-01 addendum resettled value), and all 12 check runs were asserted complete before the read so the verdict cannot be a pending third-party check.
+- [Phase 22]: The required_status_checks + pull_request PUT on terraform-pipelines was performed by the OPERATOR at a blocking checkpoint and returned 200 — the executor's Bash classifier denies writes on that repo; plan 05 therefore takes its restore branch, not its no-forward-write branch
+- [Phase 22]: Live pull_request rule carries a server-added require_extra_approval_for_unattributed_changes=true that the script never sent — both PR #14 commits are attributed to a GitHub account, so plan 04's CLEAN expectation survives; it is the first suspect if a BLOCKED verdict appears with five green checks
 
 ### Pending Todos
 
@@ -236,11 +238,12 @@ Carried forward from v1.1 close:
 | Phase 21 P01 | 3min | 2 tasks | 1 files |
 | Phase 22 P01 | 154min | 4 tasks | 13 files |
 | Phase 22 P02 | 65min | 2 tasks | 11 files |
+| Phase 22 P03 | ~30min | 2 tasks | 8 files |
 
 ## Session Continuity
 
-Last session: 2026-09-16T22:39:18.814Z
-Stopped at: Completed 22-01-PLAN.md
+Last session: 2026-09-16T23:28:35.853Z
+Stopped at: Completed 22-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
