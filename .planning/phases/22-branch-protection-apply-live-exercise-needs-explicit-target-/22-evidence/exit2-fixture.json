@@ -1,0 +1,17 @@
+{
+  "name": "Default",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "exclude": [
+        "refs/heads/dev**/**"
+      ],
+      "include": [
+        "~DEFAULT_BRANCH",
+        "refs/heads/main"
+      ]
+    }
+  },
+  "bypass_actors": []
+}
