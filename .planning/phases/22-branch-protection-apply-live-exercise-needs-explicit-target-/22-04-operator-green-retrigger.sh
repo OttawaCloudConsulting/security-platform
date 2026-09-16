@@ -58,6 +58,16 @@ test -s "${E}/merge-attempt.txt" \
 echo "ok: merge attempt already captured ($(wc -c < "${E}/merge-attempt.txt") bytes)"
 
 # ---- Nothing was merged by it ----------------------------------------------
+# The interlock couples to A's FILES, not to A's exit code, so guard the second
+# artifact explicitly: without this, a half-finished A would kill this script
+# with a Python traceback instead of a readable ABORT(2), and a traceback is
+# easy to misread as a classifier denial.
+test -s "${E}/pr-after-attempt.json" \
+  || { echo "ABORT(2): ${E}/pr-after-attempt.json is missing or empty." >&2
+       echo "          merge-attempt.txt exists but the post-attempt read does not, so" >&2
+       echo "          22-04-operator-merge-attempt.sh did not finish. Run this script only" >&2
+       echo "          if that one exited 0." >&2
+       exit 2; }
 STATE_AFTER=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["state"])' "${E}/pr-after-attempt.json")
 MERGED_AT=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["mergedAt"])' "${E}/pr-after-attempt.json")
 [ "$STATE_AFTER" = "OPEN" ] && [ "$MERGED_AT" = "None" ] \
