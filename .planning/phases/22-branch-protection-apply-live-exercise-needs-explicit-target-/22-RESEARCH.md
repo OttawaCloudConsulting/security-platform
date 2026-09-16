@@ -317,9 +317,18 @@ nothing to slopcheck.
        └────────────────────────────────────┬────────────────────────────────────┘
                                             │
        ┌────────────────────────────────────▼────────────────────────────────────┐
-       │  5. WITNESS  mergeStateStatus == BLOCKED   ◄── THE DELIVERABLE          │
-       │     gh pr merge --squash → refusal text captured verbatim               │
-       │     (optional, zero-blast-radius) git push origin main → rejected       │
+       │  5. WITNESS  poll until mergeStateStatus settles (never UNKNOWN)        │
+       │     → expect BLOCKED   ◄── THE DELIVERABLE                              │
+       │     HARD PRECONDITION, same task, fresh read:                           │
+       │        [ "$S" = BLOCKED ] || exit 1      ← else gh pr merge MERGES IT   │
+       │     then: gh pr merge --squash  (NEVER --admin) → refusal captured      │
+       └────────────────────────────────────┬────────────────────────────────────┘
+                                            │
+       ┌────────────────────────────────────▼────────────────────────────────────┐
+       │  5b. THIRD VERDICT — disambiguates what BLOCKED was caused by           │
+       │     gh variable delete GATE_MODE ; gh run rerun <run-id>  (same SHA)    │
+       │     → five green, checks STILL required → expect CLEAN                  │
+       │     leaves the PR mergeable-but-unmerged: a safe resting point          │
        └────────────────────────────────────┬────────────────────────────────────┘
                                             │
        ┌────────────────────────────────────▼────────────────────────────────────┐
@@ -353,6 +362,23 @@ status; `BLOCKED` = an unmet required review or status check; `CLEAN` = all gree
 independent community sources. **MEDIUM confidence on the doc wording — but the phase does not
 depend on it**, because the exercise measures the transition empirically. Treat the enum
 description as a prediction to be confirmed, not a fact to be cited.
+
+Both reads must go through the settle-poll of Pitfall 9 — a single immediate query can return
+`UNKNOWN` or the stale prior value, which silently destroys the comparison.
+
+**Hold the head SHA constant.** The control and the deliverable are only comparable if nothing
+about the commit changed. Flip the mode with `gh variable set GATE_MODE --body blocking` and
+re-trigger with **`gh run rerun <run-id>`**, never a new push or an empty commit. 18-05 proved a
+rerun re-reads repository variables on the same SHA. `commits/{sha}/check-runs` defaults to
+`filter=latest`, so `--verify-sha` sees the post-rerun check-run names, not the superseded ones.
+
+**Third verdict (step 5b) — do not skip it.** `BLOCKED` alone does not say *what* blocked the PR;
+`copilot_code_review` and the newly-added `pull_request` rule are both live candidates. After
+witnessing the refusal, `gh variable delete GATE_MODE` and `gh run rerun` the same SHA: five green
+with the five contexts **still required** should settle to `CLEAN`. Three verdicts on one head SHA
+(`UNSTABLE` → `BLOCKED` → `CLEAN`) isolates the red required check as the sole cause — the exact
+shape of 18-05's one-tree-three-verdicts proof. It also leaves the PR mergeable-but-unmerged, a
+safer resting point than restoring the ruleset while the PR is blocked.
 
 Note `gh pr view --json merged` is **not a valid field** in `gh` 2.101.0 (`Unknown JSON field`) —
 use `state` and `mergedAt`. `[VERIFIED: gh pr view, this session]`
@@ -396,6 +422,15 @@ the orchestrator ran the dry run for it.
   ADR-017 and 14-02 both record this as a false negative.
 - **Seeding a synthetic finding on `terraform-pipelines`.** Unnecessary — Semgrep already returns 6.
   Seeding adds a commit to a real repo for no evidentiary gain.
+- **"Testing" the `pull_request` rule with a direct push to `main`.** This looked like a
+  zero-blast-radius probe and **it is not** — retracted here deliberately so the planner does not
+  reinvent it. `git push --dry-run` never reaches the pre-receive hook, so it cannot test the rule
+  at all; only a real push can, and if the `pull_request` rule did not land, that push **succeeds**
+  and lands a commit on a real repository's default branch. The required-check refusal already
+  proves the gate. If the operator specifically wants ADR-002's direct-push claim witnessed, gate
+  it on a read-back showing `pull_request` present in `rules/branches/main` **and** use
+  `git commit --allow-empty` so a landed commit is at least content-free — but the default is:
+  don't.
 - **Leaving `GATE_MODE=blocking` set.** It is repository-wide and governs every run for as long as
   it is set (ADR-017 tradeoff). 18-05 kept its window to ~2.5 minutes and recorded that no
   unrelated run fired inside it. Do the same, and record the window's start and end.
@@ -472,6 +507,10 @@ test.
 **How to avoid:** you cannot pre-empt it; you can only fail safely. A 422 changes no state
 (confirmed by the PUT-replaces-document semantics: a rejected request writes nothing). Carry
 18-05's instruction forward: raw body, stop.
+**Consequence for the restore task:** a 422 on the *forward* PUT means the ruleset was never
+modified, so **no rollback is required** — running the restore PUT anyway would write a
+byte-identical document and produce a misleading "restored" line in the evidence. The restore task
+must branch on whether the forward PUT actually returned 200, and say which branch it took.
 **Warning signs:** HTTP 422 naming `rules[2].type`. If this fires, the finding itself is valuable
 and belongs in ADR-019 — it is a genuine limitation of the read-modify-write approach on any repo
 carrying a preview rule type.
@@ -513,13 +552,58 @@ denied. `[VERIFIED: 20-10-SUMMARY.md lines 54-61, 20-07 precedent]`
 a `checkpoint:human-verify` for the operator to run, and give the executor only the read-only
 verification on either side. This is a plan-structure requirement, not a nice-to-have.
 
-### Pitfall 7: `gh pr merge` may be interactive
+### Pitfall 7: `gh pr merge` is a WRITE, not a probe — it merges when it isn't blocked
 
-**What goes wrong:** the merge-attempt task hangs waiting on a TTY prompt for merge method.
-**How to avoid:** always pass an explicit method and non-interactive flags —
-`gh pr merge <N> -R OWNER/REPO --squash` — and capture both stdout and stderr
-(`2>&1 | tee evidence/merge-attempt.txt`). The refusal text is the evidence; losing it to stderr
-discard loses the deliverable. **`[ASSUMED]`** — not exercised in this session.
+**What goes wrong:** the merge-attempt task runs while the PR is *not* actually blocked — because
+the read was stale (Pitfall 9), because the PUT silently no-op'd, or because `copilot_code_review`
+behaved unexpectedly — and `gh pr merge` **succeeds**. `security.yml` lands on a real repository's
+default branch and the pilot's steady state changes. This is exactly the class of irreversible-ish
+action the phase title warns about, and it is easy to miss because the command reads like a test.
+**Why it happens:** `gh pr merge` has no dry-run mode. There is no way to ask "would this be
+refused?" — you can only ask GitHub for the merge state and then attempt it.
+**How to avoid — all four, in one task:**
+
+1. **Hard precondition on a fresh read, in the same task, immediately before the attempt:**
+
+   ```bash
+   S=$(gh pr view "$PR" -R "$REPO" --json mergeStateStatus --jq .mergeStateStatus)
+   [ "$S" = "BLOCKED" ] || { echo "ABORT: mergeStateStatus is '$S', not BLOCKED — refusing to run gh pr merge"; exit 1; }
+   gh pr merge "$PR" -R "$REPO" --squash 2>&1 | tee "$E/merge-attempt.txt"
+   ```
+
+2. **Never pass `--admin`.** That flag exists specifically to bypass branch protection; passing it
+   would merge straight through the gate the phase is trying to witness.
+3. Always pass an explicit merge method (`--squash`) so the command cannot block on a TTY prompt.
+4. Capture `2>&1` — the refusal arrives on stderr and it *is* the deliverable.
+
+**Warning signs:** the task output contains a merge commit SHA instead of a refusal.
+**`[ASSUMED]`** — the refusal wording is not exercised in this session (A5); capture it, don't
+predict it.
+
+### Pitfall 9: mergeability is computed asynchronously — a stale read is worse than no read
+
+**What goes wrong:** `mergeable` / `mergeStateStatus` is queried immediately after the ruleset PUT
+or after a workflow rerun, and returns `UNKNOWN`, or returns the *previous* value. Both the control
+observation (`UNSTABLE`) and the deliverable (`BLOCKED`) are then wrong, in either direction — and
+a stale `BLOCKED` read is precisely what arms Pitfall 7.
+**Why it happens:** GitHub computes mergeability in a background job, kicked off by the first
+query. The first response is frequently `UNKNOWN`/stale; a subsequent query returns the settled
+value. This is the mechanism underneath assumption A6.
+**How to avoid:** poll explicitly, bounded, and **fail loudly** on timeout — never `|| true`, never
+a bare `sleep` and a single read:
+
+```bash
+prev="$1"          # the value recorded before the change, or "" for a first read
+for i in $(seq 1 20); do
+  S=$(gh pr view "$PR" -R "$REPO" --json mergeStateStatus --jq .mergeStateStatus)
+  if [ "$S" != "UNKNOWN" ] && [ "$S" != "$prev" ]; then echo "settled: $S"; break; fi
+  sleep 5
+done
+[ "$S" != "UNKNOWN" ] || { echo "ABORT: mergeStateStatus never settled after 100s"; exit 1; }
+```
+
+**Warning signs:** `mergeable: null` / `mergeStateStatus: UNKNOWN` in any captured evidence file.
+Any evidence artifact containing `UNKNOWN` is not evidence.
 
 ### Pitfall 8: Two git repositories, one working tree
 
@@ -534,6 +618,15 @@ one-repo change.
 ## Code Examples
 
 All commands below are read-only unless explicitly marked. Substitute `$REPO` / `$RID` / `$PR`.
+
+### The exercise pull request — where the recipe lives
+
+Do not invent the file set. Mode A (copy-paste) is `docs/adoption-guide.md` §4, executed live in
+20-10 Task 1 against this same repository; Mode B (reusable `workflow_call`) is §5 and was executed
+in 20-10 Task 2. **Mode B is one caller file referencing `@v1`** — fewer moving parts, no SHA pins
+to keep current, and 20-10 SC2 measured its five check-run names as byte-identical to Mode A's.
+`vars.GATE_MODE` is read from the *calling* repository in both modes (ADR-017), so the blocking
+flip works identically either way. Planner's discretion; Mode B is the lighter-touch default.
 
 ### Capture before-state
 
@@ -680,7 +773,9 @@ correct shape here.
 | Req | Behavior | Test type | Automated command | Exists? |
 |-----|----------|-----------|-------------------|---------|
 | VAL-02 *(proposed)* | A red **required** check yields `BLOCKED`, a red **non-required** check yields `UNSTABLE`, on the same head SHA | integration (live) | `gh pr view $PR -R $REPO --json headRefOid,mergeStateStatus` run before and after the apply, diffed | ✅ no new file |
-| VAL-02 *(proposed)* | `gh pr merge` is refused while blocked | integration (live) | `gh pr merge $PR -R $REPO --squash 2>&1 \| tee $E/merge-attempt.txt` | ✅ |
+| VAL-02 *(proposed)* | `gh pr merge` is refused while blocked | integration (live) | **Preconditioned** (Pitfall 7): `S=$(gh pr view … --jq .mergeStateStatus); [ "$S" = BLOCKED ] \|\| exit 1` then `gh pr merge $PR -R $REPO --squash 2>&1 \| tee $E/merge-attempt.txt`. **Never `--admin`** | ✅ |
+| VAL-02 *(proposed)* | Third verdict: green + still-required settles to `CLEAN` | integration (live) | `gh variable delete GATE_MODE -R $REPO; gh run rerun <id> -R $REPO`, then settle-poll `mergeStateStatus` | ✅ |
+| VAL-02 *(proposed)* | No evidence artifact contains an unsettled read | offline | `! grep -rq UNKNOWN $E/*.json $E/*.txt` | ✅ |
 | VAL-02 *(proposed)* | The PUT preserves every pre-existing rule type | integration (live) | `gh api repos/$REPO/rules/branches/main --jq '[.[].type]\|sort'` — expect the before set ∪ `{required_status_checks, pull_request}` | ✅ |
 | VAL-02 *(proposed)* | Rollback restores the exact before-state | integration (live) | `diff $E/rules-before.txt $E/rules-restored.txt` → empty | ✅ |
 | DIST-08 (regression) | Adoption guide §8 still consistent after any prose update | offline gate | `bash scripts/check-adoption-guide.sh` | ✅ green today |
@@ -699,6 +794,8 @@ correct shape here.
 - [ ] An offline guard-regression script (or inline task) exercising exits 2/3/4/5 against
       `--input` fixtures, so the guards are re-proven at *this* commit rather than inherited from
       18-03. Exit 2 and exit 4/5 are cheap; **exit 2 already re-verified in this research session**
+- [ ] A settle-poll helper (inline in each task, or one small `bash` function) implementing
+      Pitfall 9's bounded loop — every `mergeStateStatus` read in the phase must go through it
 - [ ] No framework install needed
 
 ---
@@ -755,10 +852,12 @@ correct shape here.
 | A2 | `terraform-pipelines` is an acceptable live target (public, low-traffic, operator-owned) | Decision Matrix | Writing to a repo the operator considers production. **Mitigated by the mandatory `checkpoint:decision`** |
 | A3 | The `repo` OAuth scope permits ruleset **writes**, not just reads (reads confirmed) | Standard Stack | The `--apply` returns 403 and the phase stalls at the write checkpoint. Cheap to discover, changes no state |
 | A4 | Semgrep still returns 6 findings on `terraform-pipelines` today (measured 2026-09-14, two days ago) | Live State | No natural red check; a finding would have to be seeded, or a different target chosen. **Re-measure at plan time** |
-| A5 | `gh pr merge --squash` on a blocked PR emits a capturable non-interactive refusal | Pitfall 7 | The merge-attempt task hangs on a TTY prompt |
+| A5 | `gh pr merge --squash` on a blocked PR emits a capturable non-interactive refusal | Pitfall 7 | The merge-attempt task hangs on a TTY prompt — **or, if the PR is not actually blocked, merges the exercise PR into a real `main`.** Mitigated by the mandatory `[ "$S" = BLOCKED ]` precondition |
 | A6 | `mergeStateStatus` will read `UNSTABLE` (not `BLOCKED`) with a red non-required check and `copilot_code_review` present on the ruleset | Pattern 1 | The control observation is not clean and the before/after loses discriminating power. **Measure it; don't assume it** |
 | A7 | A 422 on the PUT changes no state (atomic document replace) | Pitfall 3 | A partially-applied ruleset. Mitigated by the capture-first design either way |
 | A8 | The operator wants the ruleset **restored** at phase end rather than left required | Decision Matrix | Wrong end state on a real repo. **Ask at the decision checkpoint** |
+| A9 | A bounded 20×5s settle-poll is long enough for `mergeStateStatus` to stop returning `UNKNOWN` after a ruleset PUT | Pitfall 9 | Task fails loudly on timeout (by design) and the plan stalls at a read, not at a write — safe failure, but the timeout may need raising |
+| A10 | `gh run rerun` on the same head SHA re-reads `vars.GATE_MODE` on the target repo as it did on `security-platform` in 18-05 | Pattern 1 | The mode flip does not take effect without a new push, which would change the head SHA and break the one-SHA comparison. **Verify from the rerun's own log lines (`gate_mode=blocking`), as 18-05 did — do not infer it from the check conclusions** |
 
 ---
 
