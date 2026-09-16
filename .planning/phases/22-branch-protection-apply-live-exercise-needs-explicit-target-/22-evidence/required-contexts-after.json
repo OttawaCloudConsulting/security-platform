@@ -1,0 +1,1 @@
+[{"context":"security / SAST — Semgrep CE","integration_id":15368},{"context":"security / IaC — Checkov","integration_id":15368},{"context":"security / SCA — Trivy Filesystem","integration_id":15368},{"context":"security / Container — Trivy Image","integration_id":15368},{"context":"security / Secrets — Gitleaks","integration_id":15368}]

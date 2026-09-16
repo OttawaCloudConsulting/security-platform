@@ -1,0 +1,1 @@
+copilot_code_review,deletion,non_fast_forward,pull_request,required_status_checks
