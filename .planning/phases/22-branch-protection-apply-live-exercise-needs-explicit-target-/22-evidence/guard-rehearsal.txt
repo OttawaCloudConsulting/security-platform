@@ -1,0 +1,109 @@
+# guard-rehearsal.txt — set-required-checks.sh guard exit codes, re-proven at THIS commit
+#
+# Phase 22 plan 03 Task 1 (checkpoint:human-verify, gate="blocking").
+# RUN BY: the human operator, in their own terminal. Claude ran NO invocation of
+# set-required-checks.sh of any kind during this plan — not --help, not a dry run
+# (threat T-22-12; the executor's auto-mode Bash classifier denied this exact script
+# in 20-07 and 20-10, both times on a harmless --out dry run).
+# Captured: 2026-09-16, transcripts relayed verbatim by the operator via the orchestrator.
+#
+# WHY THIS FILE EXISTS: 18-03 proved these guards at its own commit. This re-proves them
+# HERE rather than inheriting the claim, because command 4 (the live PUT) rests entirely
+# on the safety argument these three encode. Commands 1 and 2 are checked before any
+# network call; command 3 reads a local fixture. None of the three touches GitHub.
+# All three pass BOTH --repo and --ruleset: the script's two defaults are independent
+# and --repo alone silently points at security-platform's ruleset id (RESEARCH Pitfall 4).
+
+================================================================================
+COMMAND 1 — --apply without --verify-sha — EXPECTED exit 4
+================================================================================
+bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/repos/security-platform/scripts/set-required-checks.sh \
+  --repo OttawaCloudConsulting/terraform-pipelines \
+  --ruleset 12760793 \
+  --apply ; echo "exit code: $?"
+
+--- begin output ---
+REFUSED: --apply requires --verify-sha (RESEARCH P-07: an unverified context becomes a permanently-pending required check). No network call made.
+exit code: 4
+--- end output ---
+
+OBSERVED exit code: 4   MATCHES EXPECTED: yes
+
+================================================================================
+COMMAND 2 — --apply + --verify-sha without --yes-i-understand-lockout — EXPECTED exit 5
+================================================================================
+bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/repos/security-platform/scripts/set-required-checks.sh \
+  --repo OttawaCloudConsulting/terraform-pipelines \
+  --ruleset 12760793 \
+  --verify-sha 969dc2c8e12fc6c29f42cab1a9a0bde9eca686c7 \
+  --apply ; echo "exit code: $?"
+
+--- begin output ---
+REFUSED: --apply requires --yes-i-understand-lockout.
+SELF-LOCKOUT WARNING for OttawaCloudConsulting/security-platform specifically: [fixtures/ warning text, bypass_actors: [] / current_user_can_bypass: "never" warning, UI bypass-list instruction]
+No network call made.
+exit code: 5
+--- end output ---
+
+OBSERVED exit code: 5   MATCHES EXPECTED: yes
+
+NOTE 1 — the wrong repository name in that warning is EXPECTED and is not a defect.
+The exit-5 heredoc at set-required-checks.sh lines 136-150 is a fixed, quoted heredoc
+naming OttawaCloudConsulting/security-platform literally; it prints byte-identically
+regardless of what --repo was passed. It was pre-empted in the checkpoint text handed to
+the operator precisely so it would not be mistaken for --repo failing to take effect.
+The operator's own transcript abridges the body of that warning in square brackets; its
+three elements (the fixtures/ note, the bypass_actors []/never note, the UI bypass-list
+instruction) are quoted in the script source and are reproducible from it.
+
+NOTE 2 — first attempt at command 2 returned exit 127, and this was NOT a script defect.
+A line-wrap artifact in the paste broke the multi-line continuation, so the SHELL failed to
+parse the command and the script never ran (127 = command not found, emitted by the shell,
+not by set-required-checks.sh, whose exit-code table has no 127). The orchestrator caught it,
+had the operator retry the identical command as a single line, and it returned exit 5 as
+documented. Recorded here rather than omitted: an exit code observed during the rehearsal
+that is not explained belongs in the evidence with its explanation.
+
+================================================================================
+COMMAND 3 — --input a document with no `rules` key — EXPECTED exit 2
+================================================================================
+bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/repos/security-platform/scripts/set-required-checks.sh \
+  --repo OttawaCloudConsulting/terraform-pipelines \
+  --ruleset 12760793 \
+  --input /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-evidence/exit2-fixture.json \
+  --out /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/8588a375-6645-4b32-a044-a40cd3f58f79/scratchpad/exit2-out.json ; echo "exit code: $?"
+
+--- begin output ---
+ABORT: fetched document has no 'rules' key — a missing key and an empty array mean different things; refusing to treat this as safe to build on.
+exit code: 2
+--- end output ---
+
+OBSERVED exit code: 2   MATCHES EXPECTED: yes
+
+The --out file was NOT created — exit 2 fires inside the python3 stage before json.dump
+is reached. Its absence is the expected outcome and was stated as such to the operator in
+advance. Verified absent by Claude after the fact (see the check at the foot of this file).
+The fixture carries name/target/enforcement/conditions/bypass_actors and no `rules` key at
+all; it was derived programmatically from ruleset-before.json in plan 02, never typed.
+
+================================================================================
+SUMMARY OF THE REHEARSAL
+================================================================================
+guard 4 (--apply without --verify-sha)          : exit code: 4   PASS
+guard 5 (--apply without lockout acknowledgement): exit code: 5   PASS
+guard 2 (document with no `rules` key)          : exit code: 2   PASS
+
+All three guards behave exactly as the script's own header table documents, at this commit.
+The instruction given to the operator was: if ANY of these three produced an exit code other
+than the one stated, STOP and report — do not run command 4. None deviated, so command 4 ran.
+No guard was worked around, and no exit code was routed around.
+
+================================================================================
+CLAUDE'S OWN POST-HOC CHECK (no script invocation involved)
+================================================================================
+$ test -e /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/8588a375-6645-4b32-a044-a40cd3f58f79/scratchpad/exit2-out.json \
+    && echo "PRESENT (unexpected)" || echo "ABSENT as expected"
+ABSENT as expected
+
+Command 3's --out file does not exist, confirming the exit-2 abort happened before any
+write rather than after a partial one.

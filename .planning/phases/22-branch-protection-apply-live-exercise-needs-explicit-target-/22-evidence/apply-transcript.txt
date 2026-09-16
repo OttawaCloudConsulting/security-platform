@@ -1,0 +1,63 @@
+# apply-transcript.txt — the operator's verbatim terminal output from the live --apply
+#
+# Phase 22 plan 03 Task 1, command 4. THE ONE IRREVERSIBLE-ISH WRITE IN THIS PHASE.
+# RUN BY: the human operator, in their own terminal, at a gate="blocking"
+# checkpoint:human-verify. Claude did not run it and could not have (T-22-12).
+# Relayed by the operator through the orchestrator on 2026-09-16.
+#
+# PROVENANCE CAVEAT, stated up front because an evidence artifact that misdescribes its
+# own provenance is worse than no artifact (22-02 deviation 3 established this rule):
+# the relay abridged GitHub's PUT response body to a square-bracketed inventory of its
+# fields rather than the raw JSON. That abridged line is reproduced below EXACTLY as it
+# arrived and is marked. It is NOT the measurement. The measurement is Task 2's
+# independent live re-read of the API by the agent that did not perform the write
+# (rules-after.txt, ruleset-after.json, required-contexts-after.json) — see T-22-15 and
+# 22-PATTERNS Shared Pattern 2. Every claim this plan makes about the post-write state
+# is sourced from those files, not from this one.
+
+================================================================================
+COMMAND 4 — the live PUT — EXPECTED exit 0
+================================================================================
+bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/repos/security-platform/scripts/set-required-checks.sh \
+  --repo OttawaCloudConsulting/terraform-pipelines \
+  --ruleset 12760793 \
+  --verify-sha 969dc2c8e12fc6c29f42cab1a9a0bde9eca686c7 \
+  --out /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-evidence/merged.json \
+  --apply --yes-i-understand-lockout ; echo "exit code: $?"
+
+--- begin output ---
+verify-sha: checking five contexts appear live at 969dc2c8e12fc6c29f42cab1a9a0bde9eca686c7 (app.id 15368)
+verify-sha OK — all five contexts found live with app id 15368
+BEFORE rule types: ['deletion', 'non_fast_forward', 'copilot_code_review']
+AFTER  rule types: ['deletion', 'non_fast_forward', 'copilot_code_review', 'required_status_checks', 'pull_request']
+Merged document written to .../22-evidence/merged.json
+Every pre-existing rule type preserved; 5 contexts added, each pinned to integration_id 15368.
+APPLYING — PUT repos/OttawaCloudConsulting/terraform-pipelines/rulesets/12760793 from .../merged.json
+[ABRIDGED BY THE RELAY — full JSON response returned by GitHub: id 12760793, enforcement active, rules: deletion, non_fast_forward, copilot_code_review, required_status_checks (5 contexts each pinned to integration_id 15368: SAST-Semgrep CE, IaC-Checkov, SCA-Trivy Filesystem, Container-Trivy Image, Secrets-Gitleaks), pull_request (required_approving_review_count 0, allowed_merge_methods merge/squash/rebase); bypass_actors: [], current_user_can_bypass: "never"; updated_at 2026-09-16T19:20:36.158-04:00]
+Read-back rule types on rules/branches/main: deletion, non_fast_forward, copilot_code_review, required_status_checks, pull_request
+Read-back required contexts on ruleset 12760793: all 5 as above
+exit code: 0
+--- end output ---
+
+OBSERVED exit code: 0   MATCHES EXPECTED: yes
+
+================================================================================
+WHAT THE EXIT CODE MEANS, FROM THE SCRIPT'S OWN CONTRACT
+================================================================================
+Exit 0 under --apply means BOTH the PUT and the script's own read-back succeeded
+(set-required-checks.sh header, EXIT CODES table). The script runs under
+`set -euo pipefail`, so a rejected PUT would have surfaced as exit 1 carrying gh's raw
+HTTP error body — NOT as "exit 422". No such body appeared.
+
+THE FORWARD PUT RETURNED 200. Stated here explicitly and unambiguously because plan 05
+branches on this exact fact and must not have to infer it: the ruleset WAS modified, so
+plan 05 takes its restore branch, not its no-forward-write branch.
+
+None of RESEARCH Pitfall 3's failure modes fired: `copilot_code_review` round-tripped
+through PUT intact on a repository carrying that preview rule type. That is itself a
+finding — the dry run could never have tested it — and it is a positive result rather
+than the 422 the pitfall warned might occur.
+
+Note that merged.json is written by the script BEFORE the PUT is attempted, so its
+existence proves nothing about whether the write succeeded. Only the exit code and the
+independent read-back do. This was stated to the operator in advance.
