@@ -218,9 +218,18 @@ PR #14 is left `OPEN` and unmerged. It is now *mergeable*, which is a safer rest
 - **Issue:** While orienting — reading the clone and confirming the plan's precondition — a single `gh pr view … --json …mergeStateStatus…` was run **directly** rather than through the settle-poll, and it already returned `BLOCKED`. The poll script's header states that nothing in the phase reads `mergeStateStatus` directly.
 - **Why it is disclosed rather than omitted:** the polled read is the measurement, and a reader is entitled to know it was not the session's first query. It does not weaken the reading — a direct read cannot make a later polled read stale, and the poll compared against `UNSTABLE`, not against the orientation read. Recorded in `poll-invocations.txt` under its own DISCLOSURE heading. (A second direct read, inside the merge-attempt script, is *required* by design: Pitfall 7 specifies a fresh single read in the same execution as the attempt.)
 
+### 6. [Rule 1 - Bug] The STATE.md percent regression recurred and was repaired again
+
+- **Found during:** state updates, after the task commits
+- **Issue:** Exactly the regression plan 03 recorded and fixed: a state handler rewrote frontmatter `progress.percent` to `82` — the **phase** ratio (9/11) — while the body progress bar read `97%`, the **plan** ratio (61/63). Every prior value in this file has been the plan ratio. The handlers also continue to require **named** arguments (`--summary`, `--stopped-at`); the documented positional forms returned `{"error": "summary required"}`.
+- **Fix:** Corrected `percent` to `97` so frontmatter and body agree, and re-ran the decision calls with `--summary`. The two decisions this plan added were also retagged from the handler's `[Phase ?]` placeholder to `[Phase 22]`, matching the surrounding Phase 22 entries.
+- **Explicitly NOT fixed:** nine pre-existing `[Phase ?]` decision lines from earlier phases. They are out of this task's scope (executor scope boundary) and were left untouched.
+- **Files modified:** `.planning/STATE.md`
+- **Why it is recorded:** this is the second occurrence in two consecutive plans, which makes it a handler defect rather than a one-off. It belongs in the phase's record so plan 05 expects it rather than rediscovering it.
+
 ---
 
-**Total deviations:** 5 (1 Rule 4 escalation, 2 Rule 1, 1 Rule 2, 1 disclosure)
+**Total deviations:** 6 (1 Rule 4 escalation, 3 Rule 1, 1 Rule 2, 1 disclosure)
 **Impact on plan:** No scope creep, no objective changed, no guard bypassed, no evidence edited to fit an assertion. One acceptance criterion was found to be falsified by reality and its assertion was strengthened rather than relaxed; one belief plan 03 flagged as UNVERIFIED was settled empirically; and one claim the plan would have let pass unqualified — *"GitHub refused the merge"* — was narrowed to what was actually observed.
 
 ## Issues Encountered
