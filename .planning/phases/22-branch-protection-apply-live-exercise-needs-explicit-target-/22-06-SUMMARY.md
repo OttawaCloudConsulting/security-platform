@@ -183,6 +183,8 @@ STATE.md records two prior occasions where a requirement was ticked from a plan 
 
 1. **Task 1: ADR-019 and its index row** — `b79ff45` (docs)
 2. **Task 2: adoption guide measured, VAL-02 closed, validation map finalised** — `419bcdd` (docs)
+3. **Plan close: SUMMARY, STATE and ROADMAP** — `1f3354a` (docs)
+4. **Final-review correction: four measurement statements in ADR-019** — `a07748d` (fix) — see deviation 6
 
 ## Deviations from Plan
 
@@ -219,9 +221,24 @@ STATE.md records two prior occasions where a requirement was ticked from a plan 
 - **Issue:** `docs/adoption-guide.md` section 13 lists ADR-016, ADR-017 and ADR-018 as cross-references. ADR-019 would belong there by symmetry, but section 13 sits at line 605+, outside the section 8 edit scope the plan defines and the acceptance criterion that the diff be "confined to that section".
 - **Action:** not added. ADR-019 is linked inline from section 8 instead, so a reader of the branch-protection section reaches it. A future docs pass owns the section 13 row.
 
+### 6. [Rule 1 - Bug] Four measurement statements in ADR-019 were restated from memory and were wrong — found at final review
+
+- **Found during:** the final review pass, re-reading each ADR claim against the SUMMARY that measured it. The earlier self-checks tested *structure* (heading count, lint, append-only diff) and not *content*, which is exactly the gap the plan's own rule — *"do not restate a measurement from memory; copy it from the summary that measured it"* — exists to catch.
+- **Issue, four separate errors:**
+  1. *"seven measured denials across five plans"*, listing `gh variable delete`, `set-required-checks.sh` and the restoring `PUT` among them. None of those three was denied: 22-02's operator script carried the delete, 22-03 states *"No classifier denial occurred in this plan"*, and 22-05 states *"Claude attempted none of the three writes, not even once."* The `set-required-checks.sh` denials were Phase 20's (20-07, 20-10), not this phase's.
+  2. *"both exit 0 with zero bytes on stderr"* for the two ruleset writes. `put-stderr.txt` measures zero bytes for the **restore** only; the forward run's output arrived as the operator's abridged combined paste and its stderr was never captured separately (22-03 deviation notes).
+  3. The tree hash described as *"verified from GitHub's own commits API"* across all three commits. 22-04 API-verified it at `34bf29cb` only.
+  4. A `?ref=main` parameter on the 404 probe command that 22-01-PLAN.md's capture command (`gh api "repos/$REPO/contents/.github/workflows"`) does not carry.
+- **Fix:** all four corrected in place. The denial sentence now says five denials across plans 01, 02 and 04 — `gh pr create` and its REST equivalent, `gh variable set GATE_MODE`, and the two operator scripts — and states that the forward apply and the restore were routed to the operator from the outset rather than denied. The stderr claim is scoped to the restore. The tree-hash claim says read locally on all three and confirmed from the commits API at the third. The probe command matches the plan's.
+- **Why this is in scope rather than an append-only violation:** ADR-019 was created minutes earlier inside this same plan and the plan had not closed. Correcting a misrecorded measurement before the record ships is a Rule 1 fix; it was made as a new commit, never an amend, so the correction is itself on the record.
+- **Also corrected in the same commit:** `22-VALIDATION.md`'s approval note said "all four Wave 0 items are ticked"; there are five.
+- **Files modified:** `docs/adr/adr019-required-check-enforcement-live-exercise.md`, `22-VALIDATION.md`
+- **Commit:** `a07748d`
+- **Re-verified after:** `grep -c '^## '` still 4, markdownlint 0 errors, `git diff` against `adr017-*.md`/`adr018-*.md` still empty.
+
 ---
 
-**Total deviations:** 5 (1 Rule 1, 1 Rule 3, 2 Rule 2, 1 disclosure)
+**Total deviations:** 6 (2 Rule 1, 1 Rule 3, 2 Rule 2, 1 disclosure)
 **Impact on plan:** No scope creep. No append-only file was edited. No measurement was adjusted to fit the plan's prose — where the plan's text and the evidence disagreed (three verdicts versus four readings), the evidence won and the disagreement is recorded. The one rewrite made to a file the plan said to verify rather than change was reported first and preserves the sentence's meaning exactly.
 
 ## Issues Encountered
@@ -276,4 +293,4 @@ Two things a future phase inherits from this record rather than from the evidenc
 
 ## Self-Check: PASSED
 
-All five claimed files exist and are non-empty (one created, four modified); both claimed commits (`b79ff45`, `419bcdd`) resolve in `git log`. `22-VALIDATION.md` carries 14 `✅ green` rows, zero `⬜ pending` rows and zero unchecked boxes. `git diff` against `docs/adr/adr017-*.md` and `docs/adr/adr018-*.md` is empty. All three standing gates pass: check-adoption-guide 15/0, check-workflow-uploads 10/0, check-detector-parity 20/0.
+All five claimed files exist and are non-empty (one created, four modified); all four claimed commits (`b79ff45`, `419bcdd`, `1f3354a`, `a07748d`) resolve in `git log`. `22-VALIDATION.md` carries 14 `✅ green` rows, zero `⬜ pending` rows and zero unchecked boxes. `git diff` against `docs/adr/adr017-*.md` and `docs/adr/adr018-*.md` is empty. All three standing gates pass: check-adoption-guide 15/0, check-workflow-uploads 10/0, check-detector-parity 20/0.
