@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
 status: executing
-stopped_at: Completed 22-04-PLAN.md
-last_updated: "2026-09-17T00:47:18.279Z"
+stopped_at: Completed 22-05-PLAN.md
+last_updated: "2026-09-17T02:30:38.039Z"
 last_activity: 2026-09-17
 progress:
   total_phases: 11
   completed_phases: 9
   total_plans: 63
-  completed_plans: 61
-  percent: 97
+  completed_plans: 62
+  percent: 98
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 22 (branch-protection-apply-live-exercise-needs-explicit-target-) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-09-17
 
-Progress: [██████████] 97%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -169,6 +169,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 22]: Live pull_request rule carries a server-added require_extra_approval_for_unattributed_changes=true that the script never sent — both PR #14 commits are attributed to a GitHub account, so plan 04's CLEAN expectation survives ON THE INFERRED READING of 'unattributed' — the parameter is absent from the GitHub REST docs queried, so its semantics are unverified; it is the first suspect if a BLOCKED verdict appears with five green checks
 - [Phase 22]: 22-04: the merge refusal is gh's CLIENT-SIDE decline on mergeStateStatus, not a server-side rejection from pulls/14/merge -- ADR-019 must claim only what was observed
 - [Phase 22]: 22-04: require_extra_approval_for_unattributed_changes: true did NOT block PR #14 -- plan 03's UNVERIFIED belief settled by a CLEAN third verdict with all five checks green and still required
+- [Phase 22]: Phase 22 restore: terraform-pipelines ruleset PUT back to its pre-exercise six-key document; diff rules-before/rules-restored empty and full-document equality holds except server-owned updated_at
+- [Phase 22]: Phase 22: all three live writes (PR close, branch delete, restoring PUT) staged as ONE guarded idempotent operator script up front — Claude attempted no write, after five measured classifier denials in plans 01-04
 
 ### Pending Todos
 
@@ -242,11 +244,12 @@ Carried forward from v1.1 close:
 | Phase 22 P02 | 65min | 2 tasks | 11 files |
 | Phase 22 P03 | ~30min | 2 tasks | 8 files |
 | Phase 22 P04 | ~50min | 2 tasks | 17 files |
+| Phase 22 P05 | ~55min | 2 tasks | 14 files |
 
 ## Session Continuity
 
-Last session: 2026-09-17T00:47:11.672Z
-Stopped at: Completed 22-04-PLAN.md
+Last session: 2026-09-17T02:30:32.421Z
+Stopped at: Completed 22-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
