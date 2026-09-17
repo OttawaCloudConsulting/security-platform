@@ -33,14 +33,15 @@ Every code change is automatically scanned for security issues, secrets, and sup
 
 ## Current Milestone: v3.0 K8s Infra & Dashboards
 
-**Goal:** Stand up Nexus Repository (npm/PyPI/Docker/Helm proxy) and DefectDojo (unified security dashboard with automated CI import and dedup/triage) on the existing on-prem homelab K8s cluster (`occ-new`, kubeadm, v1.34.1, Rocky Linux 10, 1 control-plane + 3 workers).
+**Goal:** Ship generic, publicly-consumable Helm packages for Nexus Repository (npm/PyPI/Docker/Helm proxy) and DefectDojo (unified security dashboard with automated CI import and dedup/triage), deployable to any Kubernetes cluster. Validated live against an existing on-prem homelab cluster via a private ArgoCD overlay.
 
 **Target features:**
-- Nexus Repository proxy: npm, PyPI, Docker, Helm
+- Nexus Repository proxy: npm, PyPI, Docker, Helm — packaged as a generic Helm chart in the public repo
 - Per-repo Nexus registry configuration + workstation install script to apply it
-- DefectDojo deployment (unified security dashboard)
+- DefectDojo deployment (unified security dashboard) — packaged as a generic Helm chart in the public repo
 - CI-to-DefectDojo automated import pipeline (SARIF/JSON artifacts from `security-platform` scan jobs)
 - Deduplication and triage workflow configuration in DefectDojo
+- Environment-specific values (hostnames, StorageClass, ClusterIssuer, IPs) live only in a private ArgoCD overlay repo — never in the public package
 
 ### Active
 
@@ -140,6 +141,7 @@ Awaiting `/gsd:new-milestone`. Candidate scope from ROADMAP.md Backlog and PROJE
 | Replace `dist/install.sh` with `workstation/setup.sh` bootstrapper | Standalone installer too narrow; repos need config generation + hook activation too, not just tool install | Validated (Phase 12, commit 828f048) |
 | INST-05 scope: only pre-commit installs via pipx; Semgrep/Checkov deferred to CI-only | Avoid duplicating CI-only tools on the workstation; requirement text left unnarrowed by deliberate choice | Validated (Phase 10, reconfirmed at v1.1 close) |
 | `trap ... RETURN` in installer helpers must self-clear (`trap - RETURN` inside the handler) | Bash RETURN traps aren't function-scoped — they re-fire on the caller's return, crashing on an out-of-scope local under `set -u`. Found live-testing `setup.sh install` at v1.1 close | Validated (security-platform commit 2a70c97) |
+| v3.0 K8s packages: generic-first, not private-then-strip | Generic Helm chart in public repo is source of truth from day one; private ArgoCD repo holds only a thin overlay (env values + Application manifest). Avoids manual de-identification as a recurring leak point; the private deploy becomes the package's integration test | — Pending |
 | npm-audit / ESLint gaps found in aws-zabbix at v1.1 close are target-repo issues, not tooling bugs | Milestone scope is the distribution tooling, not remediating individual repos | Accepted as deferred — ⚠️ Revisit if aws-zabbix work resumes |
 | `OttawaCloudConsulting/security-platform` is the canonical pipeline host, not this repo | This repo is documentation-only per CLAUDE.md; the org identifier originally named in DIST-07 (`OCC-github`) was never a real GitHub org | Validated (Phase 20, ADR-018 D-01 amendment) |
 | Fail-closed gate design: `continue-on-error` resolves from `env.GATE_MODE`, defaulting to report-only | Report-only default lets adoption happen without immediately blocking merges; blocking is opt-in per repo via a variable flip, no YAML edit | Validated (Phase 18) |
