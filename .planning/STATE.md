@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
-status: executing
-stopped_at: Completed 22-05-PLAN.md
-last_updated: "2026-09-17T02:30:38.039Z"
+status: verifying
+stopped_at: Completed 22-06-PLAN.md
+last_updated: "2026-09-17T02:47:03.892Z"
 last_activity: 2026-09-17
 progress:
   total_phases: 11
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 63
-  completed_plans: 62
-  percent: 98
+  completed_plans: 63
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 Phase: 22 (branch-protection-apply-live-exercise-needs-explicit-target-) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-17
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -171,6 +171,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 22]: 22-04: require_extra_approval_for_unattributed_changes: true did NOT block PR #14 -- plan 03's UNVERIFIED belief settled by a CLEAN third verdict with all five checks green and still required
 - [Phase 22]: Phase 22 restore: terraform-pipelines ruleset PUT back to its pre-exercise six-key document; diff rules-before/rules-restored empty and full-document equality holds except server-owned updated_at
 - [Phase 22]: Phase 22: all three live writes (PR close, branch delete, restoring PUT) staged as ONE guarded idempotent operator script up front — Claude attempted no write, after five measured classifier denials in plans 01-04
+- [Phase 22]: ADR-019 records the first live set-required-checks.sh --apply and GitHub's witnessed merge refusal; it NARROWS ADR-017 item 4 and ADR-018 item 7 by reference rather than closing them, because both are scoped to security-platform's own main
+- [Phase 22]: Adoption guide section 8 now reports the apply path as measured and adds the bounded-window-plus-mandatory-restore procedure, whose triggering condition is a default branch that does not yet carry the workflow
+- [Phase 22]: VAL-02 ticked only after the restore was re-verified live in plan 06; 22-VALIDATION.md finalised with 14 green rows and wave_0_complete true
 
 ### Pending Todos
 
@@ -245,11 +248,12 @@ Carried forward from v1.1 close:
 | Phase 22 P03 | ~30min | 2 tasks | 8 files |
 | Phase 22 P04 | ~50min | 2 tasks | 17 files |
 | Phase 22 P05 | ~55min | 2 tasks | 14 files |
+| Phase 22 P06 | 35 | 2 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-09-17T02:30:32.421Z
-Stopped at: Completed 22-05-PLAN.md
+Last session: 2026-09-17T02:46:39.379Z
+Stopped at: Completed 22-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -238,6 +238,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18 → 19 → 20
 | 20. Template Packaging and Adoption Docs | v2.0 | 13/13 | Complete | 2026-09-14 |
 | 20.1. Close gap: Retroactive VERIFICATION.md for Phases 14/17/18 | v2.0 | 3/3 | Complete | 2026-09-15 |
 | 21. Docs cleanup — close remaining Phase 20 deferred items | v2.0 | 4/4 | Complete | 2026-09-15 |
+| 22. branch-protection --apply live exercise | v2.0 | 6/6 | Complete | 2026-09-16 |
 
 ### Phase 20.1: Close gap: Retroactive VERIFICATION.md for Phases 14, 17, 18 (CICD-02/03/04/05/06) (INSERTED)
 
@@ -274,7 +275,7 @@ Plans:
 **Goal:** Witness GitHub refusing a merge because a required scan check is red — the one end-to-end flow the v2.0 milestone audit lists as UNVERIFIED — by making the five `security / ...` contexts required on `OttawaCloudConsulting/terraform-pipelines` for a bounded window, capturing the refusal verbatim, and restoring the repository's ruleset byte-identically afterwards.
 **Requirements**: VAL-02
 **Depends on:** Phase 21
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 - [x] 22-01-PLAN.md — Settle-poll helper, before-state capture, and the exercise pull request's baseline verdict
@@ -282,4 +283,4 @@ Plans:
 - [x] 22-03-PLAN.md — Operator-run guard rehearsal and live `--apply`, then Claude's independent read-back (checkpoint)
 - [x] 22-04-PLAN.md — The witnessed refusal, plus the third verdict that isolates the red required check as its cause
 - [x] 22-05-PLAN.md — Close the PR, restore the ruleset, prove it byte-identical, scrub and commit the evidence
-- [ ] 22-06-PLAN.md — ADR-019, adoption-guide section 8 measured update, and VAL-02 closure
+- [x] 22-06-PLAN.md — ADR-019, adoption-guide section 8 measured update, and VAL-02 closure
