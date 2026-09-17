@@ -330,6 +330,16 @@ resources:
 
 This is exactly the shape of the upstream `configure.sh` loop, which is good independent corroboration that the pattern is correct — reuse the *logic* even if not the *script*.
 
+**Service hostname the Job must target.** The subchart's Service renders as `{{ .Release.Name }}-nexus3` (helper `nexus3.serviceName` → `nexus3.fullname`); a release named `t` produced `Service/t-nexus3` on port 8081 [VERIFIED]. The Job's endpoint is therefore:
+
+```
+http://{{ .Release.Name }}-nexus3.{{ .Release.Namespace }}.svc.cluster.local:8081
+```
+
+Note this **breaks if a consumer sets `nexus3.fullnameOverride` or `nexus3.nameOverride`** — both are part of the D-07 passthrough surface. Prefer deriving the name through the same helper logic rather than hardcoding the `-nexus3` suffix, or document the limitation in the README.
+
+**Stock repositories will also be created.** `nexus.skipDefaultRepositories=true` is only emitted when `config.enabled` is true. With the recommended `config.enabled: false`, Nexus provisions its stock maven/nuget repositories alongside the four proxies. Harmless, but noisy. The wrapper can suppress them by appending to the subchart's `properties: []` passthrough list — planner's choice, not a requirement.
+
 ### Pattern 3: Admin bootstrap via a single consumer-supplied Secret
 
 The upstream chart wires one Secret to both sides, which removes the classic "the random admin password is in `/nexus-data/admin.password` on an RWO volume the Job can't mount" problem entirely:
@@ -397,7 +407,11 @@ GET  /repository/npm-proxy/lodash/-/lodash-4.17.21.tgz → 200  318961 bytes
 [VERIFIED end-to-end, 2026-09-17]
 
 **How to avoid:** the provisioning Job must `GET /service/rest/v1/system/eula`, set `.accepted = true` on the returned object (the `disclaimer` string must be echoed back verbatim), and `POST` it. The call is **idempotent** — POSTing twice returns 204 both times [VERIFIED].
+**Reproduced under the chart's exact rendered properties.** The run above used the stock image. Because the chart always renders `nexus.properties` containing `nexus.datastore.enabled=true` and (with `license.enabled: false`) `nexus.loadAsOSS=true`, the whole sequence was repeated on a third container booted with precisely those two lines at `/nexus-data/etc/nexus.properties` — the same path and content the chart mounts. Results were **identical**: `eula.accepted=false`, repo create `201`, tarball pre-EULA `403`, `POST eula` `204`, tarball post-EULA `200 / 318,961 bytes`, scripting API `410`. **`nexus.loadAsOSS=true` does not bypass the Community Edition EULA gate.** [VERIFIED, 2026-09-17]
+
 **Also note:** repo creation succeeds *before* EULA acceptance, so the two steps are **order-independent** — there is no hook-weight race to design around. Do EULA first anyway, for a clean failure signal.
+
+**Consent caveat:** accepting a licence agreement automatically on the consumer's behalf is a design decision, not a detail — see Open Question Q5.
 **Warning signs:** proxies look perfect in the UI but `npm install` fails; a 192-byte response body where a tarball was expected.
 
 ### Pitfall 2: `config.enabled: true` re-enables the deprecated scripting API (D-04 tension)
@@ -635,7 +649,7 @@ Helm **is** on PATH — but it is Helm **v4.3.0**, and Checkov's helm runner app
 - **shellcheck** (`types: [shell]`) will lint `files/provision.sh` — desirable, and the reason for keeping it as a real file.
 - **gitleaks** — ensure no literal example password (e.g. `admin123`) lands in `values.yaml` or the README.
 - **markdownlint** — applies to the new `kubernetes/nexus/README.md`.
-- **`helm dependency build` writes `charts/nexus3-5.26.0.tgz`.** Recommend `.gitignore`ing `kubernetes/*/charts/*.tgz` and committing `Chart.lock` instead: ArgoCD rebuilds dependencies itself, and a committed tarball would be scanned by `trivy fs` as an opaque archive.
+- **`helm dependency build` writes `charts/nexus3-5.26.0.tgz`.** Recommend `.gitignore`ing `kubernetes/*/charts/*.tgz` and committing `Chart.lock` instead: ArgoCD rebuilds dependencies itself `[ASSUMED]` (A8 — not verified in this session), and a committed tarball would be scanned by `trivy fs` as an opaque archive. If A8 turns out false, the tarball must be committed after all — verify in Phase 25 before removing it.
 
 ---
 
@@ -660,7 +674,7 @@ Not a rename/refactor/migration phase — but the *substance* of this phase is r
 | `sonatype/nexus-repository-manager` single-instance chart | Archived; Sonatype ships only `nxrm-ha` (PostgreSQL + license) | 2023-10-24 | No official zero-cost single-node chart exists. This is the root of the D-01 problem. |
 | Nexus Repository **OSS** | Nexus Repository **Community Edition** + EULA + usage limits (40k components / 100k req/day) | **3.77.0** | Mandatory EULA acceptance step; a hard ceiling to document. |
 | Groovy scripting API for provisioning | REST API v1; scripting disabled by default (`410` unless `nexus.scripts.allowCreation=true`) | progressively, ~3.21+ | Validates D-04. Note the upstream chart re-enables the old API. |
-| Embedded OrientDB | H2 / `nexus.datastore.enabled=true` (`nexus.loadAsOSS=true` when unlicensed) | 3.x line | Single-node embedded storage still works; Sonatype recommends PostgreSQL at scale. |
+| Embedded OrientDB | H2 / `nexus.datastore.enabled=true` (`nexus.loadAsOSS=true` when unlicensed) | 3.x line | Single-node embedded storage still works; Sonatype recommends PostgreSQL at scale. **`loadAsOSS=true` does not opt out of Community Edition or its EULA gate** — verified by rerunning the full sequence under the chart's rendered properties (Pitfall 1). |
 | Dependabot for all dependency classes | Renovate for Helm chart dependencies | ongoing | Dependabot has no Helm chart-dependency manager; Renovate's `helmv3` does. |
 
 **Deprecated / do not use:**
@@ -681,6 +695,8 @@ Not a rename/refactor/migration phase — but the *substance* of this phase is r
 | **A5** | `docker.pathEnabled: true` (no separate connector port) is the right Docker proxy shape | Code Examples | MEDIUM. Accepted by the API and stored correctly (verified), but an actual `docker pull` through it was **not** tested — that needs ingress/TLS, which is Phase 25. Changing it later means recreating the repo. |
 | **A6** | ArgoCD maps `helm.sh/hook: post-install,post-upgrade` to PostSync and honours `argocd.argoproj.io/sync-options: Replace=true` | Pitfall 3 | MEDIUM. From training knowledge, **not verified in this session**. Phase 25 is where it gets tested; the annotations are cheap insurance either way. |
 | **A7** | Nexus first-boot readiness of 1–3 minutes on homelab hardware | Pitfall 4 | LOW. Measured ~30s on this workstation (12 cores). Only affects timeout sizing; a generous bound absorbs the error. |
+| **A8** | ArgoCD resolves Helm subchart dependencies itself, so `charts/*.tgz` need not be committed | Second-Order Effects | LOW-MEDIUM. Not verified this session. If false, the tarball must be committed and will be scanned by `trivy fs`. Verify in Phase 25. |
+| **A9** | Auto-accepting the EULA on the consumer's behalf is acceptable default behaviour for a public chart | Pitfall 1, Q5 | **MEDIUM-HIGH.** A legal act performed for whoever runs `helm install`. Q5 recommends an explicit opt-in value instead; the user should decide. |
 
 ---
 
@@ -699,7 +715,12 @@ Not a rename/refactor/migration phase — but the *substance* of this phase is r
    - *What we know:* Dependabot cannot update Helm chart dependencies; Renovate's `helmv3` manager can. The repo has `.github/dependabot.yml` (github-actions only) and no Renovate config. CONTEXT.md §Established Patterns explicitly asks whether an equivalent mechanism is expected.
    - *Recommendation:* out of scope for this phase — introducing a second bot is a repo-wide decision. Surface it and let the user decide whether it becomes a follow-up.
 
-4. **Should D-08 (floating image tag) be revisited?** CONTEXT.md flags this.
+4. **Should the chart accept the Community Edition EULA automatically, or require explicit consumer opt-in?**
+   - *What we know:* without acceptance, every component download returns 403 (Pitfall 1), so NEXUS-01's "configured" is not met. The acceptance call is a one-line idempotent `POST`. This is a **public** chart, so the Job would be accepting Sonatype's licence agreement on behalf of every future consumer, silently, at install time.
+   - *What's unclear:* whether the user wants that convenience or wants consumers to opt in. The project's own AUTONOMY CHECK rule asks "would the user want to know first?" for exactly this class of decision.
+   - *Recommendation:* **do not auto-accept by default.** Ship `eula.accepted: false` in `values.yaml` and have the template `required` it — failing the render with a message naming the EULA URL (`https://links.sonatype.com/products/nxrm/ce-eula`) when unset. The Job then runs the acceptance only when the consumer has explicitly set `eula.accepted: true`. This mirrors the established licence-flag pattern used by other vendored charts, keeps NEXUS-01 satisfiable with one documented value, and gives Phase 25's private overlay the natural place to record acceptance. Tracked as A9 — needs user confirmation either way.
+
+5. **Should D-08 (floating image tag) be revisited?** CONTEXT.md flags this.
    - *What we know:* the tag floats with the subchart's `appVersion`, so pinning `Chart.lock` to 5.26.0 effectively pins the image to 3.96.0 until someone bumps the chart. D-08 is therefore already *softer* than it reads — real drift only happens on a deliberate chart bump. Given CE usage limits and the EULA both arrived in specific versions (3.77.0), a floating major-minor is a genuine behaviour-change vector.
    - *Recommendation:* keep D-08 as decided, but state plainly in the chart README that the Nexus version is determined by the subchart's `appVersion` and that `Chart.lock` is the control point.
 
@@ -792,7 +813,7 @@ Following the established pattern, the offline gate must be written so it **pass
 | V6 Cryptography | no | No crypto implemented. TLS terminates at ingress (Phase 25, private overlay). |
 | V7 Error Handling & Logging | **yes** | Script must `set -euo pipefail` and never `\|\| true` a provisioning failure (CLAUDE.md §Error Handling). Never echo `NEXUS_PASSWORD`. |
 | V10 Malicious Code | **yes** | Community subchart + 3 container images — see §Package Legitimacy Audit. Pin by digest; commit `Chart.lock`. |
-| V14 Configuration | **yes** | `strictContentTypeValidation: true` on all four repos; `v1Enabled: false` on Docker; `readOnlyRootFilesystem: true` and dropped capabilities already set upstream. |
+| V14 Configuration | **yes** | `strictContentTypeValidation: true` on all four repos; `v1Enabled: false` on Docker; `readOnlyRootFilesystem: true` and dropped capabilities already set upstream. EULA acceptance should be an explicit opt-in value, not an implicit default (Q5 / A9). |
 
 ### Known threat patterns for this stack
 
