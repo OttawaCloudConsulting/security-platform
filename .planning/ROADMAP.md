@@ -20,6 +20,15 @@
 - [ ] **Phase 28: DefectDojo Dedup and Triage** - Dedup rules collapse repeated findings; triage workflow documented and configured
 - [ ] **Phase 29: DefectDojo Live Validation** - Chart deployed to the homelab cluster via private ArgoCD overlay; CI import proven live end-to-end
 
+### Phase 23: Nexus Generic Chart
+
+**Goal:** Public Helm chart wraps the upstream Sonatype `nexus3` subchart and deploys Nexus Repository with npm, PyPI, Docker, and Helm proxy repos configured, using the cluster's default StorageClass unless overridden.
+**Requirements**: NEXUS-01, NEXUS-03
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 23 to break down)
+
 </details>
 
 <details>
