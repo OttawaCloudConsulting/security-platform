@@ -22,7 +22,7 @@
 
 ### Phase 23: Nexus Generic Chart
 
-**Goal:** Public Helm chart wraps the upstream Sonatype `nexus3` subchart and deploys Nexus Repository with npm, PyPI, Docker, and Helm proxy repos configured, using the cluster's default StorageClass unless overridden.
+**Goal:** Public Helm chart wraps the community `stevehipwell/nexus3` subchart (runs the official Sonatype Nexus image; no Sonatype-published chart named `nexus3` exists) and deploys Nexus Repository with npm, PyPI, and Docker proxy repos configured by default (Helm proxy is consumer-configured, no universal default exists post-Helm-Hub), using the cluster's default StorageClass unless overridden.
 **Requirements**: NEXUS-01, NEXUS-03
 **Plans:** 8 plans
 
