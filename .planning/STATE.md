@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: CI/CD Security Pipeline
-status: verifying
+status: Awaiting next milestone
 stopped_at: Completed 22-06-PLAN.md
-last_updated: "2026-09-17T02:47:03.892Z"
-last_activity: 2026-09-17
+last_updated: "2026-09-17T13:01:51.269Z"
+last_activity: 2026-09-17 — Milestone v2.0 completed and archived
 progress:
-  total_phases: 11
+  total_phases: 10
   completed_phases: 10
   total_plans: 63
   completed_plans: 63
@@ -25,12 +25,10 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 ## Current Position
 
-Phase: 22 (branch-protection-apply-live-exercise-needs-explicit-target-) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-09-17
-
-Progress: [██████████] 100%
+Phase: Milestone v2.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-09-17 — Milestone v2.0 completed and archived
 
 ## Performance Metrics
 
@@ -258,19 +256,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- **Phase 16 is complete and merged.** PR #7 merged to `OttawaCloudConsulting/security-platform` `main`
-  as merge commit `40682cea329c34b65115236bd449d16f84432e0e`; `origin/main` carries the four-tool `sca`
-  job, `scripts/detect-{npm,python,terraform}.sh`, the extended `scripts/smoke-scans.sh`,
-  `fixtures/requirements.txt` and the extended `fixtures/main.tf`. The local checkout of
-  `repos/security-platform` is on a clean `main` at `40682ce`; the merged local feature branch was
-  deleted, the remote one was left in place (non-blocking loose end).
-
-- **Next:** verify Phase 16, then Phase 17 (SARIF upload and artifact retention). Phase 17 must not
-  re-derive the four facts recorded in `16-07-SUMMARY.md`: npm/pip report filenames are numbered per
-  input (glob, never name), neither npm audit nor pip-audit emits SARIF while tflint does,
-  pip-audit's JSON carries no severity or CVSS field, and `--audit-level` does not filter npm's report
-  even though Trivy's `--severity` does filter Trivy's.
-
-- **Phase 18** inherits the frozen check-run name `security / SCA — Trivy Filesystem` (em dash U+2014,
-  re-read from `origin/main`) and must express any gate per tool — tflint signals findings with exit 2,
-  the others with exit 1, and pip-audit has no severity field to threshold on.
+- Start the next milestone with /gsd-new-milestone
