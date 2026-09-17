@@ -39,3 +39,25 @@ A second direct read was taken inside 22-04-operator-merge-attempt.sh immediatel
 attempt. That one is required by design, not incidental: RESEARCH Pitfall 7 specifies a FRESH
 single read in the same execution as the attempt, because a polled value from a minute earlier is
 exactly the staleness that would turn a probe into a merge. It returned BLOCKED.
+
+--- Task 2, the CLEAN verdict ---
+
+  bash .planning/phases/22-.../22-poll-merge-state.sh OttawaCloudConsulting/terraform-pipelines 14 "BLOCKED"
+
+exit code: 0
+stdout   : CLEAN
+stderr   : read 1/20: mergeStateStatus=CLEAN (previous='BLOCKED')
+
+prev="BLOCKED" is Task 1's own verdict. Settled on the first read, so the plan's accommodation for
+this task was NOT needed and was NOT used: the helper never exited 1, there was no 60-second wait,
+and no re-poll with an empty previous value was performed. The accommodation existed because this
+read is on a NEW head SHA (34bf29cb) where a "settled but unchanged" exit 1 would mean the verdict
+genuinely had not moved rather than that the read was stale. The verdict moved on the first read,
+so the question never arose. Recorded explicitly because the plan's acceptance criteria ask which
+path was taken.
+
+Before this read, all twelve check runs at 34bf29cb were asserted complete — not just our five.
+That is the trap the 22-01 addendum identified: a single pending third-party check is enough to
+make mergeStateStatus read UNSTABLE, so a read taken too early would have measured GitGuardian
+rather than the gate. check-runs-all-apps-clean.json holds the full inventory: 12 runs, 0
+incomplete, 0 non-success.
