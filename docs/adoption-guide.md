@@ -351,6 +351,17 @@ Adopt in this order — a numbered sequence, not general advice:
 Requiring a context before confirming it can actually turn red (step 3 before step 2) leaves
 merges effectively un-gated while the repository settings claim otherwise.
 
+**This sequence is measured, not theory.** On 2026-09-16 step 3 was carried out live against a real
+repository's ruleset for the first time: `set-required-checks.sh --apply` wrote the five contexts
+onto a pilot repository's `main` (exit 0, `PUT` accepted, every pre-existing rule type carried
+forward), and a pull request carrying two red required checks then moved from `UNSTABLE` to
+`BLOCKED` on the **same head SHA** with nothing else changed. `gh pr merge --squash` was refused —
+*"is not mergeable: the base branch policy prohibits the merge"*, exit 1, no bypass flag passed —
+and when the same tree went green with the contexts still required, the pull request returned to
+`CLEAN`. The ruleset was then restored from a capture taken before the first write and diffs clean
+against it. The full record, including what the refusal does and does not prove, is
+[ADR-019](adr/adr019-required-check-enforcement-live-exercise.md).
+
 **Reading the contexts.** Never retype them — read them from the live check-runs endpoint for a
 real commit SHA:
 
@@ -393,6 +404,11 @@ chmod it executable):
   so the script refuses rather than create that trap.
 
 These refusals are features, not friction — teach them as such, never as a workaround to bypass.
+Exits 4, 5 and 2 were re-exercised live immediately before the apply described above and each
+refused exactly as documented, and the `--apply` path itself has now been run end-to-end against a
+live ruleset at exit 0. It is no longer a dry-run-only code path. Exit 3 remains the one refusal
+that cannot be triggered from outside the script: its own merge carries every pre-existing rule
+type forward, so it cannot build a document that drops one.
 
 **Why the read-modify-write matters.** A bare `PUT /repos/{owner}/{repo}/rulesets/{id}` carrying
 only `required_status_checks` silently deletes every other rule type already on `main`, including
@@ -410,6 +426,40 @@ first if you are unsure, and require the checks only after a clean pull request 
 green under `blocking`. This is exactly why `security-platform`'s own `main` deliberately leaves
 the five checks unrequired — `security-platform`'s validation-only `fixtures/` tree guarantees
 findings on every run.
+
+**A first adoption on a repository whose default branch does not yet carry the workflow is a
+bounded window, and the restore is mandatory — not optional cleanup.** Check the condition before
+you require anything:
+
+```bash
+gh api repos/$REPO/contents/.github/workflows?ref=$DEFAULT_BRANCH --jq '[.[].name]'
+## A 404 here is the condition: no run on the default branch will ever produce the five contexts,
+## so requiring them makes every future pull request that does not itself carry the workflow sit
+## permanently pending — which blocks a merge exactly as a failing check does.
+```
+
+When that 404 is what you get, adopt in a window rather than permanently:
+
+1. **Capture first, and keep the capture.** `gh api repos/$REPO/rulesets/$ID > ruleset-before.json`
+   and `gh api repos/$REPO/rules/branches/$DEFAULT_BRANCH --jq '[.[].type]|sort|join(",")' >
+   rules-before.txt`. That capture is the only copy of the prior state outside GitHub, and the
+   restore is rebuilt from it and from nothing else — reconstructing it from memory afterwards is
+   how a rule gets silently dropped.
+2. **Require the contexts, exercise exactly one pull request, and keep the window short.** A
+   ruleset change is repository-wide for as long as it is in force, so note which runs happen
+   inside the window and check that none of them is an unrelated pull request.
+3. **Restore from the capture, and prove it with a diff, not a claim.** Re-read the rule types
+   after the restoring `PUT` and require `diff rules-before.txt rules-restored.txt` to be empty.
+   Comparing the whole ruleset document, equal on every key except the server-owned `updated_at`,
+   is stronger still and costs one more command.
+4. **Only leave the contexts required once the default branch itself carries the workflow** — that
+   is, after the pull request adding it has merged. Until then, requiring them permanently locks
+   the branch against every pull request, including the one that would undo it.
+
+The measured exercise behind this procedure confirmed the self-lockout warning above rather than
+softening it: on a second, independent repository the live ruleset again reported `bypass_actors:
+[]` and `current_user_can_bypass: "never"`, so the refusal it produced could not have been
+overridden by the repository owner.
 
 See the blueprint's [§Phase 2 — CI/CD Security Gate](development-security-stack-option-1.md) for
 the underlying branch-protection rationale; this section does not restate it.
