@@ -31,13 +31,20 @@ Every code change is automatically scanned for security issues, secrets, and sup
 - [x] VAL-01: Full pipeline validated via branch-target PRs in canonical repo — v2.0
 - [x] VAL-02: Required-check enforcement exercised live on external repo (`terraform-pipelines`) — GitHub observably refused a merge with a red required check, then window closed and ruleset restored byte-identical — v2.0
 
-## Current Milestone
+## Current Milestone: v3.0 K8s Infra & Dashboards
 
-(None — v2.0 shipped 2026-09-17. Awaiting `/gsd:new-milestone`.)
+**Goal:** Stand up Nexus Repository (npm/PyPI/Docker/Helm proxy) and DefectDojo (unified security dashboard with automated CI import and dedup/triage) on the existing on-prem homelab K8s cluster (`occ-new`, kubeadm, v1.34.1, Rocky Linux 10, 1 control-plane + 3 workers).
+
+**Target features:**
+- Nexus Repository proxy: npm, PyPI, Docker, Helm
+- Per-repo Nexus registry configuration + workstation install script to apply it
+- DefectDojo deployment (unified security dashboard)
+- CI-to-DefectDojo automated import pipeline (SARIF/JSON artifacts from `security-platform` scan jobs)
+- Deduplication and triage workflow configuration in DefectDojo
 
 ### Active
 
-(None yet — next milestone requirements TBD via `/gsd:new-milestone`)
+(Requirements TBD — defined in REQUIREMENTS.md)
 
 ### Validated (v1.1)
 
@@ -158,4 +165,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-17 after v2.0 milestone*
+*Last updated: 2026-09-17 after starting v3.0 milestone*
