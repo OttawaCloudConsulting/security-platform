@@ -24,10 +24,17 @@
 
 **Goal:** Public Helm chart wraps the upstream Sonatype `nexus3` subchart and deploys Nexus Repository with npm, PyPI, Docker, and Helm proxy repos configured, using the cluster's default StorageClass unless overridden.
 **Requirements**: NEXUS-01, NEXUS-03
-**Plans:** 0 plans
+**Plans:** 8 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 23 to break down)
+- [ ] 23-01-PLAN.md — Repo guards (yamllint exclusion, .gitignore) and the standing offline chart gate
+- [ ] 23-02-PLAN.md — Live smoke script: docker two-pass idempotency, post-EULA download, kind install
+- [ ] 23-03-PLAN.md — Chart scaffold: Chart.yaml/Chart.lock, .helmignore, values.yaml, template helpers
+- [ ] 23-04-PLAN.md — provision.sh plus the two ConfigMaps and the post-install hook Job
+- [ ] 23-05-PLAN.md — Chart README and the root README correction to `kubernetes/`
+- [ ] 23-06-PLAN.md — Run the gates live and measure the Checkov delta in the CI-equivalent state
+- [ ] 23-07-PLAN.md — CLAUDE.md scope statement, ADR-020, ADR index row
+- [ ] 23-08-PLAN.md — PR, operator approval gate, merge to security-platform main
 
 </details>
 
