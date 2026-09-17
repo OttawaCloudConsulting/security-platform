@@ -44,21 +44,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NEXUS-01 | TBD | Pending |
-| NEXUS-02 | TBD | Pending |
-| NEXUS-03 | TBD | Pending |
-| NEXUS-04 | TBD | Pending |
-| NEXUS-05 | TBD | Pending |
-| DDOJO-01 | TBD | Pending |
-| DDOJO-02 | TBD | Pending |
-| DDOJO-03 | TBD | Pending |
-| DDOJO-04 | TBD | Pending |
-| DDOJO-05 | TBD | Pending |
+| NEXUS-01 | Phase 23 | Pending |
+| NEXUS-03 | Phase 23 | Pending |
+| NEXUS-02 | Phase 24 | Pending |
+| NEXUS-04 | Phase 24 | Pending |
+| NEXUS-05 | Phase 25 | Pending |
+| DDOJO-01 | Phase 26 | Pending |
+| DDOJO-02 | Phase 27 | Pending |
+| DDOJO-03 | Phase 28 | Pending |
+| DDOJO-04 | Phase 28 | Pending |
+| DDOJO-05 | Phase 29 | Pending |
 
 **Coverage:**
 - v3.0 requirements: 10 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 10 ⚠️ (will be resolved by roadmap creation)
+- Mapped to phases: 10
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-09-17*

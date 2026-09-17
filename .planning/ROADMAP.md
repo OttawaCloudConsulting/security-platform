@@ -5,8 +5,22 @@
 - ✅ **v1.0 M1 Workstation Foundation** — Phases 1-9 (shipped 2026-03-17)
 - ✅ **v1.1 Distribution Packaging** — Phases 10-13 (shipped 2026-09-10)
 - ✅ **v2.0 CI/CD Security Pipeline** — Phases 14-22 (shipped 2026-09-17)
+- 🔄 **v3.0 K8s Infra & Dashboards** — Phases 23-29 (in progress)
 
 ## Phases
+
+<details open>
+<summary>🔄 v3.0 K8s Infra & Dashboards (Phases 23-29) — IN PROGRESS</summary>
+
+- [ ] **Phase 23: Nexus Generic Chart** - Public Helm chart deploys Nexus with npm/PyPI/Docker/Helm proxy repos, default StorageClass
+- [ ] **Phase 24: Nexus Anonymous Access and Workstation Script** - Anonymous pull enabled; install script points a target repo's package-manager config at a Nexus instance
+- [ ] **Phase 25: Nexus Live Validation** - Chart deployed to the homelab cluster via private ArgoCD overlay; proxy pulls proven live
+- [ ] **Phase 26: DefectDojo Generic Chart** - Public Helm chart deploys DefectDojo with external ingress and cert-manager TLS
+- [ ] **Phase 27: DefectDojo CI Auto-Import** - security-platform scan jobs push SARIF/JSON findings into DefectDojo automatically
+- [ ] **Phase 28: DefectDojo Dedup and Triage** - Dedup rules collapse repeated findings; triage workflow documented and configured
+- [ ] **Phase 29: DefectDojo Live Validation** - Chart deployed to the homelab cluster via private ArgoCD overlay; CI import proven live end-to-end
+
+</details>
 
 <details>
 <summary>✅ v1.0 M1 Workstation Foundation (Phases 1-9) — SHIPPED 2026-03-17</summary>
@@ -56,7 +70,7 @@ See `.planning/milestones/v2.0-ROADMAP.md` for full phase details.
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → ... → 22 (see milestone archives for full phase-detail history)
+Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives for full phase-detail history)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -83,6 +97,13 @@ Phases execute in numeric order: 1 → 2 → ... → 22 (see milestone archives 
 | 20.1. Close gap: Retroactive VERIFICATION.md for Phases 14/17/18 | v2.0 | 3/3 | Complete | 2026-09-15 |
 | 21. Docs cleanup — close remaining Phase 20 deferred items | v2.0 | 4/4 | Complete | 2026-09-15 |
 | 22. branch-protection --apply live exercise | v2.0 | 6/6 | Complete | 2026-09-16 |
+| 23. Nexus Generic Chart | v3.0 | 0/? | Not started | — |
+| 24. Nexus Anonymous Access and Workstation Script | v3.0 | 0/? | Not started | — |
+| 25. Nexus Live Validation | v3.0 | 0/? | Not started | — |
+| 26. DefectDojo Generic Chart | v3.0 | 0/? | Not started | — |
+| 27. DefectDojo CI Auto-Import | v3.0 | 0/? | Not started | — |
+| 28. DefectDojo Dedup and Triage | v3.0 | 0/? | Not started | — |
+| 29. DefectDojo Live Validation | v3.0 | 0/? | Not started | — |
 
 ## Next Milestone
 
