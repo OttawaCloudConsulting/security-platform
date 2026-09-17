@@ -14,7 +14,9 @@ Public Helm chart that deploys Nexus Repository with npm, PyPI, Docker, and Helm
 ## Implementation Decisions
 
 ### Chart base
-- **D-01:** Wrap Sonatype's official upstream `nexus3` Helm chart as a subchart dependency in `Chart.yaml` (not authored from scratch, not vendored/forked). Override values rather than reimplementing StatefulSet/PVC/service-account templates.
+- **D-01 (REVISED post-research 2026-09-17):** No Sonatype-published chart named `nexus3` exists — Sonatype's `nexus-repository-manager` is deprecated/frozen at 3.64.0 with a DB-corruption warning, and `nxrm-ha` requires 3 replicas + external Postgres + Pro license. Wrap the community `stevehipwell/nexus3` chart instead (MIT, ArtifactHub-verified publisher, runs the official Sonatype Nexus image) as a subchart dependency in `Chart.yaml`. Override values rather than reimplementing StatefulSet/PVC/service-account templates.
+- **D-09 (NEW post-research 2026-09-17):** Nexus CE since 3.77.0 gates every proxy download behind an unaccepted EULA (`accepted: false` by default) — repos configure fine, metadata fetches 200, but actual package pulls 403 until `POST /service/rest/v1/system/eula` returns 204. This is required for NEXUS-01 to actually work, not optional polish. EULA acceptance is an **explicit opt-in** (`eula.accepted: false` default in `values.yaml`) — the chart must NOT auto-accept a legal agreement on the consumer's behalf. The setup Job only calls the EULA endpoint when `eula.accepted: true` is set.
+- **D-10 (NEW post-research 2026-09-17):** `persistence.enabled` on the upstream chart defaults to `false` (emptyDir) — this phase MUST set `persistence.enabled: true` by default (size overridable) so EULA acceptance and the 4 proxy repos survive a pod restart. `persistence.storageClass` still stays omitted per D-06.
 
 ### Repo location
 - **D-02:** Chart lives in the `OttawaCloudConsulting/security-platform` repo (not this docs-only repo, not a new dedicated repo). This repo's `CLAUDE.md` scope statement will need a note that `security-platform` now also hosts K8s packages, not just the CI workflow.
@@ -22,7 +24,7 @@ Public Helm chart that deploys Nexus Repository with npm, PyPI, Docker, and Helm
 
 ### Proxy repo provisioning
 - **D-04:** A Helm post-install Job calls the Nexus REST API after the pod is ready to idempotently create the 4 proxy repos (npm, PyPI, Docker, Helm). Not a Groovy/ConfigMap script (deprecated upstream scripting API), not a manual doc step (would violate NEXUS-01's "configured" requirement).
-- **D-05:** The 4 proxy upstream URLs (registry.npmjs.org, pypi.org, registry-1.docker.io, Helm Hub-style index) ship as hardcoded defaults in `values.yaml` but are consumer-overridable — not fixed/unoverridable, not left blank for the consumer to fill in.
+- **D-05 (REVISED post-research 2026-09-17):** The npm, PyPI, and Docker proxy upstream URLs (registry.npmjs.org, pypi.org, registry-1.docker.io) ship as hardcoded defaults in `values.yaml`, consumer-overridable. The Helm proxy upstream has **no default** — Helm Hub is defunct since 2020 and its replacement, Artifact Hub, is a cross-repo search index, not itself a chart repository serving a single `index.yaml` (confirmed via Nexus `helm-proxy` needing one upstream `index.yaml`, which Artifact Hub does not provide). Bitnami's repo (the historical default) is mid-deprecation through 2026 and unsuitable to hardcode. `values.yaml` leaves the Helm proxy remote unset; the chart README documents that the consumer must point it at a repo relevant to their stack (e.g. `ingress-nginx`, `jetstack`, `prometheus-community`).
 
 ### Values schema
 - **D-06:** `persistence.storageClass` is omitted/left unset in `values.yaml` by default so Kubernetes falls back to the cluster's default StorageClass automatically (satisfies NEXUS-03). Consumer sets a value only to override. Not an explicit `""` — plain omission.
