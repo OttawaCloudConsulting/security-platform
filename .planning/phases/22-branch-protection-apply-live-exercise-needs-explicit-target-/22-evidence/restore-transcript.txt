@@ -1,0 +1,43 @@
+=== 22-05 restore — started 2026-09-17T01:30:29Z ===
+
+--- preconditions ---
+main HEAD expected: c490bed09f43bae5440594db7e76011e8951f26c
+main HEAD actual  : c490bed09f43bae5440594db7e76011e8951f26c
+  ok: main unchanged
+PR #14: state=OPEN mergedAt=null
+  ok: not merged
+  ok: rollback.json — six keys, bypass_actors [], rule types ['copilot_code_review', 'deletion', 'non_fast_forward']
+  ok: restore-command.txt agrees with this script
+rule types live now: copilot_code_review,deletion,non_fast_forward,pull_request,required_status_checks
+
+--- step A: close PR #14 unmerged, delete chore/phase-22-required-check-exercise ---
+closing (no merge, no --admin, no --auto):
+✓ Closed pull request OttawaCloudConsulting/terraform-pipelines#14 (chore: Phase 22 required-check enforcement exercise (temporary))
+✓ Deleted branch chore/phase-22-required-check-exercise
+gh pr close exit code: 0 (informational — the read-backs decide)
+branches after close: main
+  ok: branch list is main only
+pr-final.json: {"headRefName":"chore/phase-22-required-check-exercise","headRefOid":"34bf29cb2fef09434339e48ba0a466d28241766b","mergedAt":null,"number":14,"state":"CLOSED"}
+  ok: CLOSED, unmerged
+
+--- step B: restore ruleset 12760793 ---
+PUT repos/OttawaCloudConsulting/terraform-pipelines/rulesets/12760793 --input /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-evidence/rollback.json
+PUT exit code: 0
+  ok: PUT accepted
+
+--- read-back ---
+rules-before.txt  : copilot_code_review,deletion,non_fast_forward
+rules-restored.txt: copilot_code_review,deletion,non_fast_forward
+
+THE PHASE GATE — diff rules-before.txt rules-restored.txt:
+  (empty) — byte-identical to the pre-exercise capture
+  ok: no required_status_checks, no pull_request rule
+  ok: bypass_actors []
+  ok: live six-key projection EQUALS rollback.json — byte-identical, not asserted
+  ok: main still c490bed09f43bae5440594db7e76011e8951f26c
+
+=== RESTORE COMPLETE (PUT performed: yes) ===
+  pull request : CLOSED, unmerged, branch deleted
+  ruleset      : copilot_code_review,deletion,non_fast_forward
+  main HEAD    : c490bed09f43bae5440594db7e76011e8951f26c
+  finished 2026-09-17T01:30:38Z

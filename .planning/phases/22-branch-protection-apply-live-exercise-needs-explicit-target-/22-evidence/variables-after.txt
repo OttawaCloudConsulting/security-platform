@@ -1,0 +1,9 @@
+# gh variable list -R OttawaCloudConsulting/terraform-pipelines
+# captured: 2026-09-17T02:26:37Z   exit code: 0
+# verbatim stdout follows between the markers; EMPTY means the
+# repository has NO Actions variables set, in particular no GATE_MODE.
+# guard-then-act result: absent-no-delete-needed  (exact-match test on the name list,
+# no || true anywhere — an absent variable is reported, not swallowed)
+--- begin output ---
+--- end output ---
+# line count of output: 0

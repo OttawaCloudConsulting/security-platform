@@ -1,0 +1,38 @@
+# hygiene-report.txt — 22-evidence/ scrubbed before commit
+# captured: 2026-09-17T02:27:07Z
+#
+# Two recursive greps over EVERY file in 22-evidence/, run before the
+# evidence directory was committed.
+#
+# NOTE ON SELF-COLLISION. Neither forbidden literal is spelled out in
+# this file. Both greps are literal string searches over this directory,
+# and this report lives IN that directory — writing the patterns out
+# verbatim would make the report itself the only hit, exactly the
+# collision plan 02 hit in gate-mode-loglines.txt and plan 04 hit in
+# poll-invocations.txt. The patterns are described instead.
+
+files scanned: 56
+
+SCAN 1 — GitHub token prefixes.
+  pattern: the two-letter GitHub prefix followed by one of o/p/r/s/u and
+           an underscore — i.e. the OAuth, personal, refresh, server and
+           user-to-server token forms. Broader than the plan's two.
+  command: grep -rlE <pattern> 22-evidence/
+  result : NO MATCHES
+  V2/Authentication and Information-Disclosure control (T-22-25). A token
+  in a committed evidence file is an incident in a repository that is
+  itself about supply-chain security.
+
+SCAN 2 — the unsettled merge-state sentinel.
+  pattern: the mergeStateStatus enum value meaning 'GitHub has not
+           settled this pull request's mergeability yet', spelled
+           U-N-K-N-O-W-N. Built from two concatenated fragments at scan
+           time so this line is not itself a match.
+  command: grep -rl <pattern> 22-evidence/
+  result : NO MATCHES
+  Repudiation control (T-22-26). An artifact carrying that value recorded
+  an unsettled read as if it were a measurement, and is not evidence.
+
+VERDICT: both scans returned nothing. Neither was made to pass by editing
+a file — plan 04's rule stands: an evidence file altered to satisfy an
+assertion is not evidence.
