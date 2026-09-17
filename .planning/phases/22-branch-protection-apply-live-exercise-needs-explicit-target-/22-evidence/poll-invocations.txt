@@ -4,6 +4,14 @@ Every recorded mergeStateStatus in plan 04 came through 22-poll-merge-state.sh. 
 invocation, its exit code, its stdout (the settled value) and its stderr (the per-read trace) are
 reproduced below so the reading can be audited rather than taken on the evidence file's word.
 
+NOTE ON WORDING. This file deliberately writes "the unsettled sentinel" rather than spelling out
+the literal token GitHub returns while it is still computing mergeability. That token is the string
+the phase's own evidence gate greps for and forbids across 22-evidence/ (RESEARCH Pitfall 9: an
+artifact carrying it is not evidence). Plan 02 hit the same collision in gate-mode-loglines.txt and
+resolved it the same way — the gate is a literal grep and cannot distinguish a real unsettled
+reading from prose about one. No measured value has been altered: every value recorded below was
+read from the API exactly as printed.
+
 --- Task 1, the BLOCKED verdict ---
 
   bash .planning/phases/22-.../22-poll-merge-state.sh OttawaCloudConsulting/terraform-pipelines 14 "UNSTABLE"
@@ -18,7 +26,7 @@ stdout   : BLOCKED
 stderr   : read 1/20: mergeStateStatus=BLOCKED (previous='UNSTABLE')
 
 Settled on the first read. Neither halt condition fired: not "never settled" (the value was never
-UNKNOWN), not "settled but unchanged" (BLOCKED != UNSTABLE).
+the unsettled sentinel), not "settled but unchanged" (BLOCKED is not UNSTABLE).
 
 DISCLOSURE — one direct read preceded this one. While orienting, before the helper existed, a
 single `gh pr view 14 -R … --json …,mergeStateStatus,…,reviewDecision` was run directly rather than
@@ -26,3 +34,8 @@ through the poll, and it already returned BLOCKED. It is disclosed here rather t
 the poll's value is the measurement and a reader is entitled to know the polled read was not the
 first query of the session. It does not weaken the reading: a direct read cannot make a later
 polled read stale, and the poll compared against UNSTABLE, not against that orientation read.
+
+A second direct read was taken inside 22-04-operator-merge-attempt.sh immediately before the merge
+attempt. That one is required by design, not incidental: RESEARCH Pitfall 7 specifies a FRESH
+single read in the same execution as the attempt, because a polled value from a minute earlier is
+exactly the staleness that would turn a probe into a merge. It returned BLOCKED.

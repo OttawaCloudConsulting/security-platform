@@ -123,11 +123,46 @@ def assert_blocked():
         f"merge-attempt.txt is non-empty ({len(attempt)} bytes)",
         "merge-attempt.txt is empty — no refusal was captured",
     )
+    # The plan's criterion is literally "merge-attempt.txt does not contain the
+    # string --admin". Reality falsified it: gh's own refusal ADVERTISES both
+    # bypass flags as hints ("add the `--admin` flag"). The transcript is the
+    # deliverable and must never be edited to satisfy an assertion, so the
+    # assertion is tightened to the criterion's actual intent — that the
+    # ATTEMPT did not pass a bypass flag — and split in two.
+    #
+    # (a) every occurrence in the transcript is inside gh's own advisory line
+    for flag in ("--admin", "--auto"):
+        hits = [ln for ln in attempt.splitlines() if flag in ln]
+        stray = [ln for ln in hits
+                 if not re.search(r"add the `?" + re.escape(flag) + r"`? flag", ln)]
+        check(
+            not stray,
+            f"every '{flag}' in merge-attempt.txt is inside gh's own hint line "
+            f"({len(hits)} occurrence(s), 0 stray)",
+            f"'{flag}' appears in merge-attempt.txt outside gh's hint line: {stray}",
+        )
+
+    # (b) the invocation itself, read from the script that produced the
+    #     transcript — the primary source for what was actually run
+    script = (pathlib.Path(__file__).resolve().parent
+              / "22-04-operator-merge-attempt.sh")
+    if not script.is_file():
+        print(f"ABORT(2): missing {script}")
+        sys.exit(2)
+    invocations = [ln.strip() for ln in script.read_text(encoding="utf-8").splitlines()
+                   if re.match(r"^\s*gh pr merge\b", ln)]
     check(
-        "--admin" not in attempt,
-        "merge-attempt.txt contains no '--admin'",
-        "merge-attempt.txt contains '--admin' — the gate was bypassed, not witnessed",
+        len(invocations) == 1,
+        f"the script carries exactly one `gh pr merge` invocation: {invocations[0] if invocations else ''}",
+        f"expected exactly one `gh pr merge` invocation, found {len(invocations)}: {invocations}",
     )
+    if len(invocations) == 1:
+        inv = invocations[0]
+        check(
+            "--admin" not in inv and "--auto" not in inv and "--squash" in inv,
+            "the invocation passes --squash and neither --admin nor --auto",
+            f"the invocation is not gate-safe: {inv}",
+        )
 
     # 5. The refusal is a refusal, not a merge-method configuration error.
     hits = [p for p in MERGE_METHOD_ERROR_PATTERNS
