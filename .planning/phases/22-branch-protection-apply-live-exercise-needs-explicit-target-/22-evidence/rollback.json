@@ -1,0 +1,32 @@
+{
+  "name": "Default",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "exclude": [
+        "refs/heads/dev**/**"
+      ],
+      "include": [
+        "~DEFAULT_BRANCH",
+        "refs/heads/main"
+      ]
+    }
+  },
+  "bypass_actors": [],
+  "rules": [
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "copilot_code_review",
+      "parameters": {
+        "review_on_push": true,
+        "review_draft_pull_requests": true
+      }
+    }
+  ]
+}

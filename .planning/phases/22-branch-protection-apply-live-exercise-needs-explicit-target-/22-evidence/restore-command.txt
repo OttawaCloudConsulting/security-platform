@@ -1,0 +1,36 @@
+# 22-05 restore command — WRITTEN BEFORE THE PUT WAS ATTEMPTED
+#
+# Purpose: if the executor's Bash classifier denies the restoring PUT the way it
+# denied every other write in this phase (five measured instances across plans
+# 01-04), escalation to the operator is ONE PASTE rather than a reconstruction
+# under pressure with a live repository left locked.
+#
+# The body is the six-key projection of 22-evidence/ruleset-before.json, built
+# and validated locally before this file was written:
+#   keys           : name, target, enforcement, conditions, bypass_actors, rules
+#   rule types     : deletion, non_fast_forward, copilot_code_review
+#   bypass_actors  : []  (carried via .get(..., []), never synthesised)
+#   cross-checked  : equals 22-evidence/merged.json — the body GitHub accepted
+#                    with 200 in plan 03 — minus the required_status_checks and
+#                    pull_request rules. Same document shape, already proven to
+#                    round-trip through this endpoint on this repository.
+#
+# The PREFERRED way to run the restore is the bounded operator script, which
+# carries preconditions, the PR close that must precede the ruleset write, and
+# fresh read-back assertions in the same execution:
+#
+#   bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-05-operator-restore.sh
+#
+# The bare PUT below is the fallback. It is the exact command that script runs.
+# It restores the ruleset but does NOT close the pull request and does NOT
+# verify anything.
+
+gh api --method PUT repos/OttawaCloudConsulting/terraform-pipelines/rulesets/12760793 --input /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-evidence/rollback.json
+
+# Verification after it, using the authoritative endpoint only (never
+# branches/main/protection, which 404s by design on a ruleset-governed repo):
+#
+#   gh api repos/OttawaCloudConsulting/terraform-pipelines/rules/branches/main --jq '[.[].type]|sort|join(",")' > /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-evidence/rules-restored.txt
+#   diff /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-evidence/rules-before.txt /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/22-evidence/rules-restored.txt
+#
+# Empty diff output is the phase gate.
