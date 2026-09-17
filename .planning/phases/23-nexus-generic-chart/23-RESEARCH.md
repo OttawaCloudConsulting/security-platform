@@ -700,7 +700,18 @@ Not a rename/refactor/migration phase — but the *substance* of this phase is r
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+**All five questions below were dispositioned during planning on 2026-09-17. The question
+bodies are left intact as the reasoning record; the resolution is authoritative.**
+
+| # | Question | Resolution |
+|---|----------|------------|
+| Q1 | Helm proxy default `remoteUrl` | **D-05 REVISED** — no default is shipped. `values.yaml` leaves `repos.helm.remoteUrl` unset; the chart README documents consumer-appropriate examples. Plan 23-03 (values), 23-05 Task 1 (README). |
+| Q2 | Reuse upstream config Job or ship a purpose-built one | **D-04** — purpose-built hook Job, with `nexus3.config.enabled: false` so the deprecated Groovy scripting API stays off. Plan 23-03 (values), 23-04 Task 3 (Job). |
+| Q3 | Adopt Renovate for the `Chart.yaml` dependency | **Deferred, not dropped** — recorded as the `**Tradeoff — subchart pin freshness.**` paragraph in ADR-020 (plan 23-07 Task 2). Dependabot has no Helm chart-dependency manager; Renovate's `helmv3` manager does, but adopting a second bot is a repository-wide decision outside this phase's mandate. `Chart.lock` is the control point until that decision is taken. |
+| Q4 | Auto-accept the CE EULA or require opt-in | **D-09** — explicit opt-in. `eula.accepted: false` by default; the provisioning Job calls the EULA endpoint only when the consumer sets it to `true`. |
+| Q5 | Revisit D-08 (floating image tag) | **D-08 kept as decided** — the chart README states that the Nexus version is determined by the subchart's `appVersion` and that `Chart.lock` is the control point. Plan 23-05 Task 1. |
 
 1. **What should the Helm proxy's default `remoteUrl` be? (blocks D-05)**
    - *What we know:* Nexus `helm` proxies classic chart repositories serving `index.yaml`; it does not proxy OCI registries. `https://charts.helm.sh/stable` still responds (direct: 200, 9,839,197 bytes; through the proxy: 200, 7,243,278 bytes) [VERIFIED].
