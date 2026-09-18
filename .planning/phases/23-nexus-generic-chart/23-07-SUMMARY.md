@@ -84,6 +84,22 @@ completed: 2026-09-18
 1. **Task 1: Correct this repository's scope statement** — `e3e8ac3` (docs)
 2. **Task 2: Write ADR-020 and add its index row** — `ba938ac` (docs)
 
+**Plan metadata:** `312981d` (docs: complete plan)
+
+**Post-review fix:** `4e6aa8e` (fix) — ADR-020's Decision section stated flatly that the
+Helm hook "gives it a defined position in an ArgoCD sync" while item 3 of `## What was NOT
+verified` records that the ArgoCD hook mapping was never tested. A Decision-only reader would
+have taken it as measured — the exact overstatement T-23-12 exists to prevent. Reworded to
+"is intended to give … — intended, not observed; see item 3 below." The plan's `<verify>`
+one-liner, `markdownlint-cli2` and `bash scripts/check-adoption-guide.sh` were all re-run
+after the edit and all still pass.
+
+The storageClass *override* render, which the ADR also claims as measured, was checked against
+its source rather than trusted: 23-03-SUMMARY.md records
+`--set nexus3.persistence.storageClass=test -> storageClassName: test (override passes through
+verbatim)`, and `scripts/check-nexus-chart.sh` check 3 (`STORAGECLASS-OVERRIDE`) asserts it on
+every run — green in 23-06's `PASS - 16 checks, 0 failures`. The claim stands as written.
+
 ## Files Created/Modified
 
 - `CLAUDE.md` — §What This Repository Is, one sentence: the Phase 2 workflows clause now reads "…together with the K8s packages that implement its Kubernetes infrastructure layer (`kubernetes/<service>/` Helm charts, starting with `kubernetes/nexus/`), live in `OttawaCloudConsulting/security-platform`, not in this repository — this repository documents them, it does not ship them."
