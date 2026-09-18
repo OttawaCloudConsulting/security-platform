@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 23-05-PLAN.md
-last_updated: "2026-09-18T17:06:27.226Z"
+stopped_at: Completed 23-06-PLAN.md
+last_updated: "2026-09-18T19:27:04.864Z"
 last_activity: 2026-09-18
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 23 (nexus-generic-chart) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-09-18
 
@@ -189,6 +189,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 23-05]: nameOverride/fullnameOverride documented WITHOUT the nexus3. prefix inside backticks: the prefixed form is a backticked nexus3.* path resolving to null in values.yaml, which the plan's values-table criterion allows in exactly three cases and these are not among them.
 - [Phase 23-05]: The chart README's ## Architecture section is inline, not a link-out: kubernetes/nexus has no ARCHITECTURE.md and ADR-020 does not exist until 23-07, so either link would have shipped broken.
 - [Phase 23-05]: Root README milestone table: only the directory and status cells changed; the description cell was left as-is under the plan's do-not-restructure rule.
+- [Phase 23-06]: A3 closed by MEASUREMENT: ghcr.io/bridgecrewio/checkov:3.3.17 ships helm v3.22.0 and its helm runner DOES engage on kubernetes/nexus — but helm template fails on the chart's own required guard (nexus3.rootPassword.secret), so the chart contributes ZERO findings to CI and CI provides ZERO coverage of it. Checkov WARNs and continues; soft_fail:false is not tripped. Delta measured 14 -> 14 failed checks, identical check_id+file_path set, CKV_K8S_* = 0 in both. Latent set quantified at 24 kubernetes findings if rendered (5 wrapper, 19 subchart) so zero is not read as clean.
+- [Phase 23-06]: The plan's own Task 3 verify block mounts the tree :ro, which makes Checkov's helm runner fail with 'mkdir .../charts: read-only file system' — an artefact of the measurement, not of CI whose workspace is writable. Re-measured with a writable mount as the primary result; same 14/14 counts but only the writable run shows the real cause. Any future helm-bearing scanner measurement must not use :ro.
+- [Phase 23-06]: pre-commit run --all-files does NOT run gitleaks in security-platform — the hook is stages: [pre-push]. Both invocations were run and both recorded; a gitleaks pass claimed from the default-stage command alone would be unobserved (T-23-12). 23-08's git push will trigger it for real.
 
 ### Pending Todos
 
@@ -269,11 +272,12 @@ Carried forward from v1.1 close:
 | Phase 23 P03 | 35min | 3 tasks | 5 files |
 | Phase 23 P04 | 70min | 3 tasks | 4 files |
 | Phase 23 P05 | 35min | 2 tasks | 2 files |
+| Phase 23 P06 | 40min | 3 tasks | 0 files |
 
 ## Session Continuity
 
-Last session: 2026-09-18T17:04:56.280Z
-Stopped at: Completed 23-05-PLAN.md
+Last session: 2026-09-18T19:27:04.857Z
+Stopped at: Completed 23-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -32,7 +32,7 @@ Plans:
 - [x] 23-03-PLAN.md — Chart scaffold: Chart.yaml/Chart.lock, .helmignore, values.yaml, template helpers
 - [x] 23-04-PLAN.md — provision.sh plus the two ConfigMaps and the post-install hook Job
 - [x] 23-05-PLAN.md — Chart README and the root README correction to `kubernetes/`
-- [ ] 23-06-PLAN.md — Run the gates live and measure the Checkov delta in the CI-equivalent state
+- [x] 23-06-PLAN.md — Run the gates live and measure the Checkov delta in the CI-equivalent state
 - [ ] 23-07-PLAN.md — CLAUDE.md scope statement, ADR-020, ADR index row
 - [ ] 23-08-PLAN.md — PR, operator approval gate, merge to security-platform main
 
@@ -113,7 +113,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 20.1. Close gap: Retroactive VERIFICATION.md for Phases 14/17/18 | v2.0 | 3/3 | Complete | 2026-09-15 |
 | 21. Docs cleanup — close remaining Phase 20 deferred items | v2.0 | 4/4 | Complete | 2026-09-15 |
 | 22. branch-protection --apply live exercise | v2.0 | 6/6 | Complete | 2026-09-16 |
-| 23. Nexus Generic Chart | v3.0 | 5/8 | In Progress|  |
+| 23. Nexus Generic Chart | v3.0 | 6/8 | In Progress|  |
 | 24. Nexus Anonymous Access and Workstation Script | v3.0 | 0/? | Not started | — |
 | 25. Nexus Live Validation | v3.0 | 0/? | Not started | — |
 | 26. DefectDojo Generic Chart | v3.0 | 0/? | Not started | — |
