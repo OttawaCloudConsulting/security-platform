@@ -34,7 +34,7 @@ key-files:
 
 key-decisions:
   - "The terminal verdict is three-state, not two. smoke-scans.sh prints ALL PASS whenever FAILURES is empty; copied verbatim that would print ALL PASS on the skip path, which the plan's own acceptance criteria forbid. print_summary therefore prints `NOTHING RAN - 0 live check(s) executed` when CHECKS_PASSED is 0, and exits 0."
-  - "The admin credential is passed to docker through a mode-600 env file and to kubectl through stdin, never on an argv. The plan specified `-e` and `--from-literal`; both would expose the credential to any local process reading /proc or `ps`, and `--from-literal=password=\"$NEXUS_PASSWORD\"` also trips the plan's own no-literal-credential grep via the substring PASSWORD."
+  - "The admin credential is kept off the DOCKER and KUBECTL argv (mode-600 env file, and `kubectl apply -f -` from a stringData heredoc). It is NOT off every argv: the plan-specified `curl -u admin:\"$NEXUS_PASSWORD\"` and `env NEXUS_PASSWORD=... bash provision.sh` invocations were kept verbatim and both place it on an argv. T-23-02's stated mitigation is runtime generation / never echoed / never committed, which holds; the two remaining argv exposures are on loopback against an ephemeral throwaway container."
   - "Every kubectl/helm call in the kind section pins --context/--kube-context explicitly. Without it a failed `kind create cluster` would silently redirect namespace creation, Secret application and `helm install` at whatever cluster the operator currently has selected."
   - "requirements.mark-complete was deliberately NOT invoked. NEXUS-01 is in this plan's frontmatter, but this plan builds the assertion, not the thing asserted — the chart and provision.sh that satisfy NEXUS-01 ship in 23-03/23-04. Follows the 23-01, 19-01..19-04 and 17-01 precedent recorded in STATE.md."
 
@@ -50,7 +50,7 @@ completed: 2026-09-18
 
 # Phase 23 Plan 02: Live Smoke — Docker Two-Pass and Kind Install Summary
 
-**A 408-line live gate now boots a real container from the image the chart itself renders, runs the chart's own provisioning script twice, measures the downloaded tarball's size rather than trusting its status code, and installs the chart on a throwaway kind cluster — every path of it driven green, red and discriminating against a scratchpad fake chart before the real chart exists.**
+**A 413-line live gate now boots a real container from the image the chart itself renders, runs the chart's own provisioning script twice, measures the downloaded tarball's size rather than trusting its status code, and installs the chart on a throwaway kind cluster — every path of it driven green, red and discriminating against a scratchpad fake chart before the real chart exists.**
 
 ## Performance
 
@@ -71,16 +71,19 @@ completed: 2026-09-18
 
 1. **Task 1: Docker two-pass idempotency and post-EULA artifact download** — `867c963` (test)
 2. **Task 2: Add the kind install smoke section** — `e0b23b1` (test)
+3. **Post-review fix: scope the `umask`** — `c37f092` (fix) — a global `umask 077` would have made
+   section 6's `helm dependency build` write mode-600 files into the operator's checkout. Green path
+   re-verified 8/8 after the change; env file confirmed still `0600`.
 
 Branch: `feature/phase-23-nexus-generic-chart` on `repos/security-platform`, **unpushed** (23-08 owns push/PR/merge). Working tree clean.
 
 ## Files Created/Modified
 
-- `repos/security-platform/scripts/nexus-live-smoke.sh` (new, 408 lines, git mode `100644` — not executable) — six sections: boot Nexus, extract repo bodies from the chart, provision pass 1, provision pass 2, post-EULA artifact download, kind install smoke.
+- `repos/security-platform/scripts/nexus-live-smoke.sh` (new, 413 lines, git mode `100644` — not executable) — six sections: boot Nexus, extract repo bodies from the chart, provision pass 1, provision pass 2, post-EULA artifact download, kind install smoke.
 
 ## Verification Evidence
 
-The script prints `SKIPPED` and exits 0 at this commit, so committing it unexercised would have shipped 408 unverified lines. A throwaway chart was built **in the scratchpad, never inside the repo** — the script anchors to `dirname $0/..`, so placing a copy at `<scratch>/scripts/` made `<scratch>` the repo root and left `security-platform` untouched. Sections 1-5 were driven against real `docker run` containers; section 6 against two real `kind` clusters.
+The script prints `SKIPPED` and exits 0 at this commit, so committing it unexercised would have shipped 413 unverified lines. A throwaway chart was built **in the scratchpad, never inside the repo** — the script anchors to `dirname $0/..`, so placing a copy at `<scratch>/scripts/` made `<scratch>` the repo root and left `security-platform` untouched. Sections 1-5 were driven against real `docker run` containers; section 6 against two real `kind` clusters.
 
 ### Green path — every section, all eight checks
 
@@ -150,8 +153,10 @@ A separate full run added section 6 green against a real cluster: `KIND-CLUSTER`
 **1. The terminal verdict is three-state, not the two-state block from `smoke-scans.sh`.**
 The plan asks for the summary block "copied verbatim in shape" *and* for the skip path to exit 0 without printing `ALL PASS`. Those are incompatible: `smoke-scans.sh`'s `else` branch prints `ALL PASS` whenever `FAILURES` is empty, which on the skip path is a vacuous green. `print_summary` therefore has a third branch — `CHECKS_PASSED == 0` prints `NOTHING RAN - 0 live check(s) executed; N sub-check(s) skipped (not passed). Nothing was proven.` and exits 0. The SKIPPED heading, the `A SKIP IS NOT A PASS` doctrine line, the failure loop and the exit codes are otherwise identical in shape.
 
-**2. The credential never appears on an argv.**
-The plan specified `-e NEXUS_SECURITY_INITIAL_PASSWORD=...` on `docker run` and `kubectl create secret ... --from-literal=password="$NEXUS_PASSWORD"`. Both put the generated admin password in a process argument list, readable by any local process — a weaker position than T-23-06 requires. Replaced with a mode-600 `--env-file` inside the trap-cleaned temp dir, and `kubectl apply -f -` from a `stringData` heredoc. The second form is also what keeps the plan's own no-literal-credential grep at 0: `--from-literal=password="$NEXUS_PASSWORD"` matches `password=.*[A-Za-z0-9]\{8\}` through the substring `PASSWORD`. Task 2's acceptance criteria do not pin `--from-literal`.
+**2. The credential was taken off the docker and kubectl argv — but NOT off every argv.**
+The plan specified `-e NEXUS_SECURITY_INITIAL_PASSWORD=...` on `docker run` and `kubectl create secret ... --from-literal=password="$NEXUS_PASSWORD"`. Both put the generated admin password in a process argument list readable by any local process, so they were replaced with a mode-600 `--env-file` inside the trap-cleaned temp dir and `kubectl apply -f -` from a `stringData` heredoc. The kubectl form is also what keeps the plan's own no-literal-credential grep at 0: `--from-literal=password="$NEXUS_PASSWORD"` matches `password=.*[A-Za-z0-9]\{8\}` through the substring `PASSWORD`. Task 2's acceptance criteria do not pin `--from-literal`.
+
+**Stated precisely, because the distinction matters:** the credential IS still on an argv in two places, both exactly as the plan wrote them — `curl -u admin:"$NEXUS_PASSWORD"` (section 5) and `env ... NEXUS_PASSWORD="$NEXUS_PASSWORD" ... bash "$PROVISION_SH"` (sections 3 and 4). T-23-02's stated mitigation is runtime generation from `/dev/urandom`, never echoed, never committed — argv is not part of it, and both exposures are local-loopback traffic to a throwaway container. Closing them would mean `export`ing the five contract variables instead of `env`, and a mode-600 `curl -K` config file; deliberately deferred rather than silently claimed.
 
 **3. Explicit `--context` / `--kube-context` on every kubectl and helm call in section 6.**
 Not in the plan. Without it, a failed `kind create cluster` leaves the subsequent `kubectl create namespace`, Secret apply and `helm install` pointed at the operator's currently selected cluster. A test must not be able to install a chart on a real cluster by accident.
@@ -172,13 +177,23 @@ The plan's sequence includes `kind create cluster` and `helm dependency build` a
 3. **`curl` exit 52 would have killed the script.** `code=$(curl ...)` under `set -euo pipefail` aborts on any transport error; the `|| curl_rc=$?` guard is load-bearing, not defensive decoration. Measured against a container with no listener on 8081.
 4. **`yq` v4.53.6 here unwraps scalars** (`image: "a:b"` -> `a:b`), contrary to the caution recorded in 23-01. The `unquote` helper is retained anyway because CI may run a different yq.
 5. **The kind half costs ~2m20s per run** on this hardware with images warm — well inside the 15m Helm timeout, but the timeout must not be reduced: that measurement is for a `nginx:alpine` placeholder, not for Nexus first boot, which research sized at 1-3 minutes on homelab hardware on top of the install.
-6. **Section 5 cannot pass until 23-04 lands**, by construction — it needs a provisioner that actually accepts the EULA and creates `npm-proxy`. 23-06 is the plan that runs this script for real and turns `NOTHING RAN` into `ALL PASS`.
+6. **23-06 compatibility confirmed by inspection.** 23-06 T2 asserts `grep -q '^ALL PASS'` on this
+   script's stdout and requires no `SKIPPED` entry. The three-state verdict emits `ALL PASS - N live
+   check(s) executed and passed; ...` starting at column 0 — measured in the green run above — so the
+   assertion matches. Two things 23-06 must budget for that its plan text does not: the script now
+   includes the kind half, so expect **~8-10 minutes**, not the ~3 minutes it estimates; and `kind`
+   plus `kubectl` must be on PATH or section 6 emits a `SKIPPED` entry that fails its no-SKIPPED
+   condition.
+7. **Run `git status --short` after the smoke; the tree must be clean.** Section 6 runs
+   `helm dependency build kubernetes/nexus`, which writes `Chart.lock` and `charts/*.tgz` into the
+   real checkout. The tarball is gitignored (23-01); `Chart.lock` is tracked and may be rewritten.
+8. **Section 5 cannot pass until 23-04 lands**, by construction — it needs a provisioner that actually accepts the EULA and creates `npm-proxy`. 23-06 is the plan that runs this script for real and turns `NOTHING RAN` into `ALL PASS`.
 
 ## Threat Model Coverage
 
 | Threat ID | Disposition | How this plan mitigates it | Status |
 |---|---|---|---|
-| T-23-02 | mitigate | Password generated at runtime from `/dev/urandom`, never echoed, never committed; passed via a mode-600 env file (docker) and stdin (kubectl), never an argv. Credential grep measured 0. | ✅ implemented + measured |
+| T-23-02 | mitigate | Password generated at runtime from `/dev/urandom`, never echoed, never committed; kept off the docker argv (mode-600 env file) and the kubectl argv (stdin). Credential grep measured 0. **Residual:** `curl -u` and `env NEXUS_PASSWORD=` still place it on an argv, as the plan specified — see Deviations #2. | ✅ mitigation as specified + measured; one residual documented |
 | T-23-06 | mitigate | No `set -x` anywhere; `curl -sS -o <file> -w '%{http_code}'`; the Secret value is never printed; `require_success` echoes the label and exit code only, never `"$@"`. | ✅ implemented + measured |
 | T-23-05 | accept | The smoke sets `EULA_ACCEPTED=true` on an ephemeral throwaway container/cluster only; the shipped chart default stays `false` (D-09). | ✅ as designed |
 | T-23-01 | mitigate | Cleanup trap runs `docker rm -f` and `kind delete cluster` on every exit path. Measured: 0 leaked containers and 0 kind clusters after green, red and FATAL runs. | ✅ implemented + measured |
@@ -194,7 +209,7 @@ None. The script opens no new persistent endpoint and adds no auth path to the p
 
 ## Self-Check: PASSED
 
-- `repos/security-platform/scripts/nexus-live-smoke.sh` — FOUND (408 lines, git mode `100644`)
+- `repos/security-platform/scripts/nexus-live-smoke.sh` — FOUND (413 lines, git mode `100644`)
 - Commit `867c963` — FOUND on `feature/phase-23-nexus-generic-chart`
 - Commit `e0b23b1` — FOUND on `feature/phase-23-nexus-generic-chart`
 - Branch `feature/phase-23-nexus-generic-chart` — current, working tree clean, unpushed
