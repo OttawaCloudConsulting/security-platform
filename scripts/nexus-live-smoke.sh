@@ -20,7 +20,15 @@ set -euo pipefail
 # because the EULA refusal body is itself a valid HTTP response and would sail
 # past a bare "did curl succeed" check.
 #
-# Runtime: roughly 3 minutes (image pull excluded; Nexus first boot dominates).
+# The second half installs the chart for real on a throwaway kind cluster and
+# waits for the provisioning Job to reach `complete`. The docker half proves the
+# provisioning LOGIC; only the kind half proves the chart's Kubernetes wiring —
+# the hook annotations, the Secret plumbing, the Service name the Job targets.
+# Neither half subsumes the other, and both are soft-gated so an absent tool is
+# reported as SKIPPED rather than silently dropped.
+#
+# Runtime: roughly 3 minutes for the docker half, roughly 8 minutes with the
+# kind half as well (image pulls excluded; Nexus first boot dominates both).
 #
 # Never set the executable bit on this file (project rule). Invoke as:
 #   bash scripts/nexus-live-smoke.sh
@@ -34,8 +42,9 @@ set -euo pipefail
 #
 # Exit codes:
 #   0  every live check that ran passed, or the run was skipped (nothing ran)
-#   1  at least one live check failed, or a required binary is missing, or the
-#      subchart tarball is not vendored
+#   1  at least one live check failed, or a required hard-tier binary is
+#      missing, or the subchart tarball is not vendored. `kind`/`kubectl` are
+#      SOFT tier: absent, they produce a SKIPPED entry, not a failure.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
@@ -46,12 +55,24 @@ PROVISION_SH="kubernetes/nexus/files/provision.sh"
 
 # Assigned BEFORE the trap so `set -u` cannot trip inside the cleanup path.
 NEXUS_CONTAINER="nexus-live-smoke-$$"
+# Likewise for the kind cluster. KIND_CREATED flips to 1 the moment creation is
+# ATTEMPTED, so a half-built cluster is torn down too.
+KIND_CLUSTER="nexus-smoke"
+KIND_NS="nexus-smoke"
+KIND_CONTEXT="kind-${KIND_CLUSTER}"
+KIND_CREATED=0
+# `kind create cluster` REWRITES the operator's kubeconfig current-context, and
+# `kind delete cluster` then leaves it UNSET — measured: `kubectl config
+# current-context` reported "error: current-context is not set" after a clean
+# run. This smoke must not damage the environment it runs in, so the incoming
+# context is captured here and restored by the cleanup trap.
+KUBECTX_BEFORE=""
 
 OUT="$(mktemp -d)"
-# Cleanup owns the container as well as the temp dir: a failed run must not leak
-# a Nexus container. The `|| true` here is cleanup hygiene on a best-effort
+# Cleanup owns the container and the kind cluster as well as the temp dir: a
+# failed run must not leak either. The `|| true` here is cleanup hygiene on a best-effort
 # teardown, not a silenced assertion — no verdict is derived from it.
-trap 'rm -rf "$OUT"; docker rm -f "$NEXUS_CONTAINER" >/dev/null 2>&1 || true' EXIT
+trap 'rm -rf "$OUT"; docker rm -f "$NEXUS_CONTAINER" >/dev/null 2>&1 || true; if [ "$KIND_CREATED" = "1" ]; then kind delete cluster --name "$KIND_CLUSTER" >/dev/null 2>&1 || true; fi; if [ -n "$KUBECTX_BEFORE" ]; then kubectl config use-context "$KUBECTX_BEFORE" >/dev/null 2>&1 || true; fi' EXIT
 
 FAILURES=()
 # SKIPPED: sub-checks that did not run (an optional tool is absent, or the
@@ -311,6 +332,77 @@ if [ "$tarball_bytes" -gt "$TARBALL_MIN_BYTES" ]; then
   pass "ARTIFACT-SIZE" "${tarball_bytes} bytes downloaded (> ${TARBALL_MIN_BYTES})"
 else
   fail "ARTIFACT-SIZE" "only ${tarball_bytes} bytes downloaded, expected > ${TARBALL_MIN_BYTES}; a ~192-byte body is the EULA refusal, not a tarball"
+fi
+
+echo "--- 6. kind install smoke ---"
+# SOFT tier, unlike the hard-tier preflight at the top: a workstation without a
+# local cluster toolchain must not hard-fail the docker half. The skip is named
+# and accounted for, so it can never be mistaken for a pass.
+if ! command -v kind &>/dev/null || ! command -v kubectl &>/dev/null; then
+  SKIPPED+=("kind install smoke: 'kind' and/or 'kubectl' not found on PATH; the chart was never installed on a cluster")
+  echo "    SKIPPED - kind and/or kubectl absent"
+  print_summary
+fi
+
+# Every kubectl/helm call below pins the context explicitly. Without this, a
+# failed `kind create cluster` would leave the commands pointed at whatever
+# cluster the operator happens to have selected — this smoke must never touch it.
+KUBECTX_BEFORE="$(kubectl config current-context 2>/dev/null || true)"
+echo "    creating cluster ${KIND_CLUSTER} (this is the slow part)"
+KIND_CREATED=1
+kind_rc=0
+kind create cluster --name "$KIND_CLUSTER" >/dev/null 2>&1 || kind_rc=$?
+if [ "$kind_rc" -ne 0 ]; then
+  fail "KIND-CLUSTER" "kind create cluster --name ${KIND_CLUSTER} exited ${kind_rc}"
+  print_summary
+fi
+pass "KIND-CLUSTER" "cluster ${KIND_CLUSTER} is up"
+
+kubectl --context "$KIND_CONTEXT" create namespace "$KIND_NS" >/dev/null
+
+# The Secret that nexus3.rootPassword.secret names. Applied from stdin rather
+# than `--from-literal` so the credential never appears on a kubectl argv, and
+# never on stdout.
+kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" apply -f - >/dev/null <<SECRET_EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nexus-admin
+type: Opaque
+stringData:
+  password: "${NEXUS_PASSWORD}"
+SECRET_EOF
+
+# Needs network. The offline gate deliberately does not do this; a fresh clone
+# has an empty charts/ directory because the tarball is gitignored.
+require_success "KIND-DEPENDENCY-BUILD" helm dependency build kubernetes/nexus
+
+# The 15m timeout is deliberate and must not be reduced. Helm blocks on the
+# post-install hook Job, and Nexus first boot plus provisioning exceeds the 5m
+# default on constrained hardware: readiness alone is 1-3 minutes on homelab
+# hardware, and the Job's own readiness poll is bounded at 600s.
+require_success "KIND-INSTALL" helm install t kubernetes/nexus \
+  --kube-context "$KIND_CONTEXT" \
+  --namespace "$KIND_NS" \
+  --set nexus3.rootPassword.secret=nexus-admin \
+  --set eula.accepted=true \
+  --set repos.helm.remoteUrl=https://charts.jetstack.io \
+  --wait --timeout 15m
+
+# The chart's hook Job carries `helm.sh/hook-delete-policy: before-hook-creation`
+# WITHOUT `hook-succeeded`, so the Job still exists after a successful install
+# and waiting on it is meaningful. Prove that before waiting: `kubectl wait`
+# against an empty set prints "error: no matching resources found" and its exit
+# code is not a reliable signal, so an empty result must be a FAILURE naming the
+# delete-policy rather than a silent pass.
+job_rows="$(kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" get job \
+  -l app.kubernetes.io/instance=t --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+if [ "$job_rows" -eq 0 ]; then
+  fail "KIND-JOB-COMPLETE" "no Job matched app.kubernetes.io/instance=t in namespace ${KIND_NS} after install; either the chart renders no provisioning Job, it is missing that label, or its helm.sh/hook-delete-policy includes hook-succeeded and deleted the evidence"
+else
+  echo "    ${job_rows} Job(s) still present after install: the delete-policy left the evidence in place"
+  require_success "KIND-JOB-COMPLETE" kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" \
+    wait --for=condition=complete job -l app.kubernetes.io/instance=t --timeout=300s
 fi
 
 print_summary
