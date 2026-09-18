@@ -38,7 +38,7 @@ key-files:
   modified: []
 
 key-decisions:
-  - "nexus3.rootPassword.secret and repos.helm.remoteUrl are written as explicit `null`, not as bare keys. MEASURED: yq v4.53.6 prints an EMPTY STRING for a bare `key:` and `null` only for a missing or explicitly-null key. The plan's action text asks for the key to be present; its acceptance criteria assert yq reports `null`. Explicit `null` is the only form that satisfies both, and it is the same YAML value the upstream bare-key style produces."
+  - "nexus3.rootPassword.secret and repos.helm.remoteUrl are written as explicit `null`, not as bare keys. MEASURED: yq v4.53.6 prints an EMPTY STRING for a bare `key:` and `null` only for a missing or explicitly-null key. The plan's action text asks for the key to be present; its acceptance criteria assert yq reports `null`. Explicit `null` is the only form that satisfies both, and it is the same YAML value the upstream bare-key style produces. PROVEN SAFE end-to-end: Helm treats an explicit null on a subchart key as a deletion from the coalesced subchart values, so this was checked rather than assumed — `--set nexus3.rootPassword.secret=dummy-secret-name` still reaches the subchart's StatefulSet and renders `secretKeyRef: {name: dummy-secret-name, key: password}`."
   - "No `nexus3.image:` block at all, rather than an image block with the tag omitted. Both make yq report `.nexus3.image.tag` as null; omitting the block entirely means there is no place for a tag to be accidentally added. The Nexus version rides the subchart appVersion (D-08) — the default render resolves docker.io/sonatype/nexus3:3.96.0-ubi."
   - "requirements.mark-complete deliberately NOT invoked. NEXUS-03 is implemented AND measured here, but the phase's own gate cannot assert it until 23-04 lands the Job, and the chart is not yet a deployable whole. 23-08 carries [NEXUS-01, NEXUS-03] in its frontmatter and is the plan that should mark them. Read `[]` as withheld on purpose — the 23-01 / 23-02 / 19-01..19-04 / 17-01 precedent."
   - "No `nexus.chart` helper. The plan's verify loops over exactly four helper names, so helm.sh/chart is built inline in nexus.labels with printf/replace rather than by a fifth define."
@@ -130,6 +130,22 @@ Every key in the plan's `<interfaces>` table was read with `yq` and matched its 
 
 Credential grep `grep -vE '^\s*#' values.yaml | grep -ciE 'password:\s*\S'` → **0**. EULA URL `https://links.sonatype.com/products/nxrm/ce-eula` present once.
 
+### The explicit-`null` decision, checked against the subchart rather than assumed
+
+Helm treats an explicit `null` on a subchart key as "delete this key from the coalesced subchart
+values", so writing `nexus3.rootPassword.secret: null` could in principle have severed the
+passthrough that 23-04 and 23-06 both depend on. The subchart consumes it in
+`nexus3/templates/statefulset.yaml` lines 221-232, guarded on `{{- if .Values.rootPassword.secret }}`.
+Both branches were driven:
+
+| Render | `NEXUS_SECURITY_*` env produced |
+|---|---|
+| default (no override) | `NEXUS_SECURITY_RANDOMPASSWORD: "true"` — Nexus self-generates |
+| `--set nexus3.rootPassword.secret=dummy-secret-name` | `RANDOMPASSWORD: "false"` plus `NEXUS_SECURITY_INITIAL_PASSWORD` from `secretKeyRef{name: dummy-secret-name, key: password}` |
+
+The `key: password` in that output comes from this plan's `nexus3.rootPassword.key`, so both halves
+of the credential wiring are confirmed to pass through the explicit null.
+
 ### Lockfile reproducibility
 
 ```
@@ -190,7 +206,8 @@ The criterion reads *"this is the first commit containing a file under `kubernet
 3. **The subchart's own `config.enabled` already defaults to `false`.** Our restatement in `values.yaml` is not a behaviour change — it exists so the `CONFIG-DISABLED` check has something to read and so an upstream default flip cannot silently enable the Groovy scripting API. The same is true of `config.anonymous.enabled`.
 4. **`helm dependency build` needs network and refreshes every configured repo.** On this workstation it refreshed 25 repositories (~20s), including one unrelated 404 (`kubernetes-dashboard`) that did **not** fail the command — the same observation 23-02 recorded. Any CI wiring must budget for this.
 5. **`appVersion` and the image can drift apart.** They agree today (both 3.96.0). D-08 makes the image float with the subchart, while the wrapper's `appVersion` is a hand-maintained literal that feeds `app.kubernetes.io/version`. Bumping `Chart.lock` without bumping `appVersion` produces a label that lies. Worth a Renovate/Dependabot rule or a gate check in a later phase — flagged, not fixed, as D-08 already anticipated.
-6. **Helm here is v4.3.0 and caps release names at 53 characters.** Inherited from 23-01's observation; noted again because it makes the `trunc 63` in both fullname helpers unreachable via the release name.
+6. **Without a consumer Secret the subchart sets `NEXUS_SECURITY_RANDOMPASSWORD: "true"`** — Nexus self-generates an admin password nobody holds. That is the state a bare install lands in today, and it is exactly what 23-04's `required` guard on `nexus3.rootPassword.secret` must make unreachable. The guard is not cosmetic: without it the chart installs green and is unusable.
+7. **Helm here is v4.3.0 and caps release names at 53 characters.** Inherited from 23-01's observation; noted again because it makes the `trunc 63` in both fullname helpers unreachable via the release name.
 
 ## Threat Model Coverage
 
