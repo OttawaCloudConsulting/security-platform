@@ -1,0 +1,137 @@
+{{/*
+The provisioning hook Job — the application-state half of this chart.
+
+WHY IT IS A HELM HOOK AND NOT AN ORDINARY RESOURCE. The upstream nexus3
+subchart ships an equivalent Job with NO hook annotations, named
+`<fullname>-config-{{ .Release.Revision }}`. That works under `helm upgrade`,
+where the revision increments and each upgrade produces a new Job name. ArgoCD
+renders with `helm template`, where .Release.Revision is pinned at 1 — the name
+never changes and the second sync fails with
+`Job.batch "..." is invalid: spec.template: field is immutable`. Phase 25 is
+where that would have been rediscovered; the hooks below are set now so Phase
+25 validates the chart instead.
+
+`hook-delete-policy` is deliberately `before-hook-creation` ONLY, without
+`hook-succeeded`. A Job deleted the instant it succeeds leaves
+`kubectl wait --for=condition=complete` nothing to wait on — measured in plan
+23-02, where a `hook-succeeded` policy produced a fully green `helm install`
+and an empty Job set. ttlSecondsAfterFinished below is the reaper instead, and
+the surviving Job is what 23-06's kind smoke asserts on and what Phase 25 will
+read logs from.
+*/}}
+{{- if .Values.provision.enabled }}
+{{- $img := .Values.provision.image }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "nexus.fullname" . }}-provision
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- /*
+      Helm does NOT inject standard labels onto the resources it renders, hook
+      resources included. app.kubernetes.io/instance is load-bearing rather
+      than cosmetic: scripts/nexus-live-smoke.sh and 23-06's kind smoke both
+      wait with `kubectl wait --for=condition=complete job -l
+      app.kubernetes.io/instance=<release>`, and `kubectl wait` against an
+      empty set is not a reliable exit-code signal.
+    */}}
+    {{- include "nexus.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "argocd.argoproj.io/hook": Sync
+    "argocd.argoproj.io/sync-options": Replace=true
+spec:
+  # backoffLimit 0: provisioning failures are configuration errors, not
+  # transient ones. A retry would re-run a script that already reported a hard
+  # failure and hide it behind an eventually-green Job.
+  backoffLimit: 0
+  # A hard wall-clock ceiling. Upstream exposes no such knob, and without it an
+  # unreachable Nexus under backoffLimit 0 produces a Job that neither
+  # completes nor fails, so the Helm hook never returns.
+  activeDeadlineSeconds: {{ .Values.provision.activeDeadlineSeconds }}
+  # 900s is a FLOOR, not a preference: the reaper must not be able to delete
+  # the Job out from under the 300s `kubectl wait --timeout=300s` in plans
+  # 23-02 and 23-06. Do not lower it below 600.
+  ttlSecondsAfterFinished: 900
+  template:
+    metadata:
+      name: {{ include "nexus.fullname" . }}-provision
+      labels:
+        {{- include "nexus.labels" . | nindent 8 }}
+      annotations:
+        # Provenance only. Upstream uses these to force a pod-template change
+        # when values move; that rationale does not transfer here, because
+        # hook-delete-policy: before-hook-creation already recreates the Job on
+        # every upgrade.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap-repos.yaml") . | sha256sum }}
+        checksum/scripts: {{ include (print $.Template.BasePath "/configmap-provision-script.yaml") . | sha256sum }}
+    spec:
+      restartPolicy: Never
+      # Pod hardening is set up front rather than after the fact:
+      # .github/workflows/security.yml runs Checkov with `directory: .`, no
+      # framework filter and soft_fail: false, so an unset control is a CI
+      # failure — and T-23-10 is in this phase's threat register regardless.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: provision
+          image: {{ if $img.digest }}{{ printf "%s@%s" $img.repository $img.digest }}{{ else }}{{ printf "%s:%s" $img.repository (toString $img.tag) }}{{ end }}
+          args: ["/scripts/provision.sh"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            # The in-cluster Service DNS name comes from the nexus.nexus3Fullname
+            # helper, never a hardcoded <release>-nexus3: both
+            # nexus3.fullnameOverride and nexus3.nameOverride sit inside D-07's
+            # passthrough surface, and a consumer who sets either would get a
+            # Job that resolves nothing after an install that reported success.
+            - name: NEXUS_HOST
+              value: {{ printf "http://%s.%s.svc.cluster.local:%s" (include "nexus.nexus3Fullname" .) .Release.Namespace (toString (default 8081 .Values.nexus3.service.port)) }}
+            - name: NEXUS_USER
+              value: admin
+            - name: NEXUS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  # This `required` is what guarantees a public chart can never
+                  # ship a working default admin credential: without a
+                  # consumer-supplied Secret the render FAILS rather than
+                  # installing something that silently works for everyone.
+                  name: {{ required "A Nexus admin password Secret is required. Create a Secret holding the admin password and name it in nexus3.rootPassword.secret (the key defaults to 'password'); this chart deliberately ships no default credential." .Values.nexus3.rootPassword.secret }}
+                  key: {{ .Values.nexus3.rootPassword.key | default "password" }}
+            # Quoted on purpose: a bare YAML bool would reach the container as
+            # `true`/`false` anyway, but provision.sh compares it as a string
+            # and the offline gate reads it as one.
+            - name: EULA_ACCEPTED
+              value: {{ .Values.eula.accepted | quote }}
+          volumeMounts:
+            - mountPath: /scripts
+              name: scripts
+            - mountPath: /config
+              name: config
+            # The EULA step writes the mutated agreement object here, and the
+            # container runs with a read-only root filesystem.
+            - mountPath: /tmp
+              name: temp
+          resources:
+            {{- toYaml .Values.provision.resources | nindent 12 }}
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ include "nexus.fullname" . }}-provision-script
+            defaultMode: 0555
+        - name: config
+          configMap:
+            name: {{ include "nexus.fullname" . }}-repos
+            defaultMode: 0444
+        - name: temp
+          emptyDir: {}
+{{- end }}
