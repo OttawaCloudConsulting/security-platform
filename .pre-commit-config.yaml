@@ -60,6 +60,16 @@ repos:
       - id: yamllint
         args: [-d, relaxed]
         types: [yaml]
+        exclude: ^kubernetes/.*/templates/   # ADD — Measured: `yamllint -d relaxed`
+                                     # exits 1 on a Helm Go template with
+                                     # `syntax error: expected the node content,
+                                     # but found '-'`, because a `{{- if ... }}`
+                                     # control line is not YAML. The same linter
+                                     # exits 0 on the chart's `values.yaml` and
+                                     # `Chart.yaml`, and this anchored pattern
+                                     # leaves both of them linted — only the
+                                     # Go-template directory under
+                                     # `kubernetes/<chart>/templates/` is skipped.
 
   # --- Markdown: markdownlint ---
   - repo: https://github.com/igorshubovych/markdownlint-cli
