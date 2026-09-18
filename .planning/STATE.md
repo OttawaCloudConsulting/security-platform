@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 23-01-PLAN.md
-last_updated: "2026-09-18T12:13:41.695Z"
+stopped_at: Completed 23-02-PLAN.md
+last_updated: "2026-09-18T13:19:03.810Z"
 last_activity: 2026-09-18
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 23 (nexus-generic-chart) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-09-18
 
@@ -177,6 +177,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: [Phase 23-01]: NEXUS-01/NEXUS-03 deliberately NOT marked complete despite being in 23-01's frontmatter — this plan builds only the gate; the chart that satisfies them ships in 23-03/23-04. Follows the 17-01 reverted-mark precedent and the 19-01..19-04 withholding pattern. requirements-completed: [] is withheld on purpose, not a missed step.
 - [Phase ?]: [Phase 23-01]: Measured under helm v4.3.0 (NOT v3) and yq v4.53.6 — helm lint FAILS HARD with 'chart metadata is missing these dependencies' when charts/ holds a tarball Chart.yaml does not declare, so 23-03 must DECLARE the nexus3 dependency, not merely vendor it, or CHART-LINT goes red.
 - [Phase ?]: [Phase 23-01]: The literal 'PASS - 16 checks, 0 failures' appears in check-nexus-chart.sh only in the header comment; the terminal echo interpolates CHECK_COUNT=16, as the check-workflow-uploads.sh analog does. Runtime stdout was measured byte-identical — 23-06 T1 must assert the gate's OUTPUT, not grep the source.
+- [Phase ?]: [23-02]: nexus-live-smoke.sh uses a three-state terminal verdict (FAILED / NOTHING RAN / ALL PASS) rather than smoke-scans.sh's two-state block, so zero failures on a run where zero checks executed can never print ALL PASS
+- [Phase ?]: [23-02]: the live smoke imposes three binding contracts on 23-03/23-04 — the provisioning Job must carry label app.kubernetes.io/instance, its hook-delete-policy must not include hook-succeeded, and the repo-body ConfigMap name must end '-repos'
 
 ### Pending Todos
 
@@ -253,11 +255,12 @@ Carried forward from v1.1 close:
 | Phase 22 P05 | ~55min | 2 tasks | 14 files |
 | Phase 22 P06 | 35 | 2 tasks | 5 files |
 | Phase 23 P01 | 25min | 2 tasks | 3 files |
+| Phase 23 P02 | 55min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-18T12:13:41.686Z
-Stopped at: Completed 23-01-PLAN.md
+Last session: 2026-09-18T13:19:03.803Z
+Stopped at: Completed 23-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

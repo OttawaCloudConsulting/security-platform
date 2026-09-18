@@ -28,7 +28,7 @@
 
 Plans:
 - [x] 23-01-PLAN.md — Repo guards (yamllint exclusion, .gitignore) and the standing offline chart gate
-- [ ] 23-02-PLAN.md — Live smoke script: docker two-pass idempotency, post-EULA download, kind install
+- [x] 23-02-PLAN.md — Live smoke script: docker two-pass idempotency, post-EULA download, kind install
 - [ ] 23-03-PLAN.md — Chart scaffold: Chart.yaml/Chart.lock, .helmignore, values.yaml, template helpers
 - [ ] 23-04-PLAN.md — provision.sh plus the two ConfigMaps and the post-install hook Job
 - [ ] 23-05-PLAN.md — Chart README and the root README correction to `kubernetes/`
@@ -113,7 +113,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 20.1. Close gap: Retroactive VERIFICATION.md for Phases 14/17/18 | v2.0 | 3/3 | Complete | 2026-09-15 |
 | 21. Docs cleanup — close remaining Phase 20 deferred items | v2.0 | 4/4 | Complete | 2026-09-15 |
 | 22. branch-protection --apply live exercise | v2.0 | 6/6 | Complete | 2026-09-16 |
-| 23. Nexus Generic Chart | v3.0 | 1/8 | In Progress|  |
+| 23. Nexus Generic Chart | v3.0 | 2/8 | In Progress|  |
 | 24. Nexus Anonymous Access and Workstation Script | v3.0 | 0/? | Not started | — |
 | 25. Nexus Live Validation | v3.0 | 0/? | Not started | — |
 | 26. DefectDojo Generic Chart | v3.0 | 0/? | Not started | — |
