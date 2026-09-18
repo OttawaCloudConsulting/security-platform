@@ -4,7 +4,7 @@ milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
 stopped_at: Completed 23-06-PLAN.md
-last_updated: "2026-09-18T19:27:04.864Z"
+last_updated: "2026-09-18T19:32:13.933Z"
 last_activity: 2026-09-18
 progress:
   total_phases: 1
@@ -192,6 +192,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 23-06]: A3 closed by MEASUREMENT: ghcr.io/bridgecrewio/checkov:3.3.17 ships helm v3.22.0 and its helm runner DOES engage on kubernetes/nexus — but helm template fails on the chart's own required guard (nexus3.rootPassword.secret), so the chart contributes ZERO findings to CI and CI provides ZERO coverage of it. Checkov WARNs and continues; soft_fail:false is not tripped. Delta measured 14 -> 14 failed checks, identical check_id+file_path set, CKV_K8S_* = 0 in both. Latent set quantified at 24 kubernetes findings if rendered (5 wrapper, 19 subchart) so zero is not read as clean.
 - [Phase 23-06]: The plan's own Task 3 verify block mounts the tree :ro, which makes Checkov's helm runner fail with 'mkdir .../charts: read-only file system' — an artefact of the measurement, not of CI whose workspace is writable. Re-measured with a writable mount as the primary result; same 14/14 counts but only the writable run shows the real cause. Any future helm-bearing scanner measurement must not use :ro.
 - [Phase 23-06]: pre-commit run --all-files does NOT run gitleaks in security-platform — the hook is stages: [pre-push]. Both invocations were run and both recorded; a gitleaks pass claimed from the default-stage command alone would be unobserved (T-23-12). 23-08's git push will trigger it for real.
+- [Phase 23-06]: Must-have truth #5 observed as an exit-code pair, not inferred: Checkov 3.3.17 re-run WITHOUT --soft-fail (the CI soft_fail:false setting) exits 1 on HEAD-minus-kubernetes/ and 1 on HEAD, failed=14 both. The helm-runner render failure is WARNI-level with no ERROR line and does not raise the exit code, so adding this chart does not change the CI gate's colour.
 
 ### Pending Todos
 

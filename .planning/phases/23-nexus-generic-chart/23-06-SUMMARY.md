@@ -19,8 +19,8 @@ requires:
     plan: 05
     provides: "kubernetes/nexus/README.md and the root README — both re-linted here by pre-commit over the whole tree"
 provides:
-  - "MEASURED CLOSURE of assumption A3: the pinned CI container ghcr.io/bridgecrewio/checkov:3.3.17 DOES ship helm (v3.22.0) and its helm runner DOES engage on kubernetes/nexus — but `helm template` fails on the chart's own `required` credential guard, so the chart contributes ZERO findings to CI. Checkov WARNs and continues; it does not fail the job."
-  - "Measured Checkov delta for the phase: 14 failed checks BEFORE, 14 failed checks AFTER, identical check_id+file_path set. CKV_K8S_*/CKV2_K8S_* count is 0 in both."
+  - "MEASURED CLOSURE of assumption A3: the pinned CI container ghcr.io/bridgecrewio/checkov:3.3.17 DOES ship helm (v3.22.0) and its helm runner DOES engage on kubernetes/nexus — but `helm template` fails on the chart's own `required` credential guard, so the chart contributes ZERO findings to CI. The failure is logged at WARNI, not ERROR, and does not raise Checkov's exit code."
+  - "Measured Checkov delta for the phase: 14 failed checks BEFORE, 14 failed checks AFTER, identical check_id+file_path set. CKV_K8S_*/CKV2_K8S_* count is 0 in both. Re-measured WITHOUT --soft-fail (the CI setting): exit 1 before, exit 1 after — the chart does not change the gate's colour."
   - "The LATENT Checkov set, quantified: 24 kubernetes-framework findings if the chart were rendered (5 on Phase 23's own wrapper resources, 19 on the subchart's StatefulSet). None reach CI today."
   - "Second independent live-smoke green on the chart as committed (ALL PASS - 12 live check(s), 0 skipped), taken after 23-05's documentation commits rather than at 23-04's"
   - "Observed proof that `pre-commit run --all-files` does NOT run gitleaks in this repo — the hook is stages: [pre-push] and needs --hook-stage pre-push"
@@ -64,9 +64,13 @@ completed: 2026-09-18
 
 ## Performance
 
-- **Duration:** ~40 min (the live smoke's ~7 min and five Checkov container runs dominate)
-- **Started:** 2026-09-18T18:45:00Z (approx.)
-- **Completed:** 2026-09-18T19:24:00Z
+- **Duration:** ~20 min of active measurement inside a 2h20m wall clock. The gap is orchestration
+  latency between steps, not compute. Read from artefact mtimes rather than estimated: first
+  artefact `nexus-gate.txt` at 17:12Z, last (`cv-after-hard.json`) at 19:31Z, with two idle
+  stretches of 81 and 53 minutes between them. The live smoke is ~7 min of that; seven Checkov
+  container runs are most of the rest.
+- **Started:** 2026-09-18T17:11:00Z
+- **Completed:** 2026-09-18T19:31:00Z
 - **Tasks:** 3 of 3
 - **Files modified:** 0 in `repos/security-platform` — all three tasks are verification-only and the Checkov delta triggered no remediation
 
@@ -318,12 +322,30 @@ The helm runner engages, runs `helm dependency update` successfully (it fetched 
          defaults to 'password'); this chart deliberately ships no default credential.
 ```
 
-That is the chart's own `required` guard — T-23-02's mitigation, asserted by 23-01's `NO-DEFAULT-PASSWORD` check — doing precisely what it was built to do, on a caller that supplies no values. Checkov logs it at **WARNI** and continues; the run exits normally. So:
+That is the chart's own `required` guard — T-23-02's mitigation, asserted by 23-01's `NO-DEFAULT-PASSWORD` check — doing precisely what it was built to do, on a caller that supplies no values. Checkov logs it at **WARNI**, not at ERROR, and continues. So:
 
 - the chart contributes **zero** findings to CI, and
 - **CI's Checkov provides zero coverage of this chart.** Those are the same fact stated two ways, and only the first is good news.
 
 This is recorded as the honest closure of A3: **not** "the chart is clean", but "the chart is not scanned, for a named and deliberate reason". The plan's `<verify>` block (`:ro` mount) reaches the same zero via a *different* failure — `Error: mkdir /src/kubernetes/nexus/charts: read-only file system` — which is an artefact of the read-only mount and not something CI would ever hit. Both were run; the writable one is the primary result.
+
+**The exit code CI actually gets, measured rather than inferred.** Every run above used
+`--soft-fail` so that a report came back instead of a verdict. CI sets `soft_fail: false`, which
+is Checkov's default — i.e. no flag. Both trees were therefore re-scanned with the flag removed:
+
+```
+$ docker run --rm -v "$T":/src -w /src ghcr.io/bridgecrewio/checkov:3.3.17 --directory . --quiet -o json
+BEFORE(b)  (HEAD minus kubernetes/)  EXIT=1   failed=14
+AFTER      (HEAD)                    EXIT=1   failed=14
+```
+
+Identical. The helm-runner failure is logged at WARNI and does **not** raise Checkov's exit code:
+`grep -iE '\[ERROR' ` over the AFTER stderr prints nothing, and the only chart-related line is the
+single `Failed processing helm chart nexus` WARNI. Both trees exit 1 because of the 14 pre-existing
+`fixtures/` failures, which is the state the workflow's
+`continue-on-error: ${{ env.GATE_MODE == 'report-only' }}` already governs and which this phase
+does not touch. **Adding this chart does not change the CI gate's colour** — must-have truth #5,
+observed as an exit-code pair rather than reasoned about.
 
 **The latent set, quantified.** So that "zero" is not mistaken for "clean", the chart was rendered with the required value supplied and the rendered manifest scanned with the same pinned container:
 
@@ -348,6 +370,7 @@ bash scripts/nexus-live-smoke.sh         -> ALL PASS - 12 live check(s)    (exit
 pre-commit run --all-files               -> exit 0
 pre-commit run --all-files --hook-stage pre-push  -> exit 0 (this is the one that runs gitleaks)
 Checkov BEFORE / AFTER failed checks     -> 14 / 14, identical set, CKV_K8S_* = 0 / 0
+Checkov BEFORE / AFTER exit code, no --soft-fail (the CI setting) -> 1 / 1, unchanged
 ```
 
 The plan's literal Task 3 `<verify>` one-liner was also executed as written and reported `VERIFY_BLOCK_RESULT=PASS (RC=0)`.
@@ -411,4 +434,5 @@ None. No file was created or modified by this plan. The one piece of unimplement
 - `bash scripts/nexus-live-smoke.sh` — run once for real, exit 0, `ALL PASS - 12 live check(s) executed and passed; 0 sub-check(s) skipped`
 - `pre-commit run --all-files` — exit 0; `pre-commit run --all-files --hook-stage pre-push` — exit 0
 - Checkov `ghcr.io/bridgecrewio/checkov@sha256:41c4701c6a56d8952e5aba7a420f871c8b70b57da94eb4f142dcdf7295bb0be3` — three trees scanned, 14 / 14 / 14 failed checks, identical `check_id`+`file_path` set, `CKV_K8S_*` = 0
+- Checkov without `--soft-fail` (the CI setting) — BEFORE exit `1`, AFTER exit `1`, `failed=14` both; no ERROR-level line in stderr
 - `find . -name '.checkov.y*ml' -not -path './.git/*'` — prints nothing
