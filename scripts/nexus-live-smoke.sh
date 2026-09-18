@@ -212,11 +212,16 @@ echo "    image (from the chart): ${NEXUS_IMAGE}"
 
 # The admin credential goes in a mode-600 env file inside the trap-cleaned temp
 # dir rather than on the docker argv, where any local process could read it.
-umask 077
-cat >"$OUT/nexus.env" <<ENV_EOF
+# The umask is SCOPED to this subshell on purpose: leaving it set globally would
+# make `helm dependency build` in section 6 write mode-600 files into the
+# operator's own checkout.
+(
+  umask 077
+  cat >"$OUT/nexus.env" <<ENV_EOF
 NEXUS_SECURITY_RANDOMPASSWORD=false
 NEXUS_SECURITY_INITIAL_PASSWORD=${NEXUS_PASSWORD}
 ENV_EOF
+)
 
 docker run -d --name "$NEXUS_CONTAINER" \
   --env-file "$OUT/nexus.env" \
