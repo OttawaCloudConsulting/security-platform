@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 23-06-PLAN.md
-last_updated: "2026-09-18T19:32:13.933Z"
+stopped_at: Completed 23-07-PLAN.md
+last_updated: "2026-09-18T19:42:42.293Z"
 last_activity: 2026-09-18
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 23 (nexus-generic-chart) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-09-18
 
@@ -193,6 +193,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 23-06]: The plan's own Task 3 verify block mounts the tree :ro, which makes Checkov's helm runner fail with 'mkdir .../charts: read-only file system' — an artefact of the measurement, not of CI whose workspace is writable. Re-measured with a writable mount as the primary result; same 14/14 counts but only the writable run shows the real cause. Any future helm-bearing scanner measurement must not use :ro.
 - [Phase 23-06]: pre-commit run --all-files does NOT run gitleaks in security-platform — the hook is stages: [pre-push]. Both invocations were run and both recorded; a gitleaks pass claimed from the default-stage command alone would be unobserved (T-23-12). 23-08's git push will trigger it for real.
 - [Phase 23-06]: Must-have truth #5 observed as an exit-code pair, not inferred: Checkov 3.3.17 re-run WITHOUT --soft-fail (the CI soft_fail:false setting) exits 1 on HEAD-minus-kubernetes/ and 1 on HEAD, failed=14 both. The helm-runner render failure is WARNI-level with no ERROR line and does not raise the exit code, so adding this chart does not change the CI gate's colour.
+- [Phase 23]: ADR-020 records the Nexus chart base, the EULA opt-in and the unset Helm proxy remote — No Sonatype-published chart is usable (nexus-repository-manager is DEPRECATED at app 3.64.0; nxrm-ha needs external PostgreSQL plus a Pro license), so the community stevehipwell/nexus3 5.26.0 chart is wrapped as a pinned subchart; eula.accepted defaults to false because a public chart must not accept a licence on a consumer's behalf; repos.helm.remoteUrl ships unset because Helm Hub is defunct and charts.helm.sh/stable is read-only since 2020
+- [Phase 23]: Subchart pin freshness (RESEARCH Q3, Renovate vs Dependabot) is deferred as a repository-wide decision, not dropped — Dependabot has no Helm chart-dependency manager; Renovate's helmv3 manager does, but adopting a second bot is a security-platform-wide tooling decision outside this phase's mandate. Dispositioned in ADR-020's 'Tradeoff — subchart pin freshness' paragraph; Chart.lock is the control point until the decision is taken
+- [Phase 23]: CLAUDE.md's stale ADR-001-through-ADR-018 range was deliberately left unfixed in 23-07 — The plan's acceptance criteria assert that git diff CLAUDE.md touches only the scope section; fixing the range in Project Structure would have failed that audit. Logged in .planning/phases/23-nexus-generic-chart/deferred-items.md instead
 
 ### Pending Todos
 
@@ -274,11 +277,12 @@ Carried forward from v1.1 close:
 | Phase 23 P04 | 70min | 3 tasks | 4 files |
 | Phase 23 P05 | 35min | 2 tasks | 2 files |
 | Phase 23 P06 | 40min | 3 tasks | 0 files |
+| Phase 23 P07 | 25min | 2 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-09-18T19:27:04.857Z
-Stopped at: Completed 23-06-PLAN.md
+Last session: 2026-09-18T19:42:23.386Z
+Stopped at: Completed 23-07-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
