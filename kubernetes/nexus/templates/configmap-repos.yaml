@@ -1,0 +1,79 @@
+{{/*
+Proxy repository request bodies for the provisioning Job, one JSON document
+per data key. job-provision.yaml mounts this at /config and provision.sh
+iterates it as `for f in ${REPO_CONFIG_DIR}/*.json`.
+
+KEY NAMING IS LOAD-BEARING. The zero-padded NNN- ordinal prefixes make that
+glob deterministically ordered, and provision.sh derives the Nexus FORMAT from
+the basename with the prefix and the .json suffix stripped — so 002-docker.json
+provisions the `docker` format. Renaming a key silently changes which Nexus API
+endpoint the body is POSTed to.
+
+EVERY BODY IS BUILT AS A dict AND RENDERED WITH toJson — never string
+concatenation. `remoteUrl` and `name` are consumer-overridable values crossing
+into a REST request body (T-23-04); toJson is what stops a hostile override
+breaking out of the JSON. No `password` or `bearerToken` field is ever
+rendered into a ConfigMap.
+
+Field sets come from the live Nexus 3.96.0 OpenAPI spec (23-RESEARCH.md
+§Schema required-field sets). Note pypi's schema does NOT require httpClient,
+and docker's requires BOTH the `docker` and `dockerProxy` objects.
+*/}}
+{{- $storage := dict "blobStoreName" "default" "strictContentTypeValidation" true }}
+{{- $negativeCache := dict "enabled" true "timeToLive" 1440 }}
+{{- $httpClient := dict "blocked" false "autoBlock" true }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nexus.fullname" . }}-repos
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nexus.labels" . | nindent 4 }}
+data:
+  000-npm.json: |
+    {{- dict
+      "name" .Values.repos.npm.name
+      "online" true
+      "storage" $storage
+      "proxy" (dict "remoteUrl" .Values.repos.npm.remoteUrl "contentMaxAge" 1440 "metadataMaxAge" 1440)
+      "negativeCache" $negativeCache
+      "httpClient" $httpClient
+      | toJson | nindent 4 }}
+  001-pypi.json: |
+    {{- dict
+      "name" .Values.repos.pypi.name
+      "online" true
+      "storage" $storage
+      "proxy" (dict "remoteUrl" .Values.repos.pypi.remoteUrl "contentMaxAge" 1440 "metadataMaxAge" 1440)
+      "negativeCache" $negativeCache
+      | toJson | nindent 4 }}
+  002-docker.json: |
+    {{- dict
+      "name" .Values.repos.docker.name
+      "online" true
+      "storage" $storage
+      "proxy" (dict "remoteUrl" .Values.repos.docker.remoteUrl "contentMaxAge" 1440 "metadataMaxAge" 1440)
+      "negativeCache" $negativeCache
+      "httpClient" $httpClient
+      "docker" (dict "v1Enabled" false "forceBasicAuth" false "pathEnabled" true)
+      "dockerProxy" (dict "indexType" "HUB" "cacheForeignLayers" false)
+      | toJson | nindent 4 }}
+{{- if .Values.repos.helm.remoteUrl }}
+{{/*
+  D-05: the Helm proxy has NO default remote and this body appears only when a
+  consumer supplies one. Helm Hub has been defunct since 2020, Artifact Hub is
+  a cross-repo search index rather than a repository serving a single
+  index.yaml, and Bitnami's repo is mid-deprecation through 2026 — so no value
+  can be shipped responsibly. A baked-in default would ship a proxy pointing at
+  a dead upstream that silently caches 404s.
+*/}}
+  003-helm.json: |
+    {{- dict
+      "name" .Values.repos.helm.name
+      "online" true
+      "storage" $storage
+      "proxy" (dict "remoteUrl" .Values.repos.helm.remoteUrl "contentMaxAge" 1440 "metadataMaxAge" 1440)
+      "negativeCache" $negativeCache
+      "httpClient" $httpClient
+      | toJson | nindent 4 }}
+{{- end }}

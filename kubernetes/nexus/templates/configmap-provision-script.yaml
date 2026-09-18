@@ -1,0 +1,23 @@
+{{/*
+ConfigMap carrying kubernetes/nexus/files/provision.sh into the provisioning
+Job. job-provision.yaml mounts it at /scripts with defaultMode 0555 and runs
+it as args: ["/scripts/provision.sh"].
+
+WHY THE SCRIPT IS NOT INLINE HERE. Keeping it under files/ as a real file is
+what lets the repo's shellcheck pre-commit hook (types: [shell], no exclude)
+lint it, and what lets scripts/nexus-live-smoke.sh execute the exact bytes the
+Job executes rather than a copy that can drift.
+
+.Files.Get is used directly rather than .Files.Glob + range: there is exactly
+one file, and range would rebind `.` and require a $root binding for no gain.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nexus.fullname" . }}-provision-script
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nexus.labels" . | nindent 4 }}
+data:
+  provision.sh: |
+    {{- .Files.Get "files/provision.sh" | nindent 4 }}
