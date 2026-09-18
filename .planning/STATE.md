@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: Defining requirements
-stopped_at: Phase 23 context gathered
-last_updated: "2026-09-17T15:39:21.667Z"
-last_activity: 2026-09-17 — Milestone v3.0 started
+status: executing
+stopped_at: Completed 23-01-PLAN.md
+last_updated: "2026-09-18T12:13:41.695Z"
+last_activity: 2026-09-18
 progress:
   total_phases: 1
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 8
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 22 — branch-protection-apply-live-exercise-needs-explicit-target-
+**Current focus:** Phase 23 — nexus-generic-chart
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-09-17 — Milestone v3.0 started
+Phase: 23 (nexus-generic-chart) — EXECUTING
+Plan: 2 of 8
+Status: Ready to execute
+Last activity: 2026-09-18
 
 ## Performance Metrics
 
@@ -172,6 +172,11 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 22]: ADR-019 records the first live set-required-checks.sh --apply and GitHub's witnessed merge refusal; it NARROWS ADR-017 item 4 and ADR-018 item 7 by reference rather than closing them, because both are scoped to security-platform's own main
 - [Phase 22]: Adoption guide section 8 now reports the apply path as measured and adds the bounded-window-plus-mandatory-restore procedure, whose triggering condition is a default branch that does not yet carry the workflow
 - [Phase 22]: VAL-02 ticked only after the restore was re-verified live in plan 06; 22-VALIDATION.md finalised with 14 green rows and wave_0_complete true
+- [Phase ?]: [Phase 23-01]: The yamllint exclusion is anchored ^kubernetes/.*/templates/ and was verified with a NEGATIVE CONTROL — the same Go template at a non-excluded path exits 1 with 'syntax error: expected the node content, but found -' while the excluded path prints '(no files to check) Skipped'; values.yaml measured still linted. The positive test alone could not distinguish a working exclusion from pre-commit skipping an untracked file.
+- [Phase ?]: [Phase 23-01]: scripts/check-nexus-chart.sh was exercised before commit against a throwaway chart built in the SCRATCHPAD (never inside the repo) — all 16 assertion bodies ran and accumulated under set -euo pipefail, both SKIP guards and all four exit-2 branches fired, a conforming chart printed 'PASS - 16 checks, 0 failures', and eight single-defect mutations each produced exactly one predicted red check. The gate's own SKIP path means the plan's verify exercised none of this.
+- [Phase ?]: [Phase 23-01]: NEXUS-01/NEXUS-03 deliberately NOT marked complete despite being in 23-01's frontmatter — this plan builds only the gate; the chart that satisfies them ships in 23-03/23-04. Follows the 17-01 reverted-mark precedent and the 19-01..19-04 withholding pattern. requirements-completed: [] is withheld on purpose, not a missed step.
+- [Phase ?]: [Phase 23-01]: Measured under helm v4.3.0 (NOT v3) and yq v4.53.6 — helm lint FAILS HARD with 'chart metadata is missing these dependencies' when charts/ holds a tarball Chart.yaml does not declare, so 23-03 must DECLARE the nexus3 dependency, not merely vendor it, or CHART-LINT goes red.
+- [Phase ?]: [Phase 23-01]: The literal 'PASS - 16 checks, 0 failures' appears in check-nexus-chart.sh only in the header comment; the terminal echo interpolates CHECK_COUNT=16, as the check-workflow-uploads.sh analog does. Runtime stdout was measured byte-identical — 23-06 T1 must assert the gate's OUTPUT, not grep the source.
 
 ### Pending Todos
 
@@ -247,12 +252,13 @@ Carried forward from v1.1 close:
 | Phase 22 P04 | ~50min | 2 tasks | 17 files |
 | Phase 22 P05 | ~55min | 2 tasks | 14 files |
 | Phase 22 P06 | 35 | 2 tasks | 5 files |
+| Phase 23 P01 | 25min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-09-17T15:39:21.660Z
-Stopped at: Phase 23 context gathered
-Resume file: .planning/phases/23-nexus-generic-chart/23-CONTEXT.md
+Last session: 2026-09-18T12:13:41.686Z
+Stopped at: Completed 23-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
