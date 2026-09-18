@@ -69,6 +69,12 @@ spec:
         checksum/scripts: {{ include (print $.Template.BasePath "/configmap-provision-script.yaml") . | sha256sum }}
     spec:
       restartPolicy: Never
+      # This pod talks to the Nexus REST API and nothing else — it makes no
+      # Kubernetes API call at all. A mounted ServiceAccount token would be
+      # pure attack surface on a pod that runs a script fed by
+      # consumer-supplied values (T-23-10). Checkov CKV_K8S_38 flags its
+      # absence; the reason it is set is the threat, not the finding.
+      automountServiceAccountToken: false
       # Pod hardening is set up front rather than after the fact:
       # .github/workflows/security.yml runs Checkov with `directory: .`, no
       # framework filter and soft_fail: false, so an unset control is a CI

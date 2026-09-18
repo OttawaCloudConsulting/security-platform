@@ -15,9 +15,18 @@ into a REST request body (T-23-04); toJson is what stops a hostile override
 breaking out of the JSON. No `password` or `bearerToken` field is ever
 rendered into a ConfigMap.
 
-Field sets come from the live Nexus 3.96.0 OpenAPI spec (23-RESEARCH.md
-§Schema required-field sets). Note pypi's schema does NOT require httpClient,
-and docker's requires BOTH the `docker` and `dockerProxy` objects.
+Field sets are what the live Nexus 3.96.0 API ACCEPTS, which is not the same
+thing as what its OpenAPI spec marks `required`. Measured, plan 23-04:
+
+  PypiProxyRepositoryApiRequest omits httpClient from its `required` list, but
+  POSTing a pypi body without it returns
+    HTTP 400 [{"id":"PARAMETER httpClient","message":"must not be null"}]
+  and the same body with `httpClient` returns 201. So every format carries
+  httpClient here, matching the four bodies 23-RESEARCH.md POSTed live.
+
+  docker additionally requires BOTH the `docker` and `dockerProxy` objects;
+  `pathEnabled: true` serves the registry on the main 8081 port, so no second
+  connector port and no second ingress are needed.
 */}}
 {{- $storage := dict "blobStoreName" "default" "strictContentTypeValidation" true }}
 {{- $negativeCache := dict "enabled" true "timeToLive" 1440 }}
@@ -46,6 +55,7 @@ data:
       "storage" $storage
       "proxy" (dict "remoteUrl" .Values.repos.pypi.remoteUrl "contentMaxAge" 1440 "metadataMaxAge" 1440)
       "negativeCache" $negativeCache
+      "httpClient" $httpClient
       | toJson | nindent 4 }}
   002-docker.json: |
     {{- dict
