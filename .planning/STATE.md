@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 23-03-PLAN.md
-last_updated: "2026-09-18T15:24:45.004Z"
+stopped_at: Completed 23-04-PLAN.md
+last_updated: "2026-09-18T16:52:31.850Z"
 last_activity: 2026-09-18
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 23 (nexus-generic-chart) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-09-18
 
@@ -181,6 +181,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: [23-02]: the live smoke imposes three binding contracts on 23-03/23-04 — the provisioning Job must carry label app.kubernetes.io/instance, its hook-delete-policy must not include hook-succeeded, and the repo-body ConfigMap name must end '-repos'
 - [Phase ?]: 23-03: nexus3.rootPassword.secret and repos.helm.remoteUrl are written as explicit null — measured that yq v4 reports a bare key: as an empty string, not null, so the bare form would fail the plan's own assertions
 - [Phase ?]: 23-03: NEXUS-01/NEXUS-03 withheld again — NEXUS-03 is implemented and measured in 23-03 (default render emits no storageClassName) but the chart is not installable until 23-04; 23-08 carries both IDs and marks them
+- [Phase 23-04]: MEASURED CORRECTION to 23-RESEARCH.md — the Nexus pypi proxy request body REQUIRES httpClient at run time (HTTP 400 'PARAMETER httpClient must not be null' without it, 201 with it) even though PypiProxyRepositoryApiRequest omits it from the OpenAPI required list; the plan text generalised from the schema rather than from the research's own verified-201 body
+- [Phase 23-04]: check-nexus-chart.sh needed ZERO edits on first contact with a real chart — 16/16 green, git diff empty, CHECK_COUNT untouched; the gate-repair authorisation the plan granted went unused
+- [Phase 23-04]: automountServiceAccountToken false added to the provisioning pod beyond the plan's hardening list (T-23-10 / CKV_K8S_38) — the pod makes no Kubernetes API call, so the token is pure attack surface
 
 ### Pending Todos
 
@@ -259,11 +262,12 @@ Carried forward from v1.1 close:
 | Phase 23 P01 | 25min | 2 tasks | 3 files |
 | Phase 23 P02 | 55min | 2 tasks | 1 files |
 | Phase 23 P03 | 35min | 3 tasks | 5 files |
+| Phase 23 P04 | 70min | 3 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-09-18T15:24:44.996Z
-Stopped at: Completed 23-03-PLAN.md
+Last session: 2026-09-18T16:52:31.843Z
+Stopped at: Completed 23-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
