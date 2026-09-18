@@ -140,7 +140,7 @@ A successful log ends with one line per repository reading `action=created` (fir
 
 `nexus3.persistence.storageClass` is **absent** from this chart's values, not empty. The subchart only emits a `storageClassName` field when the key has a value, so omitting it means Kubernetes substitutes the cluster's **default StorageClass** — that omission is NEXUS-03. Measured: the default render emits no `storageClassName` at all; `--set nexus3.persistence.storageClass=longhorn` emits `storageClassName: "longhorn"`.
 
-Do not confuse that with the upstream sentinel `"-"`, which is a different thing entirely: it renders `storageClassName: ""`, which explicitly **disables** dynamic provisioning and binds only to a pre-created PersistentVolume.
+Do not confuse that with the upstream sentinel `"-"`, which is a different thing entirely: it renders `storageClassName: ""`, which explicitly **disables** dynamic provisioning for that claim.
 
 `nexus3.persistence.size` defaults to `8Gi` and is overridable like any other subchart value.
 
