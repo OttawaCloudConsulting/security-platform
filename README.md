@@ -26,8 +26,9 @@ security-platform/
 ├── cicd/                 # CI/CD security gate design package (Milestone 2)
 │   ├── ARCHITECTURE.md   # Architecture, data flow, enforcement model
 │   └── README.md         # Deployment guide and scanner reference
+├── kubernetes/           # Helm packages for self-hosted services (Milestone 3)
+│   └── nexus/            # Nexus Repository chart — npm, PyPI, Docker and Helm proxy repos
 └── (future milestones)
-    ├── infrastructure/   # M3: Nexus, DefectDojo, Helm values
     └── runtime/          # M4: Trivy Operator, Falco, Kyverno
 ```
 
@@ -37,7 +38,7 @@ security-platform/
 |---|---|---|---|
 | `workstation/` | M1 — Workstation Foundation | Complete | Pre-commit hooks, linting configs, CLI tool installer |
 | `cicd/` | M2 — CI/CD Security Gate | Complete (GitHub Actions) | GitHub Actions pipeline live-validated (Phases 14-19); Azure DevOps and GitLab members are unvalidated drafts |
-| `infrastructure/` | M3 — Self-Hosted Services | Planned | Nexus, DefectDojo, Helm values, K8s manifests |
+| `kubernetes/` | M3 — Self-Hosted Services | Partial — Nexus chart complete (Phase 23); DefectDojo planned | Nexus, DefectDojo, Helm values, K8s manifests |
 | `runtime/` | M4 — Runtime Security | Planned | Trivy Operator, Falco, Cosign, Kyverno policies |
 
 ## Getting Started
