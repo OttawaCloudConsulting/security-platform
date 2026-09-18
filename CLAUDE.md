@@ -2,7 +2,7 @@
 
 ## What This Repository Is
 
-A **reference documentation project** (not buildable software). The primary artifact is `development-security-stack-option-1.md` — a complete blueprint for a zero-cost, open-source security and supply chain scanning stack for a single-developer AWS cloud practice. The canonical, live-validated GitHub Actions workflows that implement Phase 2 of that blueprint live in `OttawaCloudConsulting/security-platform`, not in this repository — this repository documents them, it does not ship them.
+A **reference documentation project** (not buildable software). The primary artifact is `development-security-stack-option-1.md` — a complete blueprint for a zero-cost, open-source security and supply chain scanning stack for a single-developer AWS cloud practice. The canonical, live-validated GitHub Actions workflows that implement Phase 2 of that blueprint, together with the K8s packages that implement its Kubernetes infrastructure layer (`kubernetes/<service>/` Helm charts, starting with `kubernetes/nexus/`), live in `OttawaCloudConsulting/security-platform`, not in this repository — this repository documents them, it does not ship them.
 
 ## Project Structure
 
