@@ -69,6 +69,7 @@ completed: 2026-09-18
 
 1. **Task 1: Chart README** — `56669da` (docs)
 2. **Task 2: Front-page correction to `kubernetes/`** — `cd1fb63` (docs)
+3. **Post-review correction to Task 1** — `e157a44` (docs) — an unmeasured binding claim trimmed from the storageClass note
 
 Branch: `feature/phase-23-nexus-generic-chart` on `repos/security-platform`, **unpushed** (23-08 owns push/PR/merge). Working tree clean.
 
@@ -132,6 +133,8 @@ ok    repos.pypi.remoteUrl
 | `--timeout 15m` matches the Job ceiling | `provision.activeDeadlineSeconds` | `900` = 15 min (Helm's default 5 min would abort a legitimately-working cold boot) |
 | the subchart tarball is not committed | `.gitignore` line 28 | `kubernetes/*/charts/*.tgz` — so `helm dependency build` is documented as a prerequisite |
 
+**One claim did not survive this standard and was corrected after the Task 1 commit** (`e157a44`). The Storage section originally said the `"-"` sentinel "disables dynamic provisioning **and binds only to a pre-created PersistentVolume**". Only the first half was measured: the subchart's `{{- if (eq "-" .) }}` branch renders `storageClassName: ""`. Whether a claim with an empty class then binds to an existing PV depends on that PV's own `storageClassName` and on the binder — not on anything this chart does. The trailing clause was removed rather than left as an inherited assertion.
+
 The CE ceiling figures (40,000 components / 100,000 requests per day) and the EULA 403/192-byte behaviour are carried from 23-RESEARCH.md §Pitfall 1 and §Pitfall 7, both marked VERIFIED against a live 3.96.0 CE instance, and re-confirmed by 23-04's live smoke (`318961 bytes` post-acceptance).
 
 ### Task 2 acceptance criteria
@@ -179,7 +182,8 @@ None. No bug, missing-critical-functionality or blocking issue was found; the ch
 2. **`23-04-SUMMARY.md`'s `job-provision.yaml:108:27` is stale** — the `required` call sits at line 114 after `39753db`. Line numbers in transcripts age; 23-06 should re-measure rather than grep for that coordinate.
 3. **The README now asserts a `--timeout 15m` contract.** It is derived from `provision.activeDeadlineSeconds: 900`. If 23-06 changes that default, the Install section's timeout guidance and `nexus-live-smoke.sh`'s `--timeout 15m` both need to move with it.
 4. **Three documentation surfaces now name this chart** — `kubernetes/nexus/README.md`, the root `README.md` tree, and the root milestone table. 23-07 adds `CLAUDE.md` and ADR-020. If the chart's shape changes in 23-06, all of them are downstream.
-5. **`repos.helm.name` is documented even though the Helm proxy is not created by default.** The name is used only when `remoteUrl` is set. A consumer reading the table alone could think the proxy exists; the hazard section immediately above states plainly that three proxies are created and the fourth is not.
+5. **The documentation repository has no `.pre-commit-config.yaml`.** `security-platform` runs markdownlint on every commit; this repo does not, so `23-05-SUMMARY.md` and every other planning document are unlinted. Stated so no one reads "pre-commit exit 0" in this summary as covering both repositories — it covers `security-platform` only.
+6. **`repos.helm.name` is documented even though the Helm proxy is not created by default.** The name is used only when `remoteUrl` is set. A consumer reading the table alone could think the proxy exists; the hazard section immediately above states plainly that three proxies are created and the fourth is not.
 
 ## Threat Model Coverage
 
@@ -205,6 +209,7 @@ None. This plan creates no network endpoint, auth path, file-access pattern or s
 - `repos/security-platform/README.md` — FOUND (modified, `infrastructure/` count `0`)
 - Commit `56669da` — FOUND on `feature/phase-23-nexus-generic-chart`
 - Commit `cd1fb63` — FOUND
+- Commit `e157a44` — FOUND (post-review correction; markdownlint re-run, credential grep still `0`)
 - `pre-commit run --all-files` — exit 0
 - `bash scripts/check-nexus-chart.sh` — exit 0, `PASS - 16 checks, 0 failures`
 - Working tree clean; branch unpushed

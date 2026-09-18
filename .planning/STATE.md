@@ -4,7 +4,7 @@ milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
 stopped_at: Completed 23-05-PLAN.md
-last_updated: "2026-09-18T17:05:03.244Z"
+last_updated: "2026-09-18T17:06:27.226Z"
 last_activity: 2026-09-18
 progress:
   total_phases: 1
@@ -186,6 +186,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 23-04]: automountServiceAccountToken false added to the provisioning pod beyond the plan's hardening list (T-23-10 / CKV_K8S_38) — the pod makes no Kubernetes API call, so the token is pure attack surface
 - [Phase 23-05]: Chart README omits the verbatim Helm required error message: quoting it would break the plan's own no-literal-credential grep, which matches ordinary English (Secret holding / password rotation). The failure is described and the value named instead.
 - [Phase 23-05]: provision.readiness.* documented as present-but-not-read rather than omitted; 23-06 may wire or delete them and the README table must follow.
+- [Phase 23-05]: nameOverride/fullnameOverride documented WITHOUT the nexus3. prefix inside backticks: the prefixed form is a backticked nexus3.* path resolving to null in values.yaml, which the plan's values-table criterion allows in exactly three cases and these are not among them.
+- [Phase 23-05]: The chart README's ## Architecture section is inline, not a link-out: kubernetes/nexus has no ARCHITECTURE.md and ADR-020 does not exist until 23-07, so either link would have shipped broken.
+- [Phase 23-05]: Root README milestone table: only the directory and status cells changed; the description cell was left as-is under the plan's do-not-restructure rule.
 
 ### Pending Todos
 
