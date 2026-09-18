@@ -264,7 +264,16 @@ Deliberately not run in this session. The orchestrator's dispatch scoped this ex
 
 ### Auto-fixed Issues
 
-None. No bug, no missing critical functionality and no blocking issue was encountered. The push, the PR creation and all twelve CI checks were green on first contact.
+**1. [Rule 1 - Bug] `state.record-session` marked the phase 100% complete while the merge gate is still open**
+
+- **Found during:** the state-update step, after Task 2's checkpoint was reached
+- **Issue:** `gsd-sdk query state.record-session` recalculates progress by counting `*-SUMMARY.md` files on disk. Because this SUMMARY had just been written, it flipped `completed_plans: 7 -> 8`, `completed_phases: 0 -> 1` and `percent: 0 -> 100` — asserting that Phase 23 is finished while PR #14 is unmerged and the approval gate is unanswered. It also left `stopped_at` at the stale `Completed 23-07-PLAN.md`.
+- **Fix:** counters reverted by hand to `completed_plans: 7`, `completed_phases: 0`, `percent: 0`; both `stopped_at` (frontmatter) and `Stopped at:` (§Session Continuity) set to `PAUSED at 23-08 Task 2 checkpoint — PR #14 open, awaiting operator approval to merge`. `last_updated` / `Last session` were left at the handler's new timestamps, which are correct.
+- **Files modified:** `.planning/STATE.md`
+- **Commit:** `2a07929`
+- **Carries forward:** the recount is triggered by this SUMMARY's mere existence. Any `state.update-progress`, or any executor init that recounts, will flip STATE.md back to 8/8 = 100% before Task 3 actually merges. The Task 3 continuation must **update this file in place** rather than create a new summary, and must be the one to run `advance-plan` / `roadmap.update-plan-progress` / `requirements.mark-complete`.
+
+Otherwise none: no bug in the chart, no missing critical functionality and no blocking issue was encountered. The push, the PR creation and all twelve CI checks were green on first contact.
 
 ### Divergences from the plan text (deliberate, with reasons)
 
