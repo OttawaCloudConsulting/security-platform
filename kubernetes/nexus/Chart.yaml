@@ -1,0 +1,9 @@
+apiVersion: v2
+name: nexus
+version: 0.1.0
+appVersion: "3.96.0"
+description: Nexus Repository with npm, PyPI, Docker and Helm proxy repositories preconfigured.
+dependencies:
+  - name: nexus3
+    version: 5.26.0
+    repository: https://stevehipwell.github.io/helm-charts/
