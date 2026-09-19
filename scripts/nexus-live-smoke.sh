@@ -55,8 +55,10 @@ PROVISION_SH="kubernetes/nexus/files/provision.sh"
 
 # Assigned BEFORE the trap so `set -u` cannot trip inside the cleanup path.
 NEXUS_CONTAINER="nexus-live-smoke-$$"
-# Likewise for the kind cluster. KIND_CREATED flips to 1 the moment creation is
-# ATTEMPTED, so a half-built cluster is torn down too.
+# Likewise for the kind cluster. KIND_CREATED is the trap's ownership flag: it
+# flips to 1 only AFTER `kind create cluster` has returned 0, so the trap can
+# never delete a cluster this run did not create. See the ownership guard in
+# section 6 for why that ordering is load-bearing rather than stylistic.
 KIND_CLUSTER="nexus-smoke"
 KIND_NS="nexus-smoke"
 KIND_CONTEXT="kind-${KIND_CLUSTER}"
@@ -353,14 +355,42 @@ fi
 # failed `kind create cluster` would leave the commands pointed at whatever
 # cluster the operator happens to have selected — this smoke must never touch it.
 KUBECTX_BEFORE="$(kubectl config current-context 2>/dev/null || true)"
+# ── Ownership guard: never delete a cluster this run did not create ──────────
+# KIND_CLUSTER is a FIXED name, so it can collide with a cluster the operator
+# already owns, and the EXIT trap deletes $KIND_CLUSTER unconditionally once
+# KIND_CREATED is 1. Measured on kind v0.33.0: a colliding `kind create cluster`
+# exits 1 with `node(s) already exist for a cluster with the name "..."`. So
+# setting the ownership flag BEFORE the call turned a mere name collision into
+# the DELETION of somebody else's cluster — a failed create, then a trap that
+# tore down the pre-existing cluster on the way out. Refuse the run instead.
+#
+# `kind get clusters` prints bare cluster names on stdout, one per line
+# (measured, kind v0.33.0); the empty-list message "No kind clusters found."
+# goes to STDERR, so an empty list cannot match and the guard cannot misfire.
+# `grep -qx` anchors both ends: a cluster merely PREFIXED nexus-smoke is a
+# different cluster and must not trip this.
+if kind get clusters 2>/dev/null | grep -qx "$KIND_CLUSTER"; then
+  echo "FATAL: cluster ${KIND_CLUSTER} already exists, refusing to touch it" >&2
+  echo "       This smoke deletes the cluster it creates, and it did not create that one." >&2
+  echo "       If it is a leftover from an earlier run, remove it yourself:" >&2
+  echo "         kind delete cluster --name ${KIND_CLUSTER}" >&2
+  exit 1
+fi
+
 echo "    creating cluster ${KIND_CLUSTER} (this is the slow part)"
-KIND_CREATED=1
 kind_rc=0
 kind create cluster --name "$KIND_CLUSTER" >/dev/null 2>&1 || kind_rc=$?
 if [ "$kind_rc" -ne 0 ]; then
-  fail "KIND-CLUSTER" "kind create cluster --name ${KIND_CLUSTER} exited ${kind_rc}"
+  # Deliberately NOT claiming ownership on a failed create. The cost is that a
+  # HALF-built cluster is left behind rather than torn down; the benefit is that
+  # a collision can never delete an operator's cluster. The leftover is loud,
+  # not silent: the guard above FATALs on the next run and names the fix.
+  fail "KIND-CLUSTER" "kind create cluster --name ${KIND_CLUSTER} exited ${kind_rc}; if it left a partial cluster behind, remove it with: kind delete cluster --name ${KIND_CLUSTER}"
   print_summary
 fi
+# Ownership claimed only now: `kind create cluster` returned 0, so the cluster
+# the trap deletes is unambiguously this run's.
+KIND_CREATED=1
 pass "KIND-CLUSTER" "cluster ${KIND_CLUSTER} is up"
 
 kubectl --context "$KIND_CONTEXT" create namespace "$KIND_NS" >/dev/null
