@@ -23,10 +23,23 @@ set -euo pipefail
 #   NEXUS_HOST       http://<host>:<port>, no trailing slash
 #   NEXUS_USER       the literal "admin"
 #   NEXUS_PASSWORD   the admin password. Read from the environment only; it is
-#                    never written to stdout or stderr, never appears in a log
-#                    line, and is never placed on a curl argv (the -u value is
-#                    built inside this process). The Job supplies it through a
-#                    secretKeyRef, never as a literal.
+#                    never written to stdout or stderr and never appears in a
+#                    log line. It IS handed to curl as `-u user:pass`. An
+#                    earlier version of this comment claimed the password
+#                    "is never placed on a curl argv"; that was wrong, and is
+#                    corrected here rather than left to reassure a reader.
+#                    What actually happens, MEASURED in this Job's own image
+#                    (alpine/k8s, curl 8.10.1) mid-request, is that curl blanks
+#                    the credential out of its own argv while parsing:
+#                      /proc/<pid>/cmdline =
+#                      curl -sS -o /dev/null --max-time 10 -u <blanks> <url>
+#                    so `ps` against a running provisioning pod does not show
+#                    it. What DOES hold the password for this process's whole
+#                    lifetime is the environment (/proc/<pid>/environ). That is
+#                    the secretKeyRef contract this Job is built on, not
+#                    something this script can hide, and pretending otherwise
+#                    is worse than saying so. The Job supplies the value
+#                    through a secretKeyRef, never as a literal.
 #   EULA_ACCEPTED    the string "true" or "false"
 #   REPO_CONFIG_DIR  directory of repository body JSON files, default /config
 # An unset NEXUS_HOST, NEXUS_USER, NEXUS_PASSWORD or EULA_ACCEPTED is a hard
@@ -66,6 +79,13 @@ REPO_CONFIG_DIR="${REPO_CONFIG_DIR:-/config}"
 # inside the Job's activeDeadlineSeconds. The upstream configure.sh loop is
 # unbounded; combined with `backoffLimit: 0` that produces a Job which neither
 # completes nor fails when Nexus never comes up.
+#
+# Every curl below carries `--connect-timeout 5 --max-time 30`. Without them a
+# single request to a Nexus that ACCEPTS the connection and then stops talking
+# hangs forever, and neither the attempt counter nor the sleep budget can end
+# the run — the bound only works if each request is itself bounded. 600s of
+# sleeping is therefore the nominal budget, per-request time adds to it, and
+# the Job's activeDeadlineSeconds remains the one hard ceiling.
 READY_ATTEMPTS=60
 READY_INTERVAL=10
 
@@ -90,6 +110,7 @@ http_status() {
   shift
   local rc=0
   HTTP_CODE="$(curl -sS -o /dev/null -w '%{http_code}' \
+    --connect-timeout 5 --max-time 30 \
     -u "${NEXUS_USER}:${NEXUS_PASSWORD}" "$@" "${url}")" || rc=$?
   if [ "${rc}" -ne 0 ]; then
     echo "FATAL: curl exited ${rc} requesting ${url} (transport failure)" >&2
@@ -103,6 +124,7 @@ http_body() {
   local url="$1" outfile="$2"
   local rc=0
   HTTP_CODE="$(curl -sS -o "${outfile}" -w '%{http_code}' \
+    --connect-timeout 5 --max-time 30 \
     -u "${NEXUS_USER}:${NEXUS_PASSWORD}" "${url}")" || rc=$?
   if [ "${rc}" -ne 0 ]; then
     echo "FATAL: curl exited ${rc} requesting ${url} (transport failure)" >&2
@@ -125,6 +147,7 @@ for attempt in $(seq 1 "${READY_ATTEMPTS}"); do
   # whether provisioning succeeded: if 200 is never observed the loop still
   # fails hard immediately below.
   ready_code="$(curl -sS -o /dev/null -w '%{http_code}' \
+    --connect-timeout 5 --max-time 30 \
     "${NEXUS_HOST}/service/rest/v1/status/writable" || true)"
   if [ "${ready_code}" = "200" ]; then
     break

@@ -136,6 +136,35 @@ render() {
     --set nexus3.rootPassword.secret=dummy-secret-name "$@"
 }
 
+# run_provision: invoke the chart's own provisioning script with its environment
+# contract satisfied.
+#
+# Shell PREFIX-ASSIGNMENT rather than `env VAR=... bash ...`: one fewer process
+# in the chain and one fewer binary carrying the values as ARGUMENTS. Measured,
+# so the comment does not overclaim: `env` execs into bash, and exec REPLACES
+# the argv, so the old form left nothing observable in `ps` either. This is a
+# simplification, not the closing of a demonstrated leak.
+#
+# It has to be a FUNCTION. require_success runs "$@", and a prefix-assignment is
+# shell SYNTAX rather than a command, so passing it through "$@" would make bash
+# search for a program literally named `NEXUS_HOST=http://...` and fail.
+#
+# NEXUS_PASSWORD reaches provision.sh through the environment, which is exactly
+# how the chart's Job supplies it (secretKeyRef -> env). The smoke exercises the
+# same contract the cluster does.
+#
+# SC2329 is disabled because this function IS invoked — indirectly, as the
+# command require_success runs through "$@", which shellcheck cannot follow.
+# shellcheck disable=SC2329
+run_provision() {
+  NEXUS_HOST="$NEXUS_HOST" \
+  NEXUS_USER=admin \
+  NEXUS_PASSWORD="$NEXUS_PASSWORD" \
+  EULA_ACCEPTED=true \
+  REPO_CONFIG_DIR="$OUT/config" \
+    bash "$PROVISION_SH"
+}
+
 # print_summary: the terminal verdict. Skips print first, under their own
 # heading, on every path — they are not failures and they are not passes.
 print_summary() {
@@ -285,25 +314,13 @@ fi
 echo
 
 echo "--- 3. provision.sh pass 1 ---"
-require_success "PROVISION-PASS-1" env \
-  NEXUS_HOST="$NEXUS_HOST" \
-  NEXUS_USER=admin \
-  NEXUS_PASSWORD="$NEXUS_PASSWORD" \
-  EULA_ACCEPTED=true \
-  REPO_CONFIG_DIR="$OUT/config" \
-  bash "$PROVISION_SH"
+require_success "PROVISION-PASS-1" run_provision
 echo
 
 echo "--- 4. provision.sh pass 2 (idempotency) ---"
 # The identical invocation. A repeat blind POST to the repositories API returns
 # 400, so a second exit 0 is the only proof the GET->PUT/POST upsert is real.
-require_success "PROVISION-PASS-2" env \
-  NEXUS_HOST="$NEXUS_HOST" \
-  NEXUS_USER=admin \
-  NEXUS_PASSWORD="$NEXUS_PASSWORD" \
-  EULA_ACCEPTED=true \
-  REPO_CONFIG_DIR="$OUT/config" \
-  bash "$PROVISION_SH"
+require_success "PROVISION-PASS-2" run_provision
 echo
 
 echo "--- 5. Post-EULA artifact download ---"
