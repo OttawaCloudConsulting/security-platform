@@ -31,18 +31,31 @@ tech-stack:
 key-files:
   created:
     - ".planning/phases/23-nexus-generic-chart/23-08-SUMMARY.md"
-  modified: []
+  modified:
+    # Tasks 1-2 modified nothing (remote-state-only). The six below are the
+    # post-review fix run, commits e157a44..162bdf4 in repos/security-platform.
+    - "repos/security-platform/scripts/nexus-live-smoke.sh"
+    - "repos/security-platform/scripts/check-nexus-chart.sh"
+    - "repos/security-platform/kubernetes/nexus/values.yaml"
+    - "repos/security-platform/kubernetes/nexus/files/provision.sh"
+    - "repos/security-platform/kubernetes/nexus/templates/_helpers.tpl"
+    - "repos/security-platform/kubernetes/nexus/templates/job-provision.yaml"
 
 key-decisions:
   - "Task 3 was NOT executed and `gh pr merge` was never invoked. The plan's Task 2 is `gate=\"blocking\"`, `config.json` has no `auto_advance` and `_auto_chain_active` is `false`, and the orchestrator's own dispatch explicitly withheld Task 3. The operator's reply is the only authorisation (T-23-14)."
   - "The push was made WITHOUT `--no-verify`, which is what made the pre-push gitleaks hook run for real — 23-06 observation 4 predicted exactly this, and the hook reported `Detect hardcoded secrets ... Passed`."
   - "The PR body states the Checkov result BOTH ways: `DELTA = 0` and `CI's Checkov provides zero coverage of this chart`. Quoting only the delta would have been true and misleading, which is 23-06's own recorded judgement."
   - "`eula.accepted` is described in the PR body as `defaults to false and must be flipped explicitly`, NOT as `no default`. Only `nexus3.rootPassword.secret` (and `repos.helm.remoteUrl`) are genuinely null; conflating the two would have misdescribed the value surface."
+  - "POST-REVIEW: anonymous access needed no code change. Measured on a fresh `nexus3:3.96.0-ubi` before any provisioning, `GET /service/rest/v1/security/anonymous` returns `\"enabled\" : false` — Nexus ships it CLOSED. No `PUT .../security/anonymous` was added to provision.sh: forcing a setting that already holds is unmeasured ceremony and would make the chart start managing a setting NEXUS-02 has not decided. The inert `nexus3.config.anonymous.enabled` key was removed instead (toggling it produced a byte-identical render) and both gates now assert something real."
+  - "POST-REVIEW: the `credentials in argv` finding did NOT reproduce, so no `curl -K -` rewrite was made. Measured inside the Job's own image (alpine/k8s, curl 8.10.1): `/proc/<pid>/cmdline` shows `-u` followed by blanks — curl scrubs the credential from its own argv while parsing. Swapping it for stdin buys nothing measurable while the password sits in `/proc/<pid>/environ` for the process lifetime by design (secretKeyRef -> env IS the Job's contract). The false header comment claiming the password `never reaches a curl argv` was corrected, and the genuinely-missing curl timeouts were added."
   - "No state handler beyond `state.record-session` was run. `state.advance-plan`, `roadmap.update-plan-progress` and `requirements.mark-complete` are deliberately deferred: plan 23-08 is NOT complete, and every 23-01..23-07 summary records that NEXUS-01/NEXUS-03 are marked by the plan that merges, not before it."
 
 requirements-completed: []
 
 # Metrics
+# Covers Tasks 1-2 only (push -> PR -> checks settled -> summary). The later
+# post-review fix run is NOT included in this figure and was not timed; see the
+# Post-Review Fixes section rather than inferring a number from this field.
 duration: 12min
 completed: null
 ---
