@@ -73,6 +73,18 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Sanitise the routing environment FOR THE GATE ITSELF, before anything reads
+# it. This is not tidiness: GLOBAL-CONFIG-UNTOUCHED takes its before/after
+# fingerprints from `helm env HELM_REPOSITORY_CONFIG` and `npm config get
+# userconfig`, and BOTH honour these variables. An operator who has sourced a
+# .nexus-env in this shell would otherwise have the gate fingerprint a
+# repo-local file, and a subject that scribbled on the real global Helm list
+# would sail through the one check that exists to catch exactly that.
+# Unsetting them here is the difference between that check measuring the
+# operator's machine and measuring nothing.
+unset PIP_CONFIG_FILE HELM_REPOSITORY_CONFIG HELM_REPOSITORY_CACHE \
+      NEXUS_DOCKER_REGISTRY npm_config_userconfig
+
 # The default is repository-relative; the override is expected to be absolute,
 # because every fixture run below invokes the subject from a throwaway
 # directory rather than from here.
