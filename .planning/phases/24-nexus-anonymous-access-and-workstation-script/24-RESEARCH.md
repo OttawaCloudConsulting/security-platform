@@ -2,7 +2,7 @@
 
 **Researched:** 2026-09-19
 **Domain:** Nexus Repository 3 security/authorization REST API; per-repository package-manager client configuration (npm / pip / Helm / OCI)
-**Confidence:** HIGH for everything measured on a live Nexus 3.96.0 CE instance and on this workstation's own package-manager clients; MEDIUM for the one thing a Docker Desktop network boundary prevented measuring (a `docker pull` executed by the daemon itself — every HTTP leg of that pull was measured individually).
+**Confidence:** HIGH. Every finding was measured against a live Nexus 3.96.0 CE instance, this workstation's own package-manager clients, and — for the Docker half — a real OCI client (`crane`) executing complete anonymous pulls through the chart's own proxy.
 
 ---
 
@@ -446,6 +446,11 @@ Both URL translations were observed directly — `docker buildx imagetools inspe
 can produce that shape**, so it is a browser/`curl` URL only and must not appear in documentation as
 a pull target.
 
+Confirmed with a real OCI client: `crane manifest localhost:8081/docker-proxy/library/alpine:3.21`
+returns the image index and exits 0, while the `/repository/`-prefixed reference fails with
+`unexpected status code 404 Not Found`. A full `crane export` of the correct reference streamed
+8,083,968 bytes.
+
 **This makes Docker the only one of the four where the `/repository/` prefix is wrong.** npm, pip
 and Helm all use `HOST/repository/<repo-name>/…`. That asymmetry is a documentation trap and
 belongs in the chart README, the workstation script's help text, and a gate check.
@@ -592,11 +597,25 @@ The realm is not about anonymity: an **admin-issued** token also returns 401 on 
 **How to avoid:** the `ANONYMOUS-PULL-DOCKER` gate must perform the full handshake and send the
 `Authorization: Bearer` header, and `DOCKER-REALM-ACTIVE` must assert the realm is present exactly
 once. Prove both non-vacuous by removing the realm and watching them go red.
-**Caveat, stated plainly:** these are HTTP-layer measurements of every leg of the pull. A
-`docker pull` executed by the daemon was **not** completed — Docker Desktop's VM cannot reach a
-host-published `127.0.0.1` port, and adding a non-loopback host to `insecure-registries` would have
-meant editing the operator's global `daemon.json`, which this phase's own scope forbids. The
-end-to-end daemon pull remains **MEDIUM** and Phase 25 is where it becomes HIGH.
+**Confirmed by a real OCI client, not only by curl.** `crane`, running anonymously in the Nexus
+container's own network namespace, was used as the control:
+
+| Realms | `crane manifest localhost:8081/docker-proxy/library/alpine:3.21` |
+|--------|------------------------------------------------------------------|
+| `["NexusAuthenticatingRealm","DockerToken"]` | **exit 0**, full OCI image index returned |
+| `["NexusAuthenticatingRealm"]` | `Error: … unexpected status code 401 Unauthorized` |
+| restored to include `DockerToken` | **exit 0** again |
+
+`crane export` of the same reference streamed **8,083,968 bytes** of filesystem tarball, so the
+blob path is exercised end to end and not merely the manifest. This is the non-vacuity proof the
+`ANONYMOUS-PULL-DOCKER` and `DOCKER-REALM-ACTIVE` gates need, already performed once.
+
+**One residual, stated plainly:** the client here was `crane`, not `dockerd`. Docker Desktop's VM
+cannot reach a host-published `127.0.0.1` port, and adding a non-loopback host to
+`insecure-registries` would have meant editing the operator's global `daemon.json`, which this
+phase's own scope forbids. `crane` implements the same OCI distribution protocol and resolves
+references identically (proven by test C below), so the remaining gap is daemon-specific
+TLS/insecure-registry handling against a real hostname — which is exactly what Phase 25 exercises.
 
 ### Pitfall 5: "Anonymous write is denied" asserted with a malformed body passes for the wrong reason
 
@@ -790,6 +809,28 @@ $ curl -sS -o /dev/null -w '%{http_code} size=%{size_download}\n' -L \
 With `DockerToken` removed from active realms, steps 1 and 2 are **identical** and step 3 returns
 **401**. That is the whole reason the second REST call exists.
 
+The same sequence, driven by a real OCI client rather than by hand:
+
+```console
+# A. correct reference, anonymous, DockerToken active
+$ crane manifest --insecure localhost:8081/docker-proxy/library/alpine:3.21
+{"manifests":[{"annotations":{"com.docker.official-images.bashbrew.arch":"amd64", …   # exit 0
+
+# B. full pull — forces every blob
+$ crane export --insecure localhost:8081/docker-proxy/library/alpine:3.21 - | wc -c
+8083968
+
+# C. wrong reference shape
+$ crane manifest --insecure localhost:8081/repository/docker-proxy/library/alpine:3.21
+Error: fetching manifest …: GET http://localhost:8081/v2/repository/docker-proxy/library/alpine/manifests/3.21:
+       unexpected status code 404 Not Found
+
+# D. correct reference, DockerToken REMOVED
+$ crane manifest --insecure localhost:8081/docker-proxy/library/alpine:3.21
+Error: fetching manifest …: GET http://localhost:8081/v2/docker-proxy/library/alpine/manifests/3.21:
+       unexpected status code 401 Unauthorized
+```
+
 ### 5. npm — native project scope, non-destructive merge
 
 ```console
@@ -862,7 +903,9 @@ $ # and those two paths, measured directly:
 
 The `inspect` calls themselves did not complete — the buildx builder runs inside Docker Desktop's
 VM and cannot reach a host-published loopback port — but the error text is emitted **after** URL
-construction, which is precisely the fact being established.
+construction, which is precisely the fact being established. `crane`, which *can* reach the
+instance (Code Example 4), then confirmed the same conclusion by succeeding on the first reference
+and failing 404 on the second.
 
 ---
 
@@ -894,7 +937,7 @@ construction, which is precisely the fact being established.
 | **A5** | `deferred-items.md` items 2 (dead `provision.readiness.*` knobs) and 3 (Checkov zero coverage), both explicitly handed to Phase 24, are in scope | §Open Questions 2 and 3 | Medium. Not in the phase goal and not in NEXUS-02/04. If deferred again they need an explicit disposition, not silence — ADR-020 already records them as open. |
 | **A6** | The post-upgrade hook Job firing on `helm upgrade` is sufficient to migrate an already-installed Nexus to `anonymous.enabled: true` **and** to append the realm | Runtime State Inventory | Low-medium. Consistent with how EULA acceptance and repo upsert already behave, but no `helm upgrade` against a pre-existing Nexus with data was performed this session. Phase 25 confirms. |
 | **A7** | Anonymous read is acceptable given the instance is reachable only inside the homelab network, with NetworkPolicy explicitly out of scope | Security Domain | Medium. Depends on the operator's ingress posture, which is a Phase 25 artefact in a private repo this research cannot see. |
-| **A8** | A `docker pull` executed by the daemon will succeed, given that **every leg of the pull handshake** — ping, token issuance, manifest index with bearer, child manifest, and a 3.6 MB layer blob — was measured returning the expected status anonymously with `DockerToken` active | Pitfall 4 / Code Example 4 | Medium, and lower than it was before the handshake was measured properly. Residual risk is daemon-specific behaviour (TLS/insecure-registry handling against a real hostname), which is exactly what Phase 25 exercises. |
+| **A8** | ~~A `docker pull` executed by a real client will succeed~~ — **CLOSED, no longer an assumption.** Measured with `crane`: anonymous `manifest` exits 0 with `DockerToken` active and fails 401 without it; anonymous `export` streamed 8,083,968 bytes; the `/repository/`-prefixed reference fails 404 | Pitfall 4 / Code Example 4 / Pattern 6 | **Low.** The only untested client is `dockerd` itself, blocked by Docker Desktop's VM network boundary. `crane` speaks the same OCI distribution protocol; the residue is daemon-specific TLS/insecure-registry handling against a real hostname, which Phase 25 exercises. |
 
 ---
 
@@ -1084,6 +1127,7 @@ prints `NOTHING RAN`, not `ALL PASS`, and a SKIP is never counted as a pass.
 
 - **Live `sonatype/nexus3:3.96.0-ubi` container** (booted twice), rendered from `helm template kubernetes/nexus` and provisioned by the chart's own `files/provision.sh` with `EULA_ACCEPTED=true`:
   anonymous GET/PUT status codes, bodies and idempotency; `nx-anonymous` role privileges; the `anonymous` user object; active/available realms; the before/after 401→200 matrix with byte counts for npm, PyPI and Helm; the **full anonymous Docker handshake** (ping → challenge → token → bearer manifest → child manifest → 3,626,020-byte layer blob); the four-state DockerToken × header-present causal matrix; the `forceBasicAuth` true/false comparison including the `WWW-Authenticate` header; the realms duplicate-append reproduction; the anonymous denial matrix across eight admin endpoints and two write paths; `/service/rest/swagger.json` path/method listing for `/v1/security/anonymous` and `/v1/security/realms/*`
+- **A real OCI client, `gcr.io/go-containerregistry/crane`**, run anonymously inside the Nexus container's network namespace: `manifest` exit 0 with `DockerToken` active, `401 Unauthorized` with it removed, exit 0 again when restored; `export` streaming 8,083,968 bytes; `404 Not Found` on the `/repository/`-prefixed reference
 - **This workstation's package-manager clients:** `npm config list` / `config get registry` / `config set --location=project` (11.7.0); `pip3 config list -v` with and without `PIP_CONFIG_FILE`, and the `pip config set` internal-error reproduction (26.2.1); `helm env` / `repo add` / `repo list` / `search repo` (4.3.0); `docker buildx imagetools inspect` URL construction for both reference shapes (28.3.2)
 - **pip source, read directly:** `…/site-packages/pip/_internal/network/session.py` `SECURE_ORIGINS` and `is_secure_origin` — the loopback exemption that decides whether `trusted-host` is needed
 - **Local working copy `repos/security-platform`** @ `ea2770f` (main, clean): `kubernetes/nexus/{values.yaml,templates/configmap-repos.yaml,files/provision.sh}`, `scripts/check-nexus-chart.sh`, `scripts/nexus-live-smoke.sh`, `workstation/setup.sh`
@@ -1098,7 +1142,7 @@ prints `NOTHING RAN`, not `ALL PASS`, and a SKIP is never counted as a pass.
 ### Tertiary (LOW — unverified this session, flagged)
 
 - Docker's `registry-mirrors` semantics — Hub-only, root-path-only (Assumption A3). Not measured; editing the operator's global `daemon.json` was out of this phase's scope.
-- A daemon-executed `docker pull` through the path-routed proxy (Assumption A8). Every HTTP leg of the pull was measured; the daemon's own execution was blocked by Docker Desktop's VM network boundary.
+- A `docker pull` executed by **`dockerd` specifically**. `crane` — a real OCI client speaking the same distribution protocol — completed anonymous manifest and blob fetches through the proxy (promoted to Primary above); only the daemon's own TLS/insecure-registry handling against a real hostname is untested, and Phase 25 covers it.
 - ArgoCD's treatment of the chart's hook annotations — still training knowledge, unchanged from ADR-020 item 3. Phase 25's problem.
 
 ---
@@ -1111,7 +1155,8 @@ prints `NOTHING RAN`, not `ALL PASS`, and a SKIP is never counted as a pass.
 - **DockerToken realm requirement: HIGH** — established by a four-state causal matrix (realm present/absent × bearer header present/absent) plus the admin-token control; a first, weaker test reached the opposite conclusion and is documented as corrected rather than removed
 - **Realms duplicate-append trap: HIGH** — reproduced directly
 - **NEXUS-02 authorization boundary: HIGH** — eight admin endpoints and two write paths measured as denied, with the valid-body-vs-malformed-body distinction established
-- **Docker path shape (ADR-020 item 2): HIGH** — a real OCI client's own URL construction was observed for both reference forms and both target paths were measured
+- **Docker path shape (ADR-020 item 2): HIGH** — a real OCI client's own URL construction was observed for both reference forms, both target paths were measured, and `crane` then succeeded on the correct reference and failed 404 on the `/repository/`-prefixed one
+- **End-to-end anonymous Docker pull: HIGH** — `crane export` streamed an 8,083,968-byte filesystem tarball anonymously through the path-routed proxy, and the same command failed 401 with `DockerToken` removed and recovered when it was restored
 - **`forceBasicAuth` having no effect: MEDIUM** — measured both ways including the challenge header, but it contradicts Sonatype's documentation, so it is reported as a divergence rather than a settled fact and the chart's existing value is left alone
 - **Per-repo config scoping for npm / pip / Helm: HIGH** — each mechanism exercised end to end with a real anonymous package fetch, and Helm's global-file non-interference verified
 - **Docker per-repo impossibility: HIGH for the negative claim** (`registry-mirrors`/`insecure-registries` are daemon-global; `DOCKER_CONFIG` does not carry mirrors), **MEDIUM for the mirror-semantics detail** (A3)
