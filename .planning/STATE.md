@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: verifying
-stopped_at: "Completed 23-08-PLAN.md — Phase 23 complete; PR #14 merged by the operator (ea2770f), kubernetes/nexus/ verified on origin/main"
-last_updated: "2026-09-19T11:51:41.430Z"
+status: executing
+stopped_at: Completed 24-01-PLAN.md — anonymous.enabled wired end to end, offline gate at 18 checks, both standing gates green at commit 1266279
+last_updated: "2026-09-19T21:25:46.035Z"
 last_activity: 2026-09-19
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 1
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  total_plans: 18
+  completed_plans: 9
+  percent: 50
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 23 — nexus-generic-chart
+**Current focus:** Phase 24 — nexus-anonymous-access-and-workstation-script
 
 ## Current Position
 
-Phase: 23 (nexus-generic-chart) — COMPLETE (all 8 plans)
-Plan: 8 of 8
-Status: Phase complete — ready for verification
+Phase: 24 (nexus-anonymous-access-and-workstation-script) — EXECUTING
+Plan: 2 of 10
+Status: Ready to execute
 Last activity: 2026-09-19
 
 ## Performance Metrics
@@ -198,6 +198,11 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 23]: CLAUDE.md's stale ADR-001-through-ADR-018 range was deliberately left unfixed in 23-07 — The plan's acceptance criteria assert that git diff CLAUDE.md touches only the scope section; fixing the range in Project Structure would have failed that audit. Logged in .planning/phases/23-nexus-generic-chart/deferred-items.md instead
 - [Phase ?]: [Phase 23 closed]: PR #14 merged OUT OF BAND by the operator through the GitHub UI — mergeCommit ea2770fbf1f8a4bd532d131835d90fb86c6f5d54 with two parents cdf2c211 (base main) and 162bdf4b (head), mergedAt 2026-09-19T11:41:43Z, mergedBy.login OttawaCloudConsulting / is_bot false. `gh pr merge` was NEVER invoked by an agent in either 23-08 run; Task 3 re-read PR state first, found MERGED, and took the plan's own do-not-merge branch. Verified from origin/main only (git ls-tree / git show after git fetch, never the local tree, per T-23-12): all ten kubernetes/nexus/ paths plus both scripts/ gates present, 0 paths under kubernetes/nexus/charts/ (T-23-15), README 'infrastructure/' count 0. Feature branch confirmed deleted from origin via git ls-remote --heads (empty output), not inferred from a local git branch -a. This is the THIRD consecutive out-of-band operator merge on this repository after Phase 18 PR #9 (2e29004) and Phase 19 PR #10 — any future plan ending in a merge here should treat operator-merges-it-himself as the expected case and MUST re-read PR state before touching gh pr merge.
 - [Phase ?]: [Phase 23-08]: NEXUS-01 and NEXUS-03 marked Complete HERE and only here, after seven plans deliberately withheld them (23-01, 23-03, 23-05, 23-06, 23-07 each record the withholding explicitly). NEXUS-01 says 'public Helm chart', and a chart on an unpushed branch or in an open PR is not public — the mark waited until git ls-tree origin/main showed kubernetes/nexus/ on the merged default branch. Follows the 17-01 reverted-mark precedent, where requirements.mark-complete flipped CICD-02/03 from plan frontmatter and had to be undone because the deliverable actually shipped in a later plan.
+- [Phase 24-01]: Deviation from the plan's own snippet, made from measurement — the realms no-change test compares jq -c NORMALISED forms on both sides. Nexus returns [ "NexusAuthenticatingRealm" ] (30 bytes, padded, no trailing newline) while jq -c emits 28 bytes plus a newline, so the plan's raw cmp -s would differ on every run: the no-change branch would be dead code and the realms PUT re-issued on every helm upgrade. Verified by passes 2 and 3 both logging 'DockerToken already active — no change, and no request was made'.
+- [Phase 24-01]: Both new provision.sh steps are UNCONDITIONAL, deliberately diverging from the EULA block's guarded shape. The anonymous PUT runs every time so anonymous.enabled: false can CLOSE access a previous install or a human opened — proven by a third pass at ANONYMOUS_ENABLED=false taking an open instance back to enabled:false. The DockerToken realm is never gated on ANONYMOUS_ENABLED because an ADMIN-issued bearer token is also rejected 401 without it, so gating would make docker-proxy unusable at the shipped default (a NEXUS-01 defect, not an anonymity posture).
+- [Phase 24-01]: A grep on the render cannot prove the anonymous wiring — with the ANONYMOUS_ENABLED env entry DELETED from job-provision.yaml, grep -c 'ANONYMOUS_ENABLED' on the render still returns 7, because configmap-provision-script.yaml embeds provision.sh. Only reading the Job's env through yq discriminates, which is why ANONYMOUS-VALUE-PRESENT reads the rendered env twice (the true/false pair) on the PASSTHROUGH-SIZE model.
+- [Phase 24-01]: check-nexus-chart.sh carried '17 offline invariants' only ONCE (the echo at line 78); its header literal was 'PASS - 17 checks, 0 failures', a different string. The plan's 'grep -c 18 offline invariants == 2' criterion was met by adding one header sentence stating the count and moving the PASS literal as well — three literals plus CHECK_COUNT now move together.
+- [Phase 24-01]: NEXUS-02 withheld again (requirements-completed: []) — 17-01 reverted-mark precedent plus the 23-01/23-03/23-05/23-06/23-07 withholding pattern. Plan 24-10 marks it after merge to origin/main. Branch feature/phase-24-nexus-anonymous-and-workstation (from main ea2770f) carries commit 1266279; nothing pushed.
 
 ### Pending Todos
 
@@ -281,11 +286,12 @@ Carried forward from v1.1 close:
 | Phase 23 P06 | 40min | 3 tasks | 0 files |
 | Phase 23 P07 | 25min | 2 tasks | 4 files |
 | Phase 23 P08 | 20min | 3 tasks | 0 files |
+| Phase 24 P01 | 30min | 3 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-09-19T11:50:57.460Z
-Stopped at: Completed 23-08-PLAN.md — Phase 23 complete; PR #14 merged by the operator (ea2770f), kubernetes/nexus/ verified on origin/main
+Last session: 2026-09-19T21:25:46.025Z
+Stopped at: Completed 24-01-PLAN.md — anonymous.enabled wired end to end, offline gate at 18 checks, both standing gates green at commit 1266279
 Resume file: None
 
 ## Operator Next Steps
