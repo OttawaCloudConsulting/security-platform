@@ -12,7 +12,7 @@
 <details open>
 <summary>🔄 v3.0 K8s Infra & Dashboards (Phases 23-29) — IN PROGRESS</summary>
 
-- [ ] **Phase 23: Nexus Generic Chart** - Public Helm chart deploys Nexus with npm/PyPI/Docker/Helm proxy repos, default StorageClass
+- [x] **Phase 23: Nexus Generic Chart** - Public Helm chart deploys Nexus with npm/PyPI/Docker/Helm proxy repos, default StorageClass (completed 2026-09-19)
 - [ ] **Phase 24: Nexus Anonymous Access and Workstation Script** - Anonymous pull enabled; install script points a target repo's package-manager config at a Nexus instance
 - [ ] **Phase 25: Nexus Live Validation** - Chart deployed to the homelab cluster via private ArgoCD overlay; proxy pulls proven live
 - [ ] **Phase 26: DefectDojo Generic Chart** - Public Helm chart deploys DefectDojo with external ingress and cert-manager TLS
@@ -34,7 +34,7 @@ Plans:
 - [x] 23-05-PLAN.md — Chart README and the root README correction to `kubernetes/`
 - [x] 23-06-PLAN.md — Run the gates live and measure the Checkov delta in the CI-equivalent state
 - [x] 23-07-PLAN.md — CLAUDE.md scope statement, ADR-020, ADR index row
-- [ ] 23-08-PLAN.md — PR, operator approval gate, merge to security-platform main
+- [x] 23-08-PLAN.md — PR, operator approval gate, merge to security-platform main
 
 </details>
 
@@ -113,7 +113,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 20.1. Close gap: Retroactive VERIFICATION.md for Phases 14/17/18 | v2.0 | 3/3 | Complete | 2026-09-15 |
 | 21. Docs cleanup — close remaining Phase 20 deferred items | v2.0 | 4/4 | Complete | 2026-09-15 |
 | 22. branch-protection --apply live exercise | v2.0 | 6/6 | Complete | 2026-09-16 |
-| 23. Nexus Generic Chart | v3.0 | 7/8 | In Progress|  |
+| 23. Nexus Generic Chart | v3.0 | 8/8 | Complete   | 2026-09-19 |
 | 24. Nexus Anonymous Access and Workstation Script | v3.0 | 0/? | Not started | — |
 | 25. Nexus Live Validation | v3.0 | 0/? | Not started | — |
 | 26. DefectDojo Generic Chart | v3.0 | 0/? | Not started | — |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: executing
-stopped_at: PAUSED at 23-08 Task 2 checkpoint — PR #14 open at head 162bdf4 (post-review fixes applied), awaiting operator approval to merge
-last_updated: "2026-09-18T19:53:45.609Z"
-last_activity: 2026-09-18
+status: verifying
+stopped_at: "Completed 23-08-PLAN.md — Phase 23 complete; PR #14 merged by the operator (ea2770f), kubernetes/nexus/ verified on origin/main"
+last_updated: "2026-09-19T11:51:41.430Z"
+last_activity: 2026-09-19
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 8
-  completed_plans: 7
-  percent: 0
+  completed_plans: 8
+  percent: 100
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 ## Current Position
 
-Phase: 23 (nexus-generic-chart) — EXECUTING
+Phase: 23 (nexus-generic-chart) — COMPLETE (all 8 plans)
 Plan: 8 of 8
-Status: Ready to execute
-Last activity: 2026-09-18
+Status: Phase complete — ready for verification
+Last activity: 2026-09-19
 
 ## Performance Metrics
 
@@ -196,6 +196,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 23]: ADR-020 records the Nexus chart base, the EULA opt-in and the unset Helm proxy remote — No Sonatype-published chart is usable (nexus-repository-manager is DEPRECATED at app 3.64.0; nxrm-ha needs external PostgreSQL plus a Pro license), so the community stevehipwell/nexus3 5.26.0 chart is wrapped as a pinned subchart; eula.accepted defaults to false because a public chart must not accept a licence on a consumer's behalf; repos.helm.remoteUrl ships unset because Helm Hub is defunct and charts.helm.sh/stable is read-only since 2020
 - [Phase 23]: Subchart pin freshness (RESEARCH Q3, Renovate vs Dependabot) is deferred as a repository-wide decision, not dropped — Dependabot has no Helm chart-dependency manager; Renovate's helmv3 manager does, but adopting a second bot is a security-platform-wide tooling decision outside this phase's mandate. Dispositioned in ADR-020's 'Tradeoff — subchart pin freshness' paragraph; Chart.lock is the control point until the decision is taken
 - [Phase 23]: CLAUDE.md's stale ADR-001-through-ADR-018 range was deliberately left unfixed in 23-07 — The plan's acceptance criteria assert that git diff CLAUDE.md touches only the scope section; fixing the range in Project Structure would have failed that audit. Logged in .planning/phases/23-nexus-generic-chart/deferred-items.md instead
+- [Phase ?]: [Phase 23 closed]: PR #14 merged OUT OF BAND by the operator through the GitHub UI — mergeCommit ea2770fbf1f8a4bd532d131835d90fb86c6f5d54 with two parents cdf2c211 (base main) and 162bdf4b (head), mergedAt 2026-09-19T11:41:43Z, mergedBy.login OttawaCloudConsulting / is_bot false. `gh pr merge` was NEVER invoked by an agent in either 23-08 run; Task 3 re-read PR state first, found MERGED, and took the plan's own do-not-merge branch. Verified from origin/main only (git ls-tree / git show after git fetch, never the local tree, per T-23-12): all ten kubernetes/nexus/ paths plus both scripts/ gates present, 0 paths under kubernetes/nexus/charts/ (T-23-15), README 'infrastructure/' count 0. Feature branch confirmed deleted from origin via git ls-remote --heads (empty output), not inferred from a local git branch -a. This is the THIRD consecutive out-of-band operator merge on this repository after Phase 18 PR #9 (2e29004) and Phase 19 PR #10 — any future plan ending in a merge here should treat operator-merges-it-himself as the expected case and MUST re-read PR state before touching gh pr merge.
+- [Phase ?]: [Phase 23-08]: NEXUS-01 and NEXUS-03 marked Complete HERE and only here, after seven plans deliberately withheld them (23-01, 23-03, 23-05, 23-06, 23-07 each record the withholding explicitly). NEXUS-01 says 'public Helm chart', and a chart on an unpushed branch or in an open PR is not public — the mark waited until git ls-tree origin/main showed kubernetes/nexus/ on the merged default branch. Follows the 17-01 reverted-mark precedent, where requirements.mark-complete flipped CICD-02/03 from plan frontmatter and had to be undone because the deliverable actually shipped in a later plan.
 
 ### Pending Todos
 
@@ -278,13 +280,15 @@ Carried forward from v1.1 close:
 | Phase 23 P05 | 35min | 2 tasks | 2 files |
 | Phase 23 P06 | 40min | 3 tasks | 0 files |
 | Phase 23 P07 | 25min | 2 tasks | 4 files |
+| Phase 23 P08 | 20min | 3 tasks | 0 files |
 
 ## Session Continuity
 
-Last session: 2026-09-18T19:53:45.597Z
-Stopped at: PAUSED at 23-08 Task 2 checkpoint — PR #14 open at head 162bdf4 (post-review fixes applied), awaiting operator approval to merge
+Last session: 2026-09-19T11:50:57.460Z
+Stopped at: Completed 23-08-PLAN.md — Phase 23 complete; PR #14 merged by the operator (ea2770f), kubernetes/nexus/ verified on origin/main
 Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Phase 23 is complete and the chart is public on `OttawaCloudConsulting/security-platform` `main` (`ea2770f`). Run `/gsd:verify-phase 23` if you want the phase verification pass, then `/gsd:plan-phase 24` for Nexus anonymous access (NEXUS-02) and the workstation routing script (NEXUS-04).
+- Phase 24 inherits three open items from Phase 23: the 24 latent Checkov kubernetes-framework findings on the rendered chart (5 wrapper, 19 subchart), the inert `provision.readiness.*` knobs, and the fact that CI's Checkov never renders this chart, so a green `Checkov` check is not evidence that `kubernetes/nexus/` is clean.

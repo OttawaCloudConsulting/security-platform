@@ -37,3 +37,36 @@ Out-of-scope discoveries logged during execution. Nothing here was fixed in this
    manager would, but adopting a second bot is a repository-wide decision. Dispositioned
    as deferred in ADR-020's `**Tradeoff — subchart pin freshness.**` paragraph; it is a
    decision for `security-platform` as a whole, not for this phase.
+
+5. **Two pre-existing uncommitted changes in `.planning/`, untouched by 23-08 Task 3.**
+   Noticed while staging the Task 3 closeout commit and deliberately NOT staged, per the
+   executor's scope boundary (only fix what the current task caused):
+   - `.planning/config.json` — modified, a trailing-newline-only change (`\ No newline at
+     end of file` → newline). Working-tree mtime `2026-09-18T08:01Z`, a full day before
+     this run started (`2026-09-19T11:45Z`), so no verb in this run produced it.
+   - `.planning/v2.0-MILESTONE-AUDIT.md` — **deleted** from the working tree (83 lines),
+     last committed in `c6ccf48 docs(v2.0): close phase 21 …`. Also pre-existing.
+   Neither belongs to Phase 23. Whoever picks these up should decide whether the audit
+   file's deletion was intentional (v2.0 shipped 2026-09-17, so it may be) before
+   committing it, rather than sweeping it in with a `git add -A`.
+
+6. **`gsd-sdk query state.update-progress` does not work against this STATE.md.**
+   It returned `{"updated": false, "reason": "Progress field not found in STATE.md"}`.
+   This STATE.md carries progress as a YAML map in frontmatter (`progress:` with
+   `total_phases` / `completed_plans` / `percent`), not as the flat field the handler
+   looks for. Harmless here — `state.advance-plan` recalculated the same counters
+   correctly (7→8 plans, 0→1 phases, 0→100%) — but any workflow that relies on
+   `update-progress` alone on this project will silently no-op.
+
+7. **`gsd-sdk query state.record-metric` rejects positional arguments.**
+   The executor workflow documents a positional form (`state.record-metric "$PHASE"
+   "$PLAN" "$DURATION" …`) and `key=value` also fails; both return
+   `{"error": "phase, plan, and duration required"}`. Only the flag form works:
+   `--phase 23 --plan 08 --duration 18min --tasks 3 --files 0`. Same for
+   `state.add-decision`, which needs `--summary`, not `--decision`.
+
+8. **`roadmap.update-plan-progress` does not flip the milestone checklist line.**
+   It correctly flipped `- [ ] 23-08-PLAN.md` → `[x]` and the progress table row to
+   `8/8 | Complete | 2026-09-19`, but left line 15's
+   `- [ ] **Phase 23: Nexus Generic Chart** …` unchecked. Hand-edited to `[x]` with a
+   `(completed 2026-09-19)` suffix to match how Phases 20/21/22 are recorded.

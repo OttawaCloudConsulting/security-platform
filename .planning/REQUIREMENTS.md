@@ -11,9 +11,9 @@ Architecture constraint (Key Decision, see PROJECT.md): generic Helm charts are 
 
 ### Nexus
 
-- [ ] **NEXUS-01**: Public Helm chart deploys Nexus Repository with npm, PyPI, Docker, and Helm proxy repos configured
+- [x] **NEXUS-01**: Public Helm chart deploys Nexus Repository with npm, PyPI, Docker, and Helm proxy repos configured
 - [ ] **NEXUS-02**: Proxy repos allow anonymous pull (no auth required for read/proxy access)
-- [ ] **NEXUS-03**: Chart uses the cluster's default StorageClass unless overridden by the consumer
+- [x] **NEXUS-03**: Chart uses the cluster's default StorageClass unless overridden by the consumer
 - [ ] **NEXUS-04**: Workstation install script configures a target repo's package manager files (`.npmrc`, `pip.conf`, Docker/Helm registry config) to route through a given Nexus instance
 - [ ] **NEXUS-05**: Nexus chart validated live via private ArgoCD overlay deploy to the operator's homelab cluster
 
@@ -44,8 +44,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NEXUS-01 | Phase 23 | Pending |
-| NEXUS-03 | Phase 23 | Pending |
+| NEXUS-01 | Phase 23 | Complete |
+| NEXUS-03 | Phase 23 | Complete |
 | NEXUS-02 | Phase 24 | Pending |
 | NEXUS-04 | Phase 24 | Pending |
 | NEXUS-05 | Phase 25 | Pending |
