@@ -1,0 +1,6 @@
+dependencies:
+- name: nexus3
+  repository: https://stevehipwell.github.io/helm-charts/
+  version: 5.26.0
+digest: sha256:24ad740d457b527f5e89f176fe4965c0c44d90f30133a3e4c8766b7f4156240f
+generated: "2026-09-18T09:49:21.088495-04:00"

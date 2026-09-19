@@ -1,0 +1,33 @@
+# .helmignore — files excluded from `helm package` output.
+# Shell glob matching, relative path matching, and negation (prefixed with !).
+# One pattern per line. Scope is the packaged artifact only; git exclusions
+# live in the repo's .gitignore.
+
+# OS
+.DS_Store
+
+# Editor
+*.swp
+*.swo
+*.bak
+*.tmp
+*.orig
+*~
+.idea/
+.vscode/
+.project
+*.tmproj
+
+# VCS
+.git/
+.gitignore
+.bzr/
+.bzrignore
+.hg/
+.hgignore
+.svn/
+
+# CI
+.github/
+.gitlab-ci.yml
+.circleci/

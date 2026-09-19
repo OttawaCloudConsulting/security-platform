@@ -19,3 +19,10 @@ node_modules/
 
 # pre-commit
 .pre-commit-cache/
+
+# Helm
+# `helm dependency build` output — the vendored subchart tarball is a build
+# artifact, not source. `Chart.lock` is committed instead: it pins the exact
+# subchart version+digest, and `helm dependency build` reproduces the tarball
+# from it on any machine.
+kubernetes/*/charts/*.tgz

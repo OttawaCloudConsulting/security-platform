@@ -1,0 +1,167 @@
+# values.yaml — consumer value surface for the `nexus` wrapper chart.
+#
+# Two value trees live here:
+#   nexus3.*   passed through to the pinned `stevehipwell/nexus3` subchart.
+#              Anything the subchart exposes is overridable from here (D-07);
+#              only the keys whose upstream default is wrong for this stack are
+#              restated below. Read the full surface with:
+#                tar -xOzf charts/nexus3-5.26.0.tgz nexus3/values.yaml
+#   eula / provision / repos   owned by this wrapper.
+#
+# Annotation style is helm-docs (`# --`), matching the subchart, so a future
+# `helm-docs` run produces a values table. Every non-obvious default carries an
+# inline rationale in the style of this repo's `versions.conf`.
+
+nexus3:
+  # NOTE: no `image:` block, deliberately. The Nexus version is whatever the
+  # subchart's `appVersion` resolves to (5.26.0 -> Nexus 3.96.0); pinning a tag
+  # here would silently override that and go stale. `Chart.lock` is the single
+  # control point for the Nexus version (D-08).
+
+  bashImage:
+    # -- Image digest for the bash helper containers. Upstream ships
+    # `tag: latest`, a mutable reference; this repo's ADR-004 SHA-pin
+    # convention requires an immutable one. Digest measured for
+    # `cgr.dev/chainguard/bash:latest` in 23-RESEARCH.md.
+    digest: sha256:d57efd5fbb52ca2092c6a4ef80ebe45db24bc496ad3a3103eeab15871a33dd95
+
+  persistence:
+    # -- Persist the Nexus data directory (D-10). The upstream default is
+    # `false`, which is an `emptyDir`: every pod restart would wipe EULA
+    # acceptance and all four proxy repositories. That is not an acceptable
+    # default for a package cache other builds depend on.
+    enabled: true
+    # -- Size of the `PersistentVolumeClaim`. Overridable, and proven so by
+    # the PASSTHROUGH-SIZE check in `scripts/check-nexus-chart.sh`.
+    size: 8Gi
+    # NOTE ON `storageClass` — the key is deliberately ABSENT, not empty.
+    # The subchart guards on `{{- with .Values.persistence.storageClass }}`, so
+    # omitting it emits no `storageClassName` field at all and Kubernetes
+    # substitutes the cluster's default StorageClass. That omission IS
+    # NEXUS-03 (D-06). Set it only to override:
+    #   --set nexus3.persistence.storageClass=longhorn
+    # Do NOT confuse that with the upstream sentinel `"-"`, which renders
+    # `storageClassName: ""` and explicitly DISABLES dynamic provisioning.
+
+  rootPassword:
+    # -- Name of an existing Secret holding the Nexus admin password. There is
+    # deliberately no default: the chart must never ship a credential, and it
+    # must never invent one either. The consumer creates the Secret and names
+    # it here; the provisioning Job wraps this in Helm's `required`, so a
+    # render without it fails loudly rather than installing something broken.
+    # Written as an explicit `null` rather than a bare key so that
+    # `yq '.nexus3.rootPassword.secret'` reports `null`; the two are the same
+    # YAML value, but a bare key reads back as an empty string.
+    secret: null
+    # -- Key within that Secret holding the password.
+    key: password
+
+  config:
+    # -- Leave the subchart's own configuration Job OFF. It provisions through
+    # the Groovy scripting API, which needs `nexus.scripts.allowCreation=true`
+    # — a remote-code-execution surface Sonatype disabled by default for
+    # cause, and which answers 410 on current Nexus anyway. This wrapper
+    # provisions over the REST API instead (see the `provision` block).
+    #
+    # NOTE ON ANONYMOUS ACCESS — there is deliberately NO `anonymous:` key
+    # here any more. One used to sit under this block, asserting that
+    # anonymous access stays closed. It did nothing: the subchart reads
+    # `config.anonymous.*` only from inside `{{- if .Values.config.enabled }}`,
+    # and this pins that to `false`, so the key was inert — MEASURED, by
+    # rendering the chart with it flipped to `true` and diffing: byte-identical
+    # output. A value that changes nothing is worse than no value, because it
+    # reads like a control.
+    #
+    # Anonymous access is closed because NEXUS ships it closed, not because
+    # this chart closes it. Measured on `nexus3:3.96.0-ubi`, fresh instance,
+    # before any provisioning: `GET /service/rest/v1/security/anonymous`
+    # returns `{"enabled": false, "userId": "anonymous", ...}`, and an
+    # unauthenticated repository fetch returns HTTP 401. This chart leaves that
+    # default alone — `scripts/check-nexus-chart.sh` asserts the render ships
+    # no anonymous-access configuration at all, and
+    # `scripts/nexus-live-smoke.sh` asserts the 401 against a live instance.
+    # Opening read-only anonymous pull is NEXUS-02, a Phase 24 decision.
+    enabled: false
+
+eula:
+  # -- Accept the Sonatype Nexus Repository Community Edition licence
+  # agreement: https://links.sonatype.com/products/nxrm/ce-eula
+  #
+  # Explicit opt-in, and it stays that way (D-09): a chart must not accept a
+  # legal agreement on a consumer's behalf. Measured consequence of leaving it
+  # `false` — the four proxy repositories configure fine and metadata requests
+  # return HTTP 200, but every actual component download returns HTTP 403 with
+  # a ~192-byte body. The provisioning Job calls the EULA endpoint only when
+  # this is `true`.
+  accepted: false
+
+provision:
+  # -- If `true`, run the post-install Job that creates the proxy repositories
+  # over the Nexus REST API (D-04). The Job is idempotent.
+  enabled: true
+  image:
+    # -- Image repository for the provisioning Job container (supplies curl
+    # and jq).
+    repository: docker.io/alpine/k8s
+    # -- Image tag for the provisioning Job container.
+    tag: 1.31.2
+    # -- Image digest for the provisioning Job container. A tag is mutable;
+    # only a digest names one immutable image (ADR-004). Digest measured for
+    # `docker.io/alpine/k8s:1.31.2` in 23-RESEARCH.md.
+    digest: sha256:d489e3c7a6221af7394bc54a1498b641ada49ca51c344630966a62411b91a3df
+  # -- Hard wall-clock ceiling on the Job, in seconds. The subchart exposes no
+  # such knob; without it a Nexus that never becomes writable leaves a Job
+  # retrying against a Helm hook that never completes.
+  activeDeadlineSeconds: 900
+  readiness:
+    # -- Readiness poll attempts against `/service/rest/v1/status/writable`.
+    attempts: 60
+    # -- Seconds between readiness poll attempts. 60 x 10s = 10 minutes, which
+    # covers a cold Nexus first boot (measured at 1-3 minutes on homelab
+    # hardware) inside `activeDeadlineSeconds`.
+    intervalSeconds: 10
+  # -- Resources for the provisioning Job container. All four of
+  # requests/limits x cpu/memory are set on purpose: the CI Checkov gate runs
+  # with `soft_fail: false`, and an unset request or limit is a finding.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+repos:
+  # Proxy repositories created by the provisioning Job. `name` is the Nexus
+  # repository name; `remoteUrl` is the upstream it proxies. Both are
+  # consumer-overridable; the rest of each REST body is fixed by the chart.
+  npm:
+    # -- Nexus repository name for the npm proxy.
+    name: npm-proxy
+    # -- Upstream registry proxied by the npm repository.
+    remoteUrl: https://registry.npmjs.org
+  pypi:
+    # -- Nexus repository name for the PyPI proxy.
+    name: pypi-proxy
+    # -- Upstream index proxied by the PyPI repository.
+    remoteUrl: https://pypi.org
+  docker:
+    # -- Nexus repository name for the Docker proxy.
+    name: docker-proxy
+    # -- Upstream registry proxied by the Docker repository.
+    remoteUrl: https://registry-1.docker.io
+  helm:
+    # -- Nexus repository name for the Helm proxy.
+    name: helm-proxy
+    # -- Upstream chart repository proxied by the Helm repository. NO DEFAULT,
+    # on purpose (D-05): Helm Hub has been defunct since 2020; Artifact Hub
+    # replaced it as a cross-repo SEARCH INDEX, not a repository serving a
+    # single `index.yaml`, which is what a Helm proxy needs; and Bitnami's
+    # repo — the historical fallback — is mid-deprecation through 2026. No
+    # value can be shipped responsibly, so the Helm proxy is created only when
+    # the consumer sets one relevant to their stack, e.g.
+    # https://charts.jetstack.io,
+    # https://prometheus-community.github.io/helm-charts, or ingress-nginx.
+    # Explicit `null` rather than a bare key, for the same read-back reason as
+    # `nexus3.rootPassword.secret` above.
+    remoteUrl: null
