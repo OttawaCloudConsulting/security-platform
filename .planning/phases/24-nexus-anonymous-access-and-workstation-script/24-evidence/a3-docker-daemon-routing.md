@@ -149,10 +149,152 @@ at this point and the routing stage would have had nothing to measure.)
 
 ## 3. Routing stage — does the mirror actually route?
 
-*(filled in by Task 2)*
+Run: `bash a3-dind-probe.sh`, 2026-09-19. One throwaway Nexus (`a3-nexus`, host port 8082),
+provisioned by **the chart's own `kubernetes/nexus/files/provision.sh`** with the four repo bodies
+extracted from the chart's own rendered `-repos` ConfigMap — so this is evidence about the shipped
+chart, not about a hand-made Nexus:
+
+```
+EULA: accepted (HTTP 204).
+anonymous: OPEN (HTTP 200) — unauthenticated READ is now allowed across every repository ...
+realms: appended DockerToken (HTTP 204). ["NexusAuthenticatingRealm","DockerToken"]
+repo: format=docker name=docker-proxy action=created (HTTP 201)
+Provisioning complete: 4 proxy repositor(ies) present and online.
+```
+
+Each candidate then got a **freshly created** privileged `docker:28.3.2-dind` container (removed
+with `docker rm -f -v` between candidates, so its `/var/lib/docker` anonymous volume — and with it
+any cached layer — was destroyed, not reused).
+
+### The verdict criterion, stated before the numbers
+
+**The verdict is the Nexus components delta, never the pull exit code.** Docker's mirror logic
+falls back to the upstream registry on any mirror error, so `docker pull` exit 0 is equally
+consistent with the mirror having worked and with the mirror having been ignored entirely. Only
+
+```
+GET /service/rest/v1/components?repository=docker-proxy
+```
+
+going from zero items to items naming `library/alpine` proves that traffic reached Nexus.
+
+### candidate-1 — `http://a3-nexus:8081/repository/docker-proxy`
+
+| Measurement | Value |
+|-------------|-------|
+| `docker info` Registry Mirrors (verbatim) | ` Registry Mirrors:`<br>`  http://a3-nexus:8081/repository/docker-proxy/` |
+| `docker info --format '{{json .RegistryConfig.Mirrors}}'` | `["http://a3-nexus:8081/repository/docker-proxy/"]` |
+| components BEFORE | **0** |
+| `docker pull alpine:3.21` exit | **0** |
+| pull output, first lines | `3.21: Pulling from library/alpine` / `248d4d6535e8: Pulling fs layer` / `248d4d6535e8: Download complete` / `Digest: sha256:ce64758a109eb420d874a118f87920e625e12d3634e03b4a5573fd9f6e5d3507` / `Status: Downloaded newer image for alpine:3.21` / `docker.io/library/alpine:3.21` |
+| components AFTER | **1** |
+| components that appeared | `/library/alpine:3.21` |
+
+**candidate-1 ROUTED.** Nexus's `docker-proxy` holds an artefact it did not hold before the pull.
+Note that the client still reports the image as `docker.io/library/alpine:3.21` — the mirror is
+transparent to the reference, which is exactly the property a workstation script would want and
+exactly the property that makes a *non-working* mirror invisible.
+
+The normalised mirror value shows the path **survived** into the daemon's own registry config,
+confirming §1a(iii) empirically: moby stores the whole mirror URL, and the `/v2/` route is appended
+after the configured path, producing `/repository/docker-proxy/v2/...` — one of the three shapes
+24-RESEARCH.md Pattern 6 measured as HTTP 200.
+
+### candidate-2 — `http://a3-nexus:8081/docker-proxy`
+
+| Measurement | Value |
+|-------------|-------|
+| `docker info` Registry Mirrors (verbatim) | ` Registry Mirrors:`<br>`  http://a3-nexus:8081/docker-proxy/` |
+| `docker info --format '{{json .RegistryConfig.Mirrors}}'` | `["http://a3-nexus:8081/docker-proxy/"]` |
+| components BEFORE | **0** (the single component cached by candidate-1 was DELETEd via `/service/rest/v1/components/{id}` and the zero re-asserted, not assumed) |
+| `docker pull alpine:3.21` exit | **0** |
+| pull output, first lines | `3.21: Pulling from library/alpine` / `248d4d6535e8: Pulling fs layer` / `248d4d6535e8: Download complete` / `Status: Downloaded newer image for alpine:3.21` |
+| components AFTER | **0** |
+| components that appeared | none |
+
+**candidate-2 DID NOT ROUTE — and this is the row that matters most.** The pull *succeeded*, exit
+0, with real layer traffic (`Pulling fs layer` … `Download complete` on a freshly created engine
+whose image store had just been destroyed). It succeeded because Docker silently fell back to
+Docker Hub. Had this probe scored routing on the pull exit code, candidate-2 would have been
+recorded as a working mirror. It is not one. **A `docker pull` that succeeds with no components
+delta is NOT routing.**
+
+That asymmetry is the whole reason the `/repository/` question had to be measured rather than
+reasoned: `HOST/docker-proxy/...` is the correct *image reference* shape (Pattern 6), and
+`HOST/repository/docker-proxy` is the correct *mirror URL* shape. They are different, and the
+intuitive one is the wrong one.
+
+### Teardown and the host-daemon assertion
+
+```
+=== T-24-17 host daemon.json assertion ===
+    path:   /Users/christian/.docker/daemon.json
+    before: 55a16d289b1bd748b186117e8bc1937c5c65ff4e
+    after:  55a16d289b1bd748b186117e8bc1937c5c65ff4e
+    UNCHANGED
+```
+
+After the run: `docker ps -a --filter name=a3-` empty, `docker network ls --filter name=a3-net`
+empty. All container removals used `-v`, so the dind image-store volumes went with them.
+
+---
+
+VERDICT: A3-FALSIFIED-CANDIDATE-1
+
+Read precisely, that verdict means: **a path-routed Nexus Docker proxy CAN serve as a Docker daemon
+`registry-mirrors` target, at the `/repository/<repo>` URL and only at that URL.** The "requires the
+mirror at the registry root" half of A3 is falsified. The "only mirrors Docker Hub" half of A3 is
+**confirmed** — by version-matched source (§1a(ii)), not by this measurement — and continues to
+apply.
 
 ---
 
 ## What this evidence does NOT establish
 
-*(filled in by Task 2)*
+1. **The dind engine is not Docker Desktop's engine.** The measurement ran inside a privileged
+   `docker:28.3.2-dind` container — the same dockerd version as the host, but a *nested Linux
+   engine with its own classic image store*. Docker Desktop runs its engine inside a LinuxKit VM
+   and may use the containerd image store, whose registry-mirror handling is configured differently
+   (`hosts.toml`) and was not exercised here. **The operator's own Docker Desktop engine was never
+   configured with either candidate mirror and was never restarted.** If plan 24-07 ships a
+   daemon-writing branch, the first real run on Docker Desktop is still an unmeasured step.
+2. **No TLS anywhere.** Both candidates were plaintext `http://` to a non-loopback container name,
+   with `insecure-registries` carrying `a3-nexus:8081`. Nothing here was measured against a
+   TLS-terminated Nexus, which is what Phase 25's ingress will produce. ADR-009 governs the warning
+   text for `insecure-registries` in any shipped code.
+3. **The two `daemon.json` keys were never separated.** Every candidate config carried
+   `registry-mirrors` *and* `insecure-registries` together. The probe therefore cannot say whether
+   `registry-mirrors` alone would route over plain HTTP, nor whether `insecure-registries` alone is
+   enough. If 24-07 writes only one key, that combination is unmeasured.
+4. **The Nexus under test had anonymous access OPEN.** `provision.sh` ran with
+   `ANONYMOUS_ENABLED=true`, diverging from the chart's shipped default of `false` (24-01). Whether
+   the mirror routes against a closed instance — it should not, and should fall back silently to
+   Docker Hub, which is the same invisible-failure shape as candidate-2 — was not measured.
+5. **One image, one tag, one pull, one run per candidate.** `alpine:3.21` from `library/`. No
+   multi-arch selection behaviour, no large image, no rate-limit behaviour, no repeat run.
+6. **Non-Hub references are out of reach and always will be.** Per §1a(ii), `ghcr.io/...`,
+   `quay.io/...`, `public.ecr.aws/...` and every other non-`docker.io` reference is unaffected by
+   any `registry-mirrors` value. A workstation script that sets a mirror routes *part* of a typical
+   project's images and must say so.
+7. **Nexus ran on the host engine, not inside dind.** 24-04-PLAN.md's ordering note (boot Nexus
+   after the dind engine "so a dind restart cannot kill it") does not apply to this arrangement:
+   `a3-nexus` is a sibling container on the host engine, sharing the `a3-net` user-defined network
+   with the nested engine's *container*, so recreating the dind container between candidates cannot
+   disturb Nexus. The plan's numbered step order (network → Nexus → provision → per-candidate dind)
+   is what was executed.
+
+---
+
+## Consequence for plan 24-07
+
+A `registry-mirrors` entry at `HOST/docker-proxy` — the shape that looks right because it is the
+image-reference shape — is a key that **reads like a control and routes nothing**, the same defect
+Phase 23 removed in commit `a9c4f38`. If a daemon-writing branch is built, the URL must be
+`HOST/repository/docker-proxy`, and the script must not present the Docker ecosystem as fully
+routed: non-Hub references are never mirrored.
+
+## Decision
+
+*(pending — the operator selects at the 24-04 Task 3 checkpoint, with this evidence in front of
+them; the reply and its date are appended verbatim here, and plan 24-07 reads the selection from
+this file rather than from a chat transcript)*
