@@ -28,6 +28,32 @@ by the DNS naming spec.
 {{- end }}
 
 {{/*
+Name for the provisioning Job specifically.
+
+WHY IT IS NOT JUST `nexus.fullname` + "-provision". A Job's metadata.name is a
+DNS LABEL, capped at 63 characters, and the API server rejects a longer one —
+after `helm install` has already begun. nexus.fullname truncates its result at
+63, and appending "-provision" to a 63-character string yields 73. Measured
+before this helper existed: a 53-character release name (Helm's own maximum,
+enforced by its release-name regex) rendered the Job name
+`aaa...aaa-nexus-provision` at 69 characters, and a 60-character
+fullnameOverride rendered 70.
+
+So the base is truncated to 53 FIRST and the fixed 10-character "-provision"
+suffix is added after, which bounds the result at 63 by construction. The
+trimSuffix guards the case where the cut lands on a "-".
+
+Deliberately a SEPARATE helper rather than a change to nexus.fullname: that
+helper also names the two ConfigMaps, whose metadata.name is a DNS SUBDOMAIN
+(253 chars), and nexus.nexus3Fullname must keep matching the subchart's own
+Service name exactly. Narrowing either to 53 would break a verified binding to
+fix a problem neither of them has.
+*/}}
+{{- define "nexus.provisionJobName" -}}
+{{- printf "%s-provision" (include "nexus.fullname" . | trunc 53 | trimSuffix "-") }}
+{{- end }}
+
+{{/*
 Standard labels for this wrapper's own objects.
 
 app.kubernetes.io/instance carries the release name verbatim: the live smoke

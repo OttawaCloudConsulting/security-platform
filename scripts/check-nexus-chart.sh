@@ -35,7 +35,7 @@ set -euo pipefail
 #   - kubernetes/nexus/templates/job-provision.yaml  -> SKIP, exit 0
 # Both print a line beginning `SKIP:` so a vacuous pass is never mistaken for
 # a real one. The anti-vacuity guard lives in plan 23-06 T1, which asserts the
-# literal terminal line `PASS - 16 checks, 0 failures`. Do not add further
+# literal terminal line `PASS - 17 checks, 0 failures`. Do not add further
 # SKIP conditions, and do not "complete" this script by deleting these two.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -75,7 +75,7 @@ if ! compgen -G "${CHART_DIR}/charts/*.tgz" >/dev/null; then
   exit 2
 fi
 
-echo "check-nexus-chart: asserting 16 offline invariants against ${CHART_DIR}"
+echo "check-nexus-chart: asserting 17 offline invariants against ${CHART_DIR}"
 
 # The admin credential is a Kubernetes Secret NAME wired through
 # nexus3.rootPassword.secret; templates/job-provision.yaml wraps it in Helm's
@@ -290,8 +290,50 @@ elif [ "$(unquote "$eula_env")" != "true" ]; then
   fail "EULA-ENV" "expected the Job env EULA_ACCEPTED to be 'true' when eula.accepted=true, got '${eula_env}'"
 fi
 
+# ── 17. JOB-NAME-LENGTH ──────────────────────────────────────────────────────
+# A Job's metadata.name is a DNS LABEL, capped at 63 characters; the API server
+# rejects a longer one AFTER `helm install` has already begun, which is the
+# worst time to find out. nexus.fullname truncates at 63, and job-provision.yaml
+# used to append "-provision" to that result — so a 53-character release name
+# (Helm's own maximum) rendered a 69-character Job name. Both ends are asserted:
+# the long name must FIT, and the short name must still render exactly
+# `t-nexus-provision`, which is the binding scripts/nexus-live-smoke.sh and
+# 23-02/23-06 select the Job by. A truncation that only satisfies the first is
+# a different bug, not a fix.
+#
+# Both branches of nexus.fullname are exercised on purpose: a long RELEASE name
+# takes the `printf "%s-%s"` branch, a long fullnameOverride takes the
+# `.Values.fullnameOverride` branch, and a helper that bounded only one of them
+# would pass a single-case check while still shipping the defect.
+long_release="$(printf 'a%.0s' $(seq 1 53))"
+long_override="$(printf 'b%.0s' $(seq 1 60))"
+
+if ! rel_job=$(helm template "$long_release" "$CHART_DIR" --set nexus3.rootPassword.secret=dummy-secret-name | yq 'select(.kind=="Job") | .metadata.name'); then
+  fail "JOB-NAME-LENGTH" "render or yq failed with a 53-character release name"
+else
+  rel_job="$(unquote "$rel_job")"
+  if [ "${#rel_job}" -gt 63 ]; then
+    fail "JOB-NAME-LENGTH" "a 53-character release name renders a ${#rel_job}-character Job name ('${rel_job}'); Kubernetes caps metadata.name at 63"
+  fi
+fi
+
+if ! ovr_job=$(render --set fullnameOverride="$long_override" | yq 'select(.kind=="Job") | .metadata.name'); then
+  fail "JOB-NAME-LENGTH" "render or yq failed with a 60-character fullnameOverride"
+else
+  ovr_job="$(unquote "$ovr_job")"
+  if [ "${#ovr_job}" -gt 63 ]; then
+    fail "JOB-NAME-LENGTH" "a 60-character fullnameOverride renders a ${#ovr_job}-character Job name ('${ovr_job}'); Kubernetes caps metadata.name at 63"
+  fi
+fi
+
+if ! short_job=$(render | yq 'select(.kind=="Job") | .metadata.name'); then
+  fail "JOB-NAME-LENGTH" "render or yq failed reading the Job name on the default render"
+elif [ "$(unquote "$short_job")" != "t-nexus-provision" ]; then
+  fail "JOB-NAME-LENGTH" "expected release 't' to still render 't-nexus-provision' — truncation must bite only on long names — got '${short_job}'"
+fi
+
 # ── Terminal summary ─────────────────────────────────────────────────────────
-CHECK_COUNT=16
+CHECK_COUNT=17
 
 if [ "${#FAILURES[@]}" -gt 0 ]; then
   for line in "${FAILURES[@]}"; do

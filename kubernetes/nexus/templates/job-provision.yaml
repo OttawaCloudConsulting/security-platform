@@ -24,7 +24,10 @@ read logs from.
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "nexus.fullname" . }}-provision
+  # nexus.provisionJobName, NOT nexus.fullname + "-provision": metadata.name on
+  # a Job is a 63-character DNS label, and the naive form overflowed it at any
+  # release name of 53 chars (measured: 69). See the helper for the bound.
+  name: {{ include "nexus.provisionJobName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- /*
@@ -57,7 +60,7 @@ spec:
   ttlSecondsAfterFinished: 900
   template:
     metadata:
-      name: {{ include "nexus.fullname" . }}-provision
+      name: {{ include "nexus.provisionJobName" . }}
       labels:
         {{- include "nexus.labels" . | nindent 8 }}
       annotations:
