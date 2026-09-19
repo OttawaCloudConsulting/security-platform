@@ -168,13 +168,38 @@ elif [ "$(unquote "$cfg")" != "false" ]; then
   fail "CONFIG-DISABLED" "expected .nexus3.config.enabled == false in ${VALUES} (Groovy scripting API), got '${cfg}'"
 fi
 
-# ── 8. ANONYMOUS-DISABLED ────────────────────────────────────────────────────
-# Anonymous access stays off in this phase. NEXUS-02 (read-only anonymous
-# pull) is Phase 24's decision to take deliberately, not this chart's default.
-if ! anon=$(yq '.nexus3.config.anonymous.enabled' "$VALUES"); then
-  fail "ANONYMOUS-DISABLED" "yq failed reading .nexus3.config.anonymous.enabled from ${VALUES}"
-elif [ "$(unquote "$anon")" != "false" ]; then
-  fail "ANONYMOUS-DISABLED" "expected .nexus3.config.anonymous.enabled == false in ${VALUES}, got '${anon}'"
+# ── 8. ANONYMOUS-NOT-OPENED ───────────────────────────────────────────────────
+# This check used to read `.nexus3.config.anonymous.enabled` back out of
+# values.yaml and assert it was `false`. That proved nothing. The subchart
+# consumes `config.anonymous.*` ONLY from inside `{{- if .Values.config.enabled
+# }}`, and this chart pins `config.enabled` to false, so the key was inert.
+# Measured: rendering with `--set nexus3.config.anonymous.enabled=true` produced
+# BYTE-IDENTICAL output. The check passed whatever the chart actually did, which
+# is the definition of a gate that is not a gate. The key has since been removed
+# from values.yaml, so re-reading it would now fail for the wrong reason.
+#
+# What is asserted instead is the RENDERED artifact: the chart emits nothing
+# that configures anonymous access, by either mechanism that exists - the
+# subchart's `anonymous.json` config object, and a call to the Nexus
+# anonymous-security REST endpoint from a script the chart ships. Both appear
+# together the moment `nexus3.config.enabled` is true, which is what makes this
+# check non-vacuous rather than a grep for something that can never occur.
+#
+# The offline gate cannot reach a live API, so it does NOT claim anonymous
+# access IS closed - only that this chart does not open it. Nexus's own default
+# closes it (measured on nexus3:3.96.0-ubi, fresh instance:
+# `GET /service/rest/v1/security/anonymous` returns `"enabled" : false`), and
+# ANONYMOUS-PULL-DENIED in scripts/nexus-live-smoke.sh measures the consequence
+# - an unauthenticated fetch returning 401 - against a live one.
+if ! anon_render=$(render --set repos.helm.remoteUrl=https://charts.jetstack.io --set eula.accepted=true); then
+  fail "ANONYMOUS-NOT-OPENED" "render failed while checking for anonymous-access configuration"
+else
+  if printf '%s\n' "$anon_render" | grep -q 'anonymous\.json'; then
+    fail "ANONYMOUS-NOT-OPENED" "the render emits an 'anonymous.json' configuration object - the chart is configuring anonymous access rather than leaving the Nexus default alone"
+  fi
+  if printf '%s\n' "$anon_render" | grep -q '/service/rest/v1/security/anonymous'; then
+    fail "ANONYMOUS-NOT-OPENED" "the render ships a call to /service/rest/v1/security/anonymous - the chart is setting anonymous access rather than leaving the Nexus default alone"
+  fi
 fi
 
 # ── 9. EULA-OPT-IN ───────────────────────────────────────────────────────────

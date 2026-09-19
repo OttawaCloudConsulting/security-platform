@@ -341,6 +341,37 @@ else
   fail "ARTIFACT-SIZE" "only ${tarball_bytes} bytes downloaded, expected > ${TARBALL_MIN_BYTES}; a ~192-byte body is the EULA refusal, not a tarball"
 fi
 
+# ── Anonymous pull must be DENIED ────────────────────────────────────────────
+# The claim "anonymous pull is deliberately NOT enabled" had nothing measuring
+# it. It rested on a values key (`nexus3.config.anonymous.enabled`) that the
+# subchart never reads while `config.enabled` is false — flipping that key
+# produced a byte-identical render. This is the check that makes the claim true
+# rather than merely stated.
+#
+# The same URL the authenticated request above just fetched with HTTP 200, now
+# with NO credentials at all. 401 is the whole assertion: a 200 here would mean
+# the repository is world-readable. Measured on a fresh nexus3:3.96.0-ubi with
+# this chart's own provisioning applied: HTTP 401, zero-byte body.
+#
+# Deliberately placed AFTER the authenticated download: by this point the EULA
+# is accepted and the repository is proven to serve a real 318,961-byte tarball
+# to an authenticated client, so a 401 here isolates AUTHORISATION rather than a
+# missing repository, an unaccepted licence or an upstream outage.
+#
+# No `-u` and no `-K -`: sending no credential is the point of the check.
+anon_code=""
+anon_rc=0
+anon_code="$(curl -sS -o "$OUT/anon-unauth.out" -w '%{http_code}' \
+  --connect-timeout 5 --max-time 60 "$TARBALL_URL")" || anon_rc=$?
+if [ "$anon_rc" -ne 0 ]; then
+  fail "ANONYMOUS-PULL-DENIED" "curl exited ${anon_rc} on the unauthenticated fetch of ${TARBALL_URL} (transport error, not an HTTP verdict)"
+elif [ "$anon_code" = "401" ]; then
+  pass "ANONYMOUS-PULL-DENIED" "unauthenticated GET of ${TARBALL_URL} returned HTTP 401 - anonymous pull is closed"
+else
+  fail "ANONYMOUS-PULL-DENIED" "unauthenticated GET of ${TARBALL_URL} returned HTTP ${anon_code}, expected 401; HTTP 200 would mean anonymous pull is OPEN, which this chart does not enable"
+fi
+echo
+
 echo "--- 6. kind install smoke ---"
 # SOFT tier, unlike the hard-tier preflight at the top: a workstation without a
 # local cluster toolchain must not hard-fail the docker half. The skip is named

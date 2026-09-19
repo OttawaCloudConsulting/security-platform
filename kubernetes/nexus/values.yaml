@@ -62,12 +62,26 @@ nexus3:
     # — a remote-code-execution surface Sonatype disabled by default for
     # cause, and which answers 410 on current Nexus anyway. This wrapper
     # provisions over the REST API instead (see the `provision` block).
+    #
+    # NOTE ON ANONYMOUS ACCESS — there is deliberately NO `anonymous:` key
+    # here any more. One used to sit under this block, asserting that
+    # anonymous access stays closed. It did nothing: the subchart reads
+    # `config.anonymous.*` only from inside `{{- if .Values.config.enabled }}`,
+    # and this pins that to `false`, so the key was inert — MEASURED, by
+    # rendering the chart with it flipped to `true` and diffing: byte-identical
+    # output. A value that changes nothing is worse than no value, because it
+    # reads like a control.
+    #
+    # Anonymous access is closed because NEXUS ships it closed, not because
+    # this chart closes it. Measured on `nexus3:3.96.0-ubi`, fresh instance,
+    # before any provisioning: `GET /service/rest/v1/security/anonymous`
+    # returns `{"enabled": false, "userId": "anonymous", ...}`, and an
+    # unauthenticated repository fetch returns HTTP 401. This chart leaves that
+    # default alone — `scripts/check-nexus-chart.sh` asserts the render ships
+    # no anonymous-access configuration at all, and
+    # `scripts/nexus-live-smoke.sh` asserts the 401 against a live instance.
+    # Opening read-only anonymous pull is NEXUS-02, a Phase 24 decision.
     enabled: false
-    anonymous:
-      # -- Anonymous access stays closed in this phase. Read-only anonymous
-      # pull is NEXUS-02, a Phase 24 decision to take deliberately — not
-      # something this chart opens by default.
-      enabled: false
 
 eula:
   # -- Accept the Sonatype Nexus Repository Community Edition licence
