@@ -153,6 +153,15 @@ render() {
 # how the chart's Job supplies it (secretKeyRef -> env). The smoke exercises the
 # same contract the cluster does.
 #
+# ANONYMOUS_ENABLED=false is DELIBERATE here and only here, not an oversight and
+# not the recommendation. provision.sh reads the three ANONYMOUS_* variables
+# unconditionally, so without them this smoke would die under `set -u` the
+# moment that script changed. `false` is the value that keeps the existing
+# ANONYMOUS-PULL-DENIED check below valid and PASSING, so the commit that opens
+# anonymous access chart-side leaves no red gate in git history. Plan 24-02 owns
+# the flip: it sets this to `true` and inverts ANONYMOUS-PULL-DENIED into
+# ANONYMOUS-PULL-ALLOWED in the same commit. Do not flip one without the other.
+#
 # SC2329 is disabled because this function IS invoked — indirectly, as the
 # command require_success runs through "$@", which shellcheck cannot follow.
 # shellcheck disable=SC2329
@@ -161,6 +170,9 @@ run_provision() {
   NEXUS_USER=admin \
   NEXUS_PASSWORD="$NEXUS_PASSWORD" \
   EULA_ACCEPTED=true \
+  ANONYMOUS_ENABLED=false \
+  ANONYMOUS_USER_ID=anonymous \
+  ANONYMOUS_REALM_NAME=NexusAuthorizingRealm \
   REPO_CONFIG_DIR="$OUT/config" \
     bash "$PROVISION_SH"
 }

@@ -14,6 +14,10 @@ set -euo pipefail
 # It reports EVERY failure rather than stopping at the first, so one run tells
 # you the whole story.
 #
+# It asserts 18 offline invariants. That count is a literal in three places
+# which must move together in one commit: this line, the `check-nexus-chart:
+# asserting ...` echo below, and CHECK_COUNT at the foot of the file.
+#
 # Exit codes — deliberately three, not two:
 #   0  every check passed
 #   1  at least one assertion failed  (a CHART defect — fix the chart)
@@ -35,7 +39,7 @@ set -euo pipefail
 #   - kubernetes/nexus/templates/job-provision.yaml  -> SKIP, exit 0
 # Both print a line beginning `SKIP:` so a vacuous pass is never mistaken for
 # a real one. The anti-vacuity guard lives in plan 23-06 T1, which asserts the
-# literal terminal line `PASS - 17 checks, 0 failures`. Do not add further
+# literal terminal line `PASS - 18 checks, 0 failures`. Do not add further
 # SKIP conditions, and do not "complete" this script by deleting these two.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -75,7 +79,7 @@ if ! compgen -G "${CHART_DIR}/charts/*.tgz" >/dev/null; then
   exit 2
 fi
 
-echo "check-nexus-chart: asserting 17 offline invariants against ${CHART_DIR}"
+echo "check-nexus-chart: asserting 18 offline invariants against ${CHART_DIR}"
 
 # The admin credential is a Kubernetes Secret NAME wired through
 # nexus3.rootPassword.secret; templates/job-provision.yaml wraps it in Helm's
@@ -168,38 +172,46 @@ elif [ "$(unquote "$cfg")" != "false" ]; then
   fail "CONFIG-DISABLED" "expected .nexus3.config.enabled == false in ${VALUES} (Groovy scripting API), got '${cfg}'"
 fi
 
-# ── 8. ANONYMOUS-NOT-OPENED ───────────────────────────────────────────────────
-# This check used to read `.nexus3.config.anonymous.enabled` back out of
-# values.yaml and assert it was `false`. That proved nothing. The subchart
-# consumes `config.anonymous.*` ONLY from inside `{{- if .Values.config.enabled
-# }}`, and this chart pins `config.enabled` to false, so the key was inert.
-# Measured: rendering with `--set nexus3.config.anonymous.enabled=true` produced
+# ── 8. ANONYMOUS-VALUE-PRESENT ───────────────────────────────────────────────
+# This slot used to assert the NEGATION of NEXUS-02 — that the chart shipped no
+# anonymous-access configuration at all — and before that it read
+# `.nexus3.config.anonymous.enabled` back out of values.yaml and asserted it was
+# `false`. That earlier form proved nothing. The subchart consumes
+# `config.anonymous.*` ONLY from inside `{{- if .Values.config.enabled }}`, and
+# this chart pins `config.enabled` to false, so the key was inert. Measured:
+# rendering with `--set nexus3.config.anonymous.enabled=true` produced
 # BYTE-IDENTICAL output. The check passed whatever the chart actually did, which
-# is the definition of a gate that is not a gate. The key has since been removed
-# from values.yaml, so re-reading it would now fail for the wrong reason.
+# is the definition of a gate that is not a gate.
 #
-# What is asserted instead is the RENDERED artifact: the chart emits nothing
-# that configures anonymous access, by either mechanism that exists - the
-# subchart's `anonymous.json` config object, and a call to the Nexus
-# anonymous-security REST endpoint from a script the chart ships. Both appear
-# together the moment `nexus3.config.enabled` is true, which is what makes this
-# check non-vacuous rather than a grep for something that can never occur.
+# That lesson is precisely why this replacement asserts WIRING rather than a
+# values key. NEXUS-02 gives the chart a real, consumer-facing top-level
+# `anonymous.enabled`, and the only way to show a value is not inert is to
+# TOGGLE it and watch the render change. So the model here is PASSTHROUGH-SIZE
+# (check 5), the repo's established "toggling this changes the render" proof —
+# not this check's own predecessor. Two renders, both read back from the
+# provisioning Job's environment, and the PAIR is the assertion: a single read
+# would pass just as happily against a hardcoded env entry.
 #
-# The offline gate cannot reach a live API, so it does NOT claim anonymous
-# access IS closed - only that this chart does not open it. Nexus's own default
-# closes it (measured on nexus3:3.96.0-ubi, fresh instance:
-# `GET /service/rest/v1/security/anonymous` returns `"enabled" : false`), and
-# ANONYMOUS-PULL-DENIED in scripts/nexus-live-smoke.sh measures the consequence
-# - an unauthenticated fetch returning 401 - against a live one.
-if ! anon_render=$(render --set repos.helm.remoteUrl=https://charts.jetstack.io --set eula.accepted=true); then
-  fail "ANONYMOUS-NOT-OPENED" "render failed while checking for anonymous-access configuration"
-else
-  if printf '%s\n' "$anon_render" | grep -q 'anonymous\.json'; then
-    fail "ANONYMOUS-NOT-OPENED" "the render emits an 'anonymous.json' configuration object - the chart is configuring anonymous access rather than leaving the Nexus default alone"
-  fi
-  if printf '%s\n' "$anon_render" | grep -q '/service/rest/v1/security/anonymous'; then
-    fail "ANONYMOUS-NOT-OPENED" "the render ships a call to /service/rest/v1/security/anonymous - the chart is setting anonymous access rather than leaving the Nexus default alone"
-  fi
+# The old negative assertion — a grep of the render for
+# `/service/rest/v1/security/anonymous` — is deliberately GONE rather than
+# weakened. configmap-provision-script.yaml embeds files/provision.sh into the
+# render, and provision.sh now calls that endpoint BY DESIGN, so the negative
+# would be red on a correct chart. The shipped posture is still asserted, in two
+# other places: ANONYMOUS-DEFAULT (check 18) reads the default out of
+# values.yaml, and scripts/nexus-live-smoke.sh measures the consequence against
+# a live instance.
+anon_env_path='select(.kind=="Job") | [.spec.template.spec.containers[]?, .spec.template.spec.initContainers[]?] | .[].env[]? | select(.name=="ANONYMOUS_ENABLED") | .value'
+
+if ! anon_on=$(render --set anonymous.enabled=true | yq "$anon_env_path"); then
+  fail "ANONYMOUS-VALUE-PRESENT" "render or yq FAILED reading the Job env ANONYMOUS_ENABLED with --set anonymous.enabled=true (a tooling/template error, not a wrong value)"
+elif [ "$(unquote "$anon_on")" != "true" ]; then
+  fail "ANONYMOUS-VALUE-PRESENT" "expected the Job env ANONYMOUS_ENABLED to be 'true' when anonymous.enabled=true, got '${anon_on}' (an empty value means the env entry is missing entirely)"
+fi
+
+if ! anon_off=$(render | yq "$anon_env_path"); then
+  fail "ANONYMOUS-VALUE-PRESENT" "render or yq FAILED reading the Job env ANONYMOUS_ENABLED on the default render (a tooling/template error, not a wrong value)"
+elif [ "$(unquote "$anon_off")" != "false" ]; then
+  fail "ANONYMOUS-VALUE-PRESENT" "expected the Job env ANONYMOUS_ENABLED to be 'false' on a DEFAULT render — the toggle has to change the render or the value is inert — got '${anon_off}' (an empty value means the env entry is missing entirely)"
 fi
 
 # ── 9. EULA-OPT-IN ───────────────────────────────────────────────────────────
@@ -357,8 +369,27 @@ elif [ "$(unquote "$short_job")" != "t-nexus-provision" ]; then
   fail "JOB-NAME-LENGTH" "expected release 't' to still render 't-nexus-provision' — truncation must bite only on long names — got '${short_job}'"
 fi
 
+# ── 18. ANONYMOUS-DEFAULT ────────────────────────────────────────────────────
+# T-24-04: the shipped anonymous posture is CLOSED, and it must not flip
+# silently. That is the locked decision in 24-CONTEXT.md (§Chart default for
+# anonymous access): `anonymous.enabled` ships OFF and the consumer opts in
+# explicitly, because a public chart must not open unauthenticated read for
+# anyone who installs it without reading values.yaml, and there is no TLS in
+# front of the instance until Phase 25.
+#
+# Read from values.yaml DIRECTLY rather than from the render, and deliberately
+# so: check 8 above proves the value is wired, this one proves what the chart
+# SHIPS, which is a source-level fact. Character-for-character analog of
+# EULA-OPT-IN (check 9), the repo's existing "a default must not silently flip"
+# check.
+if ! anon_default=$(yq '.anonymous.enabled' "$VALUES"); then
+  fail "ANONYMOUS-DEFAULT" "yq failed reading .anonymous.enabled from ${VALUES}"
+elif [ "$(unquote "$anon_default")" != "false" ]; then
+  fail "ANONYMOUS-DEFAULT" "expected .anonymous.enabled == false in ${VALUES} (the locked opt-in default, 24-CONTEXT.md), got '${anon_default}'"
+fi
+
 # ── Terminal summary ─────────────────────────────────────────────────────────
-CHECK_COUNT=17
+CHECK_COUNT=18
 
 if [ "${#FAILURES[@]}" -gt 0 ]; then
   for line in "${FAILURES[@]}"; do

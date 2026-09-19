@@ -144,6 +144,18 @@ spec:
             # and the offline gate reads it as one.
             - name: EULA_ACCEPTED
               value: {{ .Values.eula.accepted | quote }}
+            # Quoted for the same reason, and the quoting is load-bearing in one
+            # more place: the string-to-JSON-boolean conversion for `jq
+            # --argjson` happens inside provision.sh, NOT here. Do not "fix"
+            # this to a bare YAML bool — the offline gate's
+            # ANONYMOUS-VALUE-PRESENT check reads the rendered value back as a
+            # string, and provision.sh compares it as one.
+            - name: ANONYMOUS_ENABLED
+              value: {{ .Values.anonymous.enabled | quote }}
+            - name: ANONYMOUS_USER_ID
+              value: {{ .Values.anonymous.userId | quote }}
+            - name: ANONYMOUS_REALM_NAME
+              value: {{ .Values.anonymous.realmName | quote }}
           volumeMounts:
             - mountPath: /scripts
               name: scripts
