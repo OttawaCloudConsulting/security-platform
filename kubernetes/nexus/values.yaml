@@ -160,10 +160,18 @@ provision:
   activeDeadlineSeconds: 900
   readiness:
     # -- Readiness poll attempts against `/service/rest/v1/status/writable`.
+    # READ by the provisioning Job's readiness poll: this value reaches
+    # `files/provision.sh` as `READY_ATTEMPTS` through the Job env, and the
+    # script supplies no default for it.
     attempts: 60
-    # -- Seconds between readiness poll attempts. 60 x 10s = 10 minutes, which
+    # -- Seconds between readiness poll attempts, reaching `files/provision.sh`
+    # as `READY_INTERVAL` through the same env. 60 x 10s = 10 minutes, which
     # covers a cold Nexus first boot (measured at 1-3 minutes on homelab
-    # hardware) inside `activeDeadlineSeconds`.
+    # hardware) inside `activeDeadlineSeconds`. The PRODUCT of the two must stay
+    # inside `provision.activeDeadlineSeconds` above: that deadline is a hard
+    # wall-clock ceiling on the Job, so a larger poll budget does not buy more
+    # time — it means the Job is killed mid-poll instead of exiting 1 with the
+    # script's own "did not become writable" message.
     intervalSeconds: 10
   # -- Resources for the provisioning Job container. All four of
   # requests/limits x cpu/memory are set on purpose: the CI Checkov gate runs

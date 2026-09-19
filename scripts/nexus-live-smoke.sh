@@ -153,14 +153,22 @@ render() {
 # how the chart's Job supplies it (secretKeyRef -> env). The smoke exercises the
 # same contract the cluster does.
 #
-# ANONYMOUS_ENABLED=false is DELIBERATE here and only here, not an oversight and
-# not the recommendation. provision.sh reads the three ANONYMOUS_* variables
-# unconditionally, so without them this smoke would die under `set -u` the
-# moment that script changed. `false` is the value that keeps the existing
-# ANONYMOUS-PULL-DENIED check below valid and PASSING, so the commit that opens
-# anonymous access chart-side leaves no red gate in git history. Plan 24-02 owns
-# the flip: it sets this to `true` and inverts ANONYMOUS-PULL-DENIED into
-# ANONYMOUS-PULL-ALLOWED in the same commit. Do not flip one without the other.
+# The anonymous posture below is set to `true`, DELIBERATELY diverging from the
+# chart's own shipped default of `false` — the same deliberate divergence this
+# function already makes for the EULA. A public chart must not open
+# unauthenticated read for whoever installs it without reading values.yaml, and
+# a gate that never opens it cannot measure whether opening it works. The three
+# ANONYMOUS_* variables are read unconditionally by provision.sh, so omitting
+# them would kill this smoke under `set -u` rather than test anything.
+#
+# Setting it back to `false` is exactly reversion 1 of this file's non-vacuity
+# procedure: the three anonymous checks in section 5 must all go red with HTTP
+# 401. Do not leave it flipped.
+#
+# READY_ATTEMPTS and READY_INTERVAL match the chart defaults
+# (provision.readiness.attempts / intervalSeconds) on purpose: this smoke must
+# poll with the budget a real install polls with. provision.sh reads both from
+# the environment with NO default, so `set -u` kills this function without them.
 #
 # SC2329 is disabled because this function IS invoked — indirectly, as the
 # command require_success runs through "$@", which shellcheck cannot follow.
@@ -170,9 +178,11 @@ run_provision() {
   NEXUS_USER=admin \
   NEXUS_PASSWORD="$NEXUS_PASSWORD" \
   EULA_ACCEPTED=true \
-  ANONYMOUS_ENABLED=false \
+  ANONYMOUS_ENABLED=true \
   ANONYMOUS_USER_ID=anonymous \
   ANONYMOUS_REALM_NAME=NexusAuthorizingRealm \
+  READY_ATTEMPTS=60 \
+  READY_INTERVAL=10 \
   REPO_CONFIG_DIR="$OUT/config" \
     bash "$PROVISION_SH"
 }
@@ -370,17 +380,21 @@ else
   fail "ARTIFACT-SIZE" "only ${tarball_bytes} bytes downloaded, expected > ${TARBALL_MIN_BYTES}; a ~192-byte body is the EULA refusal, not a tarball"
 fi
 
-# ── Anonymous pull must be DENIED ────────────────────────────────────────────
-# The claim "anonymous pull is deliberately NOT enabled" had nothing measuring
-# it. It rested on a values key (`nexus3.config.anonymous.enabled`) that the
-# subchart never reads while `config.enabled` is false — flipping that key
-# produced a byte-identical render. This is the check that makes the claim true
-# rather than merely stated.
+# ── Anonymous pull must be ALLOWED (NEXUS-02) ────────────────────────────────
+# This slot used to assert the NEGATION of NEXUS-02 — that an unauthenticated
+# fetch of the tarball above came back 401. Read the fence before reading the
+# inversion: that check exists because Phase 23's own review found the claim
+# "anonymous pull is deliberately not enabled" had nothing measuring it. It
+# rested on a values key (`nexus3.config.anonymous.enabled`) that the subchart
+# never reads while `config.enabled` is false — flipping that key produced a
+# byte-identical render. The fence is not being removed here and its reason is
+# unchanged: the posture must be MEASURED, never merely stated. What changed is
+# that plan 24-01 gave the chart a value that genuinely reaches the server, and
+# plan 24-02 opens it, so the direction the measurement runs in flips with it.
 #
 # The same URL the authenticated request above just fetched with HTTP 200, now
-# with NO credentials at all. 401 is the whole assertion: a 200 here would mean
-# the repository is world-readable. Measured on a fresh nexus3:3.96.0-ubi with
-# this chart's own provisioning applied: HTTP 401, zero-byte body.
+# with NO credentials at all. HTTP 200 plus a real body is the assertion: a 401
+# here would mean the provisioning run failed to open anonymous read.
 #
 # Deliberately placed AFTER the authenticated download: by this point the EULA
 # is accepted and the repository is proven to serve a real 318,961-byte tarball
@@ -388,16 +402,149 @@ fi
 # missing repository, an unaccepted licence or an upstream outage.
 #
 # No `-u` and no `-K -`: sending no credential is the point of the check.
-anon_code=""
-anon_rc=0
-anon_code="$(curl -sS -o "$OUT/anon-unauth.out" -w '%{http_code}' \
-  --connect-timeout 5 --max-time 60 "$TARBALL_URL")" || anon_rc=$?
-if [ "$anon_rc" -ne 0 ]; then
-  fail "ANONYMOUS-PULL-DENIED" "curl exited ${anon_rc} on the unauthenticated fetch of ${TARBALL_URL} (transport error, not an HTTP verdict)"
-elif [ "$anon_code" = "401" ]; then
-  pass "ANONYMOUS-PULL-DENIED" "unauthenticated GET of ${TARBALL_URL} returned HTTP 401 - anonymous pull is closed"
+#
+# THREE verdicts per ecosystem, not one, copying section 5's split: a curl
+# transport error is a DIFFERENT failure from an HTTP verdict, and a status is
+# not a size. The size half is not decoration. A Nexus whose EULA is unaccepted
+# answers a component download with a perfectly well-formed HTTP 403 carrying a
+# ~192-byte body, and a closed anonymous posture answers 401 with a zero-byte
+# body; both sail straight past a bare status check, and a single if/elif chain
+# would stop at the status and never reach the size at all.
+#
+# SIZE THRESHOLDS — a judgement, and the rule that produced it. Each threshold
+# below was derived from the size MEASURED in the run that landed this commit,
+# under two rules:
+#   (1) at least ten times the 192-byte EULA refusal, so the floor genuinely
+#       discriminates a refusal (and a zero-byte 401) from real content; and
+#   (2) no more than HALF the measured size, so ordinary upstream drift — a new
+#       lodash release, a new project version on PyPI, a chart added to the
+#       jetstack index — cannot turn this gate red on its own.
+# Do not "tighten" any of them to the measured value: that converts a gate that
+# discriminates content from refusals into an upstream-content tripwire.
+
+# npm — measured 318,961 bytes at HTTP 200, unauthenticated; floor 100,000
+# (>= 1,920; <= 159,480). Same floor the authenticated ARTIFACT-SIZE check
+# above uses, against the same URL and the same measured size.
+ANON_NPM_MIN_BYTES=100000
+anon_npm_code=""
+anon_npm_rc=0
+anon_npm_code="$(curl -sS -o "$OUT/anon-npm.tgz" -w '%{http_code}' \
+  --connect-timeout 5 --max-time 60 "$TARBALL_URL")" || anon_npm_rc=$?
+
+if [ "$anon_npm_rc" -ne 0 ]; then
+  fail "ANONYMOUS-PULL-ALLOWED-TRANSPORT" "curl exited ${anon_npm_rc} on the unauthenticated fetch of ${TARBALL_URL} (transport error, not an HTTP verdict)"
 else
-  fail "ANONYMOUS-PULL-DENIED" "unauthenticated GET of ${TARBALL_URL} returned HTTP ${anon_code}, expected 401; HTTP 200 would mean anonymous pull is OPEN, which this chart does not enable"
+  pass "ANONYMOUS-PULL-ALLOWED-TRANSPORT" "unauthenticated curl completed against ${TARBALL_URL}"
+fi
+
+if [ "$anon_npm_code" = "200" ]; then
+  pass "ANONYMOUS-PULL-ALLOWED-HTTP-200" "unauthenticated GET of ${TARBALL_URL} returned HTTP 200 - anonymous pull is OPEN"
+else
+  fail "ANONYMOUS-PULL-ALLOWED-HTTP-200" "unauthenticated GET of ${TARBALL_URL} returned HTTP ${anon_npm_code}, expected 200; 401 means anonymous read was never opened, 403 means the EULA was never accepted"
+fi
+
+if [ -f "$OUT/anon-npm.tgz" ]; then
+  anon_npm_bytes="$(wc -c <"$OUT/anon-npm.tgz" | tr -d ' ')"
+else
+  anon_npm_bytes=0
+fi
+if [ "$anon_npm_bytes" -gt "$ANON_NPM_MIN_BYTES" ]; then
+  pass "ANONYMOUS-PULL-ALLOWED-SIZE" "${anon_npm_bytes} bytes pulled with no credential (> ${ANON_NPM_MIN_BYTES})"
+else
+  fail "ANONYMOUS-PULL-ALLOWED-SIZE" "only ${anon_npm_bytes} bytes pulled with no credential, expected > ${ANON_NPM_MIN_BYTES}; ~192 bytes is the EULA refusal body and 0 bytes is the 401 challenge, neither of which is a tarball"
+fi
+
+# PyPI — the PER-PROJECT simple page, which is what `pip download` actually
+# requests; the root /simple/ index is a different (and enormous) document and
+# proves nothing about serving a project. The trailing slash is load-bearing:
+# without it Nexus answers a redirect whose body is a few hundred bytes, which
+# would be measured instead of the page.
+# MEASURED BOUNDARY, recorded because it is counter-intuitive and because this
+# check's size floor does NOT discriminate the same thing the npm and Helm
+# floors do. With `eula.accepted=false`, the npm tarball and the Helm
+# index.yaml both come back HTTP 403 with a 192-byte refusal body — and this
+# simple page still comes back HTTP 200 with its full 76,776 bytes. The EULA
+# gate covers COMPONENT downloads; a PyPI simple page is METADATA, which Nexus
+# serves regardless. So the floor below earns its keep against the zero-byte
+# 401 challenge — observed, by disabling anonymous access — and NOT against a
+# licence refusal. Do not "fix" that by raising the floor: no byte count can
+# discriminate a state in which the server returns the correct content.
+#
+# Measured 76,776 bytes at HTTP 200 for `requests`; floor 20,000
+# (>= 1,920; <= 38,388). `requests` is the project because it is the one this
+# smoke can reach through the upstream proxy on every run and its simple page
+# is large enough for rule (2) to leave real headroom.
+ANON_PYPI_PROJECT="requests"
+ANON_PYPI_URL="${NEXUS_HOST}/repository/pypi-proxy/simple/${ANON_PYPI_PROJECT}/"
+ANON_PYPI_MIN_BYTES=20000
+anon_pypi_code=""
+anon_pypi_rc=0
+anon_pypi_code="$(curl -sS -o "$OUT/anon-pypi.html" -w '%{http_code}' \
+  --connect-timeout 5 --max-time 60 "$ANON_PYPI_URL")" || anon_pypi_rc=$?
+
+if [ "$anon_pypi_rc" -ne 0 ]; then
+  fail "ANONYMOUS-PULL-PYPI-TRANSPORT" "curl exited ${anon_pypi_rc} on the unauthenticated fetch of ${ANON_PYPI_URL} (transport error, not an HTTP verdict)"
+else
+  pass "ANONYMOUS-PULL-PYPI-TRANSPORT" "unauthenticated curl completed against ${ANON_PYPI_URL}"
+fi
+
+if [ "$anon_pypi_code" = "200" ]; then
+  pass "ANONYMOUS-PULL-PYPI-HTTP-200" "unauthenticated GET of the ${ANON_PYPI_PROJECT} simple page returned HTTP 200"
+else
+  fail "ANONYMOUS-PULL-PYPI-HTTP-200" "unauthenticated GET of ${ANON_PYPI_URL} returned HTTP ${anon_pypi_code}, expected 200; 401 means anonymous read was never opened, 403 means the EULA was never accepted"
+fi
+
+if [ -f "$OUT/anon-pypi.html" ]; then
+  anon_pypi_bytes="$(wc -c <"$OUT/anon-pypi.html" | tr -d ' ')"
+else
+  anon_pypi_bytes=0
+fi
+if [ "$anon_pypi_bytes" -gt "$ANON_PYPI_MIN_BYTES" ]; then
+  pass "ANONYMOUS-PULL-PYPI-SIZE" "${anon_pypi_bytes} bytes of simple index pulled with no credential (> ${ANON_PYPI_MIN_BYTES})"
+else
+  fail "ANONYMOUS-PULL-PYPI-SIZE" "only ${anon_pypi_bytes} bytes pulled with no credential, expected > ${ANON_PYPI_MIN_BYTES}; 0 bytes is the 401 challenge, and a few hundred bytes is a redirect body from a URL missing its trailing slash - neither is a simple index. A 192-byte EULA refusal is deliberately NOT named here: measured, this endpoint is not behind the EULA gate (see the comment above it)"
+fi
+
+# Helm — the chart repository index. helm-proxy exists in this smoke ONLY
+# because section 2 renders with `--set repos.helm.remoteUrl=...`; the chart
+# ships that value null on purpose (D-05). If that --set is ever dropped the
+# repository will not exist and this check MUST go red rather than skip — an
+# absent repository is exactly the condition an anonymous-read gate has to be
+# able to tell apart from a closed one, and 404 is not 200.
+# Measured 291,818 bytes at HTTP 200 against https://charts.jetstack.io; floor
+# 100,000 (>= 1,920; <= 145,909). Unlike the PyPI simple page above, this
+# document IS behind the EULA gate — measured: `eula.accepted=false` turns it
+# into the same HTTP 403 / 192-byte refusal an npm tarball gets. Nexus treats
+# the Helm index as a component, not as metadata, so the floor here really does
+# discriminate a refusal from content.
+ANON_HELM_URL="${NEXUS_HOST}/repository/helm-proxy/index.yaml"
+ANON_HELM_MIN_BYTES=100000
+anon_helm_code=""
+anon_helm_rc=0
+anon_helm_code="$(curl -sS -o "$OUT/anon-helm-index.yaml" -w '%{http_code}' \
+  --connect-timeout 5 --max-time 60 "$ANON_HELM_URL")" || anon_helm_rc=$?
+
+if [ "$anon_helm_rc" -ne 0 ]; then
+  fail "ANONYMOUS-PULL-HELM-TRANSPORT" "curl exited ${anon_helm_rc} on the unauthenticated fetch of ${ANON_HELM_URL} (transport error, not an HTTP verdict)"
+else
+  pass "ANONYMOUS-PULL-HELM-TRANSPORT" "unauthenticated curl completed against ${ANON_HELM_URL}"
+fi
+
+if [ "$anon_helm_code" = "200" ]; then
+  pass "ANONYMOUS-PULL-HELM-HTTP-200" "unauthenticated GET of ${ANON_HELM_URL} returned HTTP 200"
+else
+  fail "ANONYMOUS-PULL-HELM-HTTP-200" "unauthenticated GET of ${ANON_HELM_URL} returned HTTP ${anon_helm_code}, expected 200; 401 means anonymous read was never opened, 403 means the EULA was never accepted, 404 means the helm-proxy repository was never created"
+fi
+
+if [ -f "$OUT/anon-helm-index.yaml" ]; then
+  anon_helm_bytes="$(wc -c <"$OUT/anon-helm-index.yaml" | tr -d ' ')"
+else
+  anon_helm_bytes=0
+fi
+if [ "$anon_helm_bytes" -gt "$ANON_HELM_MIN_BYTES" ]; then
+  pass "ANONYMOUS-PULL-HELM-SIZE" "${anon_helm_bytes} bytes of chart index pulled with no credential (> ${ANON_HELM_MIN_BYTES})"
+else
+  fail "ANONYMOUS-PULL-HELM-SIZE" "only ${anon_helm_bytes} bytes pulled with no credential, expected > ${ANON_HELM_MIN_BYTES}; ~192 bytes is the EULA refusal body and 0 bytes is the 401 challenge, neither of which is a chart index"
 fi
 echo
 

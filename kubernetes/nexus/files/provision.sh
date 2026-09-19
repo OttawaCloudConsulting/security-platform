@@ -51,11 +51,18 @@ set -euo pipefail
 #   ANONYMOUS_REALM_NAME
 #                    the realm that resolves that user. The chart ships Nexus's
 #                    own default, "NexusAuthorizingRealm".
+#   READY_ATTEMPTS   readiness poll attempts against /status/writable. Supplied
+#                    by the consumer through provision.readiness.attempts; the
+#                    chart ships 60. No default here, on purpose — see the
+#                    readiness-bounds comment below.
+#   READY_INTERVAL   seconds slept between readiness attempts. Supplied by the
+#                    consumer through provision.readiness.intervalSeconds; the
+#                    chart ships 10.
 #   REPO_CONFIG_DIR  directory of repository body JSON files, default /config
 # An unset NEXUS_HOST, NEXUS_USER, NEXUS_PASSWORD, EULA_ACCEPTED,
-# ANONYMOUS_ENABLED, ANONYMOUS_USER_ID or ANONYMOUS_REALM_NAME is a hard
-# failure under `set -u`: a provisioner that guesses a missing input is how a
-# chart ends up silently talking to the wrong instance.
+# ANONYMOUS_ENABLED, ANONYMOUS_USER_ID, ANONYMOUS_REALM_NAME, READY_ATTEMPTS or
+# READY_INTERVAL is a hard failure under `set -u`: a provisioner that guesses a
+# missing input is how a chart ends up silently talking to the wrong instance.
 #
 # Repository body files are read in glob order. The zero-padded NNN- prefixes
 # in configmap-repos.yaml exist to make that order deterministic. The Nexus
@@ -99,8 +106,15 @@ REPO_CONFIG_DIR="${REPO_CONFIG_DIR:-/config}"
 # the run — the bound only works if each request is itself bounded. 600s of
 # sleeping is therefore the nominal budget, per-request time adds to it, and
 # the Job's activeDeadlineSeconds remains the one hard ceiling.
-READY_ATTEMPTS=60
-READY_INTERVAL=10
+#
+# Both numbers are now CONSUMER-SUPPLIED — READY_ATTEMPTS and READY_INTERVAL
+# arrive in the environment from provision.readiness.attempts and
+# provision.readiness.intervalSeconds, so the 60 x 10s arithmetic above
+# describes the chart's shipped defaults rather than a bound this script
+# enforces. Whatever a consumer sets, the Job's activeDeadlineSeconds remains
+# the one hard ceiling: a poll budget larger than it does not extend the run,
+# it just means the Job is killed mid-poll instead of failing with the FATAL
+# line below.
 
 TMP_DIR="$(mktemp -d /tmp/nexus-provision.XXXXXX)"
 trap 'rm -rf -- "${TMP_DIR}"' EXIT

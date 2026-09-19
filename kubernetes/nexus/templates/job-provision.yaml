@@ -156,6 +156,15 @@ spec:
               value: {{ .Values.anonymous.userId | quote }}
             - name: ANONYMOUS_REALM_NAME
               value: {{ .Values.anonymous.realmName | quote }}
+            # The readiness poll's budget. Quoted for the same reason as the
+            # entries above: provision.sh feeds READY_ATTEMPTS to `seq` and
+            # READY_INTERVAL to `sleep`, both of which take strings, and it
+            # supplies NO default for either — an env entry deleted here is a
+            # `set -u` hard failure in the Job, not a silent fallback to 60/10.
+            - name: READY_ATTEMPTS
+              value: {{ .Values.provision.readiness.attempts | quote }}
+            - name: READY_INTERVAL
+              value: {{ .Values.provision.readiness.intervalSeconds | quote }}
           volumeMounts:
             - mountPath: /scripts
               name: scripts
