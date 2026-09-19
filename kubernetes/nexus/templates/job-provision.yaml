@@ -19,6 +19,29 @@ and an empty Job set. ttlSecondsAfterFinished below is the reaper instead, and
 the surviving Job is what 23-06's kind smoke asserts on and what Phase 25 will
 read logs from.
 */}}
+
+{{/*
+UNCONDITIONAL admin-Secret guard — deliberately OUTSIDE the provision.enabled
+block below.
+
+This `required` used to sit on the Job's own secretKeyRef, which meant
+`--set provision.enabled=false` skipped it entirely: the chart rendered clean
+with NO admin Secret, and the subchart then took its own else-branch and set
+`NEXUS_SECURITY_RANDOMPASSWORD: "true"` (measured on the rendered StatefulSet).
+The result was a public chart that installs a Nexus whose admin password nobody
+holds — the exact outcome the guard exists to prevent, reachable by turning OFF
+an unrelated feature. 23-03 recorded this guard as "not cosmetic"; it now
+actually behaves that way.
+
+The assignment to `$_` is how a `required` is evaluated for its side effect
+without emitting anything into the manifest stream.
+
+The message text must keep naming `nexus3.rootPassword.secret` verbatim: the
+NO-DEFAULT-PASSWORD check in scripts/check-nexus-chart.sh asserts a bare render
+fails AND that the failure names that value, so a reworded message that no
+longer mentions it would turn that check red.
+*/}}
+{{- $_ := required "A Nexus admin password Secret is required. Create a Secret holding the admin password and name it in nexus3.rootPassword.secret (the key defaults to 'password'); this chart deliberately ships no default credential." .Values.nexus3.rootPassword.secret -}}
 {{- if .Values.provision.enabled }}
 {{- $img := .Values.provision.image }}
 apiVersion: batch/v1
