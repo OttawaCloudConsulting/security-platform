@@ -2,7 +2,7 @@
 
 **Researched:** 2026-09-19
 **Domain:** Nexus Repository 3 security/authorization REST API; per-repository package-manager client configuration (npm / pip / Helm / OCI)
-**Confidence:** HIGH for everything measured on a live Nexus 3.96.0 CE instance and on this workstation's own package-manager clients; MEDIUM for the one thing a Docker Desktop network boundary prevented measuring end to end (a real `docker pull` by the daemon).
+**Confidence:** HIGH for everything measured on a live Nexus 3.96.0 CE instance and on this workstation's own package-manager clients; MEDIUM for the one thing a Docker Desktop network boundary prevented measuring (a `docker pull` executed by the daemon itself — every HTTP leg of that pull was measured individually).
 
 ---
 
@@ -43,8 +43,8 @@ NEXUS-04's words "Docker/Helm registry config" should be read given that.
 
 | ID | Description (verbatim from REQUIREMENTS.md) | Research Support |
 |----|---------------------------------------------|------------------|
-| **NEXUS-02** | Proxy repos allow anonymous pull (no auth required for read/proxy access) | Measured end to end: the exact REST call, its body, its status code, its idempotency, the four resulting anonymous fetches with byte counts, and the full set of things anonymous is still refused. §Code Examples 1-3, §Security Domain. |
-| **NEXUS-04** | Workstation install script configures a target repo's package manager files (`.npmrc`, `pip.conf`, Docker/Helm registry config) to route through a given Nexus instance | Measured per-ecosystem: which config scopes exist, which are genuinely per-repo, the exact URL shape each client needs, and a real anonymous fetch through each. §Architecture Patterns, §Code Examples 4-7. Docker is the outlier — see Open Question 1. |
+| **NEXUS-02** | Proxy repos allow anonymous pull (no auth required for read/proxy access) | Measured end to end: the two REST calls required, their bodies, status codes and idempotency traps, the four resulting anonymous fetches with byte counts, the complete anonymous Docker client handshake, and the full set of things anonymous is still refused. §Code Examples 1-4, §Security Domain. |
+| **NEXUS-04** | Workstation install script configures a target repo's package manager files (`.npmrc`, `pip.conf`, Docker/Helm registry config) to route through a given Nexus instance | Measured per-ecosystem: which config scopes exist, which are genuinely per-repo, the exact URL shape each client needs, and a real anonymous fetch through each. §Architecture Patterns, §Code Examples 5-8. Docker is the outlier — see Open Question 1. |
 
 </phase_requirements>
 
@@ -59,10 +59,10 @@ planner must honour. Extracted:
 | `docs/adr/` records are **append-only** — add new files, do not modify accepted ones. | CLAUDE.md §Editing Guidelines | ADR-020 asserts anonymous access is deliberately not opened. It **must not be edited**. Phase 24 writes **ADR-021** and adds one index row. Next free number confirmed: ADR-020 is the last row in `docs/adr/README.md`. |
 | Preserve ASCII architecture diagrams, the 4-phase layered structure, tool coverage matrices. | CLAUDE.md §Editing Guidelines | Any edit to `docs/development-security-stack-option-1.md` keeps those intact. |
 | **Never set the executable bit on script files.** Always invoke with an explicit interpreter: `bash scripts/x.sh`. | rules/anti-slop §Script Safety | The new workstation script ships **non-executable** and is documented as `bash workstation/<name>.sh`. `kubernetes/nexus/files/provision.sh` already follows this — the ConfigMap supplies `defaultMode: 0555` in-cluster. |
-| Silent fallbacks (`\|\| true`, `try/except: pass`) convert hard failure into silent corruption. **Let it crash.** | rules/anti-slop §Error Handling | The new REST call in `provision.sh` gets the same hard-fail treatment as the EULA call: an unexpected status code exits 1. The workstation script must not `\|\| true` a failed verification fetch. |
+| Silent fallbacks (`\|\| true`, `try/except: pass`) convert hard failure into silent corruption. **Let it crash.** | rules/anti-slop §Error Handling | The new REST calls in `provision.sh` get the same hard-fail treatment as the EULA call: an unexpected status code exits 1. The workstation script must not `\|\| true` a failed verification fetch. |
 | Before changing anything, list what reads/writes/depends on it. "Nothing else uses this" is usually wrong. | rules/anti-slop §Second-Order Effects | §Runtime State Inventory is that list. Eight artefacts currently assert the opposite of NEXUS-02. |
 | **Chesterton's Fence** — articulate why a thing exists before removing or changing it. | rules/epistemology | `ANONYMOUS-NOT-OPENED` and `ANONYMOUS-PULL-DENIED` are not stale cruft; they were deliberately written in Phase 23 to make a claim measurable. They get **inverted**, not deleted. |
-| Evidence standards: state what was actually tested, never "all items show X" from a sample. | rules/anti-slop §Evidence Standards | Every status code and byte count in this document was observed in this session. The one thing that was not observed end to end is flagged in three places rather than smoothed over. |
+| Evidence standards: state what was actually tested, never "all items show X" from a sample. | rules/anti-slop §Evidence Standards | Every status code and byte count in this document was observed in this session. Where a first measurement was later shown to have skipped a leg of the real client protocol, the correction is recorded in the open rather than quietly replaced — see §State of the Art row 1. |
 
 ---
 
@@ -70,40 +70,48 @@ planner must honour. Extracted:
 
 Phase 24 has two halves that share exactly one thing — a URL — and almost nothing else.
 
-**The Nexus half is a one-call change with a large blast radius.** Enabling anonymous pull is a
-single idempotent `PUT /service/rest/v1/security/anonymous`, measured returning **HTTP 200** on
-both a first and a repeat call. After it, every one of the four proxy repositories serves real
-artefacts to a completely unauthenticated client — measured: a 318,961-byte npm tarball, a
-76,776-byte PyPI simple index, a 291,818-byte Helm `index.yaml`, and a full Docker pull sequence
-down to a 3,626,020-byte layer blob. Nothing else is required: contrary to the hand-off note
-Phase 23 left behind, activating the `DockerToken` realm made **no difference** to any Docker
-endpoint measured, and neither did flipping the repository's own `forceBasicAuth`. The work is not
-in the call. The work is that eight existing artefacts — two standing gate scripts, a values.yaml
-comment block, a chart README, an ADR, a requirements table, a roadmap row and a PR body — all
-currently assert that anonymous access is closed, several of them with prose written specifically
-to make that claim measurable. Two of those are **assertions that will go red** the moment the
-call lands. They must be inverted, and inverting them is most of the phase's real surface area.
+**The Nexus half is two REST calls with a large blast radius, not one.** Enabling anonymous pull is
+an idempotent `PUT /service/rest/v1/security/anonymous`, measured returning **HTTP 200** on both a
+first and a repeat call. After it, npm, PyPI and Helm serve real artefacts to a completely
+unauthenticated client — measured: a 318,961-byte npm tarball, a 76,776-byte PyPI simple index, a
+291,818-byte Helm `index.yaml`. **Docker needs a second call.** Phase 23's hand-off note that
+anonymous `docker pull` also requires activating the `DockerToken` realm is **correct, and this
+research initially contradicted it in error**: a first causal test fetched the Docker manifest with
+no `Authorization` header and saw 200 with the realm removed, which looked like proof the realm was
+unnecessary. It is not, because no Docker client ever makes that request. A real client pings
+`/v2/`, receives a 401 with a `Bearer` challenge, fetches a token, and **presents it**. Measured
+with the realm removed: token issuance still returns 200, and the manifest request carrying that
+token returns **401**. The same holds for an admin-issued token, so the realm governs bearer-token
+validation generally, not anonymity. Both calls are required, and the realms call carries two traps
+— a PUT replaces the entire list (omitting `NexusAuthenticatingRealm` locks out every user), and
+the API **stores duplicates** (a blind `. + ["DockerToken"]` in an idempotent hook Job grows the
+list on every upgrade; measured).
 
-**The workstation half is constrained by a fact about package managers that the requirement's
-wording does not anticipate.** "Per-repo config" means four different things across the four
-ecosystems, and for one of them it means *nothing at all*. npm is native — `.npmrc` at a project
-root is first-class "project" config, confirmed by `npm config list` naming it as such. pip has no
-project scope whatsoever — `pip config list -v` enumerates global, user and site paths and no
-cwd-relative path exists — so a repo-local `pip.conf` only takes effect through the
-`PIP_CONFIG_FILE` environment variable. Helm is the same shape: `helm repo add` writes a global
-`repositories.yaml` unless `HELM_REPOSITORY_CONFIG` redirects it, which it does, measured, with the
-operator's real global repo list left untouched. **Docker has no per-repository mechanism at all**:
-`registry-mirrors` and `insecure-registries` are daemon-global keys in `daemon.json`, and the only
-per-repo lever is rewriting image references. That is a verified property of the tooling, and it
-collides directly with the REQUIREMENTS.md row forbidding global workstation defaults.
+The rest of the Nexus half is that eight existing artefacts — two standing gate scripts, a
+values.yaml comment block, a chart README, an ADR, a requirements table, a roadmap row and a PR
+body — all currently assert that anonymous access is closed, several with prose written
+specifically to make that claim measurable. Two of them are **assertions that will go red** the
+moment the calls land. Inverting them is most of the phase's real surface area.
 
-**Primary recommendation:** ship a new wrapper-owned top-level `anonymous.enabled` value
-(**not** under `nexus3.config.*`, which Phase 23 measured to be inert), have `provision.sh` PUT it
-idempotently alongside the EULA step, invert the two gates in the same commit that lands the call,
-and write `workstation/nexus-setup.sh` that produces a repo-local `.npmrc` + `pip.conf` +
-`.helm/repositories.yaml` plus one sourceable `.nexus-env` file carrying `PIP_CONFIG_FILE`,
-`HELM_REPOSITORY_CONFIG` and a `NEXUS_DOCKER_REGISTRY` prefix — and that treats Docker as an
-explicitly documented partial, not as a silently missing feature.
+**The workstation half is constrained by a fact about package managers the requirement's wording
+does not anticipate.** "Per-repo config" means four different things across the four ecosystems,
+and for one it means *nothing at all*. npm is native — `.npmrc` at a project root is first-class
+"project" config, confirmed by `npm config list`. pip has no project scope whatsoever —
+`pip config list -v` enumerates global, user and site paths and no cwd-relative path exists — so a
+repo-local `pip.conf` only takes effect through `PIP_CONFIG_FILE`. Helm is the same shape:
+`helm repo add` writes a global `repositories.yaml` unless `HELM_REPOSITORY_CONFIG` redirects it,
+which it does, measured, with the operator's real global repo list left untouched. **Docker has no
+per-repository mechanism at all**: `registry-mirrors` and `insecure-registries` are daemon-global
+keys in `daemon.json`, and the only per-repo lever is rewriting image references — which collides
+directly with the REQUIREMENTS.md row forbidding global workstation defaults.
+
+**Primary recommendation:** ship a new wrapper-owned top-level `anonymous.enabled` value (**not**
+under `nexus3.config.*`, which Phase 23 measured to be inert); have `provision.sh` perform both the
+anonymous PUT and a guarded GET-then-append-if-absent realms PUT; invert the two gates in the same
+commit that lands the calls; and write `workstation/nexus-setup.sh` that produces a repo-local
+`.npmrc` + `pip.conf` + `.helm/repositories.yaml` plus one sourceable `.nexus-env` carrying
+`PIP_CONFIG_FILE`, `HELM_REPOSITORY_CONFIG` and a `NEXUS_DOCKER_REGISTRY` prefix — treating Docker
+as an explicitly documented partial, not a silently missing feature.
 
 ---
 
@@ -111,14 +119,14 @@ explicitly documented partial, not as a silently missing feature.
 
 | Capability | Primary Tier | Secondary Tier | Rationale |
 |------------|-------------|----------------|-----------|
-| Anonymous read enablement | **Nexus application state** (REST API) | Helm post-install hook Job | Not a manifest property. It survives in the PVC, not in the render. Phase 23 already established the hook Job as the only place this chart mutates application state; adding a second call there is an extension, not a new mechanism. |
+| Anonymous read enablement | **Nexus application state** (REST API) | Helm post-install hook Job | Not a manifest property. It survives in the PVC, not in the render. Phase 23 already established the hook Job as the only place this chart mutates application state; adding calls there is an extension, not a new mechanism. |
 | The `anonymous.enabled` **decision** | Helm values (wrapper-owned) | Chart README | A consumer of a public chart must be able to refuse anonymous access. Same shape as `eula.accepted`. |
 | Anonymous **authorization scope** (which repos) | Nexus roles/privileges | — | Governed by the built-in `nx-anonymous` role, which is `readOnly: true` and wildcards **all** repositories. Narrowing it means creating a new role, not editing that one. See §Security Domain. |
-| Docker bearer-token issuance | Nexus realms | — | Measured to be already sufficient without changing active realms on 3.96.0. |
+| **Docker bearer-token validation** | **Nexus active-realms list** (`DockerToken`) | Helm hook Job | **Required** — measured. Without it every bearer token, anonymous or admin-issued, is refused 401 on the manifest request, which is the request every Docker client makes. Basic auth is unaffected, which is why a curl-only test can miss it. |
 | npm registry routing | **Repo working tree** (`.npmrc`) | — | Genuinely per-repo; npm reads it as "project" config. |
 | PyPI index routing | Repo working tree (`pip.conf`) + **shell environment** (`PIP_CONFIG_FILE`) | venv-local `pip.conf` | pip has no project config scope. The env var is load-bearing, not convenience. |
 | Helm chart repo routing | Repo working tree (`.helm/repositories.yaml`) + **shell environment** (`HELM_REPOSITORY_CONFIG`) | — | Same shape as pip. The file must be written by `helm repo add`, not by hand. |
-| Docker registry routing | **Image references in source** (Dockerfile / compose) | Docker daemon (global, out of scope) | No per-repo config file exists. This is the tier mismatch that Open Question 1 exists to resolve. |
+| Docker registry routing (client side) | **Image references in source** (Dockerfile / compose) | Docker daemon (global, out of scope) | No per-repo config file exists. This is the tier mismatch Open Question 1 exists to resolve. |
 | Gate/assertion inversion | `security-platform/scripts/` | — | Both gates live beside the chart and are run by hand per Phase 23's convention. |
 | Decision record | **This repository** (`docs/adr/adr021-*.md`) | `docs/adr/README.md` index | ADR-020 is accepted and append-only. |
 
@@ -134,9 +142,9 @@ in `security-platform` or already on the operator's workstation.
 | Component | Version | Purpose | Why it is the standard here |
 |-----------|---------|---------|------------------------------|
 | Nexus Repository CE | 3.96.0 (resolved from `stevehipwell/nexus3` 5.26.0 `appVersion`) | The subject | Fixed by ADR-020; not a choice this phase reopens. [VERIFIED: rendered from `kubernetes/nexus` and booted this session] |
-| Nexus Security REST API v1 | `/service/rest/v1/security/anonymous` (`get`, `put`) | Anonymous enablement | The only non-deprecated mechanism. The Groovy scripting API answers **410** (Phase 23) and `nexus.scripts.allowCreation` stays off. [VERIFIED: `/service/rest/swagger.json` on the live instance lists exactly `get` and `put` for that path] |
-| `kubernetes/nexus/files/provision.sh` | in-repo | Where the new call goes | Already owns EULA acceptance and repo upsert; already has bounded `curl`, a `HTTP_CODE` global, and hard-fail semantics. Extending it costs ~15 lines. |
-| `bash` + `curl` + `jq` | `alpine/k8s:1.31.2` @ `sha256:d489e3c…` | Job runtime | Already pinned in `values.yaml`. |
+| Nexus Security REST API v1 | `/service/rest/v1/security/anonymous` (`get`, `put`) and `/service/rest/v1/security/realms/active` (`get`, `put`) | Anonymous enablement; Docker bearer-token realm | The only non-deprecated mechanism. The Groovy scripting API answers **410** (Phase 23) and `nexus.scripts.allowCreation` stays off. [VERIFIED: `/service/rest/swagger.json` on the live instance lists exactly those methods for those paths] |
+| `kubernetes/nexus/files/provision.sh` | in-repo | Where both new calls go | Already owns EULA acceptance and repo upsert; already has bounded `curl`, a `HTTP_CODE` global, and hard-fail semantics. Extending it costs ~30 lines. |
+| `bash` + `curl` + `jq` | `alpine/k8s:1.31.2` @ `sha256:d489e3c…` | Job runtime | Already pinned in `values.yaml`. `jq` is what makes the guarded realm append possible. |
 | `bash` (workstation) | 3.2+ / 5.x | Install script | `workstation/setup.sh` is bash and already the convention. |
 | `helm` CLI | 4.3.0 measured locally; any v3+ | Writes `repositories.yaml` | See §Don't Hand-Roll — the file format is Helm's, not ours. |
 | `npm` CLI | 11.7.0 measured | Merges `.npmrc` | `npm config set --location=project` merges non-destructively. See §Don't Hand-Roll. |
@@ -155,6 +163,8 @@ in `security-platform` or already on the operator's workstation.
 | Instead of | Could use | Tradeoff |
 |------------|-----------|----------|
 | `PUT /security/anonymous` from `provision.sh` | The subchart's own `config.anonymous.*` values | **Rejected on measured evidence.** Phase 23 rendered the chart with that key flipped and got byte-identical output — it is read only inside `{{- if .Values.config.enabled }}`, which this wrapper pins to `false`. Enabling `config.enabled` to reach it would turn the Groovy scripting API back on, which ADR-020 forbids. |
+| A guarded GET-then-append realms PUT | A literal `PUT ["NexusAuthenticatingRealm","DockerToken"]` | Shorter, and wrong twice over: it silently discards any realm a consumer added (LDAP, NpmToken, a future SSO realm), and it hardcodes an assumption about the pre-existing list. Both are one `helm upgrade` away from an outage. |
+| A guarded append | A blind `jq '. + ["DockerToken"]'` | **Rejected on measured evidence.** The API accepts and *stores* duplicates: PUT `["NexusAuthenticatingRealm","DockerToken","DockerToken"]` → 204, and the readback contains both. In a Job that reruns on every upgrade the list grows without bound. Guard with `if index("DockerToken") then . else . + ["DockerToken"] end`. |
 | Built-in `nx-anonymous` role as-is | A custom role scoped to the four proxy repos | The built-in role wildcards **all** repositories (`nx-repository-view-*-*-read`). A custom role is the correct long-term answer if hosted repos ever appear, but it is additional Nexus state this phase has no requirement for. Recommended as documented follow-up, not as scope. See Assumption A4. |
 | Repo-local `pip.conf` + `PIP_CONFIG_FILE` | `--index-url` line inside `requirements.txt` | The requirements-file form travels with the repo and needs no env var, but it hardcodes one operator's Nexus hostname into a committed dependency manifest and breaks every other consumer of that repo. Rejected. |
 | Repo-local `pip.conf` + `PIP_CONFIG_FILE` | A venv-local `<venv>/pip.conf` | Genuinely per-project and needs no env var, but requires a venv to exist and is destroyed by `rm -rf .venv`. Worth offering as a `--venv` mode; not the default. |
@@ -197,75 +207,117 @@ install task.
         ├──► pip.conf       [global] index-url=…/simple│  2. EULA  (opt-in)  → 204     │
         │                     (+ trusted-host if http  │  3. ANONYMOUS (NEW) → 200  ◄── NEXUS-02
         │                      and NOT loopback)       │     PUT /v1/security/anonymous│
-        │                                              │  4. upsert 4 proxy repos      │
-        ├──► .helm/repositories.yaml                   └──────────────┬───────────────┘
-        │      written by `helm repo add`, never by hand              │
-        │                                                            ▼
-        └──► .nexus-env   (must be `source`d)          ┌──────────────────────────────┐
-               export PIP_CONFIG_FILE=…/pip.conf       │      Nexus Repository CE      │
-               export HELM_REPOSITORY_CONFIG=…         │                               │
-               export HELM_REPOSITORY_CACHE=…          │  anonymous ──► nx-anonymous   │
-               export NEXUS_DOCKER_REGISTRY=host/docker-proxy    (read + browse, ALL)  │
-                        │                              │                               │
-                        │                              │  npm-proxy  pypi-proxy        │
-                        │                              │  docker-proxy  helm-proxy     │
-                        ▼                              └──────────────┬───────────────┘
-         Docker: NO per-repo config exists.                           │
-         Only lever = image reference prefix                          ▼  (cache miss)
-         FROM ${NEXUS_DOCKER_REGISTRY}/library/alpine     registry.npmjs.org · pypi.org
-         ──► see Open Question 1                         registry-1.docker.io · <helm remote>
+        │                                              │  4. REALMS   (NEW)  → 204  ◄── NEXUS-02
+        ├──► .helm/repositories.yaml                   │     GET, append DockerToken   │
+        │      written by `helm repo add`, never by hand│     IF ABSENT, PUT full list │
+        │                                              │  5. upsert 4 proxy repos      │
+        └──► .nexus-env   (must be `source`d)          └──────────────┬───────────────┘
+               export PIP_CONFIG_FILE=…/pip.conf                      │
+               export HELM_REPOSITORY_CONFIG=…         ┌──────────────▼───────────────┐
+               export HELM_REPOSITORY_CACHE=…          │      Nexus Repository CE      │
+               export NEXUS_DOCKER_REGISTRY=host/docker-proxy                          │
+                        │                              │  anonymous ──► nx-anonymous   │
+                        │                              │       (read + browse, ALL)    │
+                        ▼                              │  realms: NexusAuthenticating  │
+         Docker: NO per-repo config exists.            │        + DockerToken          │
+         Only lever = image reference prefix           │                               │
+         FROM ${NEXUS_DOCKER_REGISTRY}/library/alpine  │  npm-proxy  pypi-proxy        │
+         ──► see Open Question 1                       │  docker-proxy  helm-proxy     │
+                                                       └──────────────┬───────────────┘
+                                                                      │ (cache miss)
+                                                                      ▼
+                                                        registry.npmjs.org · pypi.org
+                                                        registry-1.docker.io · <helm remote>
 
  ── request shapes, all measured anonymous ──
    npm    GET  $NEXUS/repository/npm-proxy/lodash/-/lodash-4.17.21.tgz     200  318,961 B
    pypi   GET  $NEXUS/repository/pypi-proxy/simple/requests/               200   76,776 B
    helm   GET  $NEXUS/repository/helm-proxy/index.yaml                     200  291,818 B
-   docker HEAD $NEXUS/v2/docker-proxy/library/alpine/manifests/3.21        200    ⚠ NO /repository/
-          GET  $NEXUS/v2/docker-proxy/library/alpine/blobs/sha256:16333…   200 3,626,020 B
+   docker GET  $NEXUS/v2/                                     401 + Bearer challenge
+          GET  $NEXUS/repository/docker-proxy/v2/token        200  (48-char token)
+          GET  $NEXUS/v2/docker-proxy/…/manifests/3.21        200  (Bearer)  ⚠ NO /repository/
+          GET  $NEXUS/v2/docker-proxy/…/blobs/sha256:16333…   200  3,626,020 B
 ```
 
-### Pattern 1: Anonymous enablement is an idempotent PUT in the existing hook Job
+### Pattern 1: Both Nexus calls go in the existing hook Job, in order
 
-**What:** Add a fourth ordered step to `provision.sh`, between EULA acceptance and repository
-upsert, that PUTs the anonymous-access object.
+**What:** Add two ordered steps to `provision.sh`, between EULA acceptance and repository upsert.
 
-**When to use:** Always, when `anonymous.enabled` is set by the consumer.
+**When to use:** Whenever `anonymous.enabled` is set by the consumer.
 
-**Why between EULA and repo upsert:** anonymous read of a repository that does not exist yet is
-meaningless, and anonymous read with an unaccepted EULA is a 403 (see Pitfall 2). Ordering it
-before the upsert keeps the "state before content" shape the script already has.
+**Why before the upsert:** anonymous read of a repository that does not exist yet is meaningless,
+and anonymous read with an unaccepted EULA is a 403 (Pitfall 2). Ordering the security state before
+the content keeps the shape the script already has.
+
+**Step A — anonymous access.**
 
 ```bash
 # Source: measured against sonatype/nexus3:3.96.0-ubi this session.
 # Style matches kubernetes/nexus/files/provision.sh — HTTP_CODE global, hard fail, both branches log.
 
-if [ "${ANONYMOUS_ENABLED}" = "true" ] || [ "${ANONYMOUS_ENABLED}" = "false" ]; then
-  anon_body="${TMP_DIR}/anonymous.json"
-  # userId and realmName are echoed at Nexus's own defaults rather than invented:
-  # GET /service/rest/v1/security/anonymous on a fresh instance returns
-  #   {"enabled": false, "userId": "anonymous", "realmName": "NexusAuthorizingRealm"}
-  jq -n --argjson enabled "${ANONYMOUS_ENABLED}" \
-        --arg userId "${ANONYMOUS_USER_ID}" \
-        --arg realmName "${ANONYMOUS_REALM_NAME}" \
-        '{enabled: $enabled, userId: $userId, realmName: $realmName}' >"${anon_body}"
+anon_body="${TMP_DIR}/anonymous.json"
+# userId and realmName are echoed at Nexus's own defaults rather than invented:
+# GET /service/rest/v1/security/anonymous on a fresh instance returns
+#   {"enabled": false, "userId": "anonymous", "realmName": "NexusAuthorizingRealm"}
+jq -n --argjson enabled "${ANONYMOUS_ENABLED}" \
+      --arg userId "${ANONYMOUS_USER_ID}" \
+      --arg realmName "${ANONYMOUS_REALM_NAME}" \
+      '{enabled: $enabled, userId: $userId, realmName: $realmName}' >"${anon_body}"
 
-  http_status "${NEXUS_HOST}/service/rest/v1/security/anonymous" \
-    -X PUT -H 'Content-Type: application/json' -d "@${anon_body}"
+http_status "${NEXUS_HOST}/service/rest/v1/security/anonymous" \
+  -X PUT -H 'Content-Type: application/json' -d "@${anon_body}"
 
-  # 200, NOT 204. The endpoint echoes the resulting object back.
-  if [ "${HTTP_CODE}" != "200" ]; then
-    echo "FATAL: PUT /service/rest/v1/security/anonymous returned HTTP ${HTTP_CODE}, expected 200" >&2
+# 200, NOT 204. The endpoint echoes the resulting object back.
+if [ "${HTTP_CODE}" != "200" ]; then
+  echo "FATAL: PUT /service/rest/v1/security/anonymous returned HTTP ${HTTP_CODE}, expected 200" >&2
+  exit 1
+fi
+echo "anonymous: set enabled=${ANONYMOUS_ENABLED} (HTTP 200). Idempotent — a re-run returns 200 again."
+```
+
+**Step B — the `DockerToken` realm, appended only if absent.**
+
+```bash
+# WHY THIS EXISTS. Every Docker client pings /v2/, receives 401 with a Bearer challenge,
+# fetches a token, and PRESENTS it. Measured with DockerToken inactive: the token endpoint
+# still returns 200, and the manifest request carrying that token returns 401. Anonymous
+# pull therefore fails for a real client even though a header-less curl of the same URL
+# returns 200. The same 401 occurs for an ADMIN-issued token, so this realm governs bearer
+# validation generally — Basic auth is unaffected, which is exactly why a curl-only test
+# can miss it.
+#
+# TWO TRAPS, both measured:
+#   1. PUT REPLACES the entire list. A body omitting NexusAuthenticatingRealm locks every
+#      user out of the instance, admin included.
+#   2. The API STORES DUPLICATES. PUT ["NexusAuthenticatingRealm","DockerToken","DockerToken"]
+#      returns 204 and reads back with both. A blind `. + ["DockerToken"]` in a Job that
+#      reruns on every helm upgrade grows the list without bound.
+realms_cur="${TMP_DIR}/realms-current.json"
+realms_new="${TMP_DIR}/realms-new.json"
+
+http_body "${NEXUS_HOST}/service/rest/v1/security/realms/active" "${realms_cur}"
+if [ "${HTTP_CODE}" != "200" ]; then
+  echo "FATAL: GET /service/rest/v1/security/realms/active returned HTTP ${HTTP_CODE}, expected 200" >&2
+  exit 1
+fi
+
+jq -c 'if index("DockerToken") then . else . + ["DockerToken"] end' "${realms_cur}" >"${realms_new}"
+
+if cmp -s "${realms_cur}" "${realms_new}"; then
+  echo "realms: DockerToken already active — no change."
+else
+  http_status "${NEXUS_HOST}/service/rest/v1/security/realms/active" \
+    -X PUT -H 'Content-Type: application/json' -d "@${realms_new}"
+  if [ "${HTTP_CODE}" != "204" ]; then
+    echo "FATAL: PUT /service/rest/v1/security/realms/active returned HTTP ${HTTP_CODE}, expected 204" >&2
     exit 1
   fi
-  echo "anonymous: set enabled=${ANONYMOUS_ENABLED} (HTTP 200). Idempotent — a re-run returns 200 again."
-else
-  echo "FATAL: ANONYMOUS_ENABLED must be the string 'true' or 'false', got '${ANONYMOUS_ENABLED}'" >&2
-  exit 1
+  echo "realms: appended DockerToken (HTTP 204). Existing realms preserved."
 fi
 ```
 
-**Measured:** first PUT → `200` with the object echoed; immediate repeat PUT → `200`. The strict
-`true`/`false` guard mirrors how `EULA_ACCEPTED` is already handled and prevents a typo'd value
-silently taking the "leave it alone" branch.
+Note the asymmetry the planner must not smooth over: the anonymous PUT returns **200**, the realms
+PUT returns **204**. Both measured.
 
 ### Pattern 2: The value belongs in a wrapper-owned top-level block
 
@@ -283,7 +335,11 @@ anonymous:
   # One exception worth knowing before you set this: GET /service/rest/v1/repositories
   # returns 200 anonymously, disclosing the NAME, FORMAT, TYPE and URL of every
   # repository (not remote URLs, not credentials). See the chart README.
-  enabled: false
+  #
+  # Setting this true also appends the DockerToken realm to the active realms list
+  # (append-if-absent; existing realms are preserved). Without it, `docker pull`
+  # fails with 401 even though npm/pip/helm succeed. See the chart README.
+  enabled: true
   # -- Nexus user the anonymous identity maps to. Nexus's own default.
   userId: anonymous
   # -- Realm that resolves that user. Nexus's own default.
@@ -296,17 +352,18 @@ subchart only reads it inside `{{- if .Values.config.enabled }}` and this wrappe
 `false`. It was removed from `values.yaml` in commit `a9c4f38` precisely because a value that
 changes nothing reads like a control and is not one. **Do not put it back.**
 
-**Default value — recommendation and flag.** Recommend `enabled: true` as the shipped default, and
-flag it. The parallel with `eula.accepted: false` is tempting and, on reflection, wrong: the EULA
-default is `false` because accepting a licence agreement is a *legal act performed on the
+**Default value — recommendation and flag.** The block above ships `enabled: true`, which is the
+recommendation. The parallel with `eula.accepted: false` is tempting and, on reflection, wrong: the
+EULA default is `false` because accepting a licence agreement is a *legal act performed on the
 consumer's behalf*, which a chart must never do. Opening read-only anonymous pull is a *functional
 posture*, it is the literal text of NEXUS-02, and a chart whose headline requirement is off by
 default ships a requirement it does not meet. Against that: a public chart that opens
 unauthenticated read by default is a surprising default for anyone who installs it without reading
 `values.yaml`, and there is no TLS in front of it until Phase 25. **This is Assumption A1 — the
-single most important thing for discuss-phase to settle.**
+single most important thing for discuss-phase to settle.** If it flips to `false`, the YAML block
+above and the `ANONYMOUS-DEFAULT` gate check both change with it.
 
-### Pattern 3: Invert the two gates in the same commit as the call
+### Pattern 3: Invert the two gates in the same commit as the calls
 
 **What:** `ANONYMOUS-NOT-OPENED` (offline, check 8) and `ANONYMOUS-PULL-DENIED` (live) currently
 assert the negation of NEXUS-02. They must be rewritten, not deleted — Chesterton's fence: they
@@ -320,10 +377,14 @@ Suggested replacements, keeping Phase 23's naming and non-vacuity discipline:
 | `ANONYMOUS-NOT-OPENED` (render ships no anonymous config) | `ANONYMOUS-VALUE-PRESENT` | `yq '.anonymous.enabled'` is a real boolean in `values.yaml`, and the rendered Job env carries it — i.e. the value is *wired*, not inert. Toggling it must change the render. |
 | — (new) | `ANONYMOUS-DEFAULT` | The shipped default matches whatever A1 resolves to, so a silent flip is caught. |
 | `ANONYMOUS-PULL-DENIED` (unauth tarball → 401) | `ANONYMOUS-PULL-ALLOWED` | Unauth tarball → 200 **and** size > 300,000 bytes (a 403 EULA body is 192 bytes and would sail past a bare 200 check — Phase 23's own lesson). |
+| — (new) | `ANONYMOUS-PULL-DOCKER` | The **full client handshake**: ping → 401 + Bearer challenge → token → manifest **with the `Authorization: Bearer` header** → 200. A header-less manifest GET must not be accepted as evidence — that is the exact test that produced a wrong conclusion in this research. |
+| — (new) | `DOCKER-REALM-ACTIVE` | `GET /v1/security/realms/active` contains `DockerToken` **exactly once** after two consecutive provisioning passes. Catches both the missing realm and the duplicate-append bug. |
+| — (new) | `DOCKER-PATH-SHAPE` | `/v2/<repo>/…/manifests/<tag>` → 200 **and** `/v2/repository/<repo>/…` → 404. |
 | — (new) | `ANONYMOUS-WRITE-DENIED` | Unauth POST of a **fully valid** repository body → 403, and an admin GET of that repo name → 404. See Pitfall 5 for why the body must be valid. |
 
 Phase 23's convention requires proving a new check non-vacuous by reverting the fix and watching it
-go red. Apply it here.
+go red. Apply it here — `ANONYMOUS-PULL-DOCKER` in particular, by removing `DockerToken` and
+confirming it goes red (it will; measured).
 
 ### Pattern 4: Per-repo package-manager config has four different shapes
 
@@ -392,7 +453,11 @@ belongs in the chart README, the workstation script's help text, and a gate chec
 ### Anti-patterns to avoid
 
 - **Putting `anonymous` under `nexus3.config.*`.** Measured inert; deliberately removed in `a9c4f38`.
+- **A literal or blind realms PUT.** Replaces the list (lockout) or stores duplicates. Both measured.
 - **Deleting the two anonymous gate checks instead of inverting them.** They encode a lesson.
+- **Testing anonymous Docker access with a header-less `curl`.** Returns 200 even when a real client
+  would get 401. This mistake was made *in this research* and caught by review; do not repeat it in
+  a gate.
 - **Hand-writing `.helm/repositories.yaml`.** It is Helm's internal format, with a `generated`
   timestamp and per-entry fields. Shell out to `helm repo add`.
 - **Truncating an existing `.npmrc`.** A repo `.npmrc` may already carry `//registry/:_authToken`
@@ -410,6 +475,7 @@ belongs in the chart README, the workstation script's help text, and a gate chec
 | Problem | Don't build | Use instead | Why |
 |---------|-------------|-------------|-----|
 | Merging a `registry=` line into an existing `.npmrc` | A `sed`/`grep -v` rewrite | `npm config set registry=<url> --location=project` | **Measured non-destructive.** Starting from an `.npmrc` containing an auth-token line and `save-exact=true`, the command preserved both and appended the registry line. A hand-rolled rewrite that clobbers a developer's `_authToken` is a credential-loss bug with no error message. |
+| Appending to Nexus's active-realms list | `jq '. + ["DockerToken"]'` | `jq 'if index("DockerToken") then . else . + ["DockerToken"] end'` | **Measured:** the API stores duplicates (204, readback shows both). A hook Job that reruns on every upgrade would grow the list indefinitely. |
 | Writing Helm's `repositories.yaml` | A YAML heredoc | `HELM_REPOSITORY_CONFIG=… helm repo add <name> <url>` | The format is Helm's, includes a `generated` timestamp and per-entry cert/auth fields, and has changed across major versions. Measured working on Helm 4.3.0 with the global file untouched. |
 | Writing `pip.conf` | *(no alternative — you must write it)* | Write the INI by hand, but **do not** try to drive `pip config set` | **Measured:** `PIP_CONFIG_FILE=<file> pip3 config set global.index-url <url>` on pip 26.2.1 exits with `ERROR: Fatal Internal error [id=2]. Please report as a bug.` and writes nothing. pip's own writer has no "write to the env-var file" scope. A hand-written two-line INI is the correct answer here, and the clobber risk is low because a repo-root `pip.conf` is a file this script invents. |
 | Deciding whether plain HTTP needs `trusted-host` | Guessing, or always setting it | Branch on loopback | **Verified from pip's source** (`pip/_internal/network/session.py`): `SECURE_ORIGINS` is `[("https","*","*"), ("*","localhost","*"), ("*","127.0.0.0/8","*"), ("*","::1/128","*"), ("file","*",None), ("ssh","*","*")]`. So `http://` to a **non-loopback** host requires `trusted-host`; to loopback it does not. Measured both ways. Always setting `trusted-host` on an `https://` URL is a needless downgrade of a real check. |
@@ -417,10 +483,10 @@ belongs in the chart README, the workstation script's help text, and a gate chec
 | Idempotent config writes | Bespoke exists-checks | `workstation/setup.sh`'s `write_config()` (lines 522-534) | Skip-if-exists, counts what it created, logs under `--verbose`. Reuse it — a second convention in the same directory is churn. Add `--force` for deliberate overwrite. |
 | Polling Nexus for readiness | A new loop | `provision.sh`'s existing bounded poll on `/status/writable` | Already bounded, already hard-fails, already explains why `/status` is the wrong endpoint. |
 
-**Key insight:** every hand-rolled option in this table fails the same way — it silently damages a
-file the developer already had, or it produces a config that looks right and routes nowhere. Both
-are invisible until a build breaks days later. Each ecosystem's own CLI already knows how to merge
-its own config; the one that does not (pip) is also the one where hand-writing is safe.
+**Key insight:** every hand-rolled option in this table fails the same way — it silently damages
+state the operator already had, or it produces a config that looks right and routes nowhere. Both
+are invisible until a build breaks days later. Each tool's own CLI or API already knows how to
+merge its own state; the one that does not (pip) is also the one where hand-writing is safe.
 
 ---
 
@@ -430,11 +496,11 @@ This is a behaviour-flip phase, not a greenfield one. The grep-visible surface i
 state that asserts the old behaviour is not.
 
 | Category | Items found | Action required |
-|----------|-------------|-----------------|
-| **Stored data** | **Nexus application state**, persisted in the chart's PVC: the anonymous-access setting itself (`enabled: false` on every existing install), plus the `anonymous` user's role binding (`roles: ["nx-anonymous"]`) and the active realms list (`["NexusAuthenticatingRealm"]`). None of this is in git, none of it is in the render, and none of it changes when the chart is upgraded unless the hook Job changes it. | **Data migration via the hook Job.** The post-upgrade hook already fires on `helm upgrade`, so an existing install picks the change up. Phase 25 must confirm this on the homelab instance rather than assume it. |
-| **Live service config** | No live Nexus instance exists yet — NEXUS-05 / Phase 25 is the first deploy. The **private ArgoCD overlay repo** will carry the environment values (hostname, StorageClass, admin Secret name) and will need `anonymous.enabled` added if A1 resolves to a `false` default. | **None in this phase**, but the planner should record it as a Phase 25 input so the overlay is not written twice. |
+|----------|-------------|------------------|
+| **Stored data** | **Nexus application state**, persisted in the chart's PVC: the anonymous-access setting (`enabled: false` on every existing install), the **active-realms list** (`["NexusAuthenticatingRealm"]` — `DockerToken` absent), and the `anonymous` user's role binding (`roles: ["nx-anonymous"]`). None of this is in git, none is in the render, and none changes on upgrade unless the hook Job changes it. | **Data migration via the hook Job.** The post-upgrade hook already fires on `helm upgrade`, so an existing install picks both changes up. The realms append must be guarded (Pattern 1 Step B) or repeated upgrades corrupt the list. Phase 25 must confirm on the homelab instance rather than assume. |
+| **Live service config** | No live Nexus instance exists yet — NEXUS-05 / Phase 25 is the first deploy. The **private ArgoCD overlay repo** will carry environment values (hostname, StorageClass, admin Secret name) and will need `anonymous.enabled` added if A1 resolves to a `false` default. | **None in this phase**, but record it as a Phase 25 input so the overlay is not written twice. |
 | **OS-registered state** | None. No launchd/systemd/Task Scheduler registration exists for anything in this phase. Verified: `security-platform` contains no service-unit or plist files; the workstation script writes only into a repo working tree and a sourceable env file. | None. |
-| **Secrets / env vars** | The chart's admin Secret (`nexus3.rootPassword.secret`) is **unchanged** — anonymous read does not replace or weaken it, and `provision.sh` still authenticates as admin to make the anonymous call. The workstation script introduces **new** env var names (`PIP_CONFIG_FILE`, `HELM_REPOSITORY_CONFIG`, `HELM_REPOSITORY_CACHE`, `NEXUS_DOCKER_REGISTRY`); three of the four are names pip and Helm already define, so nothing is invented. | None to migrate. Document the four names. |
+| **Secrets / env vars** | The chart's admin Secret (`nexus3.rootPassword.secret`) is **unchanged** — anonymous read does not replace or weaken it, and `provision.sh` still authenticates as admin to make both calls. The workstation script introduces **new** env var names (`PIP_CONFIG_FILE`, `HELM_REPOSITORY_CONFIG`, `HELM_REPOSITORY_CACHE`, `NEXUS_DOCKER_REGISTRY`); three of four are names pip and Helm already define, so nothing is invented. `provision.sh`'s environment contract gains `ANONYMOUS_ENABLED`, `ANONYMOUS_USER_ID`, `ANONYMOUS_REALM_NAME` — which the live smoke's `run_provision()` must also set, or the smoke breaks under `set -u`. | None to migrate. Document the names; update `run_provision()` in the smoke. |
 | **Build artifacts** | None. No compiled artefact, no `egg-info`, no vendored tarball changes. `kubernetes/nexus/charts/nexus3-5.26.0.tgz` stays as-is (gitignored, rebuilt by `helm dependency build`). | None. |
 | **Assertions and prose that state the opposite** *(the real inventory for this phase)* | **Eight artefacts.** See table below. | Six edits, one new ADR, one historical record left alone. |
 
@@ -443,9 +509,9 @@ state that asserts the old behaviour is not.
 | # | Artefact | What it says today | Disposition |
 |---|----------|--------------------|-------------|
 | 1 | `security-platform/scripts/check-nexus-chart.sh` check 8 `ANONYMOUS-NOT-OPENED` (lines ~171-203) | **Fails** if the render emits an `anonymous.json` object or any call to `/service/rest/v1/security/anonymous` | **Will go red.** Invert — Pattern 3. |
-| 2 | `security-platform/scripts/nexus-live-smoke.sh` `ANONYMOUS-PULL-DENIED` | Asserts an unauthenticated tarball fetch returns **401** | **Will go red.** Invert — Pattern 3. |
+| 2 | `security-platform/scripts/nexus-live-smoke.sh` `ANONYMOUS-PULL-DENIED` | Asserts an unauthenticated tarball fetch returns **401** | **Will go red.** Invert — Pattern 3. Also update `run_provision()`'s env contract. |
 | 3 | `security-platform/kubernetes/nexus/values.yaml`, the `nexus3.config:` comment block | ~20 lines of prose: "Anonymous access is closed because NEXUS ships it closed… Opening read-only anonymous pull is NEXUS-02, a Phase 24 decision." | Rewrite. Keep the "`nexus3.config.anonymous.*` is inert, do not put it back" warning — that lesson stays true. |
-| 4 | `security-platform/kubernetes/nexus/README.md` | States reads require authentication (401), and lists `NEXUS-02 … — Planned (Phase 24)` | Rewrite the row and the section; add the four URL shapes and the Docker `/repository/` trap. |
+| 4 | `security-platform/kubernetes/nexus/README.md` | States reads require authentication (401), and lists `NEXUS-02 … — Planned (Phase 24)` | Rewrite the row and the section; add the four URL shapes, the Docker `/repository/` trap, and the DockerToken dependency. |
 | 5 | `docs/adr/adr020-nexus-chart-base-and-eula-opt-in.md` (this repo) | "Anonymous stays disabled in this phase"; §What was NOT verified item 2 (Docker pull never exercised) | **Do not edit — append-only.** Write **ADR-021**, which supersedes the anonymous stance and *closes* item 2 with Pattern 6's measurement. |
 | 6 | `docs/adr/README.md` (this repo) | Index ends at ADR-020 | Add one ADR-021 row. |
 | 7 | `.planning/REQUIREMENTS.md` | `- [ ] NEXUS-02`, `- [ ] NEXUS-04`; traceability rows "Phase 24 \| Pending" | Flip both on completion. |
@@ -466,7 +532,7 @@ survive any edit there.
 **What goes wrong:** the anonymous PUT lands, `check-nexus-chart.sh` reports a `FAIL` on
 `ANONYMOUS-NOT-OPENED`, and the natural reaction is to treat it as a regression.
 **Why:** Phase 23 wrote those checks deliberately to make the "closed" claim measurable.
-**How to avoid:** sequence the gate inversion into the **same plan** as the REST call, ideally the
+**How to avoid:** sequence the gate inversion into the **same plan** as the REST calls, ideally the
 same commit. A commit that lands the call and leaves the gate asserting its negation is a red gate
 in git history for no reason.
 **Warning sign:** a plan whose task list contains "add the anonymous call" with no matching
@@ -483,37 +549,54 @@ verification pass must treat a 403 with a small body as "EULA not accepted on th
 **Warning sign:** a "200 OK" assertion with no size check — the exact false-pass Phase 23's live
 smoke was built to catch.
 
-### Pitfall 3: `PUT /security/realms/active` replaces the entire list
+### Pitfall 3: `PUT /security/realms/active` replaces the whole list, and stores duplicates
 
-**What goes wrong:** appending a realm by PUTting `["DockerToken"]` **removes**
-`NexusAuthenticatingRealm` and locks every user, including admin, out of the instance.
-**Why:** the endpoint is a full replacement, not a patch. Measured: PUT `["NexusAuthenticatingRealm","DockerToken"]` → 204, readback exactly that list.
-**How to avoid:** **do not touch realms at all in this phase** — see Pitfall 4, it is unnecessary.
-If a later phase must, GET first and append with `jq '. + ["X"]'`.
-**Warning sign:** any literal realm array in a script that was not derived from a GET.
+**This phase must make that call, so this pitfall is load-bearing rather than hypothetical.**
 
-### Pitfall 4: Carrying forward Phase 23's "DockerToken is required" hand-off note unchecked
+**What goes wrong, two ways:**
+1. PUTting `["DockerToken"]` to "add" the realm **removes** `NexusAuthenticatingRealm` and locks
+   every user out of the instance, admin included. The endpoint is a full replacement, not a patch.
+2. PUTting a list that already contains `DockerToken` again **stores the duplicate**. Measured:
+   `["NexusAuthenticatingRealm","DockerToken","DockerToken"]` → 204, and the readback contains both.
+   In a hook Job that reruns on every `helm upgrade`, a blind `jq '. + ["DockerToken"]'` grows the
+   list without bound.
 
-**What goes wrong:** the plan adds a realms PUT that is not needed, taking on Pitfall 3's lockout
-risk for no benefit.
-**Why:** Phase 23's `23-RESEARCH.md` §Hand-off states, `[VERIFIED]`, that "anonymous `docker pull`
-will require activating `DockerToken`". That was inferred from the realm listing, not measured
-against an anonymous pull. **Measured this session and not reproduced:**
+**How to avoid:** GET first; append only if absent; PUT the full resulting list; skip the PUT
+entirely when nothing changed (Pattern 1 Step B). Never write a realm array literal.
+**Warning sign:** any literal realm array in a script, or a `jq '. + [...]'` with no `index()` guard.
 
-| Condition | `/v2/docker-proxy/…/manifests/3.21` (anon) | `/v2/` ping | token endpoint |
-|-----------|--------------------------------------------|-------------|----------------|
-| realms `["NexusAuthenticatingRealm","DockerToken"]` | **200** | 401 + Bearer challenge | 200 |
-| realms `["NexusAuthenticatingRealm"]` (DockerToken removed) | **200** | 401 + identical challenge | 200 |
-| `docker.forceBasicAuth: true` | **200** | — | — |
-| `docker.forceBasicAuth: false` (chart default) | **200** | — | — |
+### Pitfall 4: Proving anonymous Docker access with a header-less request
 
-**How to avoid:** do not add a realms call. Record the correction in ADR-021 so it is not
-rediscovered a third time.
-**Caveat, stated plainly:** these are HTTP-layer measurements. A `docker pull` executed by the
-daemon was **not** completed — Docker Desktop's VM cannot reach a host-published `127.0.0.1` port,
-and adding a non-loopback host to `insecure-registries` would have meant editing the operator's
-global `daemon.json`, which this phase's own scope forbids. The full client handshake therefore
-remains **MEDIUM**, and Phase 25's live validation against a real ingress is where it becomes HIGH.
+**This mistake was made during this research and caught in review. It is documented here so the
+planner does not repeat it in a gate.**
+
+**What goes wrong:** a test fetches `/v2/docker-proxy/library/alpine/manifests/3.21` with plain
+`curl` and no `Authorization` header, sees **200**, and concludes the `DockerToken` realm is
+unnecessary. A gate written that way passes with the realm removed, and then `docker pull` fails in
+Phase 25 against real infrastructure.
+**Why:** no Docker client ever makes that request. The client pings `/v2/`, gets 401 with a
+`Bearer realm=…` challenge, fetches a token, and **presents it on every subsequent request.** That
+presented token is what the realm validates.
+
+Measured, with `forceBasicAuth: false` (the chart's default) throughout:
+
+| Condition | ping `/v2/` | token endpoint | manifest, **no** header | manifest, **with** `Bearer` |
+|-----------|-------------|----------------|--------------------------|------------------------------|
+| realms `["NexusAuthenticatingRealm","DockerToken"]` | 401 + Bearer challenge | 200 (48-char token) | 200 | **200** |
+| realms `["NexusAuthenticatingRealm"]` | 401 + identical challenge | 200 (48-char token) | 200 | **401** |
+
+The realm is not about anonymity: an **admin-issued** token also returns 401 on the manifest with
+`DockerToken` inactive, while plain Basic auth returns 200. It governs bearer-token validation.
+**Phase 23's hand-off note was right.**
+
+**How to avoid:** the `ANONYMOUS-PULL-DOCKER` gate must perform the full handshake and send the
+`Authorization: Bearer` header, and `DOCKER-REALM-ACTIVE` must assert the realm is present exactly
+once. Prove both non-vacuous by removing the realm and watching them go red.
+**Caveat, stated plainly:** these are HTTP-layer measurements of every leg of the pull. A
+`docker pull` executed by the daemon was **not** completed — Docker Desktop's VM cannot reach a
+host-published `127.0.0.1` port, and adding a non-loopback host to `insecure-registries` would have
+meant editing the operator's global `daemon.json`, which this phase's own scope forbids. The
+end-to-end daemon pull remains **MEDIUM** and Phase 25 is where it becomes HIGH.
 
 ### Pitfall 5: "Anonymous write is denied" asserted with a malformed body passes for the wrong reason
 
@@ -524,8 +607,8 @@ the **same endpoint with a fully valid npm proxy body** → **403**, and an admi
 404 (nothing created).
 **How to avoid:** assert denial with a valid body and expect exactly 403, and confirm non-creation
 with an authenticated GET.
-**Warning sign:** an expected-status list of `400,401,403` — that is three different meanings
-collapsed into "not 201".
+**Warning sign:** an expected-status list of `400,401,403` — three different meanings collapsed
+into "not 201".
 
 ### Pitfall 6: The Docker reference gains a `/repository/` segment by analogy
 
@@ -548,15 +631,15 @@ contains no `/repository/`.
 
 ### Pitfall 8: `PIP_CONFIG_FILE` silently drops the developer's user-level pip config
 
-**What goes wrong:** sourcing `.nexus-env` makes an unrelated pip setting (a corporate CA bundle, a
+**What goes wrong:** sourcing `.nexus-env` makes an unrelated pip setting (a corporate CA bundle, an
 `--extra-index-url`) stop applying, in a shell the developer keeps using for other projects.
 **Why:** measured — with `PIP_CONFIG_FILE` set, `pip config list -v` no longer lists **either** user
 variant. The env file is not additive; it replaces user scope.
-**How to avoid:** say so in the generated `.nexus-env` header and in the script's `--help`; have
-the script read the developer's existing user `pip.conf` and warn if it contains keys the generated
-file does not carry. Recommend sourcing per-shell, never from `.bashrc`.
-**Warning sign:** documentation that tells the developer to add `source .nexus-env` to a shell rc
-file — that is precisely the "global workstation default" REQUIREMENTS.md puts out of scope.
+**How to avoid:** say so in the generated `.nexus-env` header and in `--help`; have the script read
+the developer's existing user `pip.conf` and warn if it contains keys the generated file does not
+carry. Recommend sourcing per-shell, never from `.bashrc`.
+**Warning sign:** documentation telling the developer to add `source .nexus-env` to a shell rc file
+— precisely the "global workstation default" REQUIREMENTS.md puts out of scope.
 
 ### Pitfall 9: Anonymous read is granted across **all** repositories, forever, including ones that do not exist yet
 
@@ -613,9 +696,12 @@ $ curl -sS -u admin:$PW "$NEXUS/service/rest/v1/security/roles/nx-anonymous"
 
 $ curl -sS -u admin:$PW "$NEXUS/service/rest/v1/security/users?userId=anonymous"
 {"userId":"anonymous", …, "roles":["nx-anonymous"], "externalRoles":[]}
+
+$ curl -sS -u admin:$PW "$NEXUS/service/rest/v1/security/realms/active"
+[ "NexusAuthenticatingRealm" ]                    # DockerToken absent by default
 ```
 
-### 2. Enable it — the whole of NEXUS-02's server-side change
+### 2. The two calls that constitute NEXUS-02's server-side change
 
 ```console
 $ curl -sS -u admin:$PW -X PUT -H 'Content-Type: application/json' \
@@ -623,9 +709,23 @@ $ curl -sS -u admin:$PW -X PUT -H 'Content-Type: application/json' \
     -w '\nHTTP %{http_code}\n' "$NEXUS/service/rest/v1/security/anonymous"
 { "enabled" : true, "userId" : "anonymous", "realmName" : "NexusAuthorizingRealm" }
 HTTP 200
+$ # repeat → HTTP 200 (idempotent)
 
-$ # idempotency — repeat
-repeat PUT HTTP 200
+$ CUR=$(curl -sS -u admin:$PW "$NEXUS/service/rest/v1/security/realms/active")
+$ NEW=$(echo "$CUR" | jq -c 'if index("DockerToken") then . else . + ["DockerToken"] end')
+$ curl -sS -u admin:$PW -X PUT -H 'Content-Type: application/json' -d "$NEW" \
+    -w 'HTTP %{http_code}\n' "$NEXUS/service/rest/v1/security/realms/active"
+HTTP 204
+$ curl -sS -u admin:$PW "$NEXUS/service/rest/v1/security/realms/active"
+[ "NexusAuthenticatingRealm", "DockerToken" ]
+
+$ # the trap the guard exists for:
+$ curl -sS -u admin:$PW -X PUT -H 'Content-Type: application/json' \
+    -d '["NexusAuthenticatingRealm","DockerToken","DockerToken"]' \
+    -w 'HTTP %{http_code}\n' "$NEXUS/service/rest/v1/security/realms/active"
+HTTP 204
+$ curl -sS -u admin:$PW "$NEXUS/service/rest/v1/security/realms/active"
+[ "NexusAuthenticatingRealm", "DockerToken", "DockerToken" ]     # duplicate STORED
 ```
 
 ### 3. Before and after, unauthenticated
@@ -636,8 +736,6 @@ GET /repository/npm-proxy/lodash/-/lodash-4.17.21.tgz   401    →   200  318,96
 GET /repository/npm-proxy/lodash                        401    →   200  249,667 B
 GET /repository/pypi-proxy/simple/requests/             401    →   200   76,776 B
 GET /repository/helm-proxy/index.yaml                   401    →   200  291,818 B
-HEAD /v2/docker-proxy/library/alpine/manifests/3.21       —    →   200
-GET  /v2/docker-proxy/library/alpine/blobs/sha256:16333…  —    →   200 3,626,020 B
 ```
 
 And what anonymous is still refused, after enabling:
@@ -661,7 +759,38 @@ The one anonymous 200 outside a repository path returns the inventory — `name`
 `remoteUrl`, credentials, or blob store detail. Bounded, but it is information disclosure and
 belongs in the README and in ADR-021's Consequences.
 
-### 4. npm — native project scope, non-destructive merge
+### 4. The complete anonymous Docker client handshake — the thing a gate must assert
+
+```console
+# 1. ping — the client always starts here
+$ curl -sS -o /dev/null -w '%{http_code}\n' "$NEXUS/v2/"
+401
+$ curl -sSI "$NEXUS/v2/" | grep -i www-authenticate
+WWW-Authenticate: Bearer realm="…/repository/docker-proxy/v2/token",service="…/repository/docker-proxy/v2/token"
+
+# 2. token — no credentials supplied
+$ TOK=$(curl -sS "$NEXUS/repository/docker-proxy/v2/token" | jq -r .token)   # 48 chars
+
+# 3. manifest index — WITH the bearer header
+$ curl -sS -H "Authorization: Bearer $TOK" \
+    -H 'Accept: application/vnd.oci.image.index.v1+json' \
+    "$NEXUS/v2/docker-proxy/library/alpine/manifests/3.21"            # 9,219 bytes
+# child = sha256:3c81aa9a3d770b316568f4499e30461a5cd3fbd7180bd89e28e34894c7845832
+
+# 4. child manifest → layer digest
+# layer = sha256:16333ee0c00fc65e025a2a4f839703ad37a74728832977fbdf080984de1b8e5a
+
+# 5. layer blob
+$ curl -sS -o /dev/null -w '%{http_code} size=%{size_download}\n' -L \
+    -H "Authorization: Bearer $TOK" \
+    "$NEXUS/v2/docker-proxy/library/alpine/blobs/$LAYER"
+200 size=3626020
+```
+
+With `DockerToken` removed from active realms, steps 1 and 2 are **identical** and step 3 returns
+**401**. That is the whole reason the second REST call exists.
+
+### 5. npm — native project scope, non-destructive merge
 
 ```console
 $ npm config set registry=http://NEXUS/repository/npm-proxy/ --location=project
@@ -673,10 +802,10 @@ $ npm pack lodash@4.17.21           # anonymous, through the proxy
 lodash-4.17.21.tgz                  # 318,961 bytes
 ```
 
-Merge proof — starting `.npmrc` contained an auth-token line and `save-exact=true`; after the
+Merge proof — the starting `.npmrc` contained an auth-token line and `save-exact=true`; after the
 command both survived and `registry=` was appended.
 
-### 5. pip — no project scope, so the env var is the mechanism
+### 6. pip — no project scope, so the env var is the mechanism
 
 ```console
 $ pip3 config list -v
@@ -700,7 +829,7 @@ $ PIP_CONFIG_FILE=repo/pip.conf pip3 download requests==2.32.3 --no-deps -d dl
 Saved ./dl/requests-2.32.3-py3-none-any.whl                  # anonymous, through the proxy
 ```
 
-### 6. Helm — env-redirected repo config, global list untouched
+### 7. Helm — env-redirected repo config, global list untouched
 
 ```console
 $ export HELM_REPOSITORY_CONFIG=repo/.helm/repositories.yaml
@@ -715,7 +844,7 @@ $ helm repo list --repository-config ~/Library/Preferences/helm/repositories.yam
 rook-release … longhorn … concourse … metrics-server …      # operator's real list, unchanged
 ```
 
-### 7. Docker — the reference shape, proven by a real client's own URL construction
+### 8. Docker — the reference shape, proven by a real client's own URL construction
 
 ```console
 $ docker buildx imagetools inspect NEXUS/docker-proxy/library/alpine:3.21
@@ -741,8 +870,8 @@ construction, which is precisely the fact being established.
 
 | Old understanding | Current, measured | When / where it changed | Impact |
 |-------------------|-------------------|--------------------------|--------|
-| Anonymous Docker pull requires activating the `DockerToken` realm | It does not, on 3.96.0 — removing `DockerToken` changed nothing on any endpoint measured | Phase 23 `23-RESEARCH.md` §Hand-off inferred it from the realm listing; measured directly this session | Drops a realms PUT from the plan and removes the Pitfall-3 lockout risk entirely |
-| Anonymous Docker pull requires `docker.forceBasicAuth: false` on the repository | Flipping it to `true` still returned 200 on the anonymous manifest | Sonatype's anonymous-access doc says "Docker pulls also require enabling a repository-level setting on each Docker repository", which did not reproduce here | The chart's existing `forceBasicAuth: false` is correct and should stay, but it is not the load-bearing control — do not document it as such |
+| Anonymous Docker pull requires activating the `DockerToken` realm (Phase 23 hand-off, `[VERIFIED]`) | **Confirmed, with the mechanism now precise:** the realm validates the **bearer token a client presents**. Without it, a presented token — anonymous or admin-issued — returns 401 on the manifest; Basic auth is unaffected. **This research first concluded the opposite and was wrong**: the initial causal test fetched the manifest with no `Authorization` header, a request no Docker client makes. Corrected on re-measurement. | Phase 23 inferred it from the realm listing; measured properly here after review | The realms call **is required**. Pitfall 3 becomes load-bearing, and the gate must send the `Bearer` header or it will pass with the realm removed |
+| Anonymous Docker pull requires `docker.forceBasicAuth: false` on the repository (Sonatype docs: "a repository-level setting on each Docker repository") | **Not reproduced on 3.96.0.** With `forceBasicAuth: true` the `/v2/` challenge is still `Bearer` (not `Basic`), the token still issues, and the manifest with that token still returns 200 | Measured this session, both header-less and full-handshake | The chart's existing `forceBasicAuth: false` is semantically correct and stays, but must **not** be documented as the control that makes anonymous pull work. Treat as a documented-vs-measured divergence, not a settled fact |
 | Path-routed Docker repos are reached at `HOST/repository/<repo>/<image>` | `HOST/<repo>/<image>` — no `/repository/` segment | Measured; closes ADR-020 §What was NOT verified item 2 | Changes the string the workstation script emits and the chart README documents |
 | `nexus3.config.anonymous.enabled` is the chart's anonymous control | Inert — byte-identical render when toggled | `security-platform` commit `a9c4f38` (Phase 23 post-review) | The new value must be top-level and wired through the Job env |
 | Sonatype publishes a Helm chart named `nexus3` | It does not | ADR-020 | Settled; not reopened |
@@ -758,14 +887,14 @@ construction, which is precisely the fact being established.
 
 | # | Claim | Section | Risk if wrong |
 |---|-------|---------|---------------|
-| **A1** | `anonymous.enabled` should default to **`true`** in the public chart | Pattern 2 | **Highest-value item for discuss-phase.** If wrong, a public chart opens unauthenticated read for anyone who installs it without reading `values.yaml`, with no TLS until Phase 25. If the recommendation is overturned, NEXUS-02 is satisfied by a documented one-value opt-in — the same shape as `eula.accepted` — and the gate check in Pattern 3 must assert `false` instead. |
-| **A2** | The workstation script belongs in `security-platform/workstation/` as a **new** script rather than a subcommand of the existing 878-line `setup.sh` | Standard Stack | Low. Separating concerns (security CLI tooling vs. package routing) seems right, but the user asked for "one command" ergonomics in v1.1; a `setup.sh nexus` subcommand is a defensible alternative. |
-| **A3** | Docker's `registry-mirrors` only mirrors Docker Hub and requires the mirror at the registry root, so a path-routed Nexus repo cannot serve as a daemon mirror | Pattern 4 / Open Question 1 | Medium. Not measured this session — editing the operator's global `daemon.json` was out of scope. If wrong, a global-mirror option becomes viable, but REQUIREMENTS.md still puts it out of scope. |
-| **A4** | Narrowing anonymous read to only the four proxy repositories (a custom role) is **out of scope** for this phase | Alternatives Considered / Pitfall 9 | Medium. If the user considers org-wide anonymous read unacceptable, a custom role + `PUT /v1/security/users/anonymous` becomes required scope and adds two REST calls plus state to `provision.sh`. |
-| **A5** | `deferred-items.md` items 2 (dead `provision.readiness.*` knobs) and 3 (Checkov zero coverage), both explicitly handed to Phase 24, are in scope for this phase | §Open Questions 2 and 3 | Medium. They are not in the phase goal and not in NEXUS-02/04. If deferred again they need an explicit disposition, not silence — ADR-020 already records them as open. |
-| **A6** | The post-upgrade hook Job firing on `helm upgrade` is sufficient to migrate an already-installed Nexus to `anonymous.enabled: true` | Runtime State Inventory | Low-medium. Consistent with how EULA acceptance and repo upsert already behave, but no `helm upgrade` against a pre-existing Nexus with data was performed this session. Phase 25 is the natural place to confirm. |
-| **A7** | Anonymous read is acceptable given the instance is reachable only inside the homelab network, with NetworkPolicy explicitly out of scope | Security Domain | Medium. Depends entirely on the operator's ingress posture, which is a Phase 25 artefact in a private repo this research cannot see. |
-| **A8** | A real `docker pull` through the path-routed proxy will succeed, given that every HTTP request in the pull sequence was measured returning 200 anonymously | Pitfall 4 / Pattern 6 | Medium. The daemon's own handshake (ping → token → manifest → blob) was reconstructed and each leg measured, but not executed by the daemon. Phase 25 closes it. |
+| **A1** | `anonymous.enabled` should default to **`true`** in the public chart | Pattern 2 | **Highest-value item for discuss-phase.** If wrong, a public chart opens unauthenticated read for anyone who installs it without reading `values.yaml`, with no TLS until Phase 25. If overturned, NEXUS-02 is satisfied by a documented one-value opt-in — the same shape as `eula.accepted` — and the `ANONYMOUS-DEFAULT` gate must assert `false` instead. |
+| **A2** | The workstation script belongs in `security-platform/workstation/` as a **new** script rather than a subcommand of the existing 878-line `setup.sh` | Standard Stack | Low. Separating concerns (security CLI tooling vs. package routing) seems right, but v1.1 valued "one command" ergonomics; a `setup.sh nexus` subcommand is defensible. |
+| **A3** | Docker's `registry-mirrors` only mirrors Docker Hub and requires the mirror at the registry root, so a path-routed Nexus repo cannot serve as a daemon mirror | Pattern 4 / Open Question 1 | Medium. Not measured — editing the operator's global `daemon.json` was out of scope. If wrong, a global-mirror option becomes viable, but REQUIREMENTS.md still puts it out of scope. |
+| **A4** | Narrowing anonymous read to only the four proxy repositories (a custom role) is **out of scope** for this phase | Alternatives Considered / Pitfall 9 | Medium. If the user considers org-wide anonymous read unacceptable, a custom role + `PUT /v1/security/users/anonymous` becomes required scope and adds two more REST calls plus state to `provision.sh`. |
+| **A5** | `deferred-items.md` items 2 (dead `provision.readiness.*` knobs) and 3 (Checkov zero coverage), both explicitly handed to Phase 24, are in scope | §Open Questions 2 and 3 | Medium. Not in the phase goal and not in NEXUS-02/04. If deferred again they need an explicit disposition, not silence — ADR-020 already records them as open. |
+| **A6** | The post-upgrade hook Job firing on `helm upgrade` is sufficient to migrate an already-installed Nexus to `anonymous.enabled: true` **and** to append the realm | Runtime State Inventory | Low-medium. Consistent with how EULA acceptance and repo upsert already behave, but no `helm upgrade` against a pre-existing Nexus with data was performed this session. Phase 25 confirms. |
+| **A7** | Anonymous read is acceptable given the instance is reachable only inside the homelab network, with NetworkPolicy explicitly out of scope | Security Domain | Medium. Depends on the operator's ingress posture, which is a Phase 25 artefact in a private repo this research cannot see. |
+| **A8** | A `docker pull` executed by the daemon will succeed, given that **every leg of the pull handshake** — ping, token issuance, manifest index with bearer, child manifest, and a 3.6 MB layer blob — was measured returning the expected status anonymously with `DockerToken` active | Pitfall 4 / Code Example 4 | Medium, and lower than it was before the handshake was measured properly. Residual risk is daemon-specific behaviour (TLS/insecure-registry handling against a real hostname), which is exactly what Phase 25 exercises. |
 
 ---
 
@@ -778,24 +907,24 @@ construction, which is precisely the fact being established.
      Nexus outside the per-repo config."
    - *What's unclear:* whether the requirement intends (a) the script emits a
      `NEXUS_DOCKER_REGISTRY` prefix plus documentation for rewriting image references, treating
-     Docker as a documented partial; (b) the script offers an opt-in `--docker-daemon` flag that
-     edits `daemon.json`, accepting that it contradicts the Out of Scope row; or (c) Docker is
-     descoped from NEXUS-04 with a note.
-   - *Recommendation:* **(a).** It is the only reading that satisfies both the requirement's word
-     "configures" and the Out of Scope row, and it keeps the script from ever touching a global file
-     on the operator's machine. Surface this to the user before planning.
+     Docker as a documented partial; (b) an opt-in `--docker-daemon` flag that edits `daemon.json`,
+     accepting that it contradicts the Out of Scope row; or (c) Docker is descoped from NEXUS-04
+     with a note.
+   - *Recommendation:* **(a).** The only reading that satisfies both the requirement's word
+     "configures" and the Out of Scope row, and it keeps the script from touching a global file on
+     the operator's machine. Surface to the user before planning.
 
 2. **Disposition of `provision.readiness.attempts` / `intervalSeconds` (deferred item 2).**
    - *What we know:* both are in `values.yaml` with helm-docs annotations and honest "not read"
      README prose; `provision.sh` hardcodes `READY_ATTEMPTS=60` / `READY_INTERVAL=10`. ADR-020
-     records it as item 5 of §What was NOT verified, and `deferred-items.md` says "Phase 24 owns
-     the choice."
+     records it as item 5 of §What was NOT verified; `deferred-items.md` says "Phase 24 owns the
+     choice."
    - *What's unclear:* wire them through, or delete them.
    - *Recommendation:* **wire them through.** This phase is already editing `provision.sh`'s
-     environment contract to add `ANONYMOUS_*`, editing `job-provision.yaml`'s env block, and
-     editing the live smoke's env contract — the three files that would need touching anyway. The
-     marginal cost is ~6 lines; deletion costs a README table edit and leaves a consumer-visible
-     knob gone. Confirm with the user, since it is scope beyond NEXUS-02/04.
+     environment contract to add three `ANONYMOUS_*` variables, editing `job-provision.yaml`'s env
+     block, and editing the live smoke's `run_provision()` — the three files that would need
+     touching anyway. Marginal cost ~6 lines; deletion costs a README table edit and removes a
+     consumer-visible knob. Confirm with the user, since it is scope beyond NEXUS-02/04.
 
 3. **Disposition of Checkov's zero coverage of `kubernetes/nexus` (deferred item 3).**
    - *What we know:* measured in Phase 23 — the pinned `ghcr.io/bridgecrewio/checkov:3.3.17`
@@ -805,10 +934,10 @@ construction, which is precisely the fact being established.
      weakening the guard to obtain coverage.
    - *What's unclear:* accept the blind spot with the latent set documented; feed the scanner a
      values file naming a dummy Secret; or commit a rendered manifest.
-   - *Recommendation:* **accept and document**, for this phase. Both alternatives create a
-     second artefact that drifts from the real one by construction, and this phase adds no new
-     Kubernetes resources — it adds env vars to an existing Job. Revisit when Phase 26 adds a second
-     chart and the blind spot doubles.
+   - *Recommendation:* **accept and document**, for this phase. Both alternatives create a second
+     artefact that drifts from the real one by construction, and this phase adds no new Kubernetes
+     resources — it adds env vars to an existing Job. Revisit when Phase 26 adds a second chart and
+     the blind spot doubles.
 
 4. **Does the private ArgoCD overlay need `anonymous.enabled` set explicitly?**
    - *What we know:* the overlay repo is not visible from here; Phase 25 is the first live deploy.
@@ -817,8 +946,8 @@ construction, which is precisely the fact being established.
 
 5. **Should the generated `.npmrc` / `pip.conf` / `.helm/` / `.nexus-env` be gitignored?**
    - *What we know:* they contain an internal hostname, no credentials.
-   - *What's unclear:* committing them makes the routing reproducible for anyone with network reach
-     to the homelab and breaks every other consumer of the repo; gitignoring means each developer
+   - *What's unclear:* committing them makes routing reproducible for anyone with network reach to
+     the homelab, and breaks every other consumer of the repo; gitignoring means each developer
      re-runs the script.
    - *Recommendation:* **gitignore by default**, with a `--commit-config` escape hatch. A committed
      `.npmrc` pointing at one operator's Nexus is a dependency-resolution failure for every
@@ -836,7 +965,7 @@ construction, which is precisely the fact being established.
 | `helm` | Chart render, gates, `helm repo add` | ✓ | **4.3.0** | — |
 | `npm` | `.npmrc` merge + verification fetch | ✓ | 11.7.0 | — |
 | `pip3` | `pip.conf` verification fetch | ✓ | 26.2.1 (Python 3.12.0, pyenv) | — |
-| `jq` | REST bodies in `provision.sh` and gates | ✓ | 1.8.2 | — |
+| `jq` | REST bodies and the guarded realm append | ✓ | 1.8.2 | — |
 | `yq` | Chart-value assertions in gates | ✓ | 4.53.6 | — |
 | `curl` | Every HTTP assertion | ✓ | 8.7.1 | — |
 | `shellcheck` | Lint the new script | ✓ | present | — |
@@ -882,10 +1011,12 @@ prints `NOTHING RAN`, not `ALL PASS`, and a SKIP is never counted as a pass.
 | NEXUS-02 | Shipped default matches the A1 decision | offline gate | same → `ANONYMOUS-DEFAULT` | ❌ Wave 0 |
 | NEXUS-02 | Unauthenticated npm tarball → 200 **and** > 300,000 bytes | live gate | `bash scripts/nexus-live-smoke.sh` → `ANONYMOUS-PULL-ALLOWED` | ❌ Wave 0 — **replaces** `ANONYMOUS-PULL-DENIED` |
 | NEXUS-02 | Unauthenticated PyPI simple index and Helm `index.yaml` → 200 with non-trivial size | live gate | same → `ANONYMOUS-PULL-PYPI`, `ANONYMOUS-PULL-HELM` | ❌ Wave 0 |
-| NEXUS-02 | Unauthenticated Docker manifest at `/v2/<repo>/…` → 200; at `/v2/repository/<repo>/…` → 404 | live gate | same → `ANONYMOUS-PULL-DOCKER`, `DOCKER-PATH-SHAPE` | ❌ Wave 0 |
+| NEXUS-02 | **Full Docker handshake**: ping 401 + Bearer challenge → token → manifest **with `Authorization: Bearer`** → 200 → layer blob → 200 | live gate | same → `ANONYMOUS-PULL-DOCKER` | ❌ Wave 0 — must send the header; a header-less GET is not evidence |
+| NEXUS-02 | `DockerToken` appears in active realms **exactly once** after two consecutive provisioning passes | live gate | same → `DOCKER-REALM-ACTIVE` | ❌ Wave 0 — catches both the missing realm and the duplicate-append bug |
+| NEXUS-02 | `/v2/<repo>/…` → 200 and `/v2/repository/<repo>/…` → 404 | live gate | same → `DOCKER-PATH-SHAPE` | ❌ Wave 0 |
 | NEXUS-02 | Anonymous **write** denied: valid-body POST → 403 **and** admin GET of the name → 404 | live gate | same → `ANONYMOUS-WRITE-DENIED` | ❌ Wave 0 |
-| NEXUS-02 | The PUT is idempotent — two consecutive provisioning runs both exit 0 | live gate | already covered by the existing two-pass `run_provision` | ✅ extend only |
-| NEXUS-04 | Script writes `.npmrc` and `npm config get registry` returns the Nexus URL | script self-verify + gate | `bash workstation/nexus-setup.sh --url … --verify` | ❌ Wave 0 |
+| NEXUS-02 | Both new calls are idempotent — two consecutive provisioning runs both exit 0 | live gate | existing two-pass `run_provision` | ✅ extend only (add the three `ANONYMOUS_*` env vars to `run_provision()`) |
+| NEXUS-04 | Script writes `.npmrc` and `npm config get registry` returns the Nexus URL | script self-verify | `bash workstation/nexus-setup.sh --url … --verify` | ❌ Wave 0 |
 | NEXUS-04 | Script writes `pip.conf`; `PIP_CONFIG_FILE=… pip config get global.index-url` returns it | same | same | ❌ Wave 0 |
 | NEXUS-04 | Script writes `.helm/repositories.yaml` via `helm repo add`; `helm repo list` shows it and the **global** file is unchanged | same | same | ❌ Wave 0 |
 | NEXUS-04 | Emitted `NEXUS_DOCKER_REGISTRY` contains **no** `/repository/` segment | offline gate | `scripts/check-nexus-chart.sh` or a new `scripts/check-nexus-setup.sh` → `DOCKER-PREFIX-SHAPE` | ❌ Wave 0 |
@@ -897,14 +1028,16 @@ prints `NOTHING RAN`, not `ALL PASS`, and a SKIP is never counted as a pass.
 - **Per task commit:** `bash scripts/check-nexus-chart.sh` (offline, seconds) + `pre-commit run --files <changed>`
 - **Per wave merge:** full offline gate + `bash scripts/nexus-live-smoke.sh` docker half
 - **Phase gate:** both gates green, `ALL PASS`, zero SKIPPED, **and** each newly added check proven
-  non-vacuous by reverting its subject and observing red — the convention Phase 23 established and
-  used to catch its own inert anonymous key.
+  non-vacuous by reverting its subject and observing red. For `ANONYMOUS-PULL-DOCKER` and
+  `DOCKER-REALM-ACTIVE` the revert is "remove `DockerToken` from active realms" — measured to
+  produce 401 on the bearer-authenticated manifest, so both will go red.
 
 ### Wave 0 gaps
 
 - [ ] Rewrite `scripts/check-nexus-chart.sh` check 8 → `ANONYMOUS-VALUE-PRESENT`; add `ANONYMOUS-DEFAULT`, `DOCKER-PREFIX-SHAPE`
-- [ ] Rewrite `scripts/nexus-live-smoke.sh` `ANONYMOUS-PULL-DENIED` → `ANONYMOUS-PULL-ALLOWED`; add `ANONYMOUS-PULL-PYPI`, `ANONYMOUS-PULL-HELM`, `ANONYMOUS-PULL-DOCKER`, `DOCKER-PATH-SHAPE`, `ANONYMOUS-WRITE-DENIED`
-- [ ] `workstation/nexus-setup.sh` with a `--verify` mode that performs one real fetch per ecosystem
+- [ ] Rewrite `scripts/nexus-live-smoke.sh` `ANONYMOUS-PULL-DENIED` → `ANONYMOUS-PULL-ALLOWED`; add `ANONYMOUS-PULL-PYPI`, `ANONYMOUS-PULL-HELM`, `ANONYMOUS-PULL-DOCKER` (full handshake), `DOCKER-REALM-ACTIVE`, `DOCKER-PATH-SHAPE`, `ANONYMOUS-WRITE-DENIED`
+- [ ] Update `run_provision()` in the live smoke with the three new `ANONYMOUS_*` env vars — without them the smoke fails under `set -u` the moment `provision.sh` changes
+- [ ] `workstation/nexus-setup.sh` with a `--verify` mode performing one real fetch per ecosystem
 - [ ] A fixture-based test for the `.npmrc` merge (pre-existing auth-token line must survive)
 - [ ] No framework install needed
 
@@ -918,14 +1051,14 @@ prints `NOTHING RAN`, not `ALL PASS`, and a SKIP is never counted as a pass.
 
 | ASVS category | Applies | Standard control |
 |---------------|---------|------------------|
-| **V2 Authentication** | **yes** | Admin credential still comes from a consumer-supplied Secret via `NEXUS_SECURITY_INITIAL_PASSWORD`; `nexus3.rootPassword.secret` remains `required` at render time with no default. **NEXUS-02 does not weaken this** — `provision.sh` still authenticates as admin to make the anonymous call, and anonymous PUT of the anonymous config is refused (403, measured). |
-| **V3 Session Management** | no | Stateless HTTP Basic per request in the Job. The Docker bearer token is Nexus-issued and short-lived; nothing in this phase manages it. |
+| **V2 Authentication** | **yes** | Admin credential still comes from a consumer-supplied Secret via `NEXUS_SECURITY_INITIAL_PASSWORD`; `nexus3.rootPassword.secret` remains `required` at render time with no default. **NEXUS-02 does not weaken this** — `provision.sh` still authenticates as admin to make both calls, and anonymous PUT of the anonymous config is refused (403, measured). |
+| **V3 Session Management** | **yes, newly** | Activating `DockerToken` turns on Nexus's bearer-token issuance for Docker clients. The tokens are Nexus-issued and short-lived; nothing in this phase manages, stores or logs them. Worth naming because the phase deliberately enables a token realm that was previously inactive. |
 | **V4 Access Control** | **yes — the core of this phase** | Anonymous maps to the built-in `nx-anonymous` role: `nx-repository-view-*-*-read`, `nx-repository-view-*-*-browse`, `nx-search-read`, `nx-healthcheck-read`. Measured read-only. **Never** grant the anonymous user an `*-add`/`*-edit`/`*-delete` privilege or a second role. |
-| **V5 Input Validation** | **yes** | The new body is built with `jq -n --arg/--argjson`, never string concatenation — same discipline as the ConfigMap's `toJson`. The workstation script's `--url` argument crosses into config files and must be validated (scheme is `http`/`https`, no shell metacharacters, no trailing slash ambiguity) before interpolation. |
+| **V5 Input Validation** | **yes** | Both new bodies are built with `jq -n --arg/--argjson` and `jq` filters over a GET response — never string concatenation, same discipline as the ConfigMap's `toJson`. The workstation script's `--url` argument crosses into config files and must be validated (scheme is `http`/`https`, no shell metacharacters, no trailing-slash ambiguity) before interpolation. |
 | **V6 Cryptography** | no | None implemented. TLS termination is Phase 25's ingress. |
-| **V7 Error Handling & Logging** | **yes** | `set -euo pipefail`; never `\|\| true` a provisioning result; never echo `NEXUS_PASSWORD`; the anonymous PUT hard-fails on any status other than 200. |
-| **V10 Malicious Code** | **yes** | No new dependency (see §Package Legitimacy Audit). Anonymous read does **not** introduce a write path an attacker could use to poison the cache — measured: valid-body POST 403, repository PUT upload 404. |
-| **V14 Configuration** | **yes** | `anonymous.enabled` is a first-class documented value with a gate asserting its default. `strictContentTypeValidation: true` and `cacheForeignLayers: false` stay as Phase 23 set them. |
+| **V7 Error Handling & Logging** | **yes** | `set -euo pipefail`; never `\|\| true` a provisioning result; never echo `NEXUS_PASSWORD`; the anonymous PUT hard-fails on anything but 200 and the realms PUT on anything but 204. |
+| **V10 Malicious Code** | **yes** | No new dependency (§Package Legitimacy Audit). Anonymous read does **not** introduce a write path an attacker could use to poison the cache — measured: valid-body POST 403, repository PUT upload 404. |
+| **V14 Configuration** | **yes** | `anonymous.enabled` is a first-class documented value with a gate asserting its default. The realms append is guarded so configuration cannot drift on repeated upgrades. `strictContentTypeValidation: true` and `cacheForeignLayers: false` stay as Phase 23 set them. |
 
 ### Known threat patterns for this stack
 
@@ -934,8 +1067,9 @@ prints `NOTHING RAN`, not `ALL PASS`, and a SKIP is never counted as a pass.
 | Anonymous read escalated to anonymous write | Tampering / EoP | Grant only the built-in read-only `nx-anonymous`; gate-assert that a valid-body anonymous POST returns 403 and creates nothing | Measured 403; gate is a Wave 0 item |
 | Anonymous read of a **future hosted** repo containing internal packages | Information disclosure | `nx-anonymous` wildcards all repos — document it; remedy is a custom role bound to the anonymous user | **Open — Assumption A4 / Pitfall 9** |
 | Repository inventory disclosure via `GET /v1/repositories` | Information disclosure | Bounded: names/formats/types/URLs only, no remote URLs or credentials. Document in README + ADR-021 | Measured 200; accepted with disclosure |
+| **Realms PUT locking every user out of the instance** | Denial of service | GET-then-append-if-absent, never a literal array; skip the PUT when nothing changed | **Now in scope** — this phase makes the call. Pitfall 3 |
+| **Realms list corruption by duplicate append on every upgrade** | Denial of service / integrity | `jq 'if index("DockerToken") then . else . + ["DockerToken"] end'`; gate asserts the realm appears exactly once after two passes | Measured that duplicates are stored. Pitfall 3 |
 | Unauthenticated read over plaintext HTTP on a shared network | Information disclosure | TLS at ingress — **Phase 25**. Until then, network reach is the only control, and NetworkPolicy is explicitly out of scope | **Residual risk — Assumption A7** |
-| Realms PUT locking every user out of the instance | Denial of service | Do not touch realms (measured unnecessary); if ever needed, GET-then-append | Avoided by design |
 | Cache poisoning via a hostile `remoteUrl` override | Tampering | `toJson`-rendered bodies; `strictContentTypeValidation: true`; `remoteUrl` documented as a trust boundary | Unchanged from Phase 23 |
 | Credential loss from a clobbered `.npmrc` | Information disclosure / availability | `npm config set --location=project` (measured non-destructive) + skip-if-exists + explicit `--force` | Pitfall 7 |
 | `PIP_CONFIG_FILE` silently suppressing a developer's user-level pip config (e.g. a corporate CA bundle) | Tampering / availability | Warn in the generated file and in `--help`; never suggest adding it to a shell rc | Pitfall 8 |
@@ -948,8 +1082,8 @@ prints `NOTHING RAN`, not `ALL PASS`, and a SKIP is never counted as a pass.
 
 ### Primary (HIGH confidence — measured in this session)
 
-- **Live `sonatype/nexus3:3.96.0-ubi` container**, booted from the image `helm template kubernetes/nexus` renders and provisioned by the chart's own `files/provision.sh` with `EULA_ACCEPTED=true`:
-  anonymous GET/PUT status codes and bodies; `nx-anonymous` role privileges; the `anonymous` user object; active/available realms; the before/after 401→200 matrix with byte counts for npm, PyPI and Helm; the full Docker manifest→child-manifest→blob anonymous sequence; the anonymous denial matrix across eight admin endpoints; the DockerToken-realm and `forceBasicAuth` causal tests; `/service/rest/swagger.json` path/method listing for `/v1/security/anonymous` and `/v1/security/realms/*`
+- **Live `sonatype/nexus3:3.96.0-ubi` container** (booted twice), rendered from `helm template kubernetes/nexus` and provisioned by the chart's own `files/provision.sh` with `EULA_ACCEPTED=true`:
+  anonymous GET/PUT status codes, bodies and idempotency; `nx-anonymous` role privileges; the `anonymous` user object; active/available realms; the before/after 401→200 matrix with byte counts for npm, PyPI and Helm; the **full anonymous Docker handshake** (ping → challenge → token → bearer manifest → child manifest → 3,626,020-byte layer blob); the four-state DockerToken × header-present causal matrix; the `forceBasicAuth` true/false comparison including the `WWW-Authenticate` header; the realms duplicate-append reproduction; the anonymous denial matrix across eight admin endpoints and two write paths; `/service/rest/swagger.json` path/method listing for `/v1/security/anonymous` and `/v1/security/realms/*`
 - **This workstation's package-manager clients:** `npm config list` / `config get registry` / `config set --location=project` (11.7.0); `pip3 config list -v` with and without `PIP_CONFIG_FILE`, and the `pip config set` internal-error reproduction (26.2.1); `helm env` / `repo add` / `repo list` / `search repo` (4.3.0); `docker buildx imagetools inspect` URL construction for both reference shapes (28.3.2)
 - **pip source, read directly:** `…/site-packages/pip/_internal/network/session.py` `SECURE_ORIGINS` and `is_secure_origin` — the loopback exemption that decides whether `trusted-host` is needed
 - **Local working copy `repos/security-platform`** @ `ea2770f` (main, clean): `kubernetes/nexus/{values.yaml,templates/configmap-repos.yaml,files/provision.sh}`, `scripts/check-nexus-chart.sh`, `scripts/nexus-live-smoke.sh`, `workstation/setup.sh`
@@ -957,14 +1091,14 @@ prints `NOTHING RAN`, not `ALL PASS`, and a SKIP is never counted as a pass.
 
 ### Secondary (MEDIUM-HIGH — official documentation, corroborating)
 
-- [help.sonatype.com/en/anonymous-access.html](https://help.sonatype.com/en/anonymous-access.html) — confirms the `nx-anonymous` role's privilege set **exactly** as measured, and advises against format-specific realms for anonymous accounts. Its statement that "Docker pulls also require enabling a repository-level setting on each Docker repository" did **not** reproduce here (§State of the Art) — recorded as a documented-vs-measured divergence rather than resolved.
+- [help.sonatype.com/en/anonymous-access.html](https://help.sonatype.com/en/anonymous-access.html) — confirms the `nx-anonymous` role's privilege set **exactly** as measured, and advises against format-specific realms for anonymous accounts. Its statement that "Docker pulls also require enabling a repository-level setting on each Docker repository" did **not** reproduce here for `forceBasicAuth` (§State of the Art row 2) — recorded as a documented-vs-measured divergence rather than resolved.
 - [help.sonatype.com/en/docker-repository-reverse-proxy-strategies.html](https://help.sonatype.com/en/docker-repository-reverse-proxy-strategies.html) — enumerates port-mapping, subdomain and reverse-proxy connector strategies, and warns that >20 port connectors degrade performance. **Does not document the path-routed client URL shape**, which is why Pattern 6 was established by measurement.
 - [help.sonatype.com/en/eula-rest-api.html](https://help.sonatype.com/en/eula-rest-api.html), [help.sonatype.com/en/ce-onboarding.html](https://help.sonatype.com/en/ce-onboarding.html) — EULA endpoints and the CE 40,000-component / 100,000-request-per-day ceilings (carried forward from Phase 23, unchanged)
 
 ### Tertiary (LOW — unverified this session, flagged)
 
 - Docker's `registry-mirrors` semantics — Hub-only, root-path-only (Assumption A3). Not measured; editing the operator's global `daemon.json` was out of this phase's scope.
-- A real daemon-executed `docker pull` through the path-routed proxy (Assumption A8). Every HTTP leg was measured; the daemon's own execution was blocked by Docker Desktop's VM network boundary.
+- A daemon-executed `docker pull` through the path-routed proxy (Assumption A8). Every HTTP leg of the pull was measured; the daemon's own execution was blocked by Docker Desktop's VM network boundary.
 - ArgoCD's treatment of the chart's hook annotations — still training knowledge, unchanged from ADR-020 item 3. Phase 25's problem.
 
 ---
@@ -973,23 +1107,24 @@ prints `NOTHING RAN`, not `ALL PASS`, and a SKIP is never counted as a pass.
 
 **Confidence breakdown:**
 
-- **NEXUS-02 server-side mechanism: HIGH** — the call, its body, its status code, its idempotency and its four resulting anonymous fetches were all observed on a live 3.96.0 CE instance booted from the chart's own render
+- **NEXUS-02 server-side mechanism: HIGH** — both calls, their bodies, status codes (200 and 204 respectively), idempotency behaviour and failure modes observed on a live 3.96.0 CE instance booted from the chart's own render
+- **DockerToken realm requirement: HIGH** — established by a four-state causal matrix (realm present/absent × bearer header present/absent) plus the admin-token control; a first, weaker test reached the opposite conclusion and is documented as corrected rather than removed
+- **Realms duplicate-append trap: HIGH** — reproduced directly
 - **NEXUS-02 authorization boundary: HIGH** — eight admin endpoints and two write paths measured as denied, with the valid-body-vs-malformed-body distinction established
-- **DockerToken / `forceBasicAuth` correction: HIGH at the HTTP layer, MEDIUM for the full client flow** — the causal tests are unambiguous; the daemon handshake was reconstructed, not executed
 - **Docker path shape (ADR-020 item 2): HIGH** — a real OCI client's own URL construction was observed for both reference forms and both target paths were measured
+- **`forceBasicAuth` having no effect: MEDIUM** — measured both ways including the challenge header, but it contradicts Sonatype's documentation, so it is reported as a divergence rather than a settled fact and the chart's existing value is left alone
 - **Per-repo config scoping for npm / pip / Helm: HIGH** — each mechanism exercised end to end with a real anonymous package fetch, and Helm's global-file non-interference verified
 - **Docker per-repo impossibility: HIGH for the negative claim** (`registry-mirrors`/`insecure-registries` are daemon-global; `DOCKER_CONFIG` does not carry mirrors), **MEDIUM for the mirror-semantics detail** (A3)
 - **Second-order effects inventory: HIGH** — every one of the eight artefacts was read in this session, not recalled
-- **`anonymous.enabled` default recommendation: LOW as a decision** — it is a judgement call with a real tradeoff and belongs to the user (A1)
+- **`anonymous.enabled` default recommendation: LOW as a decision** — a judgement call with a real tradeoff that belongs to the user (A1)
 - **Deferred-item dispositions: LOW as decisions** — recommendations only (A5, Open Questions 2-3)
 
 **Research date:** 2026-09-19
 **Valid until:** ~2026-10-19 (30 days). The volatile input is the Nexus version: `Chart.lock` pins
 `stevehipwell/nexus3` 5.26.0 → Nexus 3.96.0, and nothing in `security-platform` bumps it
 automatically (ADR-020, subchart pin freshness). Every measurement here is against 3.96.0
-specifically — the DockerToken and `forceBasicAuth` findings in particular contradict both Sonatype's
-own documentation and Phase 23's inference, so they should be re-measured after any subchart bump
-rather than assumed to carry forward.
+specifically — the `forceBasicAuth` divergence from Sonatype's own documentation in particular
+should be re-measured after any subchart bump rather than assumed to carry forward.
 
 ---
 
