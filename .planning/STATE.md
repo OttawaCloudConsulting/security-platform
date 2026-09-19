@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 24-01-PLAN.md — anonymous.enabled wired end to end, offline gate at 18 checks, both standing gates green at commit 1266279
-last_updated: "2026-09-19T21:25:46.035Z"
+stopped_at: Completed 24-03-PLAN.md — offline gate for the workstation Nexus routing script at 12 checks, ALL PASS against a scratchpad subject, 9/9 mutations exactly one predicted red, commit f008707
+last_updated: "2026-09-19T22:48:05.238Z"
 last_activity: 2026-09-19
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 18
-  completed_plans: 9
+  completed_plans: 10
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 24 (nexus-anonymous-access-and-workstation-script) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 Status: Ready to execute
 Last activity: 2026-09-19
 
@@ -203,6 +203,13 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 24-01]: A grep on the render cannot prove the anonymous wiring — with the ANONYMOUS_ENABLED env entry DELETED from job-provision.yaml, grep -c 'ANONYMOUS_ENABLED' on the render still returns 7, because configmap-provision-script.yaml embeds provision.sh. Only reading the Job's env through yq discriminates, which is why ANONYMOUS-VALUE-PRESENT reads the rendered env twice (the true/false pair) on the PASSTHROUGH-SIZE model.
 - [Phase 24-01]: check-nexus-chart.sh carried '17 offline invariants' only ONCE (the echo at line 78); its header literal was 'PASS - 17 checks, 0 failures', a different string. The plan's 'grep -c 18 offline invariants == 2' criterion was met by adding one header sentence stating the count and moving the PASS literal as well — three literals plus CHECK_COUNT now move together.
 - [Phase 24-01]: NEXUS-02 withheld again (requirements-completed: []) — 17-01 reverted-mark precedent plus the 23-01/23-03/23-05/23-06/23-07 withholding pattern. Plan 24-10 marks it after merge to origin/main. Branch feature/phase-24-nexus-anonymous-and-workstation (from main ea2770f) carries commit 1266279; nothing pushed.
+- [Phase ?]: [Phase 24-03]: VERIFY-FAILS-LOUDLY runs against a loopback python3 -m http.server stub, NOT the plan's 'closed high port on loopback' — against a closed port the subject dies at 'helm repo add' (Helm 3 and 4 fetch index.yaml during repo add, no --no-update escape) before --verify is ever reached, so the non-zero exit would have proved nothing. The stub serves only repository/helm-proxy/index.yaml, so the write phase completes and the npm and pip fetches 404. helm v4.3.0 accepting the stub was confirmed in the scratchpad BEFORE the gate was built.
+- [Phase ?]: [Phase 24-03]: The two ADR-009 wording assertions in DOCKER-DAEMON-WARNING are WINDOWED (+/-14 lines of an insecure-registries mention), not whole-file as the plan specified — MEASURED: the pip writer emits its own removal-once-TLS sentence for trusted-host, which satisfies a whole-file grep, so the entire Docker warning could be deleted with the check staying green. Mutation 9 produced zero reds before the fix and exactly one after.
+- [Phase ?]: [Phase 24-03]: scripts/check-nexus-setup.sh imposes a BINDING ORDERING CONTRACT on plan 24-06 — .npmrc and pip.conf must be written BEFORE 'helm repo add', because two fixture runs point at hostnames that do not resolve and are expected to end non-zero at the Helm writer while still being asserted on. Stated in the gate's own header.
+- [Phase ?]: [Phase 24-03]: The gate has no compile-time count constant (grep -c for the count-constant name is 0, including in prose) — counts are runtime, because 24-06 and 24-07 both add behaviour to the subject and a constant would become a merge point. Deliberate divergence from check-nexus-chart.sh's three-literals-move-together convention.
+- [Phase ?]: [Phase 24-03]: Every check name is a literal EXACTLY ONCE, in a check-name registry at the top of the file, referenced by variable everywhere else — so 'grep -c <NAME>' is a reliable is-it-implemented test and a check whose skip entry and assertion spell its name differently cannot exist.
+- [Phase ?]: [Phase 24-03]: NEXUS_SETUP_GATE_SUBJECT is a documented TEST HOOK (absolute path override of the subject), not a configuration knob — the SKIP guard means the gate exercises ZERO assertion bodies in this repo until 24-06 lands. All 12 bodies were observed passing against a scratchpad conforming subject (ALL PASS - 12 checks executed and passed; 0 skipped) and nine single-defect mutations each produced exactly one predicted red.
+- [Phase ?]: [Phase 24-03]: NEXUS-04 withheld again (requirements-completed: []) — 17-01 reverted-mark precedent plus the 23-01/23-03/23-05/23-06/23-07 and 24-01 withholding pattern. Plan 24-10 marks it. Branch feature/phase-24-nexus-anonymous-and-workstation now carries 1266279 (24-01) and f008707 (24-03); nothing pushed.
 
 ### Pending Todos
 
@@ -287,11 +294,12 @@ Carried forward from v1.1 close:
 | Phase 23 P07 | 25min | 2 tasks | 4 files |
 | Phase 23 P08 | 20min | 3 tasks | 0 files |
 | Phase 24 P01 | 30min | 3 tasks | 5 files |
+| Phase 24 P03 | 70min | 3 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-19T21:25:46.025Z
-Stopped at: Completed 24-01-PLAN.md — anonymous.enabled wired end to end, offline gate at 18 checks, both standing gates green at commit 1266279
+Last session: 2026-09-19T22:48:05.231Z
+Stopped at: Completed 24-03-PLAN.md — offline gate for the workstation Nexus routing script at 12 checks, ALL PASS against a scratchpad subject, 9/9 mutations exactly one predicted red, commit f008707
 Resume file: None
 
 ## Operator Next Steps
