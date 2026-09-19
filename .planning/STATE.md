@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 24-03-PLAN.md — offline gate for the workstation Nexus routing script at 12 checks, ALL PASS against a scratchpad subject, 9/9 mutations exactly one predicted red, commit f008707
-last_updated: "2026-09-19T22:48:05.238Z"
+stopped_at: Completed 24-03-PLAN.md — offline gate for the workstation Nexus routing script at 12 checks, ALL PASS against a scratchpad subject, 10/10 mutations exactly one predicted red, commits f008707 + 41c2e6a
+last_updated: "2026-09-19T22:58:34.202Z"
 last_activity: 2026-09-19
 progress:
   total_phases: 2
@@ -210,6 +210,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: [Phase 24-03]: Every check name is a literal EXACTLY ONCE, in a check-name registry at the top of the file, referenced by variable everywhere else — so 'grep -c <NAME>' is a reliable is-it-implemented test and a check whose skip entry and assertion spell its name differently cannot exist.
 - [Phase ?]: [Phase 24-03]: NEXUS_SETUP_GATE_SUBJECT is a documented TEST HOOK (absolute path override of the subject), not a configuration knob — the SKIP guard means the gate exercises ZERO assertion bodies in this repo until 24-06 lands. All 12 bodies were observed passing against a scratchpad conforming subject (ALL PASS - 12 checks executed and passed; 0 skipped) and nine single-defect mutations each produced exactly one predicted red.
 - [Phase ?]: [Phase 24-03]: NEXUS-04 withheld again (requirements-completed: []) — 17-01 reverted-mark precedent plus the 23-01/23-03/23-05/23-06/23-07 and 24-01 withholding pattern. Plan 24-10 marks it. Branch feature/phase-24-nexus-anonymous-and-workstation now carries 1266279 (24-01) and f008707 (24-03); nothing pushed.
+- [Phase ?]: [Phase 24-03]: GLOBAL-CONFIG-UNTOUCHED had a false-pass path through the INVOKING environment, fixed in 41c2e6a — helm env HELM_REPOSITORY_CONFIG and npm config get userconfig both honour the variables the subject exports, so an operator who had sourced a .nexus-env would have had the gate fingerprint a repo-local file and a subject scribbling on the real global Helm list would have passed the one check meant to catch it (T-24-13). Measured on the mechanism: HELM_REPOSITORY_CONFIG=<decoy> helm env returns the decoy, after unset it returns the real global path; npm_config_userconfig=<decoy> npm config get userconfig does not return a decoy at all but ERRORS ('the userconfig option is protected'), which under set -euo pipefail would have killed the gate outright.
 
 ### Pending Todos
 
@@ -298,8 +299,8 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-09-19T22:48:05.231Z
-Stopped at: Completed 24-03-PLAN.md — offline gate for the workstation Nexus routing script at 12 checks, ALL PASS against a scratchpad subject, 9/9 mutations exactly one predicted red, commit f008707
+Last session: 2026-09-19T22:58:34.194Z
+Stopped at: Completed 24-03-PLAN.md — offline gate for the workstation Nexus routing script at 12 checks, ALL PASS against a scratchpad subject, 10/10 mutations exactly one predicted red, commits f008707 + 41c2e6a
 Resume file: None
 
 ## Operator Next Steps

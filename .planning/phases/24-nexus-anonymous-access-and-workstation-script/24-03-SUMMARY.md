@@ -74,6 +74,7 @@ requirements-completed: []
 The plan directs a **single commit at Task 3** ("Commit one file"), and its own acceptance criterion requires `git diff-tree` on that commit to list exactly `scripts/check-nexus-setup.sh`. Tasks 1 and 2 both build the same file, so per-task commits would have violated the plan's own gate. This follows the Phase 15-03 precedent already recorded in STATE.md ("Task 1 has no separate commit by plan design").
 
 1. **Tasks 1-3 (scaffold, guards, preflight, six source checks, six behavioural checks, mutation exercise)** — `f008707` (test)
+2. **Post-review fix: environment sanitisation before the global-config snapshot** — `41c2e6a` (fix)
 
 **Plan metadata:** see the `docs(24-03)` commit in the parent repository.
 
@@ -107,13 +108,16 @@ Every fixture is `git init`-ed (so `git rev-parse --show-toplevel` resolves) and
 
 ## Mutation Prediction/Observation Table
 
-Driver: `<scratchpad>/mutate.py`. Each mutation is applied to a fresh copy of the conforming subject, the gate is pointed at it via `NEXUS_SETUP_GATE_SUBJECT`, and the `FAIL` check names are collected. **Nine for nine.**
+Driver: `<scratchpad>/mutate.py`. Each mutation is applied to a fresh copy of the conforming subject, the gate is pointed at it via `NEXUS_SETUP_GATE_SUBJECT`, and the `FAIL` check names are collected. **Ten for ten.**
+
+Mutation 3b was added after review: mutation 3 removes `helm repo add` *and* adds the heredoc, so the red it produced could have come from the first sub-condition alone, leaving the more complex heredoc/redirect regex unproven. 3b keeps `helm repo add` and adds only the heredoc; it produces exactly one red and the message names the observed line, so both sub-conditions are now independently exercised.
 
 | # | Mutation | Predicted red | Observed red | Other checks |
 |---|----------|---------------|--------------|--------------|
 | 1 | `chmod +x` the subject | `SETUP-NOT-EXECUTABLE` | `SETUP-NOT-EXECUTABLE` | 11 passed, 0 skipped |
 | 2 | `printf '' >> "$REPO_ROOT/.npmrc"` appended (content-preserving, so only the mechanism is the defect) | `NPMRC-NO-REDIRECT` | `NPMRC-NO-REDIRECT` | 11 passed, 0 skipped |
 | 3 | `helm repo add` replaced by a `repositories.yaml` heredoc | `HELM-NOT-HANDWRITTEN` | `HELM-NOT-HANDWRITTEN` | 11 passed, 0 skipped |
+| 3b | `helm repo add` **kept**, heredoc forging `repositories.yaml` added — isolates the second sub-condition | `HELM-NOT-HANDWRITTEN` | `HELM-NOT-HANDWRITTEN` (message: "the source writes repositories.yaml directly: 67:cat > …") | 11 passed, 0 skipped |
 | 4 | `\|\| true` on the npm verification fetch (pip fetch left intact) | `VERIFY-NO-SILENT-TRUE` | `VERIFY-NO-SILENT-TRUE` | 11 passed, 0 skipped |
 | 5 | `/repository/` inserted into `NEXUS_DOCKER_REGISTRY` | `DOCKER-PREFIX-SHAPE` | `DOCKER-PREFIX-SHAPE` | 11 passed, 0 skipped |
 | 6 | `trusted-host` branched on `https` instead of `http` | `PIP-TRUSTED-HOST-CONDITIONAL` | `PIP-TRUSTED-HOST-CONDITIONAL` | 11 passed, 0 skipped |
@@ -211,10 +215,18 @@ One environment variable, absolute path, documented in the gate's header. It exi
 - **Issue:** The executor protocol commits each task atomically, but all three tasks build the same single file and the plan's Task 3 acceptance criterion requires `git diff-tree` on the commit to list exactly `scripts/check-nexus-setup.sh`.
 - **Fix:** Followed the plan. Single `test(24-03)` commit, matching the Phase 15-03 precedent recorded in STATE.md.
 
+**6. [Rule 2 - Missing Critical] `GLOBAL-CONFIG-UNTOUCHED` had a false-pass path through the invoking environment**
+- **Found during:** post-execution review
+- **Issue:** The check took its before/after fingerprints from `helm env HELM_REPOSITORY_CONFIG` and `npm config get userconfig`. Both honour the very environment variables the subject under test exports. An operator who had sourced a `.nexus-env` in the invoking shell would have had the gate fingerprint a **repo-local** file, so a subject that scribbled on the real global Helm list would have passed the one check whose entire purpose is to catch that (T-24-13).
+- **Fix:** `unset PIP_CONFIG_FILE HELM_REPOSITORY_CONFIG HELM_REPOSITORY_CACHE NEXUS_DOCKER_REGISTRY npm_config_userconfig` at the top of the gate, before anything reads them, with the reason stated in the file. The per-run subshell unsets are retained.
+- **Files modified:** `repos/security-platform/scripts/check-nexus-setup.sh`
+- **Verification:** The hazard and the fix were both measured on the mechanism rather than inferred from a green check. `HELM_REPOSITORY_CONFIG=<decoy> helm env HELM_REPOSITORY_CONFIG` returns the decoy; after the unset it returns the real `~/Library/Preferences/helm/repositories.yaml`. `npm_config_userconfig=<decoy> npm config get userconfig` does not return a decoy at all — it errors with "the userconfig option is protected", which under `set -euo pipefail` would have killed the gate outright. Conforming subject re-run: `ALL PASS - 12 check(s) executed and passed; 0 sub-check(s) skipped`. Skip path unchanged. `shellcheck` and `pre-commit` both exit 0.
+- **Committed in:** `41c2e6a`
+
 ---
 
-**Total deviations:** 5 (2 bugs, 1 missing-critical, 1 blocking, 1 plan-directed)
-**Impact on plan:** No scope creep. Deviations 1 and 3 are the difference between a gate that measures something and a gate that cannot fail; deviation 2 was a defect in this plan's own code caught by its own exercise step.
+**Total deviations:** 6 (2 bugs, 2 missing-critical, 1 blocking, 1 plan-directed)
+**Impact on plan:** No scope creep. Deviations 1, 3 and 6 are each the difference between a gate that measures something and a gate that cannot fail; deviation 2 was a defect in this plan's own code caught by its own exercise step.
 
 ## Issues Encountered
 
@@ -229,12 +241,19 @@ None. The gate is complete as specified; its `NOTHING RAN` state in this reposit
 
 `VERIFY-FAILS-LOUDLY`'s "names the ecosystem" sub-condition greps the run output for `npm` or `pip`. A subject that prints the word `npm` for an unrelated reason (for example an `npm config set` progress line) would satisfy it without naming the *failing* ecosystem. Tightening it requires knowing 24-06's actual message format, so it is deliberately left loose here; 24-07 may narrow it once the real wording exists.
 
+## Threat Flags
+
+| Flag | File | Description |
+|------|------|-------------|
+| threat_flag: network-listener | `repos/security-platform/scripts/check-nexus-setup.sh` | The gate starts a `python3 -m http.server` process to stand in for an unreachable Helm repository. This is new network surface not present in the plan's `<threat_model>`. Bounded as follows: bound to `127.0.0.1` only (never `0.0.0.0`), on an ephemeral port chosen by the kernel at run time, serving a `mktemp -d` directory whose entire content is one `apiVersion: v1 / entries: {}` `index.yaml`, started only when `python3`, `helm` and `npm` are all present, and killed by the EXIT trap on every exit path. It serves no repository content and reads nothing from the working tree. |
+
 ## Next Phase Readiness
 
 - **Plan 24-06** has a complete, exercised contract to build against: twelve check names, a binding write-ordering requirement, the four `.nexus-env` exports, the Docker prefix shape, and a `NEXUS_SETUP_GATE_SUBJECT` hook for iterating before commit.
 - **Plan 24-04** is unaffected: `DOCKER-DAEMON-WARNING` skips cleanly if its A3 verdict is that the Docker daemon must not be touched, and `DOCKER-PREFIX-SHAPE` asserts on the `.nexus-env` line only, so a `daemon.json` mirror URL containing `/repository/` will not fight it.
 - **Plan 24-10** owns the PR and marks NEXUS-04. Nothing was pushed. Branch `feature/phase-24-nexus-anonymous-and-workstation` now carries `1266279` (24-01) and `f008707` (24-03).
 - **Regression check:** `bash scripts/check-nexus-chart.sh` still reports `PASS - 18 checks, 0 failures`.
+- Branch `feature/phase-24-nexus-anonymous-and-workstation` carries `1266279` (24-01), `f008707` and `41c2e6a` (24-03). Nothing pushed.
 
 ---
 *Phase: 24-nexus-anonymous-access-and-workstation-script*
@@ -244,6 +263,6 @@ None. The gate is complete as specified; its `NOTHING RAN` state in this reposit
 
 - `repos/security-platform/scripts/check-nexus-setup.sh` — FOUND (mode 100644, 735 lines)
 - `.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-03-SUMMARY.md` — FOUND
-- Commit `f008707` — FOUND on `feature/phase-24-nexus-anonymous-and-workstation`
+- Commits `f008707` and `41c2e6a` — FOUND on `feature/phase-24-nexus-anonymous-and-workstation`
 - `git diff-tree --no-commit-id --name-only -r f008707` → `scripts/check-nexus-setup.sh` (exactly one path)
 - `git diff --diff-filter=D --name-only HEAD~1 HEAD` → empty (no deletions)
