@@ -14,8 +14,8 @@ requires:
     plan: 07
     provides: "ADR-020, referenced from the PR body as the written home of the chart-base and EULA-opt-in decisions"
 provides:
-  - "OttawaCloudConsulting/security-platform PR #14 — OPEN, MERGEABLE, mergeStateStatus CLEAN, head e157a44135f98e7b718655c0a12ced5f7a9899f5"
-  - "The branch feature/phase-23-nexus-generic-chart exists on origin for the first time (15 commits ahead of origin/main, 0 behind)"
+  - "OttawaCloudConsulting/security-platform PR #14 — OPEN, MERGEABLE, mergeStateStatus CLEAN, head 162bdf4b2fa684831aa973f6f4a33c520ca1c562 (opened at e157a44; advanced by the post-review fix run, see the Post-Review Fixes section)"
+  - "The branch feature/phase-23-nexus-generic-chart exists on origin (20 commits ahead of origin/main, 0 behind — 15 from plans 23-01..23-05, plus 5 post-review fix commits)"
   - "Twelve CI check conclusions on the chart, recorded verbatim — all SUCCESS, including the `Checkov` code-scanning check, which did NOT reproduce Phase 17-05's FAILURE"
   - "An OPEN, unanswered blocking approval gate (Task 2): the merge is authorised only by the operator's own reply"
 affects: [23-08-task-3, phase-24-nexus-hardening]
@@ -49,14 +49,14 @@ completed: null
 
 # Phase 23 Plan 08: Publish the Chart — Tasks 1-2 Summary (PAUSED AT CHECKPOINT)
 
-**The chart is now publicly proposed: PR #14 on `OttawaCloudConsulting/security-platform`, head `e157a44`, twelve CI checks all SUCCESS, `MERGEABLE` / `CLEAN` — and it is stopped dead at the one gate this project requires a human to open. Nothing is merged.**
+**The chart is now publicly proposed: PR #14 on `OttawaCloudConsulting/security-platform`, head `162bdf4`, twelve CI checks all SUCCESS, `MERGEABLE` / `CLEAN` — and it is stopped dead at the one gate this project requires a human to open. Nothing is merged.** (Opened at `e157a44`; a later external code review produced five fix commits — see **Post-Review Fixes** below. The approval gate was NOT re-opened or bypassed by that run.)
 
 ## Performance
 
 - **Duration:** ~12 min (push → PR → checks settled → summary)
 - **Started:** 2026-09-18T20:05:00Z (approx.)
 - **Tasks:** 2 of 3 — Task 1 complete, Task 2 **awaiting the operator's reply**, Task 3 **not executed**
-- **Files modified in `repos/security-platform`:** 0. Both tasks are remote-state-only; `git status --porcelain` is empty and `HEAD` is still `e157a44135f98e7b718655c0a12ced5f7a9899f5`, unchanged since 23-05.
+- **Files modified in `repos/security-platform` by Tasks 1-2:** 0. Both tasks are remote-state-only; at the time of the checkpoint `git status --porcelain` was empty and `HEAD` was `e157a44135f98e7b718655c0a12ced5f7a9899f5`, unchanged since 23-05. The later post-review fix run modified six files and added five commits; `HEAD` is now `162bdf4b2fa684831aa973f6f4a33c520ca1c562`.
 
 ## Task Commits
 
@@ -106,7 +106,7 @@ PUSH_EXIT=0
 | **Number** | **#14** |
 | **URL** | **https://github.com/OttawaCloudConsulting/security-platform/pull/14** |
 | **Title** | Phase 23: Nexus Repository Helm chart with npm, PyPI, Docker and Helm proxy repos |
-| **Head SHA** | `e157a44135f98e7b718655c0a12ced5f7a9899f5` |
+| **Head SHA** | `e157a44135f98e7b718655c0a12ced5f7a9899f5` at PR creation; **`162bdf4b2fa684831aa973f6f4a33c520ca1c562`** after the post-review fixes |
 | **Base** | `main` (`cdf2c21`) |
 | **State** | `OPEN` |
 | **mergeable / mergeStateStatus** | `MERGEABLE` / `CLEAN` |
@@ -260,6 +260,76 @@ VERIFY_EXIT=0
 
 Deliberately not run in this session. The orchestrator's dispatch scoped this execution to Tasks 1 and 2 and withheld Task 3 explicitly, because no operator reply exists to authorise it. `gh pr merge` does not appear anywhere in this run's command history. Task 3 remains exactly as the plan specifies: re-read the PR state first (this project has recorded the operator merging out of band twice — Phase 18 PR #9, Phase 19 PR #10 — in which case `gh pr merge` must NOT be run), otherwise merge with `gh pr merge 14 --merge`, then verify from `origin/main` after `git fetch`, never from the local working tree.
 
+## Post-Review Fixes (later run — PR #14 advanced `e157a44` → `162bdf4`)
+
+An external Codex review ran against this branch after the checkpoint above was reached. The operator triaged the findings and authorised fixing a specific list. **That run did not touch Task 2 or Task 3**: `gh pr merge` was never invoked, the approval gate below is still open and its "Operator reply: PENDING" stands verbatim.
+
+Seven findings were dispatched. **Six were applied, two of those in reduced form** because the measurement contradicted the finding's premise. Each fix was reproduced first, then fixed, then committed on its own.
+
+### Commits
+
+| Commit | Finding | Disposition |
+|---|---|---|
+| `1946a8d` | Live smoke deleted a pre-existing `nexus-smoke` kind cluster | Fixed |
+| `e6788d8` | Provisioning Job name could exceed the 63-char DNS-label cap | Fixed |
+| `a9c4f38` | `nexus3.config.anonymous.enabled` inert; gate check asserted nothing | Fixed, **reduced** — no REST call added |
+| `ace66f2` | Credentials in argv; no curl timeouts | **Reduced** — timeouts fixed; argv finding did not reproduce |
+| `162bdf4` | `required` admin-Secret guard skippable via `provision.enabled=false` | Fixed |
+
+### Reproductions, measured before each fix
+
+1. **Destructive kind cleanup.** `KIND_CREATED=1` was set *before* `kind create cluster`, and the EXIT trap deletes `$KIND_CLUSTER` unconditionally. Reproduced with a fake `kind` on `PATH` (scratchpad, never the checkout): pre-fix collision run logged `create cluster --name nexus-smoke` (rc 1) **then `delete cluster --name nexus-smoke`** — one destructive delete of a cluster the run never created. Post-fix collision: `get clusters` only, 0 creates, 0 deletes, FATAL. Post-fix normal: guard does not fire, create returns 0, ownership claimed, trap deletes this run's own cluster. Real `kind v0.33.0` confirmed a colliding create exits 1, that `kind get clusters` prints bare names on stdout, and that `No kind clusters found.` goes to stderr (so the `grep -qx` guard cannot misfire on an empty list).
+2. **Job-name overflow.** A 53-char release name (Helm's own maximum) rendered a **69**-character Job name; a 60-char `fullnameOverride` rendered **70**. New `nexus.provisionJobName` truncates the base to 53 then appends the fixed `-provision`, bounding the result at 63 by construction. `nexus.nexus3Fullname` was deliberately **not** touched (23-03 verified it against the subchart's Service name).
+3. **Required-guard bypass.** `helm template t kubernetes/nexus --set provision.enabled=false` **succeeded** with no Secret, and the rendered StatefulSet carried `NEXUS_SECURITY_RANDOMPASSWORD: "true"` — a self-generated admin password nobody holds, reachable by turning off an unrelated feature.
+
+### The two findings that did NOT reproduce
+
+**Anonymous access is closed by Nexus's own default.** On a fresh `nexus3:3.96.0-ubi`, before any provisioning:
+
+```
+GET /service/rest/v1/security/anonymous
+{ "enabled" : false, "userId" : "anonymous", "realmName" : "NexusAuthorizingRealm" }
+```
+
+So **no `PUT .../security/anonymous` was added to `provision.sh`** — a call to force a setting that already holds would be unmeasured ceremony, and it would make the chart start managing a setting NEXUS-02 has not yet decided. The real defect was that nothing *measured* the claim: `nexus3.config.anonymous.enabled` sat under a subchart Job this wrapper disables, and toggling it to `true` produced a **byte-identical render** (Chesterton's fence checked before removal; `config.enabled` itself IS consumed, so it stays). The key is removed, the gate check now asserts the rendered artifact ships no anonymous configuration by either mechanism, and the live smoke measures the consequence: unauthenticated GET of the tarball URL returns **HTTP 401** where the authenticated one returns 200 / 318,961 bytes.
+
+**Credentials are not persistently visible in argv — curl scrubs them itself.** Sampled mid-request inside the Job's own image (`alpine/k8s`, curl 8.10.1):
+
+```
+/proc/<pid>/cmdline =
+curl -sS -o /dev/null --max-time 10 -u                          http://127.0.0.1:45999/
+```
+
+The `-u` slot is blanked; `ps` on a running provisioning pod shows nothing. Same on the host's curl 8.7.1. No `curl -K -` rewrite was made: it would trade an argv-then-scrubbed credential for a stdin one while the password sits in `/proc/<pid>/environ` for the whole process lifetime **by design** — `secretKeyRef` → env is the Job's contract. What the finding correctly exposed is that `provision.sh`'s header claimed the password "is never placed on a curl argv"; that was false and is now corrected to the measurement, environ exposure included. The **missing curl timeouts were real** and are fixed at all three call sites (`--connect-timeout 5 --max-time 30`).
+
+Three false starts preceded that measurement and are worth recording: a probe whose secrets leaked into the driver shell's own argv, one whose 1-second sample outran a sub-second transfer, and one where Nexus answered **HTTP 429** (rate-limited by the earlier bad-auth probes) so every request returned in 10 ms. Only the fourth — a stalling local listener, script written to disk rather than passed as a shell argument — produced an observable window. The first three would each have "confirmed" the wrong conclusion.
+
+### Verification battery, run in full, recorded verbatim
+
+| Gate | Result |
+|---|---|
+| `bash scripts/check-nexus-chart.sh` | `PASS - 17 checks, 0 failures`, exit 0 |
+| `bash scripts/nexus-live-smoke.sh` | `ALL PASS - 13 live check(s) executed and passed; 0 sub-check(s) skipped (not passed).`, exit 0 |
+| `pre-commit run --all-files` | exit 0 |
+| `pre-commit run --hook-stage pre-push --all-files` | exit 0 — `Detect hardcoded secrets ... Passed` |
+| Chart README values table | 24 backticked paths, **0 unresolvable**, 3 intentional nulls — same as 23-05; the README never referenced the removed key |
+
+Gate count 16 → **17** (+1 `JOB-NAME-LENGTH`; check 8 was *rewritten*, not added). Live count 12 → **13** (+1 `ANONYMOUS-PULL-DENIED`). Both new checks were proven **non-vacuous** by reverting the fix and watching them go red.
+
+`KIND-INSTALL` and `KIND-JOB-COMPLETE` passed on a real kind cluster, so the binding contracts hold against a live install and not merely a render: Job name `t-nexus-provision`, label `app.kubernetes.io/instance`, `hook-delete-policy: before-hook-creation` with zero `hook-succeeded`, ConfigMap ending `-repos`, Secret key `password`.
+
+### CI on the updated PR — verbatim
+
+`gh pr checks 14 --watch`, `CHECKS_EXIT=0`. Twelve checks, twelve **SUCCESS**: the five `security / *` jobs, six code-scanning checks (`Checkov`, `Semgrep OSS`, `Trivy`, `gitleaks`, `tflint`, `tflint-errors`) and `GitGuardian Security Checks`. PR state re-read afterwards: `OPEN` / `MERGEABLE` / `CLEAN`, `headRefOid = 162bdf4b2fa684831aa973f6f4a33c520ca1c562`. `gh pr view 14 --json files` still shows **0** paths under `kubernetes/nexus/charts/` (T-23-15 holds).
+
+A summary comment was posted with `gh pr comment` (<https://github.com/OttawaCloudConsulting/security-platform/pull/14#issuecomment-5738685257>). **The PR body was not edited** — verified by grepping the published body back out of GitHub and confirming it still carries its original `PASS - 16 checks, 0 failures` and `ALL PASS - 12 live check(s)` literals, which now describe the pre-fix state and are superseded by the comment.
+
+### Deliberately not touched
+
+Dead `provision.readiness.*` knobs (ADR-020 §5 and `deferred-items.md`), the gate scripts' SKIP-exits-0 semantics (plan 23-01's literal must-have), upgrade / hook-recreation coverage (Phase 24), and `docs/adr/adr020-nexus-chart-base-and-eula-opt-in.md` (accepted ADR, append-only). No `gsd-sdk query state.*` recount verb was run, per this SUMMARY's own carried-forward warning below.
+
+---
+
 ## Deviations from Plan
 
 ### Auto-fixed Issues
@@ -287,7 +357,7 @@ Otherwise none: no bug in the chart, no missing critical functionality and no bl
 
 ## Observations Handed Forward
 
-1. **PR #14 is `MERGEABLE` / `CLEAN` at head `e157a44`.** Task 3 must re-read the state before acting; if it already reads `MERGED`, the operator merged out of band (Phase 18/19 precedent) and `gh pr merge` must not be run.
+1. **PR #14 is `MERGEABLE` / `CLEAN` at head `162bdf4`** (it was `e157a44` when this SUMMARY was first written; the post-review fix run advanced it). Task 3 must re-read the state before acting; if it already reads `MERGED`, the operator merged out of band (Phase 18/19 precedent) and `gh pr merge` must not be run.
 2. **The `Checkov` code-scanning check passing is a data point Phase 24 should not over-read.** It is consistent with the measured zero delta, but it also sits on top of the fact that CI's Checkov never renders this chart. A green `Checkov` check on this PR is *not* evidence that `kubernetes/nexus/` is clean.
 3. **Twelve checks now report on this repository's PRs**, up from the six 16-05 recorded — five `security / *` jobs, six code-scanning checks (`Checkov`, `Semgrep OSS`, `Trivy`, `gitleaks`, `tflint`, `tflint-errors`) and `GitGuardian Security Checks`. Phase 22's required-check list decision should be taken against this observed set, not against the older one.
 4. **The pre-push gitleaks hook is now proven to run on a real push**, closing 23-06 observation 4.
@@ -313,8 +383,8 @@ None new. The `scanner-blind-spot` flag raised by 23-06 against `kubernetes/nexu
 ## Self-Check: PASSED
 
 - `.planning/phases/23-nexus-generic-chart/23-08-SUMMARY.md` — created by this run
-- PR **#14** — `gh pr view 14 --json state` = `OPEN`, `mergeable` = `MERGEABLE`, `mergeStateStatus` = `CLEAN`, `headRefOid` = `e157a44135f98e7b718655c0a12ced5f7a9899f5`
+- PR **#14** — `gh pr view 14 --json state` = `OPEN`, `mergeable` = `MERGEABLE`, `mergeStateStatus` = `CLEAN`, `headRefOid` = `162bdf4b2fa684831aa973f6f4a33c520ca1c562` (re-read after the post-review fix push; was `e157a44135f98e7b718655c0a12ced5f7a9899f5` at PR creation)
 - `origin/feature/phase-23-nexus-generic-chart` — exists; local branch upstream verified via `git rev-parse --abbrev-ref --symbolic-full-name @{u}`
-- `repos/security-platform` working tree — `git status --porcelain` empty, `HEAD` = `e157a44`, no commits made (both tasks are remote-state-only by the plan's own `<files>` declaration)
+- `repos/security-platform` working tree — `git status --porcelain` empty, `HEAD` = `162bdf4`. Tasks 1-2 made no commits (remote-state-only by the plan's own `<files>` declaration); the five commits present beyond `e157a44` are the post-review fixes recorded below
 - `gh pr checks 14` — 12 checks, all `SUCCESS`, `CHECKS_EXIT=0`, recorded verbatim above
 - `gh pr merge` — **never invoked**; verified by the absence of any such command in this run
