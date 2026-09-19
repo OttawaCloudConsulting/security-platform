@@ -20,7 +20,9 @@ NEXUS-04: workstation install script points a target repo's package-manager conf
 
 ### Docker scope in the workstation script
 - Docker has no per-repo config mechanism (global daemon/registry config only), unlike npm (`.npmrc`, project-scoped), pip (`PIP_CONFIG_FILE`), and Helm (`HELM_REPOSITORY_CONFIG`).
-- Script still writes the Docker global config, with an explicit warning/doc callout that this change is global and affects all repos on the workstation, not scoped to the target repo like the other three package managers.
+- Script still writes the Docker global config (`~/.docker/daemon.json`), with an explicit warning/doc callout that this change is global and affects all repos on the workstation, not scoped to the target repo like the other three package managers.
+- **REQUIREMENTS.md Out-of-Scope row amended** to carve out this Docker exception (previously read "not global workstation defaults" with no exception) — see `.planning/REQUIREMENTS.md` Out of Scope table.
+- **Unmeasured (Assumption A3, per PATTERNS.md):** whether a path-routed Nexus Docker proxy repo is even usable as a `registry-mirrors` target in `daemon.json` has not been tested. If it isn't, this decision needs revisiting — flag this to the planner as a task that must validate the mechanism works before committing to the daemon.json approach, and reference ADR-009 for the mandatory warning wording.
 
 ### Carried forward from research (RESEARCH.md) — do not re-derive
 - Anonymous access requires **two** REST calls: `PUT /service/rest/v1/security/anonymous` (200, idempotent) for npm/PyPI/Helm, PLUS appending `DockerToken` to the active realms list for Docker.

@@ -35,7 +35,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | NetworkPolicy namespace isolation for Nexus/DefectDojo | Hardening bucket, separate from this milestone's Infra & Dashboards scope |
 | Backup automation (DefectDojo PostgreSQL, Nexus PVC) | Hardening bucket, deferred |
 | Monitoring/alerting via kube-prometheus-stack | Hardening bucket, deferred |
-| Workstation pkg managers routed through Nexus outside the per-repo config | Per-repo config + install script only, not global workstation defaults |
+| Workstation pkg managers routed through Nexus outside the per-repo config, **except Docker** | Per-repo config + install script only, not global workstation defaults — Docker has no per-repo registry-routing mechanism, so NEXUS-04's install script writes a global `~/.docker/daemon.json` entry for Docker only, with an explicit warning that this one ecosystem is global-scoped unlike npm/pip/Helm (decided Phase 24) |
 | De-identification of a privately-built deployment | Superseded — generic-first architecture means nothing private needs stripping |
 
 ## Traceability
