@@ -36,6 +36,24 @@ Plans:
 - [x] 23-07-PLAN.md — CLAUDE.md scope statement, ADR-020, ADR index row
 - [x] 23-08-PLAN.md — PR, operator approval gate, merge to security-platform main
 
+### Phase 24: Nexus Anonymous Access and Workstation Script
+
+**Goal:** Nexus proxy repos allow anonymous pull (no auth required for read/proxy access), and a workstation install script configures a target repo's package-manager files (`.npmrc`, `pip.conf`, Docker/Helm registry config) to route through a given Nexus instance.
+**Requirements**: NEXUS-02, NEXUS-04
+**Plans:** 10 plans in 6 waves
+
+Plans:
+- [ ] 24-01-PLAN.md — anonymous.enabled value, the two Nexus REST calls, offline gate inversion (wave 1)
+- [ ] 24-02-PLAN.md — live gate: anonymous pull for npm/PyPI/Helm; readiness knobs wired (wave 3)
+- [ ] 24-03-PLAN.md — scripts/check-nexus-setup.sh, the workstation script's offline gate (wave 1)
+- [ ] 24-04-PLAN.md — measure Assumption A3: Nexus path-routed proxy as a Docker daemon mirror (wave 2, checkpoint)
+- [ ] 24-05-PLAN.md — live gate: full anonymous Docker handshake, realm state, path shape, write refusal (wave 4)
+- [ ] 24-06-PLAN.md — workstation/nexus-setup.sh: npm, pip, Helm, .nexus-env, gitignore (wave 3)
+- [ ] 24-07-PLAN.md — nexus-setup.sh --verify pass and the measured Docker branch (wave 4)
+- [ ] 24-08-PLAN.md — chart README and workstation README (wave 5)
+- [ ] 24-09-PLAN.md — ADR-021, ADR index row, Phase 23 deferred items 2 and 3 (wave 5)
+- [ ] 24-10-PLAN.md — PR, merge gate, origin/main verification, requirement marks (wave 6, checkpoint)
+
 </details>
 
 <details>
@@ -114,7 +132,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 21. Docs cleanup — close remaining Phase 20 deferred items | v2.0 | 4/4 | Complete | 2026-09-15 |
 | 22. branch-protection --apply live exercise | v2.0 | 6/6 | Complete | 2026-09-16 |
 | 23. Nexus Generic Chart | v3.0 | 8/8 | Complete   | 2026-09-19 |
-| 24. Nexus Anonymous Access and Workstation Script | v3.0 | 0/? | Not started | — |
+| 24. Nexus Anonymous Access and Workstation Script | v3.0 | 0/10 | Not started | — |
 | 25. Nexus Live Validation | v3.0 | 0/? | Not started | — |
 | 26. DefectDojo Generic Chart | v3.0 | 0/? | Not started | — |
 | 27. DefectDojo CI Auto-Import | v3.0 | 0/? | Not started | — |
