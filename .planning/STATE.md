@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: "Completed 24-04-PLAN.md — Assumption A3 settled by measurement (VERDICT: A3-FALSIFIED-CANDIDATE-1; /repository/ mirror URL routes, path-only does not), operator selected daemon-opt-in with both daemon.json keys; commits 79c543f, c39db9b, ca78608 in the parent repo"
-last_updated: "2026-09-20T02:28:10.498Z"
+stopped_at: Completed 24-05-PLAN.md — live gate 21 -> 25 checks, 0 skipped; commit 9b670c4 in repos/security-platform
+last_updated: "2026-09-20T02:47:02.088Z"
 last_activity: 2026-09-20
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 18
-  completed_plans: 12
+  completed_plans: 13
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 24 (nexus-anonymous-access-and-workstation-script) — EXECUTING
-Plan: 5 of 10
+Plan: 6 of 10
 Status: Ready to execute
 Last activity: 2026-09-20
 
@@ -216,6 +216,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: [Phase 24-02]: Phase 23 deferred item 2 closed in the 'wire them through' direction — provision.readiness.attempts/intervalSeconds now reach provision.sh as READY_ATTEMPTS/READY_INTERVAL with NO :- default, proven live by a READY_ATTEMPTS=2 READY_INTERVAL=1 run exiting 1 in 2s after 'attempt 2/2'. kubernetes/nexus/README.md still carries the now-false 'present but not read' row — plan 24-08 owns that edit.
 - [Phase 24]: A3 measured: a Nexus Docker proxy CAN be a Docker daemon registry-mirrors target at HOST/repository/<repo>, and NOT at the path-only HOST/<repo> — VERDICT A3-FALSIFIED-CANDIDATE-1 (24-04). candidate-1 components 0 -> 1 (/library/alpine:3.21 appeared); candidate-2 components 0 -> 0 with pull exit 0 — a successful pull that routed nothing, because Docker falls back to Hub on any mirror error. The /repository/ segment is REQUIRED in the mirror URL and FORBIDDEN in the image reference (Pattern 6): the intuitive shape fails silently. Hub-only half of A3 confirmed from version-matched moby v28.3.2 source — non-docker.io references are never mirrored.
 - [Phase 24]: Operator decision: workstation/nexus-setup.sh writes ~/.docker/daemon.json only behind an opt-in --docker-daemon flag (off by default), writing BOTH registry-mirrors and insecure-registries — Selected at the 24-04 Task 3 checkpoint with the measurement in front of the operator; recorded verbatim in 24-evidence/a3-docker-daemon-routing.md under ## Decision, which plan 24-07 reads instead of a chat transcript. Both keys because the probe never measured them separately, so shipping the measured pair keeps the shipped config identical in shape to the evidence.
+- [Phase 24]: 24-05: anonymous Docker pull is proven by the full five-leg client handshake (Authorization: Bearer on the manifest and the blob), not by a header-less GET — the header-less request returns 200 even with the DockerToken realm removed, measured live — A gate written the wrong way would be green on a server where no Docker client can pull; the realm-removal reversion turns ANONYMOUS-PULL-DOCKER red at leg 4 with HTTP 401 while legs 1-3 stay green
 
 ### Pending Todos
 
@@ -303,11 +304,12 @@ Carried forward from v1.1 close:
 | Phase 24 P03 | 70min | 3 tasks | 1 files |
 | Phase 24 P02 | 55min | 3 tasks | 4 files |
 | Phase 24 P04 | ~45min | 3 tasks | 2 files |
+| Phase 24 P05 | ~50min | 3 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-20T02:28:10.489Z
-Stopped at: Completed 24-04-PLAN.md — Assumption A3 settled by measurement (VERDICT: A3-FALSIFIED-CANDIDATE-1; /repository/ mirror URL routes, path-only does not), operator selected daemon-opt-in with both daemon.json keys; commits 79c543f, c39db9b, ca78608 in the parent repo
+Last session: 2026-09-20T02:47:02.080Z
+Stopped at: Completed 24-05-PLAN.md — live gate 21 -> 25 checks, 0 skipped; commit 9b670c4 in repos/security-platform
 Resume file: None
 
 ## Operator Next Steps
