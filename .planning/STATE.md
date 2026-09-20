@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 24-09-PLAN.md — ADR-021 recorded (commit 1245f49); Phase 23 deferred items 2 and 3 dispositioned
-last_updated: "2026-09-20T20:02:58.990Z"
+stopped_at: 24-10 PAUSED at the push/PR approval gate — branch feature/phase-24-nexus-anonymous-and-workstation green on all four gates and the PR drafted, but NOT pushed and no PR opened; NEXUS-02/NEXUS-04 still withheld (no origin/main evidence)
+last_updated: "2026-09-20T20:12:54.058Z"
 last_activity: 2026-09-20
 progress:
   total_phases: 2
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 Phase: 24 (nexus-anonymous-access-and-workstation-script) — EXECUTING
 Plan: 10 of 10
-Status: Ready to execute
+Status: PAUSED — awaiting operator approval to push the branch and open the PR
 Last activity: 2026-09-20
 
 ## Performance Metrics
@@ -225,6 +225,11 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: 24-08: chart and workstation READMEs document the delivered anonymous posture; the daemon mirror URL uses a placeholder so the asymmetry fact survives the no-/repository/docker-proxy acceptance grep
 - [Phase ?]: 24-09: ADR-021 (Accepted, 2026-09-20) records Phase 24's ten decisions for NEXUS-02/NEXUS-04; it supersedes ADR-020's anonymous stance in prose and closes ADR-020 'What was NOT verified' item 2 by reference, leaving ADR-020 byte-untouched per the append-only rule.
 - [Phase ?]: 24-09: Phase 23 deferred item 2 (provision.readiness.* dead knobs) RESOLVED by wiring them through in 24-02; item 3 (Checkov zero coverage of kubernetes/nexus) ACCEPTED and documented, not solved — both alternatives create a second artefact that drifts by construction, and the required credential guard was not weakened.
+- [Phase 24]: 24-10 PAUSED BEFORE THE PUSH. The orchestrator's brief required explicit operator confirmation before any action visible on the shared remote, so `git push` and `gh pr create` were NOT run (nor `git push --dry-run`, which contacts the remote). Branch feature/phase-24-nexus-anonymous-and-workstation is 13 commits ahead of origin/main at c3ba864, working tree clean, `git ls-remote --heads` empty. The PR title and body are drafted in full and quoted in 24-10-SUMMARY.md.
+- [Phase 24]: 24-10: NEXUS-02 and NEXUS-04 remain UNMARKED and `requirements.mark-complete` was NOT run, against the orchestrator brief's suggestion that marking them was safe non-push work. T-24-49 gates the marks on `git ls-tree origin/main` evidence; the 17-01 reverted-mark precedent and nine prior SUMMARYs in this phase withheld for the same reason. Nothing is pushed, so there is no evidence, so there is no mark. 24-VALIDATION.md likewise left at status: draft — Task 3 commits it with the marks.
+- [Phase 24]: 24-10: all four gates green on the branch tip — check-nexus-chart.sh `PASS - 18 checks, 0 failures`; check-nexus-setup.sh `ALL PASS - 12 check(s) ... 0 skipped`; `pre-commit run --all-files` exit 0; nexus-live-smoke.sh `ALL PASS - 25 live check(s) executed and passed; 0 sub-check(s) skipped`, both docker and kind halves, no leftover cluster or container. No --no-verify anywhere.
+- [Phase 24]: 24-10: the gitleaks pre-push hook could not be exercised by a push, so it was run at its own stage against the exact push range — `pre-commit run gitleaks --hook-stage pre-push --from-ref origin/main --to-ref HEAD` → Passed, exit 0 — and .git/hooks/pre-push was confirmed installed, so the approved push needs no `pre-commit install` step. GitHub server-side Push Protection remains unsimulable and unknown until the push (Phase 19 GH013 precedent).
+- [Phase 24]: 24-10 TOOL DEFECT OBSERVED: `gsd-sdk query state.record-session` silently recalculated the progress block to completed_phases 2 / completed_plans 18 / percent 100 as a side effect of 24-10-SUMMARY.md existing on disk, and did NOT update stopped_at from its positional argument. The progress numbers were reverted by hand to 1 / 17 / 50 and stopped_at was written manually. state.advance-plan, state.update-progress and roadmap.update-plan-progress were deliberately never run — all three would have re-asserted the same false completion.
 
 ### Pending Todos
 
@@ -320,9 +325,9 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-09-20T20:02:58.980Z
-Stopped at: Completed 24-09-PLAN.md — ADR-021 recorded (commit 1245f49); Phase 23 deferred items 2 and 3 dispositioned
-Resume file: None
+Last session: 2026-09-20T20:12:54.048Z
+Stopped at: 24-10 PAUSED at the push/PR approval gate — branch feature/phase-24-nexus-anonymous-and-workstation green on all four gates and the PR drafted, but NOT pushed and no PR opened; NEXUS-02/NEXUS-04 still withheld (no origin/main evidence)
+Resume file: .planning/phases/24-nexus-anonymous-access-and-workstation-script/24-10-SUMMARY.md
 
 ## Operator Next Steps
 
