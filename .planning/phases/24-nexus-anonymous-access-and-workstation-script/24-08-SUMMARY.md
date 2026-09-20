@@ -44,7 +44,7 @@ key-decisions:
   - "The chart README never names the Docker token endpoint. It is server-advertised and lives under /repository/, so writing it would have tripped the same grep while adding nothing a consumer acts on."
   - "Two rows of the requirements table changed, not one. The acceptance grep is on the literal 'Planned (Phase 24)', which NEXUS-04 also carried; and leaving NEXUS-04 'Planned' beside a README section documenting the shipped script would have been the same defect the plan exists to fix."
   - "`anonymous.enabled`, `anonymous.userId` and `anonymous.realmName` were added to the Values table although the plan did not ask for them. The table's own preamble says it restates 'the values this wrapper owns', and 24-01 made these first-class wrapper values; a values table that omits the value the new section is about is the next stale claim."
-  - "One commit for both tasks, following the 24-01 / 24-02 / 24-05 precedent and the plan's own Task 2 instruction ('Commit both README files in one commit') plus its singular-SHA acceptance criterion."
+  - "One commit for both tasks, following the 24-01 / 24-02 / 24-05 precedent and the plan's own Task 2 instruction ('Commit both README files in one commit') plus its singular-SHA acceptance criterion. A second commit, c3ba864, carries a Rule 1 fix found during self-review; it was NOT amended into the first, because ee40e42 was already recorded in STATE.md and in the parent repository."
   - "requirements-completed is empty ON PURPOSE. NEXUS-02 and NEXUS-04 are marked by plan 24-10, after the work is on origin/main. Nothing was pushed."
 
 patterns-established:
@@ -67,14 +67,15 @@ completed: 2026-09-20
 - **Duration:** ~35 min
 - **Tasks:** 2 (both `auto`, no checkpoints)
 - **Files modified:** 2, both in `repos/security-platform`
-- **Commit:** 1 (`ee40e42`), by plan design
-- **Diff:** 168 insertions, 10 deletions
+- **Commits:** 2 — `ee40e42` (both tasks, by plan design) and `c3ba864` (a Rule 1 self-review fix)
+- **Diff:** 168 insertions, 10 deletions in `ee40e42`; 1 insertion, 1 deletion in `c3ba864`
 
 ## Task Commits
 
 | Task | Commit | Subject |
 |------|--------|---------|
 | 1 + 2 | `ee40e42` | `docs(24-08): document anonymous access and the workstation routing script` |
+| self-review fix | `c3ba864` | `docs(24-08): correct the script-mode claim in the workstation README` |
 
 `git diff-tree --no-commit-id --name-only -r ee40e42` lists exactly:
 
@@ -82,6 +83,8 @@ completed: 2026-09-20
 kubernetes/nexus/README.md
 workstation/README.md
 ```
+
+`git diff-tree --no-commit-id --name-only -r c3ba864` lists exactly `workstation/README.md` — deviation 8 below, a Rule 1 fix found during self-review. It is a separate commit rather than an amend: `ee40e42` was already recorded in `STATE.md` and in this document's parent-repo commit, and rewriting published history is an irreversible action this project's rules put behind an explicit confirmation.
 
 Branch `feature/phase-24-nexus-anonymous-and-workstation` in `repos/security-platform`. Commit hooks ran normally; no `--no-verify`. Nothing pushed — plan 24-10 owns the PR.
 
@@ -236,8 +239,11 @@ Acceptance greps, all measured after the commit:
 | 40,000 / 100,000 | chart README §Limitations | pre-existing §4, `values.yaml` comment |
 | 60 × 10s = 10 min inside 900 | chart README values table | 24-02-SUMMARY, `values.yaml` |
 | `20260920T192802Z` backup name | workstation README | 24-07-SUMMARY §2b (illustrative stamp, shown as an example path) |
+| `PUT /service/rest/v1/security/anonymous` → `200` | chart README §5 | 24-01-SUMMARY (`provision.sh` step 3: "anonymous PUT, 200", idempotent — a re-run returns 200 again) |
+| `403` with a body under ~1,000 bytes | workstation README `--verify` table | 24-07-SUMMARY frontmatter `provides` (the licence diagnosis is classified by body size, the refusal being 192 bytes) |
+| `8081` in the `docker pull` / URL examples | both documents | not a measurement — the chart's own pre-existing port-forward example, unchanged |
 
-No number appears in either document that is not in this table.
+Every measured quantity in either document traces to a row above. The remaining numerals are structural rather than measured — repository names, the `alpine:3.21` sample tag carried over from 24-05, and the `--verify` timeouts, none of which assert an observation.
 
 ## Deviations from Plan
 
@@ -299,13 +305,21 @@ No number appears in either document that is not in this table.
 - **Files modified:** `repos/security-platform/workstation/README.md`
 - **Commit:** `ee40e42`
 
+**8. [Rule 1 — Bug] "Like every script in this repository it is not executable" was measurably false**
+
+- **Found during:** self-review after the first commit.
+- **Issue:** the invocation paragraph generalised the Script Safety rule across the whole repository. Measured with `ls -l`: `workstation/nexus-setup.sh` is `-rw-r--r--`, but `workstation/setup.sh`, `workstation/cicd/lint-markdown.sh` and `workstation/cicd/pre-commit.sh` are all `-rwxr-xr-x`. 24-PATTERNS.md records exactly this ("the analog violates the rule — copy its code, not its mode"). An unverified generalisation in a document whose argument is "measured, not asserted" is the same defect as an overstated number.
+- **Fix:** the sentence now states the property of *this* script and names the exception in a parenthetical: "(`setup.sh` and the `cicd/` scripts beside it are mode `755`; they predate the rule.)"
+- **Files modified:** `repos/security-platform/workstation/README.md`
+- **Commit:** `c3ba864`
+
 ### Authentication Gates
 
 None. This plan made no network request and touched no credential.
 
 ---
 
-**Total deviations:** 7 auto-fixed (3 bugs, 2 missing critical, 2 blocking). None changes what either document claims about measured behaviour; all seven close a stale or missing claim the plan's own success criteria ("no document claims routing that requires an unstated manual step", "both documents describe measured behaviour") would otherwise have left open.
+**Total deviations:** 8 auto-fixed (4 bugs, 2 missing critical, 2 blocking). None changes what either document claims about measured behaviour; all seven close a stale or missing claim the plan's own success criteria ("no document claims routing that requires an unstated manual step", "both documents describe measured behaviour") would otherwise have left open.
 
 ## Observations for the Verifier
 
@@ -336,5 +350,6 @@ None. This plan creates no network endpoint, no auth path and no schema. All fiv
 - `repos/security-platform/kubernetes/nexus/README.md` — FOUND (197 → 233 lines)
 - `repos/security-platform/workstation/README.md` — FOUND (180 → 302 lines)
 - Commit `ee40e42` — FOUND in `repos/security-platform`, `git diff-tree` lists exactly the two `key-files.modified` paths
+- Commit `c3ba864` — FOUND in `repos/security-platform`, `git diff-tree` lists exactly `workstation/README.md`
 - `pre-commit run --files workstation/README.md kubernetes/nexus/README.md` — exit 0 after the commit
 - `bash scripts/check-nexus-chart.sh` — `PASS - 18 checks, 0 failures`, exit 0 after the commit
