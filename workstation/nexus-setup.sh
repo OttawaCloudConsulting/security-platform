@@ -69,6 +69,13 @@ VERBOSE=false
 FORCE=false
 COMMIT_CONFIG=false
 
+# --verify: the mandatory proof pass. Configuration runs first and --verify
+# then measures, per ecosystem, whether a client actually reaches this Nexus.
+# Running it against an ALREADY-configured repository is the same invocation:
+# the writers leave existing files alone without --force, so a second run with
+# --verify verifies rather than rewrites.
+VERIFY=false
+
 # Raw --url as the operator typed it, before validation. Empty means "not
 # supplied", which is an error and never a guess.
 NEXUS_URL_RAW=""
@@ -110,6 +117,52 @@ DOCKER_STATUS="MANUAL — no per-repository configuration exists; .nexus-env exp
 # re-run updates one entry rather than accumulating them.
 HELM_REPO_NAME="nexus"
 
+# The four Nexus repository names, which are the chart's shipped defaults
+# (kubernetes/nexus/values.yaml: repos.<eco>.name). Held in constants so the
+# writers and the --verify probes below cannot drift apart: a verification that
+# fetched from a different repository than the one configured would be measuring
+# nothing.
+NPM_REPO="npm-proxy"
+PYPI_REPO="pypi-proxy"
+HELM_REPO="helm-proxy"
+DOCKER_REPO="docker-proxy"
+
+# The sample artefacts --verify fetches. They are overridable because they name
+# specific upstream packages: a package can be yanked, and a verification pass
+# that then reports a routing failure would be lying about the cause.
+#
+# npm is split into name and version rather than held as one 'name@version'
+# spec, because the diagnostic probe below has to build the tarball's component
+# URL ('<name>/-/<name>-<version>.tgz') from the same two values. A floating
+# spec would leave the licence-refusal diagnosis with no component URL to probe.
+VERIFY_NPM_NAME="${NEXUS_VERIFY_NPM_NAME:-lodash}"
+VERIFY_NPM_VERSION="${NEXUS_VERIFY_NPM_VERSION:-4.17.21}"
+VERIFY_PIP_PACKAGE="${NEXUS_VERIFY_PIP_PACKAGE:-six}"
+
+# Rows of the --verify status table, one per ecosystem, each
+# 'ecosystem|mechanism|status|observed'. A row is appended by verify_row(),
+# which is also the ONLY place FAIL_COUNT is incremented during verification —
+# so a status that is neither 'ok' nor 'MANUAL' cannot reach the table without
+# also reaching the exit code.
+VERIFY_ROWS=()
+VERIFY_OK=0
+VERIFY_BAD=0
+VERIFY_MANUAL=0
+
+# Appended to the docker row of the --verify table. It is a variable rather
+# than a literal so that the row can report what else happened on this run
+# without the row ever becoming a pass.
+DOCKER_VERIFY_NOTE=""
+
+# Set by probe_url(). PROBE_RC is curl's own exit status (7 = connection
+# refused, 6 = DNS, 28 = timeout), PROBE_CODE the HTTP status, PROBE_BYTES the
+# body size — and the third one is load-bearing: a ~192-byte body at HTTP 403
+# is the Nexus licence refusal, which is a perfectly well-formed response and is
+# invisible to a status check alone (measured, 24-02).
+PROBE_RC=0
+PROBE_CODE=""
+PROBE_BYTES=0
+
 # Entries appended to the target repository's .gitignore unless
 # --commit-config is passed. T-24-29.
 GITIGNORE_ENTRIES=(".npmrc" "pip.conf" ".helm/" ".nexus-env")
@@ -141,6 +194,15 @@ Options:
                    an existing pip.conf or .nexus-env is left alone and the run
                    reports it as skipped. .npmrc is never overwritten either
                    way — npm merges it.
+  --verify         After configuring, PROVE it: ask each client what it
+                   resolves, then pull a real component through it, and print
+                   one row per ecosystem. Any row that is not 'ok' or 'MANUAL'
+                   makes the run exit non-zero. Run it on an already-configured
+                   repository too — without --force nothing is rewritten, so
+                   the run verifies rather than reconfigures. Three sample
+                   artefacts are fetched (an npm tarball, a PyPI wheel and the
+                   chart index); override which with NEXUS_VERIFY_NPM_NAME,
+                   NEXUS_VERIFY_NPM_VERSION and NEXUS_VERIFY_PIP_PACKAGE.
   --commit-config  Do NOT add the generated files to .gitignore. By default
                    they are gitignored: a committed .npmrc pointing at one
                    operator's Nexus breaks dependency resolution for every
@@ -359,7 +421,7 @@ configure_npm() {
   # Held in a variable rather than written inline so that no line in this file
   # can ever place that filename after a shell redirect.
   local npmrc_rel=".npmrc"
-  local registry_url="${NEXUS_URL}/repository/npm-proxy/"
+  local registry_url="${NEXUS_URL}/repository/${NPM_REPO}/"
   local rc=0
 
   if ! command -v npm > /dev/null 2>&1; then
@@ -438,7 +500,7 @@ warn_pip_user_scope() {
 # with 'ERROR: Fatal Internal error [id=2]' and writes nothing at all.
 configure_pip() {
   local pip_conf="${REPO_ROOT}/pip.conf"
-  local index_url="${NEXUS_URL}/repository/pypi-proxy/simple"
+  local index_url="${NEXUS_URL}/repository/${PYPI_REPO}/simple"
 
   warn_pip_user_scope
 
@@ -503,7 +565,7 @@ configure_helm() {
   local helm_dir="${REPO_ROOT}/.helm"
   local helm_cfg="${helm_dir}/repositories.yaml"
   local helm_cache="${helm_dir}/cache"
-  local repo_url="${NEXUS_URL}/repository/helm-proxy/"
+  local repo_url="${NEXUS_URL}/repository/${HELM_REPO}/"
   local global_cfg=""
   local rc=0
 
@@ -560,7 +622,7 @@ write_nexus_env() {
   # MEASURED: no '/repository/' segment here, unlike the other three. See the
   # comment reproduced in the generated file — it is repeated there on purpose,
   # because the generated file is what a developer actually reads.
-  local docker_prefix="${NEXUS_HOST}/docker-proxy"
+  local docker_prefix="${NEXUS_HOST}/${DOCKER_REPO}"
 
   write_config "$env_file" "sourceable environment for pip, Helm and the Docker prefix" <<ENVFILE
 # .nexus-env — generated by workstation/nexus-setup.sh
@@ -696,6 +758,520 @@ update_gitignore() {
 }
 
 # ---------------------------------------------------------------------------
+# --verify — the proof pass
+# ---------------------------------------------------------------------------
+#
+# Pitfall 10, and the reason this mode is not optional garnish. Four files can
+# be written, a success line printed, and pip and Helm still reach the public
+# internet because .nexus-env was never sourced — or npm still does, because the
+# repository has no package.json and npm's local prefix resolved somewhere else
+# entirely. Writing a configuration file is not the same as a client reading it,
+# and only the client can say which it did.
+#
+# TWO STAGES PER ECOSYSTEM, because they are different diagnoses:
+#   1. CONFIGURATION READBACK — ask the CLIENT what it resolves, never grep the
+#      file this script just wrote. A file can be perfect and unread.
+#   2. FETCH — a real download through that configuration. A readback that is
+#      right while the fetch fails is a server or network problem; a readback
+#      that is wrong is a configuration problem. Reporting them as one verdict
+#      would send the developer to the wrong place.
+#
+# STATUSES, and the arithmetic they drive:
+#   ok            both stages passed. The only status that is proof of routing.
+#   FAILED        a stage produced the wrong result.
+#   UNVERIFIABLE  the client could not be made to answer the question at all
+#                 (npm with no local prefix here). NOT a pass.
+#   SKIPPED       the client is not installed. A SKIP IS NOT A PASS.
+#   MANUAL        docker only, always, under every condition.
+# Every status except 'ok' and 'MANUAL' increments FAIL_COUNT, so a run where
+# nothing routes exits 1. No fetch below is ever '|| true'-ed: a tolerated
+# failure in a verification pass IS the false-pass mechanism this mode exists to
+# remove.
+
+# bounded SECONDS COMMAND... — an outer wall-clock bound on a fetch, so an
+# endpoint that accepts the connection and then stops talking cannot hang the
+# run. Each client also carries its own timeout settings at the call sites
+# below; this is the backstop for the one call that has no flag of its own
+# (`helm repo update` has no --timeout in Helm v4).
+#
+# When neither binary is present the command still runs, bounded only by the
+# client's own settings, and run_verify() says so out loud rather than claiming
+# a bound it does not have.
+BOUND_TOOL=""
+if command -v timeout > /dev/null 2>&1; then
+  BOUND_TOOL="timeout"
+elif command -v gtimeout > /dev/null 2>&1; then
+  BOUND_TOOL="gtimeout"
+fi
+
+bounded() {
+  local secs="$1"
+  shift
+  if [[ -n "$BOUND_TOOL" ]]; then
+    "$BOUND_TOOL" "$secs" "$@"
+    return $?
+  fi
+  "$@"
+}
+
+# digest_of PATH — content fingerprint, or the literal ABSENT. A file that was
+# absent before and is absent after is UNCHANGED, which is the property the Helm
+# global-config assertion needs.
+digest_of() {
+  local target="$1"
+  if [[ ! -e "$target" ]]; then
+    printf 'ABSENT'
+    return 0
+  fi
+  if command -v shasum > /dev/null 2>&1; then
+    shasum -a 256 < "$target" | awk '{print $1}'
+    return 0
+  fi
+  if command -v sha256sum > /dev/null 2>&1; then
+    sha256sum < "$target" | awk '{print $1}'
+    return 0
+  fi
+  printf 'NO-DIGEST-TOOL'
+}
+
+# Trailing-slash-insensitive comparison. The URLs this script writes carry a
+# trailing slash; a client is free to normalise, and a normalisation difference
+# is not a routing defect.
+strip_slash() {
+  printf '%s' "${1%/}"
+}
+
+# verify_row ECOSYSTEM MECHANISM STATUS OBSERVED — the ONLY way a row reaches
+# the table, and the only place FAIL_COUNT moves during verification. A status
+# cannot therefore appear in the table without also reaching the exit code.
+verify_row() {
+  local ecosystem="$1" mechanism="$2" status="$3" observed="$4"
+  VERIFY_ROWS+=("${ecosystem}|${mechanism}|${status}|${observed}")
+  case "$status" in
+    ok)
+      VERIFY_OK=$((VERIFY_OK + 1))
+      ;;
+    MANUAL)
+      VERIFY_MANUAL=$((VERIFY_MANUAL + 1))
+      ;;
+    *)
+      VERIFY_BAD=$((VERIFY_BAD + 1))
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+      ;;
+  esac
+}
+
+# probe_url URL — one UNAUTHENTICATED, bounded GET whose result is used only to
+# DIAGNOSE a failure the client already reported. It carries no -u and no -K,
+# because the question it answers is what an anonymous client sees; and no -f,
+# because the refusal body has to land on disk for its size to be measurable.
+probe_url() {
+  local url="$1"
+  local body="${TMP_DIR}/probe-body.bin"
+  PROBE_RC=0
+  PROBE_CODE=""
+  PROBE_BYTES=0
+  rm -f "$body"
+  if ! command -v curl > /dev/null 2>&1; then
+    PROBE_RC=127
+    return 0
+  fi
+  PROBE_CODE="$(curl -sS -o "$body" -w '%{http_code}' \
+    --connect-timeout 5 --max-time 30 "$url" 2> "${TMP_DIR}/probe-err.txt")" || PROBE_RC=$?
+  if [[ -f "$body" ]]; then
+    PROBE_BYTES="$(wc -c < "$body" | tr -d ' ')"
+  fi
+}
+
+# diagnose_url URL — three distinct server-side conditions, each named with the
+# value responsible, because "verification failed" sends a developer to read
+# their own config when the cause is on the server:
+#
+#   transport error  the endpoint is unreachable — URL, DNS, firewall, or the
+#                    service is down. Nothing in this repository can fix it.
+#   HTTP 401         anonymous read is not enabled on the Nexus SERVER.
+#   HTTP 403 with a body under ~1,000 bytes — the Nexus licence refusal.
+#                    MEASURED (plan 24-02): the refusal body is 192 bytes and is
+#                    a perfectly well-formed HTTP response, so the size is what
+#                    distinguishes it from an authorization rule.
+diagnose_url() {
+  local url="$1"
+  probe_url "$url"
+
+  if [[ "$PROBE_RC" -eq 127 ]]; then
+    printf 'no diagnosis available: curl is not on PATH, so %s could not be probed independently.' "$url"
+    return 0
+  fi
+
+  if [[ "$PROBE_RC" -ne 0 ]]; then
+    printf 'REACHABILITY: an unauthenticated GET of %s did not complete (curl exited %s — 6 is DNS, 7 is connection refused, 28 is a timeout). The endpoint is unreachable from this machine: check the --url value, DNS, a firewall, and whether the service is running. No file in this repository can fix a connection that is never made.' \
+      "$url" "$PROBE_RC"
+    return 0
+  fi
+
+  case "$PROBE_CODE" in
+    200)
+      printf 'the endpoint %s itself answered HTTP 200 with %s bytes to an unauthenticated GET, so the server is reachable, anonymous read is open and the licence is accepted — the cause is on the client side of this ecosystem, not on the server.' \
+        "$url" "$PROBE_BYTES"
+      ;;
+    401)
+      printf 'SERVER-SIDE ANONYMOUS ACCESS: %s answered HTTP 401 to an unauthenticated GET. Anonymous read is NOT enabled on this Nexus — the server-side value responsible is anonymous.enabled (the chart value anonymous.enabled, PUT to /service/rest/v1/security/anonymous). Nothing written into this repository can change that; the Nexus instance has to be reconfigured.' \
+        "$url"
+      ;;
+    403)
+      if [[ "$PROBE_BYTES" -lt 1000 ]]; then
+        printf 'SERVER-SIDE LICENCE REFUSAL: %s answered HTTP 403 with a %s-byte body to an unauthenticated GET. A component download refused with a body that small is the Sonatype licence gate, NOT a client misconfiguration — the server-side value responsible is eula.accepted (the chart value eula.accepted, POSTed to /service/rest/v1/system/eula). Measured, plan 24-02: the refusal body is 192 bytes, metadata still answers 200 while every component download is refused, and no file in this repository can change it.' \
+          "$url" "$PROBE_BYTES"
+      else
+        printf '%s answered HTTP 403 with a %s-byte body. That is far larger than the ~192-byte Sonatype licence refusal, so this is an authorization rule on the server (a role or privilege on the anonymous user) rather than the eula.accepted gate.' \
+          "$url" "$PROBE_BYTES"
+      fi
+      ;;
+    404)
+      printf '%s answered HTTP 404. The repository does not exist on this Nexus under that name, or the --url carries a path that the server does not serve. Check that the provisioning Job created it and that its name matches.' \
+        "$url"
+      ;;
+    *)
+      printf '%s answered HTTP %s with a %s-byte body to an unauthenticated GET — none of the three conditions this script can name (unreachable, 401 anonymous-disabled, 403 licence refusal).' \
+        "$url" "$PROBE_CODE" "$PROBE_BYTES"
+      ;;
+  esac
+}
+
+# npm (24-W0-10). The one ecosystem with a native project scope, and therefore
+# the one whose readback can be right while the file is never read: npm resolves
+# .npmrc from its LOCAL PREFIX, so a repository with no package.json and no
+# node_modules cannot be verified here at all. That case is UNVERIFIABLE with
+# the reason named — never 'ok'.
+verify_npm() {
+  local mechanism=".npmrc (project scope)"
+  local expected="${NEXUS_URL}/repository/${NPM_REPO}/"
+  local component_url="${NEXUS_URL}/repository/${NPM_REPO}/${VERIFY_NPM_NAME}/-/${VERIFY_NPM_NAME}-${VERIFY_NPM_VERSION}.tgz"
+  local spec="${VERIFY_NPM_NAME}@${VERIFY_NPM_VERSION}"
+  local log="${TMP_DIR}/verify-npm.log"
+  local dest="${TMP_DIR}/npm-pack"
+  local observed_registry="" fetched="" bytes=0 rc=0
+
+  if ! command -v npm > /dev/null 2>&1; then
+    verify_row "npm" "$mechanism" "SKIPPED" \
+      "npm is not on PATH, so nothing about npm routing was measured. A SKIP IS NOT A PASS: install npm and re-run --verify."
+    return 0
+  fi
+
+  observed_registry="$( cd "$REPO_ROOT" && npm config get registry 2> "$log" )" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    verify_row "npm" "$mechanism" "FAILED" \
+      "'npm config get registry' exited ${rc} in ${REPO_ROOT}: $(tr '\n' ' ' < "$log" | cut -c1-200)"
+    return 0
+  fi
+
+  if [[ "$(strip_slash "$observed_registry")" != "$(strip_slash "$expected")" ]]; then
+    verify_row "npm" "$mechanism" "FAILED" \
+      "readback wrong: npm itself resolves registry to '${observed_registry}', not '${expected}'. npm reads .npmrc from its LOCAL PREFIX (the nearest ancestor holding package.json or node_modules), and an npm_config_registry environment variable outranks the file — check both before editing .npmrc."
+    return 0
+  fi
+
+  if [[ ! -f "${REPO_ROOT}/package.json" && ! -d "${REPO_ROOT}/node_modules" ]]; then
+    verify_row "npm" "$mechanism" "UNVERIFIABLE" \
+      "npm reported registry '${observed_registry}', but there is no package.json and no node_modules at ${REPO_ROOT}, so npm's local prefix does not resolve here and that value came from somewhere else up the tree. Run 'npm init -y' (or add package.json) and re-run --verify. This row is NOT a pass."
+    return 0
+  fi
+
+  mkdir -p "$dest"
+  # A FRESH, EMPTY cache, and this is load-bearing rather than tidiness: a
+  # tarball already in ~/.npm satisfies "a file appeared" with no network
+  # traffic at all, which is a green row for a Nexus that was never contacted.
+  # Retries are off and the fetch timeout is explicit so the call is bounded by
+  # npm's own settings even where `timeout` is unavailable.
+  rc=0
+  ( cd "$REPO_ROOT" && bounded 90 env \
+      npm_config_cache="${TMP_DIR}/npm-cache" \
+      npm_config_fetch_retries=0 \
+      npm_config_fetch_timeout=20000 \
+      npm pack "$spec" --pack-destination "$dest" ) > "$log" 2>&1 || rc=$?
+
+  if [[ "$rc" -ne 0 ]]; then
+    verify_row "npm" "$mechanism" "FAILED" \
+      "readback is correct, but the fetch failed: 'npm pack ${spec}' exited ${rc}. $(diagnose_url "$component_url") npm's own output: $(tr '\n' ' ' < "$log" | cut -c1-300)"
+    return 0
+  fi
+
+  fetched="$(find "$dest" -type f -name '*.tgz' | head -1)"
+  if [[ -z "$fetched" ]]; then
+    verify_row "npm" "$mechanism" "FAILED" \
+      "'npm pack ${spec}' exited 0 but left no tarball in ${dest}, so nothing was actually downloaded: $(tr '\n' ' ' < "$log" | cut -c1-300)"
+    return 0
+  fi
+
+  bytes="$(wc -c < "$fetched" | tr -d ' ')"
+  verify_row "npm" "$mechanism" "ok" \
+    "npm resolves registry=${observed_registry}; 'npm pack ${spec}' pulled ${bytes} bytes through it with an empty cache"
+}
+
+# pip (24-W0-11). The readback alone is not sufficient here and the gap is
+# specific: PIP_INDEX_URL in the ENVIRONMENT outranks pip.conf, while
+# 'pip config get' reports only what the FILE says. An operator with that
+# variable set would get a correct readback, a successful download from public
+# PyPI and a green row. pip's own 'Looking in indexes:' line is what closes it —
+# that line names the index pip actually used.
+verify_pip() {
+  local mechanism="pip.conf via PIP_CONFIG_FILE"
+  local expected="${NEXUS_URL}/repository/${PYPI_REPO}/simple"
+  local simple_url="${NEXUS_URL}/repository/${PYPI_REPO}/simple/${VERIFY_PIP_PACKAGE}/"
+  local pip_conf="${REPO_ROOT}/pip.conf"
+  local log="${TMP_DIR}/verify-pip.log"
+  local dest="${TMP_DIR}/pip-download"
+  local observed="" looking="" pip_http="" fetched="" diag="" rc=0
+  local -a pip_cmd=()
+
+  if command -v pip3 > /dev/null 2>&1; then
+    pip_cmd=(pip3)
+  elif command -v pip > /dev/null 2>&1; then
+    pip_cmd=(pip)
+  elif command -v python3 > /dev/null 2>&1 && python3 -m pip --version > /dev/null 2>&1; then
+    pip_cmd=(python3 -m pip)
+  else
+    verify_row "pip" "$mechanism" "SKIPPED" \
+      "no pip on PATH (tried pip3, pip and 'python3 -m pip'), so nothing about pip routing was measured. A SKIP IS NOT A PASS."
+    return 0
+  fi
+
+  if [[ ! -f "$pip_conf" ]]; then
+    verify_row "pip" "$mechanism" "FAILED" \
+      "there is no pip.conf at ${pip_conf}, so there is nothing for PIP_CONFIG_FILE to point at and pip is still using its own configuration."
+    return 0
+  fi
+
+  # MEASURED on pip 26.2.1, and NOT what the obvious command does: with
+  # PIP_CONFIG_FILE pointed at a file that plainly carries the key,
+  # `pip config get global.index-url` exits 1 with "ERROR: No such key" under
+  # every scope flag, while `pip config list` prints
+  # global.index-url='<url>' from the same file in the same shell. `get` reads
+  # the writable scopes (user/global/site) only and cannot see the ':env:'
+  # variant that PIP_CONFIG_FILE creates. So the readback below uses
+  # `config list`, which is also the better question: it reports pip's MERGED
+  # view rather than one file's contents.
+  rc=0
+  env PIP_CONFIG_FILE="$pip_conf" "${pip_cmd[@]}" config list \
+    > "${TMP_DIR}/pip-config-list.txt" 2> "$log" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    verify_row "pip" "$mechanism" "FAILED" \
+      "'PIP_CONFIG_FILE=${pip_conf} ${pip_cmd[*]} config list' exited ${rc}: $(tr '\n' ' ' < "$log" | cut -c1-200)"
+    return 0
+  fi
+  observed="$(sed -n "s/^global\.index-url='\(.*\)'\$/\1/p" "${TMP_DIR}/pip-config-list.txt" | head -1)"
+  if [[ -z "$observed" ]]; then
+    verify_row "pip" "$mechanism" "FAILED" \
+      "with PIP_CONFIG_FILE=${pip_conf}, 'pip config list' reports no global.index-url at all, so pip is still resolving from its own default index. Observed: $(tr '\n' ' ' < "${TMP_DIR}/pip-config-list.txt" | cut -c1-200)"
+    return 0
+  fi
+
+  if [[ "$(strip_slash "$observed")" != "$(strip_slash "$expected")" ]]; then
+    verify_row "pip" "$mechanism" "FAILED" \
+      "readback wrong: pip reads global.index-url as '${observed}', not '${expected}'."
+    return 0
+  fi
+
+  mkdir -p "$dest"
+  # --no-cache-dir for the same reason npm gets an empty cache: a wheel already
+  # in pip's HTTP cache would satisfy "a file appeared" without one packet
+  # reaching Nexus. --timeout and --retries bound the call from pip's own side.
+  rc=0
+  bounded 120 env PIP_CONFIG_FILE="$pip_conf" "${pip_cmd[@]}" download "$VERIFY_PIP_PACKAGE" \
+    --no-deps --no-cache-dir --dest "$dest" --timeout 10 --retries 0 > "$log" 2>&1 || rc=$?
+
+  if [[ "$rc" -ne 0 ]]; then
+    # pip prints the component-level status itself, which is a better witness
+    # than any probe this script could make: it is the status pip's own request
+    # received, through pip's own configuration.
+    pip_http="$(grep -oE 'HTTP error [0-9]{3}' "$log" | head -1)" || pip_http=""
+    case "$pip_http" in
+      *401*)
+        diag="SERVER-SIDE ANONYMOUS ACCESS: pip's own request was answered HTTP 401. Anonymous read is NOT enabled on this Nexus — the server-side value responsible is anonymous.enabled."
+        ;;
+      *403*)
+        diag="SERVER-SIDE LICENCE REFUSAL: pip's own COMPONENT request was answered HTTP 403 — the Sonatype licence gate, not a client misconfiguration. The server-side value responsible is eula.accepted. Measured, plan 24-02: a PyPI simple page answers 200 even while the licence is unaccepted, because it is metadata; only a component download such as this one sees the gate."
+        ;;
+      *)
+        diag="$(diagnose_url "$simple_url") NOTE (measured, plan 24-02): a 200 from a PyPI simple page is METADATA and is NOT evidence that the server's licence is accepted — only a component download shows the eula.accepted gate."
+        ;;
+    esac
+    verify_row "pip" "$mechanism" "FAILED" \
+      "readback is correct, but the fetch failed: '${pip_cmd[*]} download ${VERIFY_PIP_PACKAGE}' exited ${rc}. ${diag} pip's own output: $(tr '\n' ' ' < "$log" | cut -c1-300)"
+    return 0
+  fi
+
+  looking="$(grep -m1 'Looking in indexes:' "$log")" || looking=""
+  if [[ -z "$looking" ]]; then
+    verify_row "pip" "$mechanism" "FAILED" \
+      "the download succeeded but pip never printed a 'Looking in indexes:' line, which it prints whenever the index is not its own default — so this wheel may have come from public PyPI rather than from ${expected}. pip's output: $(tr '\n' ' ' < "$log" | cut -c1-300)"
+    return 0
+  fi
+  case "$looking" in
+    *"$(strip_slash "$expected")"*)
+      :
+      ;;
+    *)
+      verify_row "pip" "$mechanism" "FAILED" \
+        "the download succeeded, but pip reports '${looking}' — a different index from ${expected}. PIP_INDEX_URL in the environment outranks pip.conf and 'pip config get' cannot see it; unset it in this shell and re-run --verify."
+      return 0
+      ;;
+  esac
+
+  fetched="$(find "$dest" -type f | head -1)"
+  if [[ -z "$fetched" ]]; then
+    verify_row "pip" "$mechanism" "FAILED" \
+      "'${pip_cmd[*]} download ${VERIFY_PIP_PACKAGE}' exited 0 but left no file in ${dest}: $(tr '\n' ' ' < "$log" | cut -c1-300)"
+    return 0
+  fi
+
+  verify_row "pip" "$mechanism" "ok" \
+    "pip reads global.index-url=${observed} and reports '${looking}'; downloaded $(basename "$fetched") with the cache disabled"
+}
+
+# Helm (24-W0-12). The env redirect IS the mechanism, so this stage also has to
+# prove what it did NOT touch: the operator's global repository list is
+# fingerprinted before and after, and a change there is a failure even if every
+# fetch succeeded.
+verify_helm() {
+  local mechanism=".helm/repositories.yaml via env redirect"
+  local expected="${NEXUS_URL}/repository/${HELM_REPO}/"
+  local index_url="${NEXUS_URL}/repository/${HELM_REPO}/index.yaml"
+  local helm_cfg="${REPO_ROOT}/.helm/repositories.yaml"
+  local helm_cache="${REPO_ROOT}/.helm/cache"
+  local log="${TMP_DIR}/verify-helm.log"
+  local out="${TMP_DIR}/verify-helm.json"
+  local global_cfg="" before="" after="" rows=0 rc=0
+
+  if ! command -v helm > /dev/null 2>&1; then
+    verify_row "helm" "$mechanism" "SKIPPED" \
+      "helm is not on PATH, so nothing about Helm routing was measured. A SKIP IS NOT A PASS."
+    return 0
+  fi
+
+  # Read with the redirect removed, so this names the operator's REAL global
+  # list even in a shell that has already sourced a .nexus-env.
+  global_cfg="$(env -u HELM_REPOSITORY_CONFIG helm env HELM_REPOSITORY_CONFIG | tr -d '"')"
+  before="$(digest_of "$global_cfg")"
+
+  if [[ ! -f "$helm_cfg" ]]; then
+    verify_row "helm" "$mechanism" "FAILED" \
+      "there is no ${helm_cfg}, so 'helm repo add' never completed and HELM_REPOSITORY_CONFIG has nothing to point at. $(diagnose_url "$index_url")"
+    return 0
+  fi
+
+  rc=0
+  bounded 30 env HELM_REPOSITORY_CONFIG="$helm_cfg" HELM_REPOSITORY_CACHE="$helm_cache" \
+    helm repo list -o json > "$out" 2> "$log" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    verify_row "helm" "$mechanism" "FAILED" \
+      "'helm repo list' exited ${rc} against ${helm_cfg}: $(tr '\n' ' ' < "$log" | cut -c1-200)"
+    return 0
+  fi
+  if ! grep -Fq "\"${HELM_REPO_NAME}\"" "$out" || ! grep -Fq "$(strip_slash "$expected")" "$out"; then
+    verify_row "helm" "$mechanism" "FAILED" \
+      "readback wrong: with HELM_REPOSITORY_CONFIG pointed at ${helm_cfg}, 'helm repo list' does not show an entry named '${HELM_REPO_NAME}' at ${expected}. Observed: $(tr '\n' ' ' < "$out" | cut -c1-200)"
+    return 0
+  fi
+
+  rc=0
+  bounded 120 env HELM_REPOSITORY_CONFIG="$helm_cfg" HELM_REPOSITORY_CACHE="$helm_cache" \
+    helm repo update "$HELM_REPO_NAME" > "$log" 2>&1 || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    verify_row "helm" "$mechanism" "FAILED" \
+      "the entry exists, but 'helm repo update ${HELM_REPO_NAME}' exited ${rc}, so no index.yaml was fetched. $(diagnose_url "$index_url") Helm's own output: $(tr '\n' ' ' < "$log" | cut -c1-300)"
+    return 0
+  fi
+
+  # MEASURED on helm v4.3.0, and the reason the pattern below is NOT anchored:
+  # `helm search repo -r '^nexus/'` reports "No results found" on an index whose
+  # every row is named 'nexus/<chart>', while `-r 'nexus/'` returns all of them.
+  # Helm's regexp search is not applied to the start of the 'repo/chart' string,
+  # so an anchored pattern silently matches nothing — a false FAILED row. The
+  # anchoring is done afterwards instead, on the JSON, where it is exact:
+  # --fail-on-no-result only proves SOME row matched, and a chart in another
+  # repository whose name contains 'nexus/' would satisfy it.
+  rc=0
+  bounded 60 env HELM_REPOSITORY_CONFIG="$helm_cfg" HELM_REPOSITORY_CACHE="$helm_cache" \
+    helm search repo -r "${HELM_REPO_NAME}/" --fail-on-no-result -o json > "$out" 2> "$log" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    verify_row "helm" "$mechanism" "FAILED" \
+      "'helm repo update' succeeded but 'helm search repo -r ${HELM_REPO_NAME}/' returned no row, so the index that was fetched carries no chart. Either the Nexus ${HELM_REPO} repository proxies nothing (the chart ships repos.helm.remoteUrl as null and creates that repository only when a consumer sets it), or the index is empty. Helm's own output: $(tr '\n' ' ' < "$log" | cut -c1-300)"
+    return 0
+  fi
+  # Occurrences, not matching LINES: `helm search repo -o json` emits the whole
+  # array on ONE line, so `grep -c` would report 1 for any non-empty result.
+  rows="$(grep -o "\"name\":\"${HELM_REPO_NAME}/" "$out" | wc -l | tr -d ' ')" || rows=0
+  if [[ "$rows" -eq 0 ]]; then
+    verify_row "helm" "$mechanism" "FAILED" \
+      "'helm search repo -r ${HELM_REPO_NAME}/' returned rows, but none of them belongs to the '${HELM_REPO_NAME}' repository this script configured — they came from another repository in ${helm_cfg}. Observed: $(tr '\n' ' ' < "$out" | cut -c1-200)"
+    return 0
+  fi
+
+  after="$(digest_of "$global_cfg")"
+  if [[ "$after" != "$before" ]]; then
+    verify_row "helm" "$mechanism" "FAILED" \
+      "every Helm fetch succeeded, but the operator's GLOBAL repository list ${global_cfg} changed during verification (${before} -> ${after}). HELM_REPOSITORY_CONFIG and HELM_REPOSITORY_CACHE are the entire mechanism keeping this repository-scoped, and something escaped them."
+    return 0
+  fi
+
+  verify_row "helm" "$mechanism" "ok" \
+    "'helm repo list' shows '${HELM_REPO_NAME}' at ${expected}; 'helm repo update' fetched its index and 'helm search repo -r ${HELM_REPO_NAME}/' returned ${rows} chart row(s) from that repository; the global list ${global_cfg} is unchanged (${before})"
+}
+
+# Docker. MANUAL under every condition, and never 'ok' — not because the fetch
+# was not attempted but because there is nothing per-repository to attempt. No
+# Docker client reads any file in this repository.
+verify_docker() {
+  verify_row "docker" "none - no per-repo mechanism exists" "MANUAL" \
+    "NEXUS_DOCKER_REGISTRY=${NEXUS_HOST}/${DOCKER_REPO} — nothing routes until an image REFERENCE is edited to start with that prefix, e.g. 'docker pull ${NEXUS_HOST}/${DOCKER_REPO}/library/alpine:3.21'.${DOCKER_VERIFY_NOTE}"
+}
+
+run_verify() {
+  local row eco mech status obs
+
+  echo ""
+  echo "Nexus routing verification"
+  echo "--------------------------"
+  echo "Repository: ${REPO_ROOT}"
+  echo "Nexus:      ${NEXUS_URL}"
+  echo ""
+
+  if [[ -z "$BOUND_TOOL" ]]; then
+    warn "neither 'timeout' nor 'gtimeout' is on PATH. The npm and pip fetches below are still bounded by those clients' own timeout settings, but 'helm repo update' has no timeout flag of its own in Helm v4, so that one call is UNBOUNDED on this machine. Install GNU coreutils to bound it."
+  fi
+
+  verify_npm
+  verify_pip
+  verify_helm
+  verify_docker
+
+  printf "%-9s %-42s %-13s %s\n" "ECOSYSTEM" "MECHANISM" "STATUS" "OBSERVED"
+  printf "%-9s %-42s %-13s %s\n" "---------" "---------" "------" "--------"
+  for row in "${VERIFY_ROWS[@]}"; do
+    IFS='|' read -r eco mech status obs <<< "$row"
+    printf "%-9s %-42s %-13s %s\n" "$eco" "$mech" "$status" "$obs"
+  done
+
+  echo ""
+  echo "Rows: ${VERIFY_OK} ok, ${VERIFY_BAD} not ok, ${VERIFY_MANUAL} MANUAL."
+  echo ""
+  echo "What 'ok' means here: that client, run from this repository, resolved this"
+  echo "Nexus AND pulled a real component through it just now. What it does not mean:"
+  echo "that any other shell is configured — pip and Helm need 'source .nexus-env' in"
+  echo "every shell that uses them."
+  echo ""
+  echo "MANUAL is not a pass and never becomes one. Docker has no per-repository"
+  echo "configuration of any kind, so no run of this script can prove a Docker pull"
+  echo "routes; and even a machine-global mirror only ever affects docker.io"
+  echo "references — ghcr.io, quay.io and public.ecr.aws are never mirrored."
+  if [[ "$VERIFY_BAD" -gt 0 ]]; then
+    echo ""
+    echo "${VERIFY_BAD} row(s) above are not 'ok'. This run exits non-zero."
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # End-of-run report
 # ---------------------------------------------------------------------------
 #
@@ -726,10 +1302,14 @@ print_report() {
   echo "even a machine-global Docker mirror would only ever affect Docker Hub"
   echo "references — ghcr.io, quay.io and public.ecr.aws are never routed by one."
   echo ""
-  echo "NOT PROVEN. Nothing above shows that any client actually reaches this"
-  echo "Nexus; writing a configuration file is not the same as a client reading"
-  echo "it. The verification pass that would prove it, --verify, is not"
-  echo "implemented in this version of the script."
+  if [[ "$VERIFY" = true ]]; then
+    echo "NOT PROVEN BY THE ROWS ABOVE. They say what was WRITTEN. The verification"
+    echo "table below is the part that measures whether any client reads it."
+  else
+    echo "NOT PROVEN. Nothing above shows that any client actually reaches this"
+    echo "Nexus; writing a configuration file is not the same as a client reading"
+    echo "it. Re-run this command with --verify to measure it, per ecosystem."
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -770,14 +1350,8 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     --verify)
-      # Recognised, and deliberately not implemented in this version. The
-      # verification pass is plan 24-07's deliverable. Failing here with one
-      # line — rather than falling through to the unknown-argument branch and
-      # printing usage — is the honest answer: a flag that cannot verify
-      # anything must not emit output that reads like a verification report.
-      # Plan 24-07 replaces this arm with the real implementation.
-      err "--verify is not implemented in this version of the script. Nothing was verified and nothing was written."
-      exit 1
+      VERIFY=true
+      shift
       ;;
     *)
       err "Unknown argument: $1"
@@ -834,6 +1408,13 @@ write_nexus_env
 update_gitignore
 
 print_report
+
+# LAST, on purpose. The final thing this script prints must be measured
+# evidence rather than a claim: an `info "done"` as the closing line is the
+# warning sign Pitfall 10 names.
+if [[ "$VERIFY" = true ]]; then
+  run_verify
+fi
 
 if [[ "$FAIL_COUNT" -gt 0 ]]; then
   exit 1
