@@ -54,6 +54,33 @@ set -euo pipefail
 # main() guard — so sourcing it would execute a tool installer. The four logging
 # functions and write_config below are COPIED from it, deliberately.
 #
+# DOCKER, AND THE ONE THING THIS SCRIPT WRITES OUTSIDE THE REPOSITORY.
+# The branch implemented below is `daemon-opt-in`, selected by the operator at
+# plan 24-04's checkpoint with the A3 measurement in front of them. The
+# measurement that justifies it, verbatim from
+# .planning/phases/24-nexus-anonymous-access-and-workstation-script/24-evidence/a3-docker-daemon-routing.md:
+#
+#   VERDICT: A3-FALSIFIED-CANDIDATE-1
+#
+# Read precisely: a path-routed Nexus Docker proxy CAN serve as a Docker daemon
+# `registry-mirrors` target, at the `/repository/<repo>` URL and ONLY at that
+# URL. The measurement is a components delta on the Nexus side, not a pull exit
+# code: the other candidate, `HOST/<repo>` — the shape that looks right because
+# it is the image-REFERENCE shape — produced `docker pull` exit 0 with real
+# layer traffic and ZERO components in Nexus, because Docker silently fell back
+# to Docker Hub. A mirror that does not route is invisible.
+#
+# Three consequences this file is built around:
+#   * the mirror URL carries `/repository/`; the NEXUS_DOCKER_REGISTRY prefix in
+#     .nexus-env does NOT. They are different URLs for different consumers and
+#     must not be "unified".
+#   * only docker.io references are ever mirrored. Confirmed from
+#     version-matched moby source, not from the probe: mirrors are attached to
+#     the Docker Hub index and to no other. ghcr.io, quay.io, public.ecr.aws and
+#     every other registry are untouched by any registry-mirrors value.
+#   * the whole path sits behind --docker-daemon, OFF by default, because it is
+#     machine-global and this script is otherwise scoped to one repository.
+#
 # KNOWN INPUT LIMITATION. The --url validator below rejects bracketed IPv6
 # literals ('[::1]:8081'), because the conservative character class that keeps
 # shell metacharacters out of a string destined for config files also excludes
@@ -68,6 +95,11 @@ set -euo pipefail
 VERBOSE=false
 FORCE=false
 COMMIT_CONFIG=false
+
+# --docker-daemon: the `daemon-opt-in` branch, OFF by default. See the header.
+# Everything else this script writes lands inside the target repository; this
+# one flag is the single exception, and it is machine-global.
+DOCKER_DAEMON=false
 
 # --verify: the mandatory proof pass. Configuration runs first and --verify
 # then measures, per ecosystem, whether a client actually reaches this Nexus.
@@ -112,6 +144,13 @@ GITIGNORE_STATUS="not touched (writer never ran)"
 # Docker is never "configured" by this script and the report must never imply
 # it. The string is a constant for that reason.
 DOCKER_STATUS="MANUAL — no per-repository configuration exists; .nexus-env exports a prefix string and nothing routes until an image reference is edited to use it"
+
+# The machine-global daemon write reports on its own row, separate from the
+# docker row above, because the two are different things: one is a repository's
+# routing (which does not exist for Docker) and the other is a workstation-wide
+# setting that this script only touches when asked.
+DOCKER_DAEMON_STATUS="not touched (--docker-daemon was not given)"
+DOCKER_DAEMON_FILE="${HOME}/.docker/daemon.json"
 
 # The repository entry name written into .helm/repositories.yaml. Stable, so a
 # re-run updates one entry rather than accumulating them.
@@ -203,6 +242,24 @@ Options:
                    artefacts are fetched (an npm tarball, a PyPI wheel and the
                    chart index); override which with NEXUS_VERIFY_NPM_NAME,
                    NEXUS_VERIFY_NPM_VERSION and NEXUS_VERIFY_PIP_PACKAGE.
+  --docker-daemon  ALSO write the MACHINE-GLOBAL Docker daemon configuration at
+                   ~/.docker/daemon.json. OFF by default, and the only thing
+                   this script writes outside the target repository.
+                   WHAT IT COSTS: unlike the npm, pip and Helm configuration,
+                   which is scoped to one repository, this affects every
+                   repository and every project on this workstation. For a
+                   plain-http Nexus it also adds an insecure-registries entry,
+                   which disables TLS verification for that host entirely and
+                   must be removed once TLS is configured on the instance
+                   (ADR-009).
+                   WHAT IT BUYS, precisely: docker.io image references are
+                   pulled through Nexus. ghcr.io, quay.io, public.ecr.aws and
+                   every other registry are NOT mirrored by any daemon mirror
+                   and continue to be pulled directly.
+                   The existing file is backed up with a timestamp first, each
+                   entry is added at most once, a malformed file is never
+                   overwritten, and the Docker engine must be restarted by you
+                   afterwards — this script never restarts it.
   --commit-config  Do NOT add the generated files to .gitignore. By default
                    they are gitignored: a committed .npmrc pointing at one
                    operator's Nexus breaks dependency resolution for every
@@ -758,6 +815,143 @@ update_gitignore() {
 }
 
 # ---------------------------------------------------------------------------
+# --docker-daemon — the ONE machine-global write, and the only file this
+# script touches outside the target repository
+# ---------------------------------------------------------------------------
+#
+# T-24-34. This file belongs to the operator, not to this script, and it very
+# probably already exists with keys that matter — a credential store, a builder
+# configuration, a proxy. The shape below is the realms guard from
+# kubernetes/nexus/files/provision.sh: read the current state, compute the new
+# state with jq, compare, and write ONLY if they differ.
+#
+# It deliberately does NOT go through write_config(): that function skips when
+# the target exists, which on a file that almost certainly exists would print a
+# skip where the operator would read "already configured".
+print_docker_daemon_warning() {
+  cat >&2 <<DOCKERWARN
+
+SECURITY WARNING (ADR-009) — what was just written to ${DOCKER_DAEMON_FILE}:
+
+  registry-mirrors     tells the Docker engine to try ${1} before Docker Hub.
+                       Only docker.io references are ever mirrored: ghcr.io,
+                       quay.io, public.ecr.aws and every other registry
+                       continue to be pulled directly, so this routes PART of
+                       a typical project's images and never all of them.
+  insecure-registries  does not merely permit plain HTTP. It disables TLS
+                       verification for ${NEXUS_HOST} entirely, so anything
+                       positioned between this machine and that host can
+                       substitute images and the engine will raise no
+                       certificate error.
+
+  This change is MACHINE-GLOBAL: it affects every repository and every project
+  on this workstation, unlike the npm, pip and Helm configuration this script
+  writes, which is scoped to one repository.
+  It MUST be removed once TLS is configured on this Nexus instance.
+
+DOCKERWARN
+}
+
+configure_docker_daemon() {
+  local daemon_dir="${HOME}/.docker"
+  local mirror_url="${NEXUS_URL}/repository/${DOCKER_REPO}"
+  local current="${TMP_DIR}/daemon-current.json"
+  local new="${TMP_DIR}/daemon-new.json"
+  local parse_err="${TMP_DIR}/daemon-parse.err"
+  local backup="" stamp=""
+
+  # jq is not optional here and there is no fallback. Editing a JSON file this
+  # script does not own with sed is how other people's keys get destroyed.
+  if ! command -v jq > /dev/null 2>&1; then
+    err "--docker-daemon needs jq, which is not on PATH. ${DOCKER_DAEMON_FILE} was NOT touched: this script will not edit a JSON file it does not own without a JSON parser."
+    DOCKER_DAEMON_STATUS="not written (jq is not on PATH)"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    return 0
+  fi
+
+  if [[ -n "$NEXUS_PATH" ]]; then
+    warn "--url carries the path '${NEXUS_PATH}', so the mirror URL written below is '${mirror_url}'. The A3 measurement covered a Nexus at the root of its host; a mirror URL with an extra path component in front of '/repository/' is NOT a measured shape. Verify the pull actually lands in Nexus rather than trusting the exit code — a Docker pull that silently falls back to Docker Hub also exits 0."
+  fi
+
+  mkdir -p "$daemon_dir"
+
+  if [[ -f "$DOCKER_DAEMON_FILE" ]]; then
+    # A malformed file is a HARD failure, never an overwrite. A file this
+    # script cannot parse is a file whose contents it cannot preserve, and
+    # replacing it would destroy exactly the keys the backup exists to protect.
+    if ! jq '.' "$DOCKER_DAEMON_FILE" > "$current" 2> "$parse_err"; then
+      err "${DOCKER_DAEMON_FILE} exists and is not valid JSON, so it was NOT modified and NOT overwritten: $(tr '\n' ' ' < "$parse_err" | cut -c1-200). Fix the file by hand, then re-run."
+      DOCKER_DAEMON_STATUS="not written (existing file is not valid JSON — left untouched)"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+      return 0
+    fi
+    if ! jq -e 'type == "object"' "$current" > /dev/null 2>&1; then
+      err "${DOCKER_DAEMON_FILE} parses as JSON but is not an object, so it was NOT modified. A Docker daemon configuration is a JSON object."
+      DOCKER_DAEMON_STATUS="not written (existing file is valid JSON but not an object — left untouched)"
+      FAIL_COUNT=$((FAIL_COUNT + 1))
+      return 0
+    fi
+  else
+    printf '{}\n' > "$current"
+    log "No ${DOCKER_DAEMON_FILE} exists; the current state is an empty document and there is nothing to back up."
+  fi
+
+  # Each entry is appended ONLY when absent, and the existing list is neither
+  # sorted nor de-duplicated: registry-mirrors is a PRIORITY list, and
+  # reordering an operator's mirrors would change which one is tried first.
+  #
+  # insecure-registries is emitted only for a plain-http Nexus. ADR-009 governs
+  # it exactly as it governs pip's trusted-host: writing a TLS bypass for an
+  # https:// URL would disable a certificate check that is currently working.
+  # The measured A3 pair was http with both keys, so an http run ships exactly
+  # the combination that was measured.
+  if [[ "$NEXUS_SCHEME" == "http" ]]; then
+    jq --arg m "$mirror_url" --arg h "$NEXUS_HOST" '
+      .["registry-mirrors"]    = ((.["registry-mirrors"]    // []) | if index($m) then . else . + [$m] end)
+      | .["insecure-registries"] = ((.["insecure-registries"] // []) | if index($h) then . else . + [$h] end)
+    ' "$current" > "$new"
+  else
+    info "--url is https, so no insecure-registries entry is written: that directive disables TLS verification, and adding it for a URL that already has TLS would downgrade a check that is working. Only registry-mirrors is added."
+    jq --arg m "$mirror_url" '
+      .["registry-mirrors"] = ((.["registry-mirrors"] // []) | if index($m) then . else . + [$m] end)
+    ' "$current" > "$new"
+  fi
+
+  # Canonicalised comparison rather than a byte comparison of the two files:
+  # jq reformats, so a file whose entries are already present but indented
+  # differently would otherwise be "changed", taking a backup and printing a
+  # security warning for a rewrite that alters nothing.
+  if [[ "$(jq -S -c '.' "$current")" == "$(jq -S -c '.' "$new")" ]]; then
+    info "${DOCKER_DAEMON_FILE} already carries the mirror ${mirror_url}$([[ "$NEXUS_SCHEME" == "http" ]] && printf ' and the insecure-registries entry %s' "$NEXUS_HOST"). Nothing was written and no backup was taken."
+    DOCKER_DAEMON_STATUS="unchanged (every entry was already present; nothing written)"
+    DOCKER_VERIFY_NOTE=" A machine-global mirror for ${mirror_url} is already present in ${DOCKER_DAEMON_FILE}; that is a daemon key, not a per-repository route, and it mirrors docker.io references only."
+    return 0
+  fi
+
+  if [[ -f "$DOCKER_DAEMON_FILE" ]]; then
+    stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+    backup="${DOCKER_DAEMON_FILE}.nexus-setup-backup-${stamp}"
+    cp -p "$DOCKER_DAEMON_FILE" "$backup"
+    info "Backed up ${DOCKER_DAEMON_FILE} to ${backup} BEFORE any write."
+  fi
+
+  cat "$new" > "$DOCKER_DAEMON_FILE"
+  CONFIG_COUNT=$((CONFIG_COUNT + 1))
+  DOCKER_DAEMON_STATUS="WRITTEN — machine-global mirror ${mirror_url} added to ${DOCKER_DAEMON_FILE}; a Docker engine restart is required before it takes effect"
+  DOCKER_VERIFY_NOTE=" A machine-global mirror for ${mirror_url} was written to ${DOCKER_DAEMON_FILE} on this run; that is a daemon key rather than a per-repository route, it mirrors docker.io references only, and the engine has not been restarted, so it is not in effect yet."
+
+  print_docker_daemon_warning "$mirror_url"
+
+  if [[ -n "$backup" ]]; then
+    info "To undo this change:  cp \"${backup}\" \"${DOCKER_DAEMON_FILE}\""
+  else
+    info "To undo this change:  rm \"${DOCKER_DAEMON_FILE}\"  (there was no file before this run)"
+  fi
+  info "The Docker engine reads ${DOCKER_DAEMON_FILE} at start, so you must restart the engine yourself before any of this takes effect. This script does NOT restart it: stopping a developer's engine — and every container on it — is not a thing an install script may decide."
+  info "NOT MEASURED, and worth knowing before you trust it: the A3 probe ran against a nested Linux engine with the classic overlay2 image store. This workstation's own Docker Desktop engine was never configured with the mirror and never restarted during that measurement, so its first real run is here. After restarting, confirm the pull actually lands in Nexus (the repository's component count goes up) rather than trusting 'docker pull' exit 0 — a mirror that routes nothing also exits 0."
+}
+
+# ---------------------------------------------------------------------------
 # --verify — the proof pass
 # ---------------------------------------------------------------------------
 #
@@ -1289,6 +1483,7 @@ print_report() {
   printf "%-9s %s\n" "pip"    "$PIP_STATUS"
   printf "%-9s %s\n" "helm"   "$HELM_STATUS"
   printf "%-9s %s\n" "docker" "$DOCKER_STATUS"
+  printf "%-9s %s\n" "daemon" "$DOCKER_DAEMON_STATUS"
   printf "%-9s %s\n" ".gitignore" "$GITIGNORE_STATUS"
   echo ""
   echo "Files generated this run: ${CONFIG_COUNT} (existing files are left alone unless --force)"
@@ -1339,6 +1534,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --commit-config)
       COMMIT_CONFIG=true
+      shift
+      ;;
+    --docker-daemon)
+      DOCKER_DAEMON=true
       shift
       ;;
     -v|--verbose)
@@ -1406,6 +1605,13 @@ configure_helm
 # file and the .gitignore entries.
 write_nexus_env
 update_gitignore
+
+# LAST of the writers, and the only one that leaves the repository. Kept after
+# every repository-scoped write so that a failure here cannot cost the
+# developer the files that do not depend on it.
+if [[ "$DOCKER_DAEMON" = true ]]; then
+  configure_docker_daemon
+fi
 
 print_report
 
