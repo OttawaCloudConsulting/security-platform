@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 24-08-PLAN.md — chart + workstation READMEs document the delivered anonymous posture; commits ee40e42, c3ba864 in repos/security-platform
-last_updated: "2026-09-20T19:51:38.491Z"
+stopped_at: Completed 24-09-PLAN.md — ADR-021 recorded (commit 1245f49); Phase 23 deferred items 2 and 3 dispositioned
+last_updated: "2026-09-20T20:02:58.990Z"
 last_activity: 2026-09-20
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 18
-  completed_plans: 16
+  completed_plans: 17
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 24 (nexus-anonymous-access-and-workstation-script) — EXECUTING
-Plan: 9 of 10
+Plan: 10 of 10
 Status: Ready to execute
 Last activity: 2026-09-20
 
@@ -223,6 +223,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: 24-07: helm v4 -r regexp is not anchored to repo/chart, so '^nexus/' matches nothing — pattern unanchored, anchoring done on the JSON
 - [Phase ?]: 24-07: insecure-registries written only for a plain-http Nexus (ADR-009); https ships registry-mirrors alone
 - [Phase ?]: 24-08: chart and workstation READMEs document the delivered anonymous posture; the daemon mirror URL uses a placeholder so the asymmetry fact survives the no-/repository/docker-proxy acceptance grep
+- [Phase ?]: 24-09: ADR-021 (Accepted, 2026-09-20) records Phase 24's ten decisions for NEXUS-02/NEXUS-04; it supersedes ADR-020's anonymous stance in prose and closes ADR-020 'What was NOT verified' item 2 by reference, leaving ADR-020 byte-untouched per the append-only rule.
+- [Phase ?]: 24-09: Phase 23 deferred item 2 (provision.readiness.* dead knobs) RESOLVED by wiring them through in 24-02; item 3 (Checkov zero coverage of kubernetes/nexus) ACCEPTED and documented, not solved — both alternatives create a second artefact that drifts by construction, and the required credential guard was not weakened.
 
 ### Pending Todos
 
@@ -314,11 +316,12 @@ Carried forward from v1.1 close:
 | Phase 24 P06 | 50min | 3 tasks | 1 files |
 | Phase 24 P07 | 2h05m | 3 tasks | 1 files |
 | Phase 24 P08 | ~35min | 2 tasks | 2 files |
+| Phase 24 P09 | 40min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-09-20T19:51:38.482Z
-Stopped at: Completed 24-08-PLAN.md — chart + workstation READMEs document the delivered anonymous posture; commits ee40e42, c3ba864 in repos/security-platform
+Last session: 2026-09-20T20:02:58.980Z
+Stopped at: Completed 24-09-PLAN.md — ADR-021 recorded (commit 1245f49); Phase 23 deferred items 2 and 3 dispositioned
 Resume file: None
 
 ## Operator Next Steps
