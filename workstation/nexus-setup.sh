@@ -99,6 +99,20 @@ FAIL_COUNT=0
 # never "ok".
 NPM_STATUS="not configured (writer never ran)"
 PIP_STATUS="not configured (writer never ran)"
+HELM_STATUS="not configured (writer never ran)"
+GITIGNORE_STATUS="not touched (writer never ran)"
+
+# Docker is never "configured" by this script and the report must never imply
+# it. The string is a constant for that reason.
+DOCKER_STATUS="MANUAL — no per-repository configuration exists; .nexus-env exports a prefix string and nothing routes until an image reference is edited to use it"
+
+# The repository entry name written into .helm/repositories.yaml. Stable, so a
+# re-run updates one entry rather than accumulating them.
+HELM_REPO_NAME="nexus"
+
+# Entries appended to the target repository's .gitignore unless
+# --commit-config is passed. T-24-29.
+GITIGNORE_ENTRIES=(".npmrc" "pip.conf" ".helm/" ".nexus-env")
 
 # Scratch space for this run, created in the main body. Nothing a client reads
 # is ever written here.
@@ -472,6 +486,216 @@ PIPCONF
 }
 
 # ---------------------------------------------------------------------------
+# Helm — no project scope; the environment redirect IS the mechanism
+# ---------------------------------------------------------------------------
+#
+# .helm/repositories.yaml is never hand-written. It is Helm's own internal
+# format: it carries a 'generated' timestamp and per-entry cert/auth fields,
+# and its shape has changed across major versions. A heredoc version of it
+# looks right today and is a forgery one Helm release later. So the file is
+# produced by 'helm repo add' itself, with HELM_REPOSITORY_CONFIG and
+# HELM_REPOSITORY_CACHE exported for that single invocation.
+#
+# T-24-31. Those two variables are the ENTIRE mechanism that keeps this out of
+# the operator's global repository list. Dropping either one means writing to
+# the developer's real global file.
+configure_helm() {
+  local helm_dir="${REPO_ROOT}/.helm"
+  local helm_cfg="${helm_dir}/repositories.yaml"
+  local helm_cache="${helm_dir}/cache"
+  local repo_url="${NEXUS_URL}/repository/helm-proxy/"
+  local global_cfg=""
+  local rc=0
+
+  mkdir -p "$helm_cache"
+
+  if ! command -v helm > /dev/null 2>&1; then
+    warn "helm is not on PATH, so no chart repository entry was created. ${helm_dir} exists and .nexus-env will still point at it, but Helm is NOT routed until helm is installed and this script is re-run."
+    HELM_STATUS="not configured (helm not on PATH)"
+    return 0
+  fi
+
+  # Read with the redirect removed, so this names the operator's REAL global
+  # list even in a shell that has already sourced a .nexus-env.
+  global_cfg="$(env -u HELM_REPOSITORY_CONFIG helm env HELM_REPOSITORY_CONFIG | tr -d '"')"
+  log "Operator's global Helm repository list is ${global_cfg}. This run redirects Helm at the repository-local file instead and never writes the global one."
+
+  # 'helm repo add' REACHES THE NETWORK: Helm fetches index.yaml during the
+  # add and errors when the repository is unreachable, and there is no
+  # --no-update escape. So the call gets an explicit caught branch.
+  #
+  # This is a caught branch and NOT a swallowed '|| true'. The distinction is
+  # the point: this is a configuration writer, and an unreachable chart
+  # repository must not cost the developer the .nexus-env and .gitignore
+  # entries that the rest of the run produces. Reachability is judged by
+  # --verify (plan 24-07), which tolerates nothing. The failure is counted, so
+  # the run still exits non-zero.
+  #
+  # --force-update makes a re-run idempotent in both directions: the same URL
+  # re-adds cleanly, and a DIFFERENT URL replaces the entry instead of erroring
+  # with "repository name already exists". Stated in --help.
+  HELM_REPOSITORY_CONFIG="$helm_cfg" HELM_REPOSITORY_CACHE="$helm_cache" \
+    helm repo add "$HELM_REPO_NAME" "$repo_url" --force-update \
+    > "${TMP_DIR}/helm-repo-add.log" 2>&1 || rc=$?
+
+  if [[ "$rc" -ne 0 ]]; then
+    warn "'helm repo add ${HELM_REPO_NAME} ${repo_url}' exited ${rc}; Helm is NOT routed. Helm fetches index.yaml during 'repo add', so an unreachable or non-Helm URL fails here. Helm's own output: $(tr '\n' ' ' < "${TMP_DIR}/helm-repo-add.log")"
+    HELM_STATUS="not configured (repository unreachable — 'helm repo add' exited ${rc})"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    return 0
+  fi
+
+  log "helm repo add: $(tr '\n' ' ' < "${TMP_DIR}/helm-repo-add.log")"
+  HELM_STATUS="configured — entry '${HELM_REPO_NAME}' at ${repo_url}; needs 'source .nexus-env'"
+}
+
+# ---------------------------------------------------------------------------
+# .nexus-env — the mechanism for two of the three configured ecosystems
+# ---------------------------------------------------------------------------
+write_nexus_env() {
+  local env_file="${REPO_ROOT}/.nexus-env"
+  local pip_conf="${REPO_ROOT}/pip.conf"
+  local helm_cfg="${REPO_ROOT}/.helm/repositories.yaml"
+  local helm_cache="${REPO_ROOT}/.helm/cache"
+  # MEASURED: no '/repository/' segment here, unlike the other three. See the
+  # comment reproduced in the generated file — it is repeated there on purpose,
+  # because the generated file is what a developer actually reads.
+  local docker_prefix="${NEXUS_HOST}/docker-proxy"
+
+  write_config "$env_file" "sourceable environment for pip, Helm and the Docker prefix" <<ENVFILE
+# .nexus-env — generated by workstation/nexus-setup.sh
+#
+# source this file; do not execute it:
+#
+#     source .nexus-env
+#
+# What actually depends on it:
+#   npm     Nothing. npm reads its project-scoped config natively and is
+#           already routed with no environment set at all.
+#   pip     Everything. pip has no project scope, so pip.conf in this
+#           repository is inert until PIP_CONFIG_FILE below points at it.
+#   Helm    Everything. Helm has no project scope either, so the repository
+#           entry created for this repository is invisible to helm until
+#           HELM_REPOSITORY_CONFIG below points at it.
+#   Docker  Nothing automatic. Docker has no per-repository configuration of
+#           any kind. NEXUS_DOCKER_REGISTRY below is a prefix string, and
+#           routing an image is a MANUAL edit of an image reference.
+#
+# WARNING. PIP_CONFIG_FILE REPLACES your user-level pip configuration rather
+# than adding to it. Measured: with it set, 'pip config list -v' no longer
+# lists EITHER user-scope variant, so your own pip settings — a corporate CA
+# bundle, an extra-index-url — silently stop applying in this shell.
+#
+# Source this in a shell session. Never add it to a shell rc file (.bashrc,
+# .zshrc and friends): that would make one repository's Nexus the default for
+# every project on this machine, which is the global workstation default this
+# script is deliberately scoped to avoid.
+
+export PIP_CONFIG_FILE="${pip_conf}"
+export HELM_REPOSITORY_CONFIG="${helm_cfg}"
+export HELM_REPOSITORY_CACHE="${helm_cache}"
+
+# MEASURED, and the one asymmetry in this file: the Docker prefix carries NO
+# '/repository/' segment, while the npm, pip and Helm URLs all do. A Docker
+# client inserts '/v2/' immediately after the host, so the repository name has
+# to be the first path segment; the '/repository/'-prefixed reference returns
+# HTTP 404. Use it like this:
+#
+#     docker pull ${docker_prefix}/library/alpine:3.21
+export NEXUS_DOCKER_REGISTRY="${docker_prefix}"
+ENVFILE
+}
+
+# ---------------------------------------------------------------------------
+# .gitignore — new behaviour, with no in-repo precedent
+# ---------------------------------------------------------------------------
+#
+# workstation/setup.sh never touches .gitignore (grep -i gitignore returns
+# nothing in that file), so this is not a pattern copied from the analog and
+# the reasoning is stated rather than assumed.
+#
+# T-24-29. A committed .npmrc pointing at one operator's Nexus is a
+# dependency-resolution failure for every contributor who cannot reach that
+# host, and an internal-hostname disclosure if the repository is public.
+# Default to ignoring the generated files; --commit-config opts out.
+#
+# Existing lines are never rewritten, reordered or removed — the file is only
+# ever appended to, and only with entries that are not already present in any
+# equivalent form.
+normalise_ignore_line() {
+  local value="$1"
+  value="${value%"${value##*[![:space:]]}"}"
+  value="${value#/}"
+  value="${value%/}"
+  printf '%s' "$value"
+}
+
+update_gitignore() {
+  local gi="${REPO_ROOT}/.gitignore"
+  local marker="# Nexus routing config generated by workstation/nexus-setup.sh (machine-specific)"
+  local entry norm_entry need_marker=1
+  local to_add=()
+
+  if [[ "$COMMIT_CONFIG" = true ]]; then
+    info "--commit-config given: .gitignore was NOT modified, and the generated files are committable. That is the right choice when the whole team shares this Nexus and wants the routing in version control; it is the wrong one for a public repository, where .npmrc and pip.conf would disclose an internal hostname, and for any repository whose contributors cannot reach ${NEXUS_HOST}."
+    GITIGNORE_STATUS="not modified (--commit-config)"
+    return 0
+  fi
+
+  : > "${TMP_DIR}/gitignore-existing.txt"
+  if [[ -f "$gi" ]]; then
+    sed -e 's/[[:space:]]*$//' -e 's#^/##' -e 's#/$##' "$gi" \
+      > "${TMP_DIR}/gitignore-existing.txt"
+    if grep -Fqx "$marker" "$gi"; then
+      need_marker=0
+    fi
+  fi
+
+  for entry in "${GITIGNORE_ENTRIES[@]}"; do
+    norm_entry="$(normalise_ignore_line "$entry")"
+    if grep -Fqx "$norm_entry" "${TMP_DIR}/gitignore-existing.txt"; then
+      continue
+    fi
+    to_add+=("$entry")
+  done
+
+  if [[ "${#to_add[@]}" -eq 0 ]]; then
+    log "Every generated file is already ignored by ${gi}; nothing was appended."
+    GITIGNORE_STATUS="unchanged (all entries already present)"
+    return 0
+  fi
+
+  # Decided BEFORE anything is appended: the blank separator line belongs only
+  # between existing content and the new block, so a .gitignore this script
+  # creates itself does not open on an empty line.
+  local need_separator=0
+  if [[ -s "$gi" ]]; then
+    need_separator=1
+  fi
+
+  # A file that does not end in a newline would otherwise have its last line
+  # glued to the first entry appended below.
+  if [[ "$need_separator" -eq 1 ]] && [[ -n "$(tail -c 1 "$gi")" ]]; then
+    printf '\n' >> "$gi"
+  fi
+
+  {
+    if [[ "$need_separator" -eq 1 ]]; then
+      printf '\n'
+    fi
+    if [[ "$need_marker" -eq 1 ]]; then
+      printf '%s\n' "$marker"
+    fi
+    for entry in "${to_add[@]}"; do
+      printf '%s\n' "$entry"
+    done
+  } >> "$gi"
+
+  GITIGNORE_STATUS="appended ${#to_add[@]} entr$([[ "${#to_add[@]}" -eq 1 ]] && printf 'y' || printf 'ies') to .gitignore (--commit-config skips this)"
+  log "${GITIGNORE_STATUS}"
+}
+
+# ---------------------------------------------------------------------------
 # End-of-run report
 # ---------------------------------------------------------------------------
 #
@@ -485,10 +709,22 @@ print_report() {
   echo "Repository: ${REPO_ROOT}"
   echo "Nexus:      ${NEXUS_URL}"
   echo ""
-  printf "%-7s %s\n" "npm" "$NPM_STATUS"
-  printf "%-7s %s\n" "pip" "$PIP_STATUS"
+  printf "%-9s %s\n" "npm"    "$NPM_STATUS"
+  printf "%-9s %s\n" "pip"    "$PIP_STATUS"
+  printf "%-9s %s\n" "helm"   "$HELM_STATUS"
+  printf "%-9s %s\n" "docker" "$DOCKER_STATUS"
+  printf "%-9s %s\n" ".gitignore" "$GITIGNORE_STATUS"
   echo ""
-  echo "Files generated this run: ${CONFIG_COUNT}"
+  echo "Files generated this run: ${CONFIG_COUNT} (existing files are left alone unless --force)"
+  echo ""
+  echo "To make pip and Helm use any of this, run in this shell:"
+  echo ""
+  echo "    source .nexus-env"
+  echo ""
+  echo "npm needs no environment. Docker has no per-repository mechanism at all:"
+  echo "NEXUS_DOCKER_REGISTRY is a prefix you paste into an image reference, and"
+  echo "even a machine-global Docker mirror would only ever affect Docker Hub"
+  echo "references — ghcr.io, quay.io and public.ecr.aws are never routed by one."
   echo ""
   echo "NOT PROVEN. Nothing above shows that any client actually reaches this"
   echo "Nexus; writing a configuration file is not the same as a client reading"
@@ -589,6 +825,13 @@ trap 'rm -rf "${TMP_DIR}"' EXIT
 # lost to an unreachable chart repository.
 configure_npm
 configure_pip
+configure_helm
+
+# Written after the Helm writer on purpose, and written even when that writer
+# failed: an unreachable chart repository must not cost the developer the env
+# file and the .gitignore entries.
+write_nexus_env
+update_gitignore
 
 print_report
 
