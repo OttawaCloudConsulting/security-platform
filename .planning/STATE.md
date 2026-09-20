@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 24-02-PLAN.md (after 24-01 and 24-03) — anonymous pull measured OPEN for npm/PyPI/Helm with a byte floor on every fetch, live gate 13 -> 21 checks ALL PASS 0 skipped, provision.readiness.* knobs wired through and proven by a 2-attempt poll, commit 07c74e2
-last_updated: "2026-09-19T23:19:23.038Z"
-last_activity: 2026-09-19
+stopped_at: "Completed 24-04-PLAN.md — Assumption A3 settled by measurement (VERDICT: A3-FALSIFIED-CANDIDATE-1; /repository/ mirror URL routes, path-only does not), operator selected daemon-opt-in with both daemon.json keys; commits 79c543f, c39db9b, ca78608 in the parent repo"
+last_updated: "2026-09-20T02:28:10.498Z"
+last_activity: 2026-09-20
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 18
-  completed_plans: 11
+  completed_plans: 12
   percent: 50
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 24 (nexus-anonymous-access-and-workstation-script) — EXECUTING
-Plan: 4 of 10
+Plan: 5 of 10
 Status: Ready to execute
-Last activity: 2026-09-19
+Last activity: 2026-09-20
 
 ## Performance Metrics
 
@@ -214,6 +214,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: [Phase 24-02]: MEASURED — a PyPI per-project /simple/<project>/ page returns HTTP 200 with full content under eula.accepted=false, while the npm tarball and the Helm index.yaml both return 403 with a 192-byte refusal. The EULA gate covers COMPONENT downloads; a PyPI simple page is METADATA. The plan's reversion-2 prediction (all three red on SIZE at 403) is unsatisfiable without a false check and was NOT adjusted to match; 24-RESEARCH Pitfall 2 already said so. Consequence for 24-07/24-08: a PyPI simple-page 200 is NOT evidence the server EULA is accepted — only a component download reveals the 403.
 - [Phase ?]: [Phase 24-02]: live gate 13 -> 21 checks (not the plan's predicted 16) — three verdicts per ecosystem (TRANSPORT/HTTP-200/SIZE) is forced by the non-vacuity evidence itself: a single if/elif stops at the status and never evaluates SIZE, making reversion 2 unobservable. Measured floors: npm 318,961 B -> 100,000; PyPI (requests) 76,776 B -> 20,000; Helm 291,818 B -> 100,000, each >= 10x the 192-byte refusal and <= half the measured size.
 - [Phase ?]: [Phase 24-02]: Phase 23 deferred item 2 closed in the 'wire them through' direction — provision.readiness.attempts/intervalSeconds now reach provision.sh as READY_ATTEMPTS/READY_INTERVAL with NO :- default, proven live by a READY_ATTEMPTS=2 READY_INTERVAL=1 run exiting 1 in 2s after 'attempt 2/2'. kubernetes/nexus/README.md still carries the now-false 'present but not read' row — plan 24-08 owns that edit.
+- [Phase 24]: A3 measured: a Nexus Docker proxy CAN be a Docker daemon registry-mirrors target at HOST/repository/<repo>, and NOT at the path-only HOST/<repo> — VERDICT A3-FALSIFIED-CANDIDATE-1 (24-04). candidate-1 components 0 -> 1 (/library/alpine:3.21 appeared); candidate-2 components 0 -> 0 with pull exit 0 — a successful pull that routed nothing, because Docker falls back to Hub on any mirror error. The /repository/ segment is REQUIRED in the mirror URL and FORBIDDEN in the image reference (Pattern 6): the intuitive shape fails silently. Hub-only half of A3 confirmed from version-matched moby v28.3.2 source — non-docker.io references are never mirrored.
+- [Phase 24]: Operator decision: workstation/nexus-setup.sh writes ~/.docker/daemon.json only behind an opt-in --docker-daemon flag (off by default), writing BOTH registry-mirrors and insecure-registries — Selected at the 24-04 Task 3 checkpoint with the measurement in front of the operator; recorded verbatim in 24-evidence/a3-docker-daemon-routing.md under ## Decision, which plan 24-07 reads instead of a chat transcript. Both keys because the probe never measured them separately, so shipping the measured pair keeps the shipped config identical in shape to the evidence.
 
 ### Pending Todos
 
@@ -300,11 +302,12 @@ Carried forward from v1.1 close:
 | Phase 24 P01 | 30min | 3 tasks | 5 files |
 | Phase 24 P03 | 70min | 3 tasks | 1 files |
 | Phase 24 P02 | 55min | 3 tasks | 4 files |
+| Phase 24 P04 | ~45min | 3 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-19T23:19:23.029Z
-Stopped at: Completed 24-03-PLAN.md — offline gate for the workstation Nexus routing script at 12 checks, ALL PASS against a scratchpad subject, 10/10 mutations exactly one predicted red, commits f008707 + 41c2e6a
+Last session: 2026-09-20T02:28:10.489Z
+Stopped at: Completed 24-04-PLAN.md — Assumption A3 settled by measurement (VERDICT: A3-FALSIFIED-CANDIDATE-1; /repository/ mirror URL routes, path-only does not), operator selected daemon-opt-in with both daemon.json keys; commits 79c543f, c39db9b, ca78608 in the parent repo
 Resume file: None
 
 ## Operator Next Steps

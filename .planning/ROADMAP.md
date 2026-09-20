@@ -46,7 +46,7 @@ Plans:
 - [x] 24-01-PLAN.md — anonymous.enabled value, the two Nexus REST calls, offline gate inversion (wave 1)
 - [x] 24-02-PLAN.md — live gate: anonymous pull for npm/PyPI/Helm; readiness knobs wired (wave 3)
 - [x] 24-03-PLAN.md — scripts/check-nexus-setup.sh, the workstation script's offline gate (wave 1)
-- [ ] 24-04-PLAN.md — measure Assumption A3: Nexus path-routed proxy as a Docker daemon mirror (wave 2, checkpoint)
+- [x] 24-04-PLAN.md — measure Assumption A3: Nexus path-routed proxy as a Docker daemon mirror (wave 2, checkpoint)
 - [ ] 24-05-PLAN.md — live gate: full anonymous Docker handshake, realm state, path shape, write refusal (wave 4)
 - [ ] 24-06-PLAN.md — workstation/nexus-setup.sh: npm, pip, Helm, .nexus-env, gitignore (wave 3)
 - [ ] 24-07-PLAN.md — nexus-setup.sh --verify pass and the measured Docker branch (wave 4)
@@ -132,7 +132,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 21. Docs cleanup — close remaining Phase 20 deferred items | v2.0 | 4/4 | Complete | 2026-09-15 |
 | 22. branch-protection --apply live exercise | v2.0 | 6/6 | Complete | 2026-09-16 |
 | 23. Nexus Generic Chart | v3.0 | 8/8 | Complete   | 2026-09-19 |
-| 24. Nexus Anonymous Access and Workstation Script | v3.0 | 3/10 | In Progress|  |
+| 24. Nexus Anonymous Access and Workstation Script | v3.0 | 4/10 | In Progress|  |
 | 25. Nexus Live Validation | v3.0 | 0/? | Not started | — |
 | 26. DefectDojo Generic Chart | v3.0 | 0/? | Not started | — |
 | 27. DefectDojo CI Auto-Import | v3.0 | 0/? | Not started | — |
