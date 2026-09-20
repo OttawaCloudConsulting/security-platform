@@ -94,6 +94,16 @@ NEXUS_IS_LOOPBACK=0
 CONFIG_COUNT=0
 FAIL_COUNT=0
 
+# Per-ecosystem outcome, printed verbatim in the end-of-run report. The default
+# is the pessimistic one: a row that was never reached reads "not configured",
+# never "ok".
+NPM_STATUS="not configured (writer never ran)"
+PIP_STATUS="not configured (writer never ran)"
+
+# Scratch space for this run, created in the main body. Nothing a client reads
+# is ever written here.
+TMP_DIR=""
+
 # ---------------------------------------------------------------------------
 # Helper functions (shape copied verbatim from workstation/setup.sh)
 # ---------------------------------------------------------------------------
@@ -187,6 +197,38 @@ err() {
 # local-prefix trap, an already-tracked .npmrc, and an unreachable Helm repo.
 warn() {
   echo "WARNING: $*" >&2
+}
+
+# ---------------------------------------------------------------------------
+# Idempotent config write (copied from workstation/setup.sh, plus --force)
+# ---------------------------------------------------------------------------
+#
+# Content is supplied by the caller on stdin, normally via a heredoc.
+#
+# NOT every generated file goes through this function, and the two exceptions
+# matter:
+#   .npmrc  npm owns that merge. A redirect onto .npmrc destroys a developer's
+#           //registry/:_authToken line with no error and a zero exit status.
+#           'npm config set registry=<url> --location=project' is measured
+#           non-destructive and is the only mechanism used here.
+#   a machine-global Docker daemon configuration file must NEVER go through
+#           this function, if a later version ever writes one: skip-if-exists
+#           would silently no-op on a file that almost certainly already exists
+#           on the operator's machine, printing a skip where the operator would
+#           read "already configured".
+write_config() {
+  local target="$1" description="$2"
+
+  if [[ -f "$target" && "$FORCE" != true ]]; then
+    info "Exists, left alone (use --force to overwrite): $target"
+    # Drain stdin so the caller's heredoc is consumed on both branches.
+    cat > /dev/null
+    return 0
+  fi
+
+  cat > "$target"
+  CONFIG_COUNT=$((CONFIG_COUNT + 1))
+  log "Wrote: $target ($description)"
 }
 
 # ---------------------------------------------------------------------------
@@ -285,6 +327,176 @@ validate_url() {
 }
 
 # ---------------------------------------------------------------------------
+# npm — the one ecosystem with a native project scope
+# ---------------------------------------------------------------------------
+#
+# The mechanism is 'npm config set registry=<url> --location=project', run from
+# the repository root, and nothing else. Measured on npm 11.7.0: starting from
+# an .npmrc containing a '//registry.example.com/:_authToken=' line and
+# 'save-exact=true', both survived byte-identically and the registry line was
+# appended.
+#
+# T-24-28. The alternative — writing the file ourselves — is a credential-loss
+# bug. A developer's .npmrc may hold the only copy of a private-registry token,
+# and a redirect onto it destroys that with no error message and a zero exit
+# status. There is therefore no code path in this script that redirects onto
+# that file, and scripts/check-nexus-setup.sh asserts as much.
+configure_npm() {
+  # Held in a variable rather than written inline so that no line in this file
+  # can ever place that filename after a shell redirect.
+  local npmrc_rel=".npmrc"
+  local registry_url="${NEXUS_URL}/repository/npm-proxy/"
+  local rc=0
+
+  if ! command -v npm > /dev/null 2>&1; then
+    warn "npm is not on PATH, so ${REPO_ROOT}/${npmrc_rel} was NOT written and npm in this repository still resolves from whatever registry it resolved from before. Install npm and re-run to route it."
+    NPM_STATUS="not configured (npm not on PATH)"
+    return 0
+  fi
+
+  # T-24-29. Gitignoring a file git already tracks is a no-op: .gitignore is
+  # consulted for UNtracked paths only. Warn, do not refuse — a team that
+  # deliberately commits its routing is a legitimate configuration, and
+  # --commit-config exists for exactly that.
+  if git -C "$REPO_ROOT" ls-files --error-unmatch -- "$npmrc_rel" > /dev/null 2>&1; then
+    warn "${npmrc_rel} is already TRACKED by git in this repository. Adding it to .gitignore will not untrack it, so the registry line written below will be committed on your next commit — an internal-hostname disclosure if this repository is public. Run 'git rm --cached ${npmrc_rel}' first if that is not what you want."
+  fi
+
+  # Pitfall 10 in its quietest form. npm resolves .npmrc from its LOCAL PREFIX,
+  # the nearest ancestor holding package.json or node_modules — not from the
+  # repository root and not from the current directory. Measured: with neither
+  # anywhere up the tree, npm falls back to https://registry.npmjs.org/ and the
+  # file this script just wrote is never read.
+  if [[ ! -f "${REPO_ROOT}/package.json" && ! -d "${REPO_ROOT}/node_modules" ]]; then
+    warn "there is no package.json and no node_modules at ${REPO_ROOT}. npm reads ${npmrc_rel} from its local prefix — the nearest ancestor containing one of those two — so the file written here may never be read, and npm may keep resolving from https://registry.npmjs.org/ with no error. Run 'npm config get registry' from inside the repository to see what npm itself resolves."
+  fi
+
+  ( cd "$REPO_ROOT" && npm config set "registry=${registry_url}" --location=project ) || rc=$?
+
+  if [[ "$rc" -ne 0 ]]; then
+    warn "'npm config set registry=... --location=project' exited ${rc} in ${REPO_ROOT}. npm is NOT routed."
+    NPM_STATUS="not configured (npm config set exited ${rc})"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    return 0
+  fi
+
+  NPM_STATUS="configured — ${npmrc_rel} registry=${registry_url} (no environment needed)"
+}
+
+# ---------------------------------------------------------------------------
+# pip — no project scope, so the file is inert until the env var points at it
+# ---------------------------------------------------------------------------
+#
+# T-24-30, Pitfall 8, measured: PIP_CONFIG_FILE does not ADD a configuration
+# source, it REPLACES the user scope. With it set, 'pip config list -v' no
+# longer lists either user-scope variant. This warning fires on every run, and
+# names the developer's own keys when it can find them, because the consequence
+# lands in a shell the developer keeps using for other projects.
+warn_pip_user_scope() {
+  local candidate
+  local found=0
+
+  warn "sourcing .nexus-env sets PIP_CONFIG_FILE, which REPLACES your user-level pip configuration rather than adding to it. Measured: with it set, 'pip config list -v' no longer lists EITHER user-scope variant, so settings such as a corporate CA bundle or an extra-index-url silently stop applying in that shell. Source it per shell session; never from a shell rc file."
+
+  for candidate in "${HOME}/.pip/pip.conf" "${HOME}/.config/pip/pip.conf"; do
+    [[ -f "$candidate" ]] || continue
+    found=1
+    # Keys present in the developer's own file that the generated pip.conf does
+    # not carry are exactly the settings that will stop applying. The pipeline
+    # exits non-zero when grep selects nothing, which is the "no orphaned keys"
+    # case and is handled by the branch rather than swallowed.
+    if sed -n 's/^[[:space:]]*\([A-Za-z0-9][A-Za-z0-9._-]*\)[[:space:]]*=.*/\1/p' "$candidate" \
+       | grep -vxE '(index-url|trusted-host)' \
+       | sort -u > "${TMP_DIR}/pip-user-keys.txt"; then
+      warn "your pip configuration at ${candidate} sets keys the generated pip.conf does not carry, and they will stop applying in any shell that has sourced .nexus-env: $(tr '\n' ' ' < "${TMP_DIR}/pip-user-keys.txt")"
+    else
+      log "User pip configuration at ${candidate} carries no key outside the generated set."
+    fi
+  done
+
+  if [[ "$found" -eq 0 ]]; then
+    log "No user-level pip.conf found at either candidate path; nothing of the developer's own is replaced."
+  fi
+}
+
+# pip.conf is written by hand through write_config, NOT by driving the pip CLI.
+# Measured on pip 26.2.1: 'pip config set' with PIP_CONFIG_FILE exported exits
+# with 'ERROR: Fatal Internal error [id=2]' and writes nothing at all.
+configure_pip() {
+  local pip_conf="${REPO_ROOT}/pip.conf"
+  local index_url="${NEXUS_URL}/repository/pypi-proxy/simple"
+
+  warn_pip_user_scope
+
+  # T-24-32. The TLS-bypass directive is emitted ONLY when it is genuinely
+  # required. pip's own SECURE_ORIGINS already trusts https anywhere, and any
+  # scheme to localhost, 127.0.0.0/8 or ::1 — so emitting it for an https URL
+  # or for loopback downgrades a check that was working and teaches the habit
+  # of disabling certificate verification by reflex.
+  if [[ "$NEXUS_SCHEME" == "http" && "$NEXUS_IS_LOOPBACK" -eq 0 ]]; then
+    write_config "$pip_conf" "pip index routed at ${NEXUS_HOST}, with a TLS bypass" <<PIPCONF
+# pip.conf — generated by workstation/nexus-setup.sh
+#
+# This file is inert on its own. pip has no project scope and no cwd-relative
+# configuration path, so nothing here applies until PIP_CONFIG_FILE points at
+# it: run 'source .nexus-env' in this shell first.
+[global]
+index-url = ${index_url}
+
+# SECURITY WARNING (ADR-009). The directive below does not merely permit plain
+# HTTP. It disables TLS certificate verification for ${NEXUS_HOST_NO_PORT}
+# entirely, so anything positioned between this machine and that host can
+# substitute packages and pip will raise no certificate error. It is present
+# only because --url gave a plain http:// URL for a non-loopback host.
+# It MUST be removed once TLS is configured on this Nexus instance.
+trusted-host = ${NEXUS_HOST_NO_PORT}
+PIPCONF
+    PIP_STATUS="configured — pip.conf index-url set, plus a TLS-verification bypass for ${NEXUS_HOST_NO_PORT} (ADR-009: remove it once TLS is configured); needs 'source .nexus-env'"
+  else
+    write_config "$pip_conf" "pip index routed at ${NEXUS_HOST}" <<PIPCONF
+# pip.conf — generated by workstation/nexus-setup.sh
+#
+# This file is inert on its own. pip has no project scope and no cwd-relative
+# configuration path, so nothing here applies until PIP_CONFIG_FILE points at
+# it: run 'source .nexus-env' in this shell first.
+#
+# No TLS-bypass directive is emitted here, and that is deliberate rather than an
+# omission: pip's own SECURE_ORIGINS already trusts https anywhere and any
+# scheme to localhost or 127.0.0.0/8, so adding one would disable a
+# certificate check that is currently working.
+[global]
+index-url = ${index_url}
+PIPCONF
+    PIP_STATUS="configured — pip.conf index-url set, no TLS bypass needed; needs 'source .nexus-env'"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# End-of-run report
+# ---------------------------------------------------------------------------
+#
+# T-24-33. There is no "Setup complete" line here and there must never be one.
+# Every row states what was WRITTEN, and the closing paragraph states plainly
+# that writing a config file is not evidence that any client reads it.
+print_report() {
+  echo ""
+  echo "Nexus routing report"
+  echo "--------------------"
+  echo "Repository: ${REPO_ROOT}"
+  echo "Nexus:      ${NEXUS_URL}"
+  echo ""
+  printf "%-7s %s\n" "npm" "$NPM_STATUS"
+  printf "%-7s %s\n" "pip" "$PIP_STATUS"
+  echo ""
+  echo "Files generated this run: ${CONFIG_COUNT}"
+  echo ""
+  echo "NOT PROVEN. Nothing above shows that any client actually reaches this"
+  echo "Nexus; writing a configuration file is not the same as a client reading"
+  echo "it. The verification pass that would prove it, --verify, is not"
+  echo "implemented in this version of the script."
+}
+
+# ---------------------------------------------------------------------------
 # Main execution
 # ---------------------------------------------------------------------------
 
@@ -367,7 +579,18 @@ info "Target repository: ${REPO_ROOT}"
 info "Nexus base URL:    ${NEXUS_URL} (scheme ${NEXUS_SCHEME}, host ${NEXUS_HOST})"
 log "Host without port: ${NEXUS_HOST_NO_PORT} (pip treats it as loopback: ${NEXUS_IS_LOOPBACK})"
 log "Options:           force=${FORCE} commit-config=${COMMIT_CONFIG}"
-log "Files created so far this run: ${CONFIG_COUNT}"
+
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "${TMP_DIR}"' EXIT
+
+# ORDERING IS BINDING, not incidental. npm and pip are configured BEFORE the
+# Helm writer, because 'helm repo add' reaches the network and can fail — and
+# when it does, the files written above must already exist rather than being
+# lost to an unreachable chart repository.
+configure_npm
+configure_pip
+
+print_report
 
 if [[ "$FAIL_COUNT" -gt 0 ]]; then
   exit 1
