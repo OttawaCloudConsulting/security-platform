@@ -73,7 +73,7 @@ completed: 2026-09-20
 - **Tasks:** 3 (all `auto`, no checkpoints)
 - **File modified:** 1 (`workstation/nexus-setup.sh`, 842 → 1,637 lines, mode 644)
 - **Live Nexus instances booted:** 2 (both `v-nexus` on host port 8083, torn down)
-- **`--verify` runs against a live Nexus:** 6 (3 server conditions, measured twice — once before and once after the `--no-input` fix)
+- **`--verify` runs against a live Nexus:** 8 (5 on the first instance, including two helm-search iterations while the anchoring defect was being measured; 3 on the second, one per server condition, against the shipped script)
 
 ## Task Commits
 
@@ -102,7 +102,9 @@ Task 3 is a MEASUREMENT task and changed no code of its own; the commit against 
 
 One Nexus, `v-nexus`, on host port 8083 (the live smoke owns 8081, plan 24-04's probe owned 8082), booted from the image the chart itself renders (`docker.io/sonatype/nexus3:3.96.0-ubi`) and provisioned by the chart's own `kubernetes/nexus/files/provision.sh` with the four repo bodies from the chart's own rendered `-repos` ConfigMap. Each transition below is a real `provision.sh` run with `READY_ATTEMPTS=60 READY_INTERVAL=10` — `provision.sh`'s EULA step can only *accept*, never revoke, so the unaccepted condition is measured **first**, on a freshly booted instance, rather than by revoking afterwards.
 
-Paths are elided as `<repo>`; nothing else is edited.
+Paths are elided as `<repo>` and long client output as `[…]`; nothing else is edited.
+
+**Provenance.** All three tables below are from the SECOND instance, measured against the shipped script at `9ec38b6`. The first instance produced the same three tables at `c1df999`; the only substantive difference is the `ANONYMOUS_ENABLED=false` pip row, which is deviation 3 below — that is how the credential-prompt defect was found. Every string quoted here was grepped back out of the second instance's own log.
 
 #### 1a. `EULA_ACCEPTED=false ANONYMOUS_ENABLED=true` — the licence refusal. `exit=1`
 
@@ -162,6 +164,16 @@ Rows: 0 ok, 3 not ok, 1 MANUAL.
 ```
 
 Three distinct diagnoses across 1a, 1c and 1d — licence refusal, anonymous disabled, unreachable — each naming its own cause, and **no overall success line is printed on any of them.**
+
+#### 1e. A repository with no `package.json` — `UNVERIFIABLE`, never `ok`. `exit=1`
+
+The npm local-prefix trap, which is the quietest way for this whole script to look like it worked:
+
+```
+npm       .npmrc (project scope)                     UNVERIFIABLE  npm reported registry 'http://127.0.0.1:9/repository/npm-proxy/', but there is no package.json and no node_modules at <repo>, so npm's local prefix does not resolve here and that value came from somewhere else up the tree. Run 'npm init -y' (or add package.json) and re-run --verify. This row is NOT a pass.
+```
+
+The readback **agreed** and the row is still not a pass — which is the point of the branch: an agreeing readback from a prefix that does not resolve here is exactly the false `ok` Pitfall 10 describes.
 
 ### 2. The Docker branch: `daemon-opt-in`, with the verdict it rests on
 
@@ -255,6 +267,16 @@ SECURITY WARNING (ADR-009) — what was just written to <path>/daemon.json:
 Followed by the restore command with the backup path, the statement that the engine must be restarted **by the operator** before anything takes effect, and the A3 caveat that this workstation's own Docker Desktop engine was never configured with the mirror during the measurement — so its first real run is the operator's, and the components count is what to check, not the pull exit code.
 
 `grep -c 'docker restart\|systemctl restart docker\|killall Docker' workstation/nexus-setup.sh` → **0**. The script never restarts the engine.
+
+#### 2d. `--docker-daemon` and `--verify` on the same run — the docker row is still `MANUAL`
+
+The criterion that matters most here is that a daemon write can never turn the docker row green. Measured, with `HOME` pointed at a throwaway directory and a `daemon.json` genuinely written on that run:
+
+```
+docker    none - no per-repo mechanism exists        MANUAL        NEXUS_DOCKER_REGISTRY=127.0.0.1:9/docker-proxy — nothing routes until an image REFERENCE is edited to start with that prefix, e.g. 'docker pull 127.0.0.1:9/docker-proxy/library/alpine:3.21'. A machine-global mirror for http://127.0.0.1:9/repository/docker-proxy was written to <home>/.docker/daemon.json on this run; that is a daemon key rather than a per-repository route, it mirrors docker.io references only, and the engine has not been restarted, so it is not in effect yet.
+```
+
+`MANUAL`, with the daemon write reported in the observed column rather than promoted into the status column. Run exited 1 (the three unreachable rows). The operator's real `~/.docker/daemon.json` fingerprint was `27369c832f1be7d0…` before and after.
 
 ### 3. The gate, fully green against the real script
 
