@@ -27,6 +27,20 @@ key that routes nothing — a configuration knob that reads like a control and c
 | Probe engine | `docker:28.3.2-dind`, pinned `docker@sha256:44383404ebf0c36243f5969f0dddd23c204ea3bb185e7473a4141f6ccfd07b53` |
 | Nexus | resolved from the chart's own rendered StatefulSet, `sonatype/nexus3:3.96.0-ubi` |
 | Host `~/.docker/daemon.json` | `55a16d289b1bd748b186117e8bc1937c5c65ff4e` — asserted identical before and after every run |
+| Host image store | `Storage Driver: overlay2` — the **classic** image store, not the containerd snapshotter (`docker info --format '{{json .DriverStatus}}'` reports `Backing Filesystem: extfs`, no `io.containerd.snapshotter.v1` driver-type) |
+| Client config during the probe | a throwaway `DOCKER_CONFIG` directory containing `{}` — see the note below |
+
+**Client-config isolation, and why it was needed.** Measured on this workstation the same session:
+`docker pull` produces no output and never returns, because
+`echo "https://index.docker.io/v1/" \| docker-credential-desktop get` hangs indefinitely (killed at
+20s) and `~/.docker/config.json` sets `"credsStore": "desktop"` — the CLI blocks on the credential
+helper before contacting any registry, which is why the failure is silent. The probe does **not**
+repair or edit the operator's config. It points `DOCKER_CONFIG` at a throwaway directory holding
+`{}` (no `credsStore`, no `auths`) so Hub pulls proceed anonymously, resolving `DOCKER_HOST` from
+the active context first since an empty config carries no `currentContext`. `DOCKER_CONFIG` is a
+**client-side** directory; `~/.docker/daemon.json` is read by the daemon and is unaffected, and the
+assertion above still covers it. Every image the probe pulls is a public library image, so
+anonymous is sufficient.
 
 The dind image is pinned to the **exact** host engine version rather than the floating `28-dind`
 tag, so "the probe measured a different engine than the one this phase targets" is not available as
@@ -253,11 +267,13 @@ apply.
 
 1. **The dind engine is not Docker Desktop's engine.** The measurement ran inside a privileged
    `docker:28.3.2-dind` container — the same dockerd version as the host, but a *nested Linux
-   engine with its own classic image store*. Docker Desktop runs its engine inside a LinuxKit VM
-   and may use the containerd image store, whose registry-mirror handling is configured differently
-   (`hosts.toml`) and was not exercised here. **The operator's own Docker Desktop engine was never
-   configured with either candidate mirror and was never restarted.** If plan 24-07 ships a
-   daemon-writing branch, the first real run on Docker Desktop is still an unmeasured step.
+   engine with its own classic image store*. Docker Desktop runs its engine inside a LinuxKit VM.
+   One hedge can be removed: this host's Desktop engine reports `Storage Driver: overlay2`, i.e. the
+   **same classic image store** dind used, so the containerd-snapshotter concern (mirrors configured
+   through `hosts.toml` instead) does not apply here. What remains unmeasured is the VM boundary
+   itself: **the operator's own Docker Desktop engine was never configured with either candidate
+   mirror and was never restarted.** Plan 24-07's `--docker-daemon` branch therefore still has one
+   unmeasured step — its first real run on Docker Desktop.
 2. **No TLS anywhere.** Both candidates were plaintext `http://` to a non-loopback container name,
    with `insecure-registries` carrying `a3-nexus:8081`. Nothing here was measured against a
    TLS-terminated Nexus, which is what Phase 25's ingress will produce. ADR-009 governs the warning
@@ -265,7 +281,9 @@ apply.
 3. **The two `daemon.json` keys were never separated.** Every candidate config carried
    `registry-mirrors` *and* `insecure-registries` together. The probe therefore cannot say whether
    `registry-mirrors` alone would route over plain HTTP, nor whether `insecure-registries` alone is
-   enough. If 24-07 writes only one key, that combination is unmeasured.
+   enough. If 24-07 writes only one key, that combination is unmeasured. **Retired by the
+   decision below:** the operator selected both keys precisely so the shipped pair matches the
+   measured pair.
 4. **The Nexus under test had anonymous access OPEN.** `provision.sh` ran with
    `ANONYMOUS_ENABLED=true`, diverging from the chart's shipped default of `false` (24-01). Whether
    the mirror routes against a closed instance — it should not, and should fall back silently to
@@ -295,6 +313,41 @@ routed: non-Hub references are never mirrored.
 
 ## Decision
 
-*(pending — the operator selects at the 24-04 Task 3 checkpoint, with this evidence in front of
-them; the reply and its date are appended verbatim here, and plan 24-07 reads the selection from
-this file rather than from a chat transcript)*
+**Selected:** `daemon-opt-in`
+**Decided:** 2026-09-19, by the operator at the 24-04 Task 3 checkpoint, with §1–§3 above and the
+`VERDICT:` line presented first.
+
+Operator's reply, verbatim:
+
+> Operator decision: **daemon-opt-in** — write daemon.json behind an opt-in `--docker-daemon` flag,
+> off by default (matches locked 24-CONTEXT.md decision). Key(s) to write when the flag is used:
+> **both `registry-mirrors` and `insecure-registries`** (matching exactly what was measured, since
+> `registry-mirrors` alone over plain HTTP is unmeasured).
+
+### What plan 24-07 implements, read off that selection
+
+1. **A `--docker-daemon` flag, default OFF.** With the flag absent, `workstation/nexus-setup.sh`
+   writes nothing to `~/.docker/daemon.json` and does not ask for an engine restart. The
+   `NEXUS_DOCKER_REGISTRY` prefix still ships on every run, flag or no flag.
+2. **With the flag present, write BOTH keys**, not one:
+   - `registry-mirrors`: `http://<nexus-host>/repository/<docker-repo>` — **with** the
+     `/repository/` segment. This is the measured-routing URL (candidate-1). The path-only form
+     `http://<nexus-host>/<docker-repo>` MUST NOT be written: it is candidate-2, which pulls
+     successfully and routes nothing.
+   - `insecure-registries`: the bare `host:port`, **no scheme**.
+3. **Why both, per the operator's own reasoning:** the probe never separated the two keys (caveat 3
+   below), so writing `registry-mirrors` alone would ship a combination that has not been measured.
+   Writing the measured pair keeps the shipped configuration identical in shape to the one this
+   evidence file covers. Caveat 3 is therefore *retired by the decision*, not by a measurement —
+   the unmeasured combination is simply not shipped.
+4. **ADR-009 governs the warning text** for the `insecure-registries` line, alongside the
+   `trusted-host` line in the generated `pip.conf`. Both must state what the directive does and that
+   it must be removed once TLS is configured on the corresponding service.
+5. **The script must not present Docker as fully routed.** Per §1a(ii), only `docker.io` references
+   are mirrored; `ghcr.io/…`, `quay.io/…`, `public.ecr.aws/…` and every other registry are
+   untouched by any `registry-mirrors` value. Whatever the script prints on success has to say so.
+6. **A manual daemon restart is required** after the write, and the flag's help text must say that
+   too — the engine reads `daemon.json` at start.
+
+The REQUIREMENTS.md Out-of-Scope carve-out added this session stays and is now used: the
+daemon-opt-in branch is exactly the global-workstation-default exception it carves out.
