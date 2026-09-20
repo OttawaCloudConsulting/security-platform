@@ -12,9 +12,9 @@ Architecture constraint (Key Decision, see PROJECT.md): generic Helm charts are 
 ### Nexus
 
 - [x] **NEXUS-01**: Public Helm chart deploys Nexus Repository with npm, PyPI, Docker, and Helm proxy repos configured
-- [ ] **NEXUS-02**: Proxy repos allow anonymous pull (no auth required for read/proxy access)
+- [x] **NEXUS-02**: Proxy repos allow anonymous pull (no auth required for read/proxy access)
 - [x] **NEXUS-03**: Chart uses the cluster's default StorageClass unless overridden by the consumer
-- [ ] **NEXUS-04**: Workstation install script configures a target repo's package manager files (`.npmrc`, `pip.conf`, Docker/Helm registry config) to route through a given Nexus instance
+- [x] **NEXUS-04**: Workstation install script configures a target repo's package manager files (`.npmrc`, `pip.conf`, Docker/Helm registry config) to route through a given Nexus instance
 - [ ] **NEXUS-05**: Nexus chart validated live via private ArgoCD overlay deploy to the operator's homelab cluster
 
 ### DefectDojo
@@ -35,7 +35,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | NetworkPolicy namespace isolation for Nexus/DefectDojo | Hardening bucket, separate from this milestone's Infra & Dashboards scope |
 | Backup automation (DefectDojo PostgreSQL, Nexus PVC) | Hardening bucket, deferred |
 | Monitoring/alerting via kube-prometheus-stack | Hardening bucket, deferred |
-| Workstation pkg managers routed through Nexus outside the per-repo config, **except Docker** | Per-repo config + install script only, not global workstation defaults — Docker has no per-repo registry-routing mechanism, so NEXUS-04's install script writes a global `~/.docker/daemon.json` entry for Docker only, with an explicit warning that this one ecosystem is global-scoped unlike npm/pip/Helm (decided Phase 24) |
+| Workstation pkg managers routed through Nexus outside the per-repo config, **except Docker** | Per-repo config + install script only, not global workstation defaults — Docker has no per-repo registry-routing mechanism, so NEXUS-04's install script writes a global `~/.docker/daemon.json` entry for Docker only, with an explicit warning that this one ecosystem is global-scoped unlike npm/pip/Helm (decided Phase 24). **Carve-out EXERCISED as shipped**, per ADR-021 decision 7: `workstation/nexus-setup.sh --docker-daemon`, **off by default**, writes the one mirror URL shape measured to route (`<host>/repository/<docker-repo>`; the path-only form pulls successfully and routes nothing — `VERDICT: A3-FALSIFIED-CANDIDATE-1`, 24-04), with a timestamped backup and an at-most-once `jq` merge. Refinement on the operator's literal "both keys" selection: `insecure-registries` is emitted **only** for a plain-`http` URL, since writing a TLS bypass for an `https://` URL would disable a working certificate check (ADR-009, 24-07). |
 | De-identification of a privately-built deployment | Superseded — generic-first architecture means nothing private needs stripping |
 
 ## Traceability
@@ -46,8 +46,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | NEXUS-01 | Phase 23 | Complete |
 | NEXUS-03 | Phase 23 | Complete |
-| NEXUS-02 | Phase 24 | Pending |
-| NEXUS-04 | Phase 24 | Pending |
+| NEXUS-02 | Phase 24 | Complete |
+| NEXUS-04 | Phase 24 | Complete |
 | NEXUS-05 | Phase 25 | Pending |
 | DDOJO-01 | Phase 26 | Pending |
 | DDOJO-02 | Phase 27 | Pending |
