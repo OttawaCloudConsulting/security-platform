@@ -12,6 +12,11 @@ Out-of-scope discoveries logged during execution. Nothing here was fixed in this
    here. Whoever next edits CLAUDE.md for an unrelated reason should correct it — or
    better, replace the hard-coded range with "see `docs/adr/README.md` for the index",
    which it already says on the same line and which does not go stale.
+   **Note, 2026-09-20:** ADR-021 widens the stale range by one more record — `docs/adr/` now
+   holds ADR-001 through ADR-021 while `CLAUDE.md` still says ADR-018. Plan 24-09 deliberately
+   did **not** edit `CLAUDE.md`: it is the project's own instruction file, the correction is the
+   operator's call, and 23-07's reasoning for leaving it alone out of scope still applies. This
+   item stays **open**.
 
 2. **`provision.readiness.attempts` / `provision.readiness.intervalSeconds` are still
    dead knobs in `repos/security-platform/kubernetes/nexus/values.yaml`.**
@@ -22,6 +27,16 @@ Out-of-scope discoveries logged during execution. Nothing here was fixed in this
    Resolving it means either wiring them through 23-02's four-variable env contract and
    `scripts/nexus-live-smoke.sh`, or deleting them and updating the chart README's values
    table and limitations bullet together. Phase 24 owns the choice.
+   **RESOLVED 2026-09-20 — wired through**, in plan 24-02 (`security-platform` commit `07c74e2`).
+   `provision.readiness.attempts` / `intervalSeconds` are rendered by `job-provision.yaml` into
+   the Job environment as `READY_ATTEMPTS` / `READY_INTERVAL`; `provision.sh` names both in its
+   environment contract and in its hard-failure sentence and reads them with **no `:-` default**,
+   so deleting an env entry is a `set -u` hard failure rather than a silent fallback to 60/10;
+   and `scripts/nexus-live-smoke.sh`'s `run_provision` sets both. Proved by observation, not by
+   render alone: a short-poll run with `READY_ATTEMPTS=2 READY_INTERVAL=1` against a port with
+   nothing listening exited 1 after `attempt 2/2` in two seconds, where the old hardcode would
+   have polled for ten minutes. Recorded as decision 9 of ADR-021
+   (`docs/adr/adr021-nexus-anonymous-read-and-workstation-routing.md`).
 
 3. **CI's Checkov provides zero coverage of `kubernetes/nexus`.**
    Measured by 23-06 and recorded as item 1 of ADR-020's `## What was NOT verified`: the
@@ -30,6 +45,16 @@ Out-of-scope discoveries logged during execution. Nothing here was fixed in this
    WARNI. 24 kubernetes-framework findings exist latently (5 wrapper, 19 subchart) and
    none reach the pipeline. Phase 24 must pick between accepting it, a scanner-only
    values file, or a committed rendered manifest. **Not** by weakening the guard.
+   **ACCEPTED and documented 2026-09-20 — not solved**, per ADR-021 decision 10. The latent count
+   is restated rather than dropped, so zero findings in CI is never read as clean: **24**
+   kubernetes-framework findings (5 on the wrapper's own resources, 19 on the subchart's) exist
+   and none of them reach the pipeline. Both alternatives were rejected for one reason — a
+   scanner-only values file and a committed rendered manifest each create a second artefact that
+   drifts from the real one by construction — and Phase 24 adds no Kubernetes resource at all; it
+   adds environment variables to an existing Job. **The `required` credential guard was not
+   weakened**, and ADR-020's prohibition on weakening it to obtain coverage stands. Revisit
+   trigger: the next phase that adds a second chart doubles the blind spot without changing any
+   of the reasoning above.
 
 4. **Subchart pin freshness has no automation.**
    `Chart.lock` pins `stevehipwell/nexus3` at 5.26.0 and neither Dependabot (no Helm

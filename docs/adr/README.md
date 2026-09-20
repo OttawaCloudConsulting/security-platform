@@ -28,3 +28,4 @@ For the full findings that prompted ADR-001 through ADR-012, see [`red-team/00-c
 | [ADR-018](adr018-workflow-packaging-canonical-host-and-versioning.md) | Workflow Packaging, Canonical Host, and Versioning | 2026-09-14 | Accepted |
 | [ADR-019](adr019-required-check-enforcement-live-exercise.md) | Required-Check Enforcement, Live-Exercised | 2026-09-16 | Accepted |
 | [ADR-020](adr020-nexus-chart-base-and-eula-opt-in.md) | Nexus Chart Base, EULA Opt-In and the Unset Helm Proxy Remote | 2026-09-18 | Accepted |
+| [ADR-021](adr021-nexus-anonymous-read-and-workstation-routing.md) | Nexus Anonymous Read and Workstation Routing | 2026-09-20 | Accepted |
