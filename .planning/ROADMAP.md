@@ -52,7 +52,7 @@ Plans:
 - [x] 24-07-PLAN.md — nexus-setup.sh --verify pass and the measured Docker branch (wave 4)
 - [x] 24-08-PLAN.md — chart README and workstation README (wave 5)
 - [x] 24-09-PLAN.md — ADR-021, ADR index row, Phase 23 deferred items 2 and 3 (wave 5)
-- [ ] 24-10-PLAN.md — PR, merge gate, origin/main verification, requirement marks (wave 6, checkpoint)
+- [x] 24-10-PLAN.md — PR, merge gate, origin/main verification, requirement marks (wave 6, checkpoint)
 
 </details>
 
@@ -132,7 +132,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 21. Docs cleanup — close remaining Phase 20 deferred items | v2.0 | 4/4 | Complete | 2026-09-15 |
 | 22. branch-protection --apply live exercise | v2.0 | 6/6 | Complete | 2026-09-16 |
 | 23. Nexus Generic Chart | v3.0 | 8/8 | Complete   | 2026-09-19 |
-| 24. Nexus Anonymous Access and Workstation Script | v3.0 | 9/10 | In Progress|  |
+| 24. Nexus Anonymous Access and Workstation Script | v3.0 | 10/10 | Complete   | 2026-09-20 |
 | 25. Nexus Live Validation | v3.0 | 0/? | Not started | — |
 | 26. DefectDojo Generic Chart | v3.0 | 0/? | Not started | — |
 | 27. DefectDojo CI Auto-Import | v3.0 | 0/? | Not started | — |

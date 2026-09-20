@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: executing
-stopped_at: 24-10 PAUSED at the Task 2 MERGE gate — branch pushed (gitleaks clean), PR #15 OPEN/MERGEABLE/CLEAN at c3ba864 with 12/12 checks SUCCESS, nothing merged and gh pr merge never invoked; NEXUS-02/NEXUS-04 still withheld (no origin/main evidence)
-last_updated: "2026-09-20T20:12:54.058Z"
+status: verifying
+stopped_at: "Completed 24-10-PLAN.md — Phase 24 SHIPPED. PR #15 merged as aed14b9 by the operator (out of band, 4th consecutive phase); merged tree hash a4a7962 identical to the gated tree; NEXUS-02 and NEXUS-04 marked Complete from git ls-tree origin/main evidence (commit fc6900e); 24-VALIDATION.md finalised 15/15 green"
+last_updated: "2026-09-20T20:53:23.413Z"
 last_activity: 2026-09-20
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 18
-  completed_plans: 17
-  percent: 50
+  completed_plans: 18
+  percent: 100
 ---
 
 # Project State
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 ## Current Position
 
-Phase: 24 (nexus-anonymous-access-and-workstation-script) — EXECUTING
+Phase: 24 (nexus-anonymous-access-and-workstation-script) — COMPLETE, ready for verification
 Plan: 10 of 10
-Status: PAUSED — PR #15 open and green; awaiting the operator's merge decision
+Status: Phase complete — ready for verification
 Last activity: 2026-09-20
 
 ## Performance Metrics
@@ -233,6 +233,10 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 24]: 24-10 Task 1 CLOSED: operator approved, pushed the branch (all pre-push hooks passed, gitleaks clean) and opened PR #15 on OttawaCloudConsulting/security-platform. Verified rather than assumed — origin tip == local tip c3ba864, `git rev-list --left-right --count origin/main...HEAD` = 0 13, and the published PR title and body diff byte-identical against the committed 24-evidence/pr-title.txt and pr-body.md (one GitHub-appended trailing newline aside). What was approved is what is published.
 - [Phase 24]: 24-10 Task 2 OPEN at the merge gate. PR #15 re-read only AFTER every check run reported completed: state OPEN, mergeable MERGEABLE, mergeStateStatus CLEAN, mergedAt/mergedBy null, reviewDecision empty, rollup 12/12 SUCCESS. The FIRST read one minute after creation said UNSTABLE with 4 of 7 checks still running — a settled-looking verdict on an unsettled tree, the Phase 22 Pitfall 7 shape. `gh pr merge` was NOT invoked; Task 3 owns the merge and must re-read state again first.
 - [Phase 24]: 24-10: the twelve green checks on c3ba864 are report-only tolerance, NOT zero findings. GATE_MODE is still absent (Phase 19 D-09's deleted state) so every scan step carries continue-on-error, and fixtures/ is permanent on main, so the rollup is green regardless of this PR's diff (19-06). Check membership matches 17-05's measured twelve exactly — five `security / ...` job checks plus Semgrep OSS, Checkov, Trivy, tflint, tflint-errors, gitleaks and GitGuardian. The main ruleset still carries only deletion + non_fast_forward, so no check is required and none of this blocks or authorises a merge.
+- [Phase 24]: 24-10 Task 2 CLOSED by an OUT-OF-BAND MERGE — the FOURTH consecutive phase to end this way (PRs #9, #10, #14, now #15). The operator merged PR #15 himself at 2026-09-20T20:46:24Z, TWO MINUTES after creation and while this plan was still polling its checks, then deleted the branch. `gh pr merge` was never invoked by this plan; the already-merged PR was reported, not re-merged (T-24-52). The OPEN/mergedAt-null reading recorded at the Task 2 gate was a true reading of a window that had already closed — which is exactly why Task 3's first instruction is to re-read PR state.
+- [Phase 24]: 24-10 Task 3: merge verified from origin/main ONLY. Merge commit aed14b916e9aa8ec1d0d47699b457040b99f7eac, parents ea2770f + c3ba864. **origin/main^{tree} == c3ba864^{tree} == a4a79626fbd3782ed1d2e9f55c5ed5a0d3c89811** — the merged tree is byte-for-byte the tree the gates ran against, so nothing changed between verification and publication (the 18-08 technique). All 9 shipped paths present; nexus-setup.sh and check-nexus-setup.sh both mode 100644; `git show origin/main:kubernetes/nexus/values.yaml | yq .anonymous.enabled` -> false; provision.sh carries 4 security/realms/active references. Both offline gates re-run GREEN against the merged tree (18/0 and 12/0). Feature branch deleted on the remote, determined by `git ls-remote --heads`, never by a local branch listing.
+- [Phase 24]: 24-10: NEXUS-02 and NEXUS-04 MARKED COMPLETE (commit fc6900e), ending a withholding chain nine plans long. The marks were made by hand from quoted origin/main evidence; `requirements.mark-complete` was never run from plan frontmatter, per the 17-01 reverted-mark precedent. The Out-of-Scope Docker carve-out row was RECONCILED not reverted: the daemon-opt-in branch shipped, so the row is annotated 'carve-out EXERCISED as shipped' with ADR-021 decision 7, the measured mirror URL shape and the A3 verdict, plus the refinement that insecure-registries is emitted only for a plain-http URL.
+- [Phase 24]: 24-10: 24-VALIDATION.md finalised — status complete, nyquist_compliant true, wave_0_complete true, all 15 rows green with the observing SUMMARY named, 13/13 sign-off boxes ticked, 0 unticked. Row 24-W0-11 is green on its BEHAVIOUR with its stated COMMAND recorded as FALSIFIED rather than quietly swapped: `pip config get global.index-url` exits 1 with 'No such key' on pip 26.2.1 because `get` reads the writable scopes only and cannot see the ':env:' variant PIP_CONFIG_FILE creates; the readback uses `pip config list`. Feedback latency MEASURED at 127s (not the 660s estimate) with images warm — sonatype/nexus3:3.96.0-ubi and kindest/node were already cached, and the script's own estimate excludes image pulls.
 
 ### Pending Todos
 
@@ -325,12 +329,13 @@ Carried forward from v1.1 close:
 | Phase 24 P07 | 2h05m | 3 tasks | 1 files |
 | Phase 24 P08 | ~35min | 2 tasks | 2 files |
 | Phase 24 P09 | 40min | 2 tasks | 3 files |
+| Phase 24 P10 | ~1h15m | 3 tasks | 6 files |
 
 ## Session Continuity
 
 Last session: 2026-09-20T20:12:54.048Z
-Stopped at: 24-10 PAUSED at the Task 2 MERGE gate — branch pushed (gitleaks clean), PR #15 OPEN/MERGEABLE/CLEAN at c3ba864 with 12/12 checks SUCCESS, nothing merged and gh pr merge never invoked; NEXUS-02/NEXUS-04 still withheld (no origin/main evidence)
-Resume file: .planning/phases/24-nexus-anonymous-access-and-workstation-script/24-10-SUMMARY.md
+Stopped at: Completed 24-10-PLAN.md — Phase 24 SHIPPED. PR #15 merged as aed14b9 by the operator (out of band, 4th consecutive phase); merged tree hash a4a7962 identical to the gated tree; NEXUS-02 and NEXUS-04 marked Complete from git ls-tree origin/main evidence (commit fc6900e); 24-VALIDATION.md finalised 15/15 green
+Resume file: None — Phase 24 closed; next is Phase 25 (NEXUS-05, private ArgoCD overlay deploy)
 
 ## Operator Next Steps
 

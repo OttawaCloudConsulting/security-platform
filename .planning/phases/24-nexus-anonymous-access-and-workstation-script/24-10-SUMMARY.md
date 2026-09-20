@@ -2,8 +2,8 @@
 phase: 24-nexus-anonymous-access-and-workstation-script
 plan: 10
 subsystem: infra
-tags: [nexus, release, pull-request, gates, gitleaks, approval-gate, merge-gate, paused]
-status: PAUSED — Task 1 complete (PR #15 open); awaiting the operator's merge decision at Task 2
+tags: [nexus, release, pull-request, gates, gitleaks, approval-gate, merge-gate, origin-main-evidence]
+status: COMPLETE — PR #15 merged (aed14b9); NEXUS-02 and NEXUS-04 marked from origin/main evidence
 
 # Dependency graph
 requires:
@@ -17,7 +17,9 @@ provides:
   - "Branch-tip verification of all four gates on feature/phase-24-nexus-anonymous-and-workstation, with no --no-verify anywhere"
   - "A reconciled 13-commit / seven-plan branch manifest, confirmed pushed intact (origin tip == local tip, 0 behind main)"
   - "The approved PR title and body committed as phase evidence, diffed byte-identical against what PR #15 actually published"
-  - "PR #15 OPEN / MERGEABLE / CLEAN at c3ba864 with 12 of 12 checks SUCCESS, read only after every check run reported completed"
+  - "PR #15 merged as aed14b9, verified from origin/main only — merged tree hash identical to the gated tree hash (a4a7962)"
+  - "NEXUS-02 and NEXUS-04 marked Complete, closing the nine-plan withholding chain"
+  - "24-VALIDATION.md finalised: status complete, nyquist_compliant true, wave_0_complete true, 15/15 rows green with the observing SUMMARY named"
 affects: [24-10-continuation, phase-25-nexus-live-validation]
 
 # Tech tracking
@@ -29,12 +31,17 @@ tech-stack:
 key-files:
   created:
     - .planning/phases/24-nexus-anonymous-access-and-workstation-script/24-10-SUMMARY.md
-  modified: []
+    - .planning/phases/24-nexus-anonymous-access-and-workstation-script/24-evidence/pr-title.txt
+    - .planning/phases/24-nexus-anonymous-access-and-workstation-script/24-evidence/pr-body.md
+  modified:
+    - .planning/REQUIREMENTS.md
+    - .planning/phases/24-nexus-anonymous-access-and-workstation-script/24-VALIDATION.md
+    - .planning/STATE.md
 
 key-decisions:
-  - "NEXUS-02 and NEXUS-04 were NOT marked complete, and requirements.mark-complete was NOT run. The orchestrator's brief offered marking them as an example of non-push work that could proceed; the plan forbids it (T-24-49, the 17-01 reverted-mark precedent) and nine prior SUMMARYs in this phase withheld the marks for exactly this reason. The work is now on a pushed branch in an open PR, which is still not origin/main — NEXUS-01's precedent is explicit that 'a chart on an unpushed branch or in an open PR is not public'. No merge, no evidence, no mark. The contradiction is resolved in favour of the plan's evidence rule and surfaced in the report rather than decided silently."
-  - "24-VALIDATION.md was left at status: draft with all fifteen rows pending. Task 3 commits it together with the requirement marks; setting status: complete and wave_0_complete: true is the phase-close signal and would be as false as the marks while the work sits in an unmerged PR."
-  - "state.advance-plan, state.update-progress and roadmap.update-plan-progress were NOT run. Both progress handlers count SUMMARY files on disk, so writing this file would have made them report Phase 24 as 18/18 complete. Only state.record-session ran, recording the pause."
+  - "NEXUS-02 and NEXUS-04 were marked BY HAND in Task 3, from quoted git ls-tree origin/main evidence; requirements.mark-complete was never run from plan frontmatter. The orchestrator's brief offered marking them as an example of non-push work that could proceed; the plan forbids it (T-24-49, the 17-01 reverted-mark precedent) and nine prior SUMMARYs in this phase withheld the marks for exactly this reason. The marks were withheld through Task 1 and Task 2 — NEXUS-01's precedent is explicit that 'a chart on an unpushed branch or in an open PR is not public' — and made in Task 3 only once `git ls-tree origin/main` showed the work on the merged default branch. The contradiction was surfaced in the report rather than decided silently."
+  - "24-VALIDATION.md was held at status: draft until the merge, then finalised in the same commit as the marks. One row, 24-W0-11, is green on its BEHAVIOUR with its stated COMMAND recorded as falsified (pip config get cannot read the PIP_CONFIG_FILE scope on pip 26.2.1) rather than quietly swapped — a contract that edits its own assertions to match whatever passed is worth nothing."
+  - "MEASURED TOOL DEFECT: gsd-sdk query state.record-session silently rewrote the STATE.md progress block to 18/18 / percent 100 as a side effect of this SUMMARY existing on disk, and ignored the stopped_at argument it was given. It was reverted by hand while the phase was still open. Progress handlers were only run once the phase was genuinely complete, and their output was read back rather than trusted."
   - "The live gate was re-run on the branch tip rather than cited from 24-05. Its inputs are unchanged since 9b670c4 (24-06/24-07 touched only workstation/, 24-08 only the READMEs), so 25/0 was the expectation — but the plan asks for a branch-tip verdict and an approval report should rest on a measurement taken now."
   - "git push --dry-run was deliberately NOT run before the approval. It is a git push invocation that contacts the remote; the approval gate was respected literally. After approval the operator performed the push and the PR creation, and this executor verified the outcome (remote tip, ahead/behind, published PR text) rather than assuming it."
   - "gh pr merge was NOT invoked, and Task 2 forbids it under any circumstance. PR #15 was read only after every check run reported completed — the first read returned a settled-looking UNSTABLE on an unsettled tree (Phase 22 Pitfall 7). Task 3 owns the merge and must re-read state again first, because PRs #9, #10 and #14 were all merged out of band by the operator."
@@ -43,26 +50,26 @@ key-decisions:
 patterns-established:
   - "Pattern: when an orchestrator's brief and a plan's evidence rule disagree about whether a requirement may be marked, the evidence rule wins and the disagreement is reported, not absorbed."
 
-requirements-completed: []  # NEXUS-02 and NEXUS-04 remain withheld — nothing is on origin/main.
+requirements-completed: [NEXUS-02, NEXUS-04]  # Marked only after git ls-tree origin/main evidence — see Task 3.
 
 # Metrics
-duration: ~35min
+duration: ~1h15m (spanning three operator round-trips)
 completed: 2026-09-20
 ---
 
 # Phase 24 Plan 10: Ship Phase 24 — Paused at the Merge Gate Summary
 
-**Every gate the plan asks for ran green on the branch tip, the PR text was drafted, approved and published byte-identically as PR #15, and all twelve checks settled green — but nothing has been merged, and the two requirement marks stay withheld until `origin/main` itself carries the work.**
+**Phase 24 is shipped: PR #15 merged as `aed14b9` with a tree hash identical to the one the gates ran against, and NEXUS-02 and NEXUS-04 marked complete from `git ls-tree origin/main` evidence — closing a withholding chain nine plans long, and doing it without this plan ever invoking `gh pr merge`.**
 
-## Status: PAUSED at Task 2, the merge approval gate
+## Status: COMPLETE
 
 | Plan task | State |
 |-----------|-------|
-| Task 1 — push the branch and open the PR | **COMPLETE.** Gates run green on the branch tip, commit manifest reconciled, PR drafted, approval obtained, branch pushed, **PR #15 open**. |
-| Task 2 — merge approval gate | **AWAITING THE OPERATOR'S DECISION.** The evidence and the four residual risks are presented below; nothing has been merged and `gh pr merge` has not been invoked. |
-| Task 3 — verify from `origin/main`, mark the requirements, finalise the validation contract | Not started, and **not startable**: it is gated on `git ls-tree origin/main` evidence that cannot exist until PR #15 is merged. |
+| Task 1 — push the branch and open the PR | **COMPLETE.** Gates green on the branch tip, commit manifest reconciled, PR drafted and approved, branch pushed, PR #15 opened with byte-identical text. |
+| Task 2 — merge approval gate | **COMPLETE.** Evidence and the four residual risks presented; the operator merged PR #15 himself. `gh pr merge` was never invoked by this plan. |
+| Task 3 — verify from `origin/main`, mark the requirements, finalise the validation contract | **COMPLETE.** Merge verified from the remote only; NEXUS-02 and NEXUS-04 marked; `24-VALIDATION.md` finalised. Commit `fc6900e`. |
 
-Task 1 was executed in two halves separated by an approval round-trip. The orchestrator's brief required a stop before any action visible on the shared remote — a stricter reading of the same boundary the plan's own Task 2 draws, landing one step earlier. Everything up to the push was done first and reported; the push and the PR followed the operator's approval.
+The plan ran across **three** operator round-trips rather than the one checkpoint it was written with. The orchestrator's brief required a stop before any action visible on the shared remote — a stricter reading of the same boundary the plan's own Task 2 draws, landing one step earlier — so Task 1 split around an approval gate, and the merge gate followed.
 
 ### The push and the PR, as executed
 
@@ -99,23 +106,79 @@ The twelve check runs on `c3ba864`, all `success`: `security / SAST — Semgrep 
 
 **Green is not zero findings, and must not be read as such.** The `GATE_MODE` repository variable is still absent (`gh variable list` prints nothing), which is Phase 19 D-09's deleted state, so the five scan jobs run **report-only** with `continue-on-error: true` on every scan step. `fixtures/` is permanent on `main`, so every PR scans a deliberately vulnerable tree and the checks go green regardless — the 19-06 finding, restated here so a green rollup is not mistaken for a clean scan of this PR's own diff. The branch ruleset on `main` carries only `deletion` and `non_fast_forward`; no check is required, so nothing here blocks or authorises a merge on its own.
 
-**Nothing was merged and `gh pr merge` was not invoked.** The plan forbids it in this task under any circumstance, and Task 3 owns the merge — only after re-reading PR state again, because PRs #9, #10 and #14 were all merged out of band by the operator, #14 through the UI while a plan was running.
+The four residual risks the operator was asked to weigh are stated in full in `24-evidence/pr-body.md` and in the PR itself: all-repository anonymous read via the un-narrowable `nx-anonymous` role; the anonymous repository-inventory disclosure at `GET /service/rest/v1/repositories`; plaintext until Phase 25 adds TLS; and Checkov's zero coverage of this chart (24 latent findings, none reaching CI).
 
-The four residual risks a reviewer should weigh are stated in full in `24-evidence/pr-body.md` and in the PR itself: all-repository anonymous read via the un-narrowable `nx-anonymous` role; the anonymous repository-inventory disclosure at `GET /service/rest/v1/repositories`; plaintext until Phase 25 adds TLS; and Checkov's zero coverage of this chart (24 latent findings, none reaching CI).
+### The decision: merged out of band, for the fourth consecutive phase
 
-## Why no requirement was marked
+**`gh pr merge` was never invoked by this plan, in any task.** The operator merged PR #15 himself on GitHub and deleted the branch, reporting verbatim:
 
-`24-10-PLAN.md` frontmatter carries `requirements: [NEXUS-02, NEXUS-04]`, and the executor protocol's state-update step says to mark a plan's frontmatter requirements complete. Both were ignored, deliberately.
+> "Confirmed: PR #15 state=MERGED, mergeCommit=aed14b916e9aa8ec1d0d47699b457040b99f7eac, mergedAt=2026-09-20T20:46:24Z (operator merged and deleted branch on GitHub)."
 
-Threat `T-24-49` in this plan's own register names "requirement marked before the deliverable is public" as a Repudiation threat with disposition `mitigate`, and the mitigation is: marks gated on `git ls-tree origin/main` output quoted in the SUMMARY. The 17-01 precedent already in `STATE.md` is a mark that had to be **reverted** because the deliverable shipped in a later plan. Plans 24-01, 24-02, 24-03, 24-04, 24-05, 24-06, 24-07, 24-08 and 24-09 each carry `requirements-completed: []` with an explicit note that 24-10 marks them *after* the work reaches `origin/main`.
+Re-read directly rather than accepted — `gh pr view 15` and `gh api repos/.../pulls/15` both return `state: MERGED`, `merged: true`, `merged_at: 2026-09-20T20:46:24Z`, `merged_by: OttawaCloudConsulting`, `merge_commit_sha: aed14b916e9aa8ec1d0d47699b457040b99f7eac`, 13 commits, 9 files, +3,440 / −83.
 
-Nothing is pushed. `git ls-remote --heads origin feature/phase-24-nexus-anonymous-and-workstation` prints nothing. There is no evidence, so there is no mark.
+The merge landed **two minutes** after the PR was created, *while this plan was still polling the PR's checks*. The `OPEN` / `mergedAt: null` state recorded in the table above was therefore a true reading of a window that had already closed by the time it was reported. That is exactly the standing project fact this plan's own context warns about — PRs #9, #10 and #14 were all merged out of band, #14 through the UI while a plan was running — and it is why Task 3's first instruction is to re-read PR state before touching `gh pr merge`. Doing so found nothing to merge, and nothing was re-merged.
 
-`requirements.mark-complete` was not invoked. `.planning/REQUIREMENTS.md` is byte-unchanged: NEXUS-02 and NEXUS-04 remain `[ ]` and both traceability rows remain `Pending`. `24-VALIDATION.md` is byte-unchanged at `status: draft`, `nyquist_compliant: false`, `wave_0_complete: false`.
+## Task 3 — closed against `origin/main` evidence
+
+Every assertion below is read from the remote (`git fetch` then `git ls-tree` / `git show` / `git ls-remote`), never from the local working tree, per the Phase 23 T-23-12 rule.
+
+### The merge
+
+| Fact | Value |
+|------|-------|
+| Merge commit | `aed14b916e9aa8ec1d0d47699b457040b99f7eac` |
+| Parents | `ea2770fbf1f8a4bd532d131835d90fb86c6f5d54` (branch point) + `c3ba86470fc26483f16acdeb161417190126ac64` (gated branch tip) |
+| `mergedAt` / `mergedBy` | `2026-09-20T20:46:24Z` / `OttawaCloudConsulting` |
+| `origin/main` tip | `aed14b9` — the merge commit *is* the tip |
+| All 13 branch commits ancestors of `origin/main` | yes, each checked individually with `git merge-base --is-ancestor` |
+
+**The merged tree is byte-for-byte the tree that was gated.** `git rev-parse origin/main^{tree}` and `git rev-parse c3ba864^{tree}` both return `a4a79626fbd3782ed1d2e9f55c5ed5a0d3c89811`, and `git diff --stat origin/main c3ba864` is empty. Nothing was amended, squashed differently or re-resolved between verification and publication — the 18-08 technique.
+
+### The shipped paths, from `git ls-tree -r origin/main --name-only`
+
+```
+kubernetes/nexus/README.md
+kubernetes/nexus/files/provision.sh
+kubernetes/nexus/templates/job-provision.yaml
+kubernetes/nexus/values.yaml
+scripts/check-nexus-chart.sh
+scripts/check-nexus-setup.sh
+scripts/nexus-live-smoke.sh
+workstation/README.md
+workstation/nexus-setup.sh
+```
+
+All nine. `git ls-tree -r origin/main -- workstation/nexus-setup.sh scripts/check-nexus-setup.sh` reports both at mode `100644` — the project's Script Safety rule holds on the published tree, not just locally.
+
+### Content, from `git show origin/main:<path>`
+
+- `git show origin/main:kubernetes/nexus/values.yaml | yq '.anonymous.enabled'` → **`false`**. The shipped default is closed on the public default branch.
+- `git show origin/main:kubernetes/nexus/files/provision.sh | grep -c 'security/realms/active'` → **4** (the criterion asks for at least 2).
+- Both standing offline gates re-run **against the merged tree** (detached at `origin/main`, then `main` fast-forwarded): `PASS - 18 checks, 0 failures` and `ALL PASS - 12 check(s) executed and passed; 0 sub-check(s) skipped (not passed).`
+
+### The remote branch
+
+`git ls-remote --heads origin feature/phase-24-nexus-anonymous-and-workstation` prints **nothing** — deleted on the remote, as the operator reported. Determined by `ls-remote`, never by a local `git branch -a`, per the Phase 23 evidence rule. The local branch still exists at `c3ba864` and is fully merged into local `main`; it was left in place, matching the other five merged phase branches already sitting in that repository, and deliberately not deleted.
+
+## Why the requirements could be marked — and only now
+
+`24-10-PLAN.md` frontmatter carries `requirements: [NEXUS-02, NEXUS-04]`. They were **not** marked during Task 1 or Task 2, and `requirements.mark-complete` was never invoked from frontmatter.
+
+Threat `T-24-49` names "requirement marked before the deliverable is public" as a Repudiation threat with disposition `mitigate`, and the mitigation is: marks gated on `git ls-tree origin/main` output quoted in the SUMMARY. The 17-01 precedent already in `STATE.md` is a mark that had to be **reverted** because the deliverable shipped in a later plan. Plans 24-01 through 24-09 each carry `requirements-completed: []` with an explicit note that 24-10 marks them *after* the work reaches `origin/main`. NEXUS-01's Phase 23 precedent set the standard in one line: *a chart on an unpushed branch or in an open PR is not public.*
+
+That condition is now satisfied and quoted above, so the marks were made **by hand**, in the same commit as the finalised validation contract:
+
+- `.planning/REQUIREMENTS.md`: NEXUS-02 and NEXUS-04 flipped to `[x]`; both traceability rows `Pending` → `Complete`.
+- The Out of Scope table's Docker carve-out row is **reconciled, not reverted**. The `daemon-opt-in` branch did ship, so the row is annotated *carve-out EXERCISED as shipped* with the ADR-021 decision 7 reference, the measured mirror URL shape and the `VERDICT: A3-FALSIFIED-CANDIDATE-1` citation — plus the one refinement on the operator's literal "both keys" selection, that `insecure-registries` is emitted only for a plain-`http` URL, so a reader comparing the script to the recorded decision does not read the difference as a defect.
+- `24-VALIDATION.md`: `status: complete`, `nyquist_compliant: true`, `wave_0_complete: true`, all fifteen `24-W0-xx` rows green with the observing SUMMARY named in each row, all six Wave 0 requirement boxes ticked, all six sign-off boxes ticked.
+
+Commit `fc6900e` — `git diff-tree --no-commit-id --name-only -r fc6900e` lists exactly the two paths in this plan's `files_modified` and nothing else.
+
+**One validation row carries a correction rather than a plain pass.** `24-W0-11` originally named `PIP_CONFIG_FILE=… pip config get global.index-url` as its command. 24-07 measured that command to be unusable — it exits 1 with `ERROR: No such key` on pip 26.2.1 under every scope flag, against a file that plainly carries the key, because `get` reads the writable scopes only and cannot see the `:env:` variant `PIP_CONFIG_FILE` creates. The row is green on the behaviour (the script writes `pip.conf`; pip resolves its index through Nexus, verified by `pip config list` plus pip's own `Looking in indexes:` line plus a real component fetch), and the falsified command is recorded as falsified rather than quietly swapped. A validation contract that edits its own assertions to match whatever passed is worth nothing.
 
 ## Branch manifest — reconciled
 
-Branch: `feature/phase-24-nexus-anonymous-and-workstation`, in `repos/security-platform` (an independent git repository, not a submodule of this one). Cut from `main` at `ea2770f`, which is still the merge base. Working tree clean (`git status --porcelain` empty).
+Reconciled **before** the push, and quoted here as the manifest the operator approved. Branch: `feature/phase-24-nexus-anonymous-and-workstation`, in `repos/security-platform` (an independent git repository, not a submodule of this one). Cut from `main` at `ea2770f` — which is now the first parent of the merge commit. Working tree clean (`git status --porcelain` empty).
 
 `git log --oneline origin/main..HEAD` — 13 commits:
 
@@ -181,9 +244,9 @@ GitHub server-side Push Protection is a separate mechanism that `--no-verify` ca
 
 `gh auth status` → logged in to `github.com` as `OttawaCloudConsulting`, token scopes `gist`, `read:org`, `repo`, `workflow`. `repo` covers `gh pr create` against a public repository, so no auth gate is expected on the approved sequence.
 
-## The PR, drafted but not opened
+## The PR, as drafted and as published
 
-Target: `OttawaCloudConsulting/security-platform`, base `main`, head `feature/phase-24-nexus-anonymous-and-workstation`.
+Target: `OttawaCloudConsulting/security-platform`, base `main`, head `feature/phase-24-nexus-anonymous-and-workstation`. Opened as **PR #15**, merged as `aed14b9`.
 
 Title:
 
@@ -220,18 +283,18 @@ PR #14 was confirmed `MERGED` at `2026-09-19T11:41:43Z` on `OttawaCloudConsultin
 
 ## Deviations from Plan
 
-### 1. [Approval gate] Task 1 stopped short of the push and the PR
+### 1. [Approval gate] Task 1 split around an approval round-trip
 
 **Found during:** Task 1, before any remote-visible action.
-**Issue:** The orchestrator's brief, citing this project's operating protocol on irreversible and shared-visibility actions, requires explicit user confirmation *before* pushing a branch or opening a PR on a shared remote — not after.
-**Action:** Everything up to and including the drafted push and PR was completed; `git push` and `gh pr create` were not run. `git push --dry-run` was also not run, since it is a push invocation that contacts the remote.
-**Files modified:** none in `repos/security-platform`.
+**Issue:** The orchestrator's brief, citing this project's operating protocol on irreversible and shared-visibility actions, requires explicit user confirmation *before* pushing a branch or opening a PR on a shared remote — not after. The plan's own Task 1 assumes the executor pushes.
+**Action:** Everything up to and including the drafted push and PR was completed and reported; `git push` and `gh pr create` were withheld. `git push --dry-run` was also not run, since it is a push invocation that contacts the remote. On approval the operator performed both, and this executor verified the outcome — remote tip equals the gated tip, `0 13` ahead/behind, and the published PR title and body diffed byte-identical against the committed drafts — rather than assuming the report was accurate.
+**Files modified:** none in `repos/security-platform`; the drafted text was committed here as `24-evidence/pr-title.txt` and `24-evidence/pr-body.md` precisely because the plan is not resumed in place.
 
-### 2. [Evidence rule] Task 3's requirement marks withheld, against the orchestrator's suggestion
+### 2. [Evidence rule] The requirement marks were withheld until the merge, against the orchestrator's suggestion
 
 **Found during:** planning the execution order.
 **Issue:** The orchestrator's brief names "marking NEXUS-02/NEXUS-04 complete in REQUIREMENTS.md" as an example of a non-push task that could be completed and committed normally. The plan forbids exactly that until `git ls-tree origin/main` shows the work on the default branch.
-**Action:** Not marked. The disagreement is reported rather than absorbed, per the contradiction-handling rule. `.planning/REQUIREMENTS.md` untouched.
+**Action:** Not marked at Task 1 or Task 2; `.planning/REQUIREMENTS.md` was left untouched through both. The disagreement was reported rather than absorbed, per the contradiction-handling rule, and the marks were made in Task 3 once `git ls-tree origin/main` evidence existed and could be quoted.
 **Rationale:** T-24-49; the 17-01 reverted-mark precedent; nine prior SUMMARYs in this phase withholding for the same reason; the NEXUS-01 precedent from Phase 23 that established the standard ("a chart on an unpushed branch or in an open PR is not public").
 
 ### 3. [State handlers] Progress handlers not run
@@ -248,36 +311,31 @@ PR #14 was confirmed `MERGED` at `2026-09-19T11:41:43Z` on `OttawaCloudConsultin
 **Files modified:** `.planning/STATE.md`.
 **Lesson for the continuation agent:** after the merge, `state.advance-plan` / `state.update-progress` / `roadmap.update-plan-progress` will be correct to run — but verify the progress block they write rather than assuming it, and re-check it after *any* state handler call, including ones that have no business touching it.
 
-## What the continuation agent must do
+### 5. [Process] PR #15 was merged out of band, for the fourth consecutive phase
 
-1. ~~Obtain the operator's explicit approval for the push and the PR.~~ **DONE** — approved, pushed, PR #15 open, text verified byte-identical to the approved draft.
-2. Push `feature/phase-24-nexus-anonymous-and-workstation`. The gitleaks pre-push hook runs for real; if it blocks, report the finding — do not use `--no-verify`, and note that it could not reach GitHub Push Protection anyway.
+**Found during:** Task 3's mandatory re-read of PR state.
+**Issue:** The plan's own context warns that PRs #9, #10 and #14 were all merged out of band by the operator, #14 through the UI while a plan was running, and instructs the executor to treat operator-merges-it-himself as the expected case. It happened again: PR #15 was merged at `20:46:24Z`, **two minutes** after creation and while this plan was still polling its checks. The `OPEN` / `mergedAt: null` state this SUMMARY records at the Task 2 gate was a true reading of a window that had already closed.
+**Action:** `gh pr merge` was never invoked — there was nothing to merge, and an already-merged PR is reported, not re-merged (T-24-52). The merge was verified from `origin/main` rather than from the report, and the merged tree hash was compared against the gated tree hash to prove nothing changed between verification and publication.
+**Not a defect:** this is now the established operating pattern for this project, not an anomaly. It is recorded so that the fifth occurrence is still met with a re-read rather than an assumption.
 
-   ```bash
-   cd repos/security-platform
-   git push -u origin feature/phase-24-nexus-anonymous-and-workstation
-   ```
+## Hand-off
 
-3. `gh pr create` with the **committed** title and body — do not re-type or re-draft them; the operator approved these exact bytes. Paths are relative to this repository's root, so run the command from there or absolutise them. Record the PR number and URL. **Do not merge.**
+Nothing in this plan remains open. For Phase 25 (NEXUS-05, the private ArgoCD overlay deploy):
 
-   ```bash
-   D=.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-evidence
-   gh pr create \
-     --repo OttawaCloudConsulting/security-platform \
-     --base main \
-     --head feature/phase-24-nexus-anonymous-and-workstation \
-     --title "$(cat "$D/pr-title.txt")" \
-     --body-file "$D/pr-body.md"
-   ```
-4. Present Task 2's checkpoint: the PR URL, the four gate verdicts above, and the four residual risks. Record the operator's reply verbatim.
-5. Task 3: **re-read PR state before any `gh pr merge`** — PRs #9, #10 and #14 were all merged out of band by the operator, #14 through the UI while a plan was running. An already-MERGED PR is reported, never re-merged.
-6. Only then: `git fetch origin`, `git ls-tree -r origin/main --name-only`, `git show origin/main:<path>`, `git ls-remote --heads` — never the local working tree — and, with that evidence quoted, mark NEXUS-02 and NEXUS-04 and finalise `24-VALIDATION.md`.
+- ADR-021's `What was NOT verified` item 6 is a named hand-off written for exactly that phase, so the overlay is authored once.
+- Three things this phase could not measure and Phase 25 is positioned to: no pull was performed by the operator's own Docker daemon (three substitutes stood in); nothing was measured against a TLS-terminated Nexus, and no ingress exists yet; and no `helm upgrade` of an existing install was exercised, so the guarded realms append is proven across two provisioning passes on one instance and not across an upgrade of an instance whose PVC already carried Phase 23's state.
+- The `anonymous.enabled: false` default means the overlay must opt in explicitly, and doing so accepts residual risks 1 and 2 above. Residual risk 3 (plaintext) is Phase 25's own subject matter.
+- `.planning/phases/23-nexus-generic-chart/deferred-items.md` items 1 and 4-8 remain open; items 2 and 3 were dispositioned in 24-09.
 
 ## Self-Check: PASSED
 
 - `.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-10-SUMMARY.md` — FOUND
-- Scratchpad `pr-body.md` and `pr-title.txt` — FOUND
-- `repos/security-platform` working tree clean, branch at `c3ba864`, unpushed — CONFIRMED
-- `git ls-remote --heads origin feature/phase-24-nexus-anonymous-and-workstation` — empty, as expected for an unpushed branch
-- `.planning/REQUIREMENTS.md` NEXUS-02 / NEXUS-04 still `[ ]` and `Pending` — CONFIRMED (intended state)
-- `24-VALIDATION.md` still `status: draft` — CONFIRMED (intended state)
+- `24-evidence/pr-body.md` and `24-evidence/pr-title.txt` — FOUND, committed, and diffed byte-identical against PR #15's published title and body
+- Commits `09cf77f`, `5bc1725`, `1fddbe7`, `fc6900e` — all FOUND in `git log`
+- `git diff-tree --no-commit-id --name-only -r fc6900e` lists exactly `.planning/REQUIREMENTS.md` and `24-VALIDATION.md` — the two paths in `files_modified`, nothing else
+- `origin/main` @ `aed14b9`; `origin/main^{tree}` == `c3ba864^{tree}` == `a4a7962` — CONFIRMED
+- `git show origin/main:kubernetes/nexus/values.yaml | yq '.anonymous.enabled'` → `false` — CONFIRMED
+- `git ls-remote --heads origin feature/phase-24-nexus-anonymous-and-workstation` — empty (branch deleted on the remote), determined by `ls-remote` not a local listing
+- `.planning/REQUIREMENTS.md` NEXUS-02 / NEXUS-04 now `[x]` and `Complete` — CONFIRMED
+- `24-VALIDATION.md` `status: complete`, `nyquist_compliant: true`, `wave_0_complete: true`, 15/15 rows green, 13/13 boxes ticked, 0 unticked — CONFIRMED
+- `repos/security-platform` clean, on `main` at `aed14b9` (fast-forwarded) — CONFIRMED
