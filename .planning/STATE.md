@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 24-07-PLAN.md — --verify proof pass + daemon-opt-in Docker branch; gate ALL PASS 12/0 skipped; commits c1df999, ec9544d, 9ec38b6 in repos/security-platform
-last_updated: "2026-09-20T19:37:28.866Z"
+stopped_at: Completed 24-08-PLAN.md — chart + workstation READMEs document the delivered anonymous posture; commit ee40e42 in repos/security-platform
+last_updated: "2026-09-20T19:49:30.341Z"
 last_activity: 2026-09-20
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 16
   percent: 50
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 24 (nexus-anonymous-access-and-workstation-script) — EXECUTING
-Plan: 8 of 10
+Plan: 9 of 10
 Status: Ready to execute
 Last activity: 2026-09-20
 
@@ -222,6 +222,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: 24-07: pip config get cannot read the PIP_CONFIG_FILE scope on pip 26.2.1 — the --verify readback uses pip config list (merged view)
 - [Phase ?]: 24-07: helm v4 -r regexp is not anchored to repo/chart, so '^nexus/' matches nothing — pattern unanchored, anchoring done on the JSON
 - [Phase ?]: 24-07: insecure-registries written only for a plain-http Nexus (ADR-009); https ships registry-mirrors alone
+- [Phase ?]: 24-08: chart and workstation READMEs document the delivered anonymous posture; the daemon mirror URL uses a placeholder so the asymmetry fact survives the no-/repository/docker-proxy acceptance grep
 
 ### Pending Todos
 
@@ -312,11 +313,12 @@ Carried forward from v1.1 close:
 | Phase 24 P05 | ~19min | 3 tasks | 1 files |
 | Phase 24 P06 | 50min | 3 tasks | 1 files |
 | Phase 24 P07 | 2h05m | 3 tasks | 1 files |
+| Phase 24 P08 | ~35min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-20T19:37:28.858Z
-Stopped at: Completed 24-07-PLAN.md — --verify proof pass + daemon-opt-in Docker branch; gate ALL PASS 12/0 skipped; commits c1df999, ec9544d, 9ec38b6 in repos/security-platform
+Last session: 2026-09-20T19:49:30.332Z
+Stopped at: Completed 24-08-PLAN.md — chart + workstation READMEs document the delivered anonymous posture; commit ee40e42 in repos/security-platform
 Resume file: None
 
 ## Operator Next Steps
