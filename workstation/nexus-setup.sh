@@ -1270,9 +1270,17 @@ verify_pip() {
   # --no-cache-dir for the same reason npm gets an empty cache: a wheel already
   # in pip's HTTP cache would satisfy "a file appeared" without one packet
   # reaching Nexus. --timeout and --retries bound the call from pip's own side.
+  #
+  # --no-input is not cosmetic. MEASURED against a Nexus with anonymous read
+  # disabled: pip answers a 401 by PROMPTING on the terminal ("User for
+  # <host>:"), so without it a verification fetch blocks forever on a developer's
+  # TTY waiting for a username it must never be given — and `bounded` can only
+  # rescue that on a machine where timeout(1) exists. With --no-input pip fails
+  # the request instead, which is the answer the table needs.
   rc=0
   bounded 120 env PIP_CONFIG_FILE="$pip_conf" "${pip_cmd[@]}" download "$VERIFY_PIP_PACKAGE" \
-    --no-deps --no-cache-dir --dest "$dest" --timeout 10 --retries 0 > "$log" 2>&1 || rc=$?
+    --no-deps --no-cache-dir --no-input --disable-pip-version-check \
+    --dest "$dest" --timeout 10 --retries 0 > "$log" 2>&1 || rc=$?
 
   if [[ "$rc" -ne 0 ]]; then
     # pip prints the component-level status itself, which is a better witness
