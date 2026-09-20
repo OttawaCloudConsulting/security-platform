@@ -149,9 +149,12 @@ Title:
 Phase 24: anonymous pull for the Nexus proxy repos, and the workstation routing script
 ```
 
-The body is drafted in full and held at
-`/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1648f4c4-57ad-4825-9cc5-8628dd906a56/scratchpad/pr-body.md`
-(112 lines), with the title at `pr-title.txt` alongside it. It is reproduced verbatim in this plan's run output for the approval round-trip.
+The body is drafted in full and committed as phase evidence at
+`.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-evidence/pr-body.md` (112 lines, mode 644),
+with the title at `24-evidence/pr-title.txt` alongside it — the same evidence home 24-04 established. They are
+committed rather than left in a session scratchpad **because this plan is not resumed in place**: a fresh agent
+opens the PR, and the text the operator approves must be the byte-identical text that gets published. The body is
+also reproduced verbatim in this plan's run output for the approval round-trip.
 
 Every number in it traces to a named SUMMARY of this phase — the 24-08 / 24-09 discipline. Nothing is recalled:
 
@@ -207,7 +210,23 @@ PR #14 was confirmed `MERGED` at `2026-09-19T11:41:43Z` on `OttawaCloudConsultin
 
 1. Obtain the operator's explicit approval for the push and the PR.
 2. Push `feature/phase-24-nexus-anonymous-and-workstation`. The gitleaks pre-push hook runs for real; if it blocks, report the finding — do not use `--no-verify`, and note that it could not reach GitHub Push Protection anyway.
-3. `gh pr create` with the drafted title and body. Record the PR number and URL. Do not merge.
+
+   ```bash
+   cd repos/security-platform
+   git push -u origin feature/phase-24-nexus-anonymous-and-workstation
+   ```
+
+3. `gh pr create` with the **committed** title and body — do not re-type or re-draft them; the operator approved these exact bytes. Paths are relative to this repository's root, so run the command from there or absolutise them. Record the PR number and URL. **Do not merge.**
+
+   ```bash
+   D=.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-evidence
+   gh pr create \
+     --repo OttawaCloudConsulting/security-platform \
+     --base main \
+     --head feature/phase-24-nexus-anonymous-and-workstation \
+     --title "$(cat "$D/pr-title.txt")" \
+     --body-file "$D/pr-body.md"
+   ```
 4. Present Task 2's checkpoint: the PR URL, the four gate verdicts above, and the four residual risks. Record the operator's reply verbatim.
 5. Task 3: **re-read PR state before any `gh pr merge`** — PRs #9, #10 and #14 were all merged out of band by the operator, #14 through the UI while a plan was running. An already-MERGED PR is reported, never re-merged.
 6. Only then: `git fetch origin`, `git ls-tree -r origin/main --name-only`, `git show origin/main:<path>`, `git ls-remote --heads` — never the local working tree — and, with that evidence quoted, mark NEXUS-02 and NEXUS-04 and finalise `24-VALIDATION.md`.
