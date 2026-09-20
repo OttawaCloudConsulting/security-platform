@@ -155,7 +155,7 @@ Semgrep CE and Checkov are **not** installed by the workstation setup. They run 
 
 `nexus-setup.sh` points **one repository's** npm, pip and Helm clients at a Nexus instance (see `kubernetes/nexus/`). It is a separate entry point from `setup.sh` and shares nothing with it but the house style.
 
-Run it from inside the repository you want to route. Like every script in this repository it is **not executable** and is invoked with an explicit interpreter — that is the project's Script Safety rule, not an oversight:
+Run it from inside the repository you want to route. It is deliberately **not executable** and is invoked with an explicit interpreter — that is the project's Script Safety rule, not an oversight. (`setup.sh` and the `cicd/` scripts beside it are mode `755`; they predate the rule.)
 
 ```bash
 # Configure this repository, then prove it routes
