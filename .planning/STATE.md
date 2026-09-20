@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: 24-10 PAUSED at the push/PR approval gate — branch feature/phase-24-nexus-anonymous-and-workstation green on all four gates and the PR drafted, but NOT pushed and no PR opened; NEXUS-02/NEXUS-04 still withheld (no origin/main evidence)
+stopped_at: 24-10 PAUSED at the Task 2 MERGE gate — branch pushed (gitleaks clean), PR #15 OPEN/MERGEABLE/CLEAN at c3ba864 with 12/12 checks SUCCESS, nothing merged and gh pr merge never invoked; NEXUS-02/NEXUS-04 still withheld (no origin/main evidence)
 last_updated: "2026-09-20T20:12:54.058Z"
 last_activity: 2026-09-20
 progress:
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 Phase: 24 (nexus-anonymous-access-and-workstation-script) — EXECUTING
 Plan: 10 of 10
-Status: PAUSED — awaiting operator approval to push the branch and open the PR
+Status: PAUSED — PR #15 open and green; awaiting the operator's merge decision
 Last activity: 2026-09-20
 
 ## Performance Metrics
@@ -230,6 +230,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 24]: 24-10: all four gates green on the branch tip — check-nexus-chart.sh `PASS - 18 checks, 0 failures`; check-nexus-setup.sh `ALL PASS - 12 check(s) ... 0 skipped`; `pre-commit run --all-files` exit 0; nexus-live-smoke.sh `ALL PASS - 25 live check(s) executed and passed; 0 sub-check(s) skipped`, both docker and kind halves, no leftover cluster or container. No --no-verify anywhere.
 - [Phase 24]: 24-10: the gitleaks pre-push hook could not be exercised by a push, so it was run at its own stage against the exact push range — `pre-commit run gitleaks --hook-stage pre-push --from-ref origin/main --to-ref HEAD` → Passed, exit 0 — and .git/hooks/pre-push was confirmed installed, so the approved push needs no `pre-commit install` step. GitHub server-side Push Protection remains unsimulable and unknown until the push (Phase 19 GH013 precedent).
 - [Phase 24]: 24-10 TOOL DEFECT OBSERVED: `gsd-sdk query state.record-session` silently recalculated the progress block to completed_phases 2 / completed_plans 18 / percent 100 as a side effect of 24-10-SUMMARY.md existing on disk, and did NOT update stopped_at from its positional argument. The progress numbers were reverted by hand to 1 / 17 / 50 and stopped_at was written manually. state.advance-plan, state.update-progress and roadmap.update-plan-progress were deliberately never run — all three would have re-asserted the same false completion.
+- [Phase 24]: 24-10 Task 1 CLOSED: operator approved, pushed the branch (all pre-push hooks passed, gitleaks clean) and opened PR #15 on OttawaCloudConsulting/security-platform. Verified rather than assumed — origin tip == local tip c3ba864, `git rev-list --left-right --count origin/main...HEAD` = 0 13, and the published PR title and body diff byte-identical against the committed 24-evidence/pr-title.txt and pr-body.md (one GitHub-appended trailing newline aside). What was approved is what is published.
+- [Phase 24]: 24-10 Task 2 OPEN at the merge gate. PR #15 re-read only AFTER every check run reported completed: state OPEN, mergeable MERGEABLE, mergeStateStatus CLEAN, mergedAt/mergedBy null, reviewDecision empty, rollup 12/12 SUCCESS. The FIRST read one minute after creation said UNSTABLE with 4 of 7 checks still running — a settled-looking verdict on an unsettled tree, the Phase 22 Pitfall 7 shape. `gh pr merge` was NOT invoked; Task 3 owns the merge and must re-read state again first.
+- [Phase 24]: 24-10: the twelve green checks on c3ba864 are report-only tolerance, NOT zero findings. GATE_MODE is still absent (Phase 19 D-09's deleted state) so every scan step carries continue-on-error, and fixtures/ is permanent on main, so the rollup is green regardless of this PR's diff (19-06). Check membership matches 17-05's measured twelve exactly — five `security / ...` job checks plus Semgrep OSS, Checkov, Trivy, tflint, tflint-errors, gitleaks and GitGuardian. The main ruleset still carries only deletion + non_fast_forward, so no check is required and none of this blocks or authorises a merge.
 
 ### Pending Todos
 
@@ -326,7 +329,7 @@ Carried forward from v1.1 close:
 ## Session Continuity
 
 Last session: 2026-09-20T20:12:54.048Z
-Stopped at: 24-10 PAUSED at the push/PR approval gate — branch feature/phase-24-nexus-anonymous-and-workstation green on all four gates and the PR drafted, but NOT pushed and no PR opened; NEXUS-02/NEXUS-04 still withheld (no origin/main evidence)
+Stopped at: 24-10 PAUSED at the Task 2 MERGE gate — branch pushed (gitleaks clean), PR #15 OPEN/MERGEABLE/CLEAN at c3ba864 with 12/12 checks SUCCESS, nothing merged and gh pr merge never invoked; NEXUS-02/NEXUS-04 still withheld (no origin/main evidence)
 Resume file: .planning/phases/24-nexus-anonymous-access-and-workstation-script/24-10-SUMMARY.md
 
 ## Operator Next Steps
