@@ -50,7 +50,7 @@ patterns-established:
 requirements-completed: []  # NEXUS-02 withheld on purpose — see key-decisions; plan 24-10 marks it.
 
 # Metrics
-duration: ~50min
+duration: ~19min (git-recorded span; see Performance)
 completed: 2026-09-19
 ---
 
@@ -60,9 +60,9 @@ completed: 2026-09-19
 
 ## Performance
 
-- **Duration:** ~50 min
-- **Started:** 2026-09-20T02:35Z
-- **Completed:** 2026-09-20T03:25Z
+- **Duration:** **~19 min**, bounded by the two observable anchors below rather than estimated. A first draft of this document carried an invented `~50 min / 02:35Z -> 03:25Z` span; it was corrected against git, which is the only clock either end of this work is recorded on. In a document whose argument is "measured, not asserted", an estimated duration presented as a measurement is the wrong kind of number.
+- **Started:** after `9be62f6` (24-04's docs commit), authored `2026-09-20T02:28:37Z`
+- **Completed:** `015c8fc` (this plan's docs commit), authored `2026-09-20T02:47:23Z`; the plan commit `9b670c4` is authored `2026-09-20T02:44:30Z`
 - **Tasks:** 3 (one commit by plan design)
 - **Files modified:** 1
 - **Live smoke runs:** 3 (A measurement + admin control, B realm-removal reversion, C full green)
@@ -202,7 +202,7 @@ shellcheck scripts/nexus-live-smoke.sh            -> exit 0
 pre-commit run --files scripts/nexus-live-smoke.sh -> shellcheck Passed, exit 0
 ```
 
-Acceptance greps: `DOCKER-REALM-ACTIVE|DOCKER-PATH-SHAPE` → 14; `Authorization: Bearer` → 7; `must never be accepted as evidence` → **1**; `run_provision` → 4 (unchanged); `|| true` → 4, all pre-existing (trap, `KUBECTX_BEFORE`, `find -exec`) and **none inside the new section**.
+Acceptance greps: `DOCKER-REALM-ACTIVE|DOCKER-PATH-SHAPE` → 14; `Authorization: Bearer` → 7; `must never be accepted as evidence` → **1**; `run_provision` → 4 (unchanged); `|| true` → 4 **lines**, all pre-existing and **none inside the new section**: the trap's explanatory comment, the trap line itself (three instances on one line), the `pass`/`fail` helper comment that forbids `|| true` in assertions, and the `KUBECTX_BEFORE` capture. Verified by range — `sed -n '551,969p' | grep '|| true'` returns nothing.
 
 Environment left clean: `kind get clusters` → "No kind clusters found", kubectl context restored to `admin@occ-new`, no surviving `nexus-live-smoke-*` container. Commit hooks ran normally; no `--no-verify`. Nothing was pushed — plan 24-10 owns the PR.
 

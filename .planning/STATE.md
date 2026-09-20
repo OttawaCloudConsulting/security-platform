@@ -304,7 +304,7 @@ Carried forward from v1.1 close:
 | Phase 24 P03 | 70min | 3 tasks | 1 files |
 | Phase 24 P02 | 55min | 3 tasks | 4 files |
 | Phase 24 P04 | ~45min | 3 tasks | 2 files |
-| Phase 24 P05 | ~50min | 3 tasks | 1 files |
+| Phase 24 P05 | ~19min | 3 tasks | 1 files |
 
 ## Session Continuity
 
