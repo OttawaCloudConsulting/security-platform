@@ -58,7 +58,7 @@ NEXUS_CONTAINER="nexus-live-smoke-$$"
 # Likewise for the kind cluster. KIND_CREATED is the trap's ownership flag: it
 # flips to 1 only AFTER `kind create cluster` has returned 0, so the trap can
 # never delete a cluster this run did not create. See the ownership guard in
-# section 6 for why that ordering is load-bearing rather than stylistic.
+# section 7 for why that ordering is load-bearing rather than stylistic.
 KIND_CLUSTER="nexus-smoke"
 KIND_NS="nexus-smoke"
 KIND_CONTEXT="kind-${KIND_CLUSTER}"
@@ -153,6 +153,23 @@ render() {
 # how the chart's Job supplies it (secretKeyRef -> env). The smoke exercises the
 # same contract the cluster does.
 #
+# The anonymous posture below is set to `true`, DELIBERATELY diverging from the
+# chart's own shipped default of `false` — the same deliberate divergence this
+# function already makes for the EULA. A public chart must not open
+# unauthenticated read for whoever installs it without reading values.yaml, and
+# a gate that never opens it cannot measure whether opening it works. The three
+# ANONYMOUS_* variables are read unconditionally by provision.sh, so omitting
+# them would kill this smoke under `set -u` rather than test anything.
+#
+# Setting it back to `false` is exactly reversion 1 of this file's non-vacuity
+# procedure: the three anonymous checks in section 5 must all go red with HTTP
+# 401. Do not leave it flipped.
+#
+# READY_ATTEMPTS and READY_INTERVAL match the chart defaults
+# (provision.readiness.attempts / intervalSeconds) on purpose: this smoke must
+# poll with the budget a real install polls with. provision.sh reads both from
+# the environment with NO default, so `set -u` kills this function without them.
+#
 # SC2329 is disabled because this function IS invoked — indirectly, as the
 # command require_success runs through "$@", which shellcheck cannot follow.
 # shellcheck disable=SC2329
@@ -161,6 +178,11 @@ run_provision() {
   NEXUS_USER=admin \
   NEXUS_PASSWORD="$NEXUS_PASSWORD" \
   EULA_ACCEPTED=true \
+  ANONYMOUS_ENABLED=true \
+  ANONYMOUS_USER_ID=anonymous \
+  ANONYMOUS_REALM_NAME=NexusAuthorizingRealm \
+  READY_ATTEMPTS=60 \
+  READY_INTERVAL=10 \
   REPO_CONFIG_DIR="$OUT/config" \
     bash "$PROVISION_SH"
 }
@@ -244,7 +266,7 @@ echo "    image (from the chart): ${NEXUS_IMAGE}"
 # The admin credential goes in a mode-600 env file inside the trap-cleaned temp
 # dir rather than on the docker argv, where any local process could read it.
 # The umask is SCOPED to this subshell on purpose: leaving it set globally would
-# make `helm dependency build` in section 6 write mode-600 files into the
+# make `helm dependency build` in section 7 write mode-600 files into the
 # operator's own checkout.
 (
   umask 077
@@ -358,17 +380,21 @@ else
   fail "ARTIFACT-SIZE" "only ${tarball_bytes} bytes downloaded, expected > ${TARBALL_MIN_BYTES}; a ~192-byte body is the EULA refusal, not a tarball"
 fi
 
-# ── Anonymous pull must be DENIED ────────────────────────────────────────────
-# The claim "anonymous pull is deliberately NOT enabled" had nothing measuring
-# it. It rested on a values key (`nexus3.config.anonymous.enabled`) that the
-# subchart never reads while `config.enabled` is false — flipping that key
-# produced a byte-identical render. This is the check that makes the claim true
-# rather than merely stated.
+# ── Anonymous pull must be ALLOWED (NEXUS-02) ────────────────────────────────
+# This slot used to assert the NEGATION of NEXUS-02 — that an unauthenticated
+# fetch of the tarball above came back 401. Read the fence before reading the
+# inversion: that check exists because Phase 23's own review found the claim
+# "anonymous pull is deliberately not enabled" had nothing measuring it. It
+# rested on a values key (`nexus3.config.anonymous.enabled`) that the subchart
+# never reads while `config.enabled` is false — flipping that key produced a
+# byte-identical render. The fence is not being removed here and its reason is
+# unchanged: the posture must be MEASURED, never merely stated. What changed is
+# that plan 24-01 gave the chart a value that genuinely reaches the server, and
+# plan 24-02 opens it, so the direction the measurement runs in flips with it.
 #
 # The same URL the authenticated request above just fetched with HTTP 200, now
-# with NO credentials at all. 401 is the whole assertion: a 200 here would mean
-# the repository is world-readable. Measured on a fresh nexus3:3.96.0-ubi with
-# this chart's own provisioning applied: HTTP 401, zero-byte body.
+# with NO credentials at all. HTTP 200 plus a real body is the assertion: a 401
+# here would mean the provisioning run failed to open anonymous read.
 #
 # Deliberately placed AFTER the authenticated download: by this point the EULA
 # is accepted and the repository is proven to serve a real 318,961-byte tarball
@@ -376,20 +402,572 @@ fi
 # missing repository, an unaccepted licence or an upstream outage.
 #
 # No `-u` and no `-K -`: sending no credential is the point of the check.
-anon_code=""
-anon_rc=0
-anon_code="$(curl -sS -o "$OUT/anon-unauth.out" -w '%{http_code}' \
-  --connect-timeout 5 --max-time 60 "$TARBALL_URL")" || anon_rc=$?
-if [ "$anon_rc" -ne 0 ]; then
-  fail "ANONYMOUS-PULL-DENIED" "curl exited ${anon_rc} on the unauthenticated fetch of ${TARBALL_URL} (transport error, not an HTTP verdict)"
-elif [ "$anon_code" = "401" ]; then
-  pass "ANONYMOUS-PULL-DENIED" "unauthenticated GET of ${TARBALL_URL} returned HTTP 401 - anonymous pull is closed"
+#
+# THREE verdicts per ecosystem, not one, copying section 5's split: a curl
+# transport error is a DIFFERENT failure from an HTTP verdict, and a status is
+# not a size. The size half is not decoration. A Nexus whose EULA is unaccepted
+# answers a component download with a perfectly well-formed HTTP 403 carrying a
+# ~192-byte body, and a closed anonymous posture answers 401 with a zero-byte
+# body; both sail straight past a bare status check, and a single if/elif chain
+# would stop at the status and never reach the size at all.
+#
+# SIZE THRESHOLDS — a judgement, and the rule that produced it. Each threshold
+# below was derived from the size MEASURED in the run that landed this commit,
+# under two rules:
+#   (1) at least ten times the 192-byte EULA refusal, so the floor genuinely
+#       discriminates a refusal (and a zero-byte 401) from real content; and
+#   (2) no more than HALF the measured size, so ordinary upstream drift — a new
+#       lodash release, a new project version on PyPI, a chart added to the
+#       jetstack index — cannot turn this gate red on its own.
+# Do not "tighten" any of them to the measured value: that converts a gate that
+# discriminates content from refusals into an upstream-content tripwire.
+
+# npm — measured 318,961 bytes at HTTP 200, unauthenticated; floor 100,000
+# (>= 1,920; <= 159,480). Same floor the authenticated ARTIFACT-SIZE check
+# above uses, against the same URL and the same measured size.
+ANON_NPM_MIN_BYTES=100000
+anon_npm_code=""
+anon_npm_rc=0
+anon_npm_code="$(curl -sS -o "$OUT/anon-npm.tgz" -w '%{http_code}' \
+  --connect-timeout 5 --max-time 60 "$TARBALL_URL")" || anon_npm_rc=$?
+
+if [ "$anon_npm_rc" -ne 0 ]; then
+  fail "ANONYMOUS-PULL-ALLOWED-TRANSPORT" "curl exited ${anon_npm_rc} on the unauthenticated fetch of ${TARBALL_URL} (transport error, not an HTTP verdict)"
 else
-  fail "ANONYMOUS-PULL-DENIED" "unauthenticated GET of ${TARBALL_URL} returned HTTP ${anon_code}, expected 401; HTTP 200 would mean anonymous pull is OPEN, which this chart does not enable"
+  pass "ANONYMOUS-PULL-ALLOWED-TRANSPORT" "unauthenticated curl completed against ${TARBALL_URL}"
+fi
+
+if [ "$anon_npm_code" = "200" ]; then
+  pass "ANONYMOUS-PULL-ALLOWED-HTTP-200" "unauthenticated GET of ${TARBALL_URL} returned HTTP 200 - anonymous pull is OPEN"
+else
+  fail "ANONYMOUS-PULL-ALLOWED-HTTP-200" "unauthenticated GET of ${TARBALL_URL} returned HTTP ${anon_npm_code}, expected 200; 401 means anonymous read was never opened, 403 means the EULA was never accepted"
+fi
+
+if [ -f "$OUT/anon-npm.tgz" ]; then
+  anon_npm_bytes="$(wc -c <"$OUT/anon-npm.tgz" | tr -d ' ')"
+else
+  anon_npm_bytes=0
+fi
+if [ "$anon_npm_bytes" -gt "$ANON_NPM_MIN_BYTES" ]; then
+  pass "ANONYMOUS-PULL-ALLOWED-SIZE" "${anon_npm_bytes} bytes pulled with no credential (> ${ANON_NPM_MIN_BYTES})"
+else
+  fail "ANONYMOUS-PULL-ALLOWED-SIZE" "only ${anon_npm_bytes} bytes pulled with no credential, expected > ${ANON_NPM_MIN_BYTES}; ~192 bytes is the EULA refusal body and 0 bytes is the 401 challenge, neither of which is a tarball"
+fi
+
+# PyPI — the PER-PROJECT simple page, which is what `pip download` actually
+# requests; the root /simple/ index is a different (and enormous) document and
+# proves nothing about serving a project. The trailing slash is load-bearing:
+# without it Nexus answers a redirect whose body is a few hundred bytes, which
+# would be measured instead of the page.
+# MEASURED BOUNDARY, recorded because it is counter-intuitive and because this
+# check's size floor does NOT discriminate the same thing the npm and Helm
+# floors do. With `eula.accepted=false`, the npm tarball and the Helm
+# index.yaml both come back HTTP 403 with a 192-byte refusal body — and this
+# simple page still comes back HTTP 200 with its full 76,776 bytes. The EULA
+# gate covers COMPONENT downloads; a PyPI simple page is METADATA, which Nexus
+# serves regardless. So the floor below earns its keep against the zero-byte
+# 401 challenge — observed, by disabling anonymous access — and NOT against a
+# licence refusal. Do not "fix" that by raising the floor: no byte count can
+# discriminate a state in which the server returns the correct content.
+#
+# Measured 76,776 bytes at HTTP 200 for `requests`; floor 20,000
+# (>= 1,920; <= 38,388). `requests` is the project because it is the one this
+# smoke can reach through the upstream proxy on every run and its simple page
+# is large enough for rule (2) to leave real headroom.
+ANON_PYPI_PROJECT="requests"
+ANON_PYPI_URL="${NEXUS_HOST}/repository/pypi-proxy/simple/${ANON_PYPI_PROJECT}/"
+ANON_PYPI_MIN_BYTES=20000
+anon_pypi_code=""
+anon_pypi_rc=0
+anon_pypi_code="$(curl -sS -o "$OUT/anon-pypi.html" -w '%{http_code}' \
+  --connect-timeout 5 --max-time 60 "$ANON_PYPI_URL")" || anon_pypi_rc=$?
+
+if [ "$anon_pypi_rc" -ne 0 ]; then
+  fail "ANONYMOUS-PULL-PYPI-TRANSPORT" "curl exited ${anon_pypi_rc} on the unauthenticated fetch of ${ANON_PYPI_URL} (transport error, not an HTTP verdict)"
+else
+  pass "ANONYMOUS-PULL-PYPI-TRANSPORT" "unauthenticated curl completed against ${ANON_PYPI_URL}"
+fi
+
+if [ "$anon_pypi_code" = "200" ]; then
+  pass "ANONYMOUS-PULL-PYPI-HTTP-200" "unauthenticated GET of the ${ANON_PYPI_PROJECT} simple page returned HTTP 200"
+else
+  fail "ANONYMOUS-PULL-PYPI-HTTP-200" "unauthenticated GET of ${ANON_PYPI_URL} returned HTTP ${anon_pypi_code}, expected 200; 401 means anonymous read was never opened, 403 means the EULA was never accepted"
+fi
+
+if [ -f "$OUT/anon-pypi.html" ]; then
+  anon_pypi_bytes="$(wc -c <"$OUT/anon-pypi.html" | tr -d ' ')"
+else
+  anon_pypi_bytes=0
+fi
+if [ "$anon_pypi_bytes" -gt "$ANON_PYPI_MIN_BYTES" ]; then
+  pass "ANONYMOUS-PULL-PYPI-SIZE" "${anon_pypi_bytes} bytes of simple index pulled with no credential (> ${ANON_PYPI_MIN_BYTES})"
+else
+  fail "ANONYMOUS-PULL-PYPI-SIZE" "only ${anon_pypi_bytes} bytes pulled with no credential, expected > ${ANON_PYPI_MIN_BYTES}; 0 bytes is the 401 challenge, and a few hundred bytes is a redirect body from a URL missing its trailing slash - neither is a simple index. A 192-byte EULA refusal is deliberately NOT named here: measured, this endpoint is not behind the EULA gate (see the comment above it)"
+fi
+
+# Helm — the chart repository index. helm-proxy exists in this smoke ONLY
+# because section 2 renders with `--set repos.helm.remoteUrl=...`; the chart
+# ships that value null on purpose (D-05). If that --set is ever dropped the
+# repository will not exist and this check MUST go red rather than skip — an
+# absent repository is exactly the condition an anonymous-read gate has to be
+# able to tell apart from a closed one, and 404 is not 200.
+# Measured 291,818 bytes at HTTP 200 against https://charts.jetstack.io; floor
+# 100,000 (>= 1,920; <= 145,909). Unlike the PyPI simple page above, this
+# document IS behind the EULA gate — measured: `eula.accepted=false` turns it
+# into the same HTTP 403 / 192-byte refusal an npm tarball gets. Nexus treats
+# the Helm index as a component, not as metadata, so the floor here really does
+# discriminate a refusal from content.
+ANON_HELM_URL="${NEXUS_HOST}/repository/helm-proxy/index.yaml"
+ANON_HELM_MIN_BYTES=100000
+anon_helm_code=""
+anon_helm_rc=0
+anon_helm_code="$(curl -sS -o "$OUT/anon-helm-index.yaml" -w '%{http_code}' \
+  --connect-timeout 5 --max-time 60 "$ANON_HELM_URL")" || anon_helm_rc=$?
+
+if [ "$anon_helm_rc" -ne 0 ]; then
+  fail "ANONYMOUS-PULL-HELM-TRANSPORT" "curl exited ${anon_helm_rc} on the unauthenticated fetch of ${ANON_HELM_URL} (transport error, not an HTTP verdict)"
+else
+  pass "ANONYMOUS-PULL-HELM-TRANSPORT" "unauthenticated curl completed against ${ANON_HELM_URL}"
+fi
+
+if [ "$anon_helm_code" = "200" ]; then
+  pass "ANONYMOUS-PULL-HELM-HTTP-200" "unauthenticated GET of ${ANON_HELM_URL} returned HTTP 200"
+else
+  fail "ANONYMOUS-PULL-HELM-HTTP-200" "unauthenticated GET of ${ANON_HELM_URL} returned HTTP ${anon_helm_code}, expected 200; 401 means anonymous read was never opened, 403 means the EULA was never accepted, 404 means the helm-proxy repository was never created"
+fi
+
+if [ -f "$OUT/anon-helm-index.yaml" ]; then
+  anon_helm_bytes="$(wc -c <"$OUT/anon-helm-index.yaml" | tr -d ' ')"
+else
+  anon_helm_bytes=0
+fi
+if [ "$anon_helm_bytes" -gt "$ANON_HELM_MIN_BYTES" ]; then
+  pass "ANONYMOUS-PULL-HELM-SIZE" "${anon_helm_bytes} bytes of chart index pulled with no credential (> ${ANON_HELM_MIN_BYTES})"
+else
+  fail "ANONYMOUS-PULL-HELM-SIZE" "only ${anon_helm_bytes} bytes pulled with no credential, expected > ${ANON_HELM_MIN_BYTES}; ~192 bytes is the EULA refusal body and 0 bytes is the 401 challenge, neither of which is a chart index"
 fi
 echo
 
-echo "--- 6. kind install smoke ---"
+echo "--- 6. Docker: realms, URL shape, the anonymous handshake and the write boundary ---"
+# Docker is the fourth ecosystem and the only one whose anonymous read cannot be
+# proven by a single unauthenticated GET. Section 5's three ecosystems are plain
+# HTTP fetches. A registry is a multi-request protocol, and the request that
+# carries the authorisation decision is not the first one.
+#
+# THE CORRECTION THIS SECTION EXISTS TO PRESERVE (24-RESEARCH.md Pitfall 4). A
+# first causal test during this phase's research fetched
+# /v2/docker-proxy/library/alpine/manifests/3.21 with NO Authorization header,
+# saw HTTP 200 with the DockerToken realm removed, and concluded the realm was
+# unnecessary. The realm IS necessary. A header-less 200
+# must never be accepted as evidence that anonymous Docker pull works,
+# because no Docker client emits that request. That exact test produced a wrong
+# conclusion during this phase's research and was caught by review. What a real client does — and what
+# ANONYMOUS-PULL-DOCKER below does — is ping /v2/, read the Bearer challenge,
+# fetch a token, and PRESENT that token on every subsequent request. The
+# presented token is the thing the realm validates.
+#
+# Measured against sonatype/nexus3:3.96.0-ubi with the chart's own
+# docker.forceBasicAuth:false throughout:
+#   realms ["NexusAuthenticatingRealm","DockerToken"] : ping 401, token 200, manifest+Bearer 200
+#   realms ["NexusAuthenticatingRealm"]               : ping 401, token 200, manifest+Bearer 401
+# The 401 in the second row also occurs for an ADMIN-issued token, and plain
+# Basic auth is unaffected — so DockerToken governs bearer-token validation in
+# general rather than anonymity in particular. Removing it is this section's
+# non-vacuity reversion: legs 1-3 stay green and leg 4 turns red.
+#
+# ONE `pass` PER CHECK HERE, unlike section 5's three-verdicts-per-ecosystem
+# split. Each check below is a SEQUENCE whose later legs are meaningless if an
+# earlier one failed — a token that could not be obtained cannot be presented —
+# so each emits at most one pass, emits a DISTINCT fail message per assertion it
+# can reach, and the ordered ones return at the first red leg instead of
+# reporting a cascade of derived failures that all have a single cause.
+
+# ── DOCKER-REALM-ACTIVE (24-W0-06) ───────────────────────────────────────────
+# The state that makes the handshake below possible, read back AFTER the two
+# provisioning passes sections 3 and 4 already ran. No third provisioning loop
+# is added: pass 2 is the harness this check needs, because both traps it guards
+# against only appear on a REPEAT run.
+#
+# Three assertions, three separate failure messages, because the two ways
+# `PUT /security/realms/active` goes wrong are opposites (24-RESEARCH.md
+# Pitfall 3):
+#   1. DockerToken absent      -> provision.sh never appended it; bearer tokens
+#      will not validate and anonymous docker pull is dead.
+#   2. DockerToken more than once -> the endpoint stores duplicates (measured:
+#      ["NexusAuthenticatingRealm","DockerToken","DockerToken"] returns 204 and
+#      reads back with both), so a blind `jq '. + ["DockerToken"]'` in a hook
+#      Job that reruns on every `helm upgrade` grows the list without bound.
+#   3. NexusAuthenticatingRealm absent -> the endpoint is a full REPLACEMENT,
+#      not a patch, so a PUT of ["DockerToken"] alone locks every user out of
+#      the instance, admin included. This is that lockout in its observable
+#      form, and it is the reason this check reads the list rather than trusting
+#      provision.sh's own exit code.
+REALMS_URL="${NEXUS_HOST}/service/rest/v1/security/realms/active"
+realms_rc=0
+realms_code=""
+realms_code="$(curl -sS -o "$OUT/realms-active.json" -w '%{http_code}' \
+  --connect-timeout 5 --max-time 30 \
+  -u admin:"$NEXUS_PASSWORD" "$REALMS_URL")" || realms_rc=$?
+
+realms_ok=1
+if [ "$realms_rc" -ne 0 ]; then
+  fail "DOCKER-REALM-ACTIVE" "curl exited ${realms_rc} reading ${REALMS_URL} (transport error, not an HTTP verdict)"
+  realms_ok=0
+elif [ "$realms_code" != "200" ]; then
+  fail "DOCKER-REALM-ACTIVE" "GET /service/rest/v1/security/realms/active returned HTTP ${realms_code}, expected 200; the realms list was never read, so the three assertions below measured nothing"
+  realms_ok=0
+elif ! jq -e 'type == "array"' "$OUT/realms-active.json" >/dev/null 2>&1; then
+  fail "DOCKER-REALM-ACTIVE" "GET /service/rest/v1/security/realms/active returned HTTP 200 but a body that is not a JSON array"
+  realms_ok=0
+else
+  realms_list="$(jq -c . "$OUT/realms-active.json")"
+  docker_realm_count="$(jq '[.[] | select(. == "DockerToken")] | length' "$OUT/realms-active.json")"
+  auth_realm_count="$(jq '[.[] | select(. == "NexusAuthenticatingRealm")] | length' "$OUT/realms-active.json")"
+
+  if [ "$docker_realm_count" -eq 0 ]; then
+    fail "DOCKER-REALM-ACTIVE" "DockerToken is ABSENT from the active realms ${realms_list}; provision.sh did not append it, so no bearer token this instance issues will validate and anonymous docker pull cannot work"
+    realms_ok=0
+  elif [ "$docker_realm_count" -ne 1 ]; then
+    fail "DOCKER-REALM-ACTIVE" "DockerToken appears ${docker_realm_count} times in ${realms_list}, expected exactly once; the API stores duplicates (measured), so an append with no index() guard grows this list on every upgrade"
+    realms_ok=0
+  fi
+
+  if [ "$auth_realm_count" -eq 0 ]; then
+    fail "DOCKER-REALM-ACTIVE" "NexusAuthenticatingRealm is GONE from the active realms ${realms_list}; PUT /security/realms/active replaces the whole list, and a PUT that drops this realm locks every user out of the instance, admin included"
+    realms_ok=0
+  fi
+
+  if [ "$realms_ok" -eq 1 ]; then
+    pass "DOCKER-REALM-ACTIVE" "after two provisioning passes the active realms are ${realms_list} - DockerToken exactly once, NexusAuthenticatingRealm intact"
+  fi
+fi
+
+# The image this section pulls through the proxy, and the two Accept header
+# sets a registry client sends. The image index is negotiated with the OCI
+# index / Docker manifest-list types; the per-platform child manifest with the
+# single-manifest types. Without them the registry can legitimately refuse on
+# content negotiation, which would look like an authorisation failure.
+DOCKER_REPO="docker-proxy"
+DOCKER_IMAGE_PATH="${DOCKER_REPO}/library/alpine"
+DOCKER_IMAGE_TAG="3.21"
+DOCKER_INDEX_ACCEPT='application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json'
+DOCKER_MANIFEST_ACCEPT='application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'
+DOCKER_MANIFEST_URL="${NEXUS_HOST}/v2/${DOCKER_IMAGE_PATH}/manifests/${DOCKER_IMAGE_TAG}"
+DOCKER_MANIFEST_URL_WRONG="${NEXUS_HOST}/v2/repository/${DOCKER_IMAGE_PATH}/manifests/${DOCKER_IMAGE_TAG}"
+
+# ── DOCKER-PATH-SHAPE (24-W0-07) ─────────────────────────────────────────────
+# Two unauthenticated requests, one check, two assertions. Docker is the ONLY
+# one of the four ecosystems whose URL carries no `/repository/` segment: the
+# client inserts `/v2/` immediately after the host, so with `pathEnabled: true`
+# the repository name must be the FIRST path segment.
+#
+#   docker pull HOST/docker-proxy/library/alpine:3.21
+#        -> GET /v2/docker-proxy/library/alpine/manifests/3.21             200
+#   docker pull HOST/repository/docker-proxy/library/alpine:3.21
+#        -> GET /v2/repository/docker-proxy/library/alpine/manifests/3.21  404
+#
+# The second assertion is why this check exists rather than being folded into
+# the handshake below. `HOST/repository/<repo>/...` is CORRECT for npm, PyPI and
+# Helm — all three of section 5's URLs use it — so the Docker line gets written
+# the same way by analogy, in a README or in the workstation script, and every
+# pull 404s at the first request. A gate that only measured the working shape
+# would never catch that; this one asserts the wrong shape stays broken.
+#
+# A THIRD shape, /repository/docker-proxy/v2/library/alpine/manifests/3.21,
+# also returns 200 — but no Docker client can construct it, so it is a curl and
+# browser URL only and must never appear anywhere as a documented pull target.
+# Note that the token endpoint the challenge below advertises IS under
+# /repository/: that URL is SERVER-advertised and clients follow it verbatim, so
+# it is not an instance of this trap and must not be "corrected".
+#
+# Both requests are deliberately header-less and credential-free. On their own
+# they are NOT evidence of anonymous pull (see this section's opening comment);
+# they measure routing, and routing is unaffected by the DockerToken realm —
+# which is exactly what makes them the control for the handshake check below.
+path_ok=1
+path_right_rc=0
+path_right_code=""
+path_right_code="$(curl -sS -o /dev/null -w '%{http_code}' \
+  --connect-timeout 5 --max-time 60 \
+  -H "Accept: ${DOCKER_INDEX_ACCEPT}" \
+  "$DOCKER_MANIFEST_URL")" || path_right_rc=$?
+
+if [ "$path_right_rc" -ne 0 ]; then
+  fail "DOCKER-PATH-SHAPE" "curl exited ${path_right_rc} on ${DOCKER_MANIFEST_URL} (transport error, not an HTTP verdict)"
+  path_ok=0
+elif [ "$path_right_code" != "200" ]; then
+  fail "DOCKER-PATH-SHAPE" "${DOCKER_MANIFEST_URL} returned HTTP ${path_right_code}, expected 200; this is the path a real 'docker pull HOST/${DOCKER_IMAGE_PATH}:${DOCKER_IMAGE_TAG}' constructs, so a non-200 here means the documented pull reference does not route"
+  path_ok=0
+fi
+
+path_wrong_rc=0
+path_wrong_code=""
+path_wrong_code="$(curl -sS -o /dev/null -w '%{http_code}' \
+  --connect-timeout 5 --max-time 60 \
+  -H "Accept: ${DOCKER_INDEX_ACCEPT}" \
+  "$DOCKER_MANIFEST_URL_WRONG")" || path_wrong_rc=$?
+
+if [ "$path_wrong_rc" -ne 0 ]; then
+  fail "DOCKER-PATH-SHAPE" "curl exited ${path_wrong_rc} on ${DOCKER_MANIFEST_URL_WRONG} (transport error, not an HTTP verdict)"
+  path_ok=0
+elif [ "$path_wrong_code" != "404" ]; then
+  fail "DOCKER-PATH-SHAPE" "${DOCKER_MANIFEST_URL_WRONG} returned HTTP ${path_wrong_code}, expected 404; the '/repository/' prefix is correct for npm, PyPI and Helm and WRONG for Docker only, and this assertion exists so a documentation copy-paste that adds it by analogy is caught here instead of at pull time"
+  path_ok=0
+fi
+
+if [ "$path_ok" -eq 1 ]; then
+  pass "DOCKER-PATH-SHAPE" "/v2/${DOCKER_IMAGE_PATH}/manifests/${DOCKER_IMAGE_TAG} is 200 and /v2/repository/${DOCKER_IMAGE_PATH}/manifests/${DOCKER_IMAGE_TAG} is 404 - the documented Docker reference is the one that routes"
+fi
+
+# ── ANONYMOUS-PULL-DOCKER (24-W0-05) ─────────────────────────────────────────
+# The request sequence a real Docker client performs, with no credential on any
+# leg. A function because the legs are ORDERED and each consumes what the
+# previous produced: a failed leg returns immediately rather than reporting
+# four derived failures with one cause.
+#
+# Leg 5's byte floor: 1,000,000. Derived from the alpine 3.21 amd64 LAYER blob
+# measured by this very check against this instance (see the SUMMARY for the
+# run), under the same two rules section 5 states — at least ten times a refusal
+# body, and no more than half the measured size, so upstream drift cannot turn
+# the gate red on its own. It is deliberately NOT derived from the 8,083,968
+# bytes a full `crane export` of this image streams: that number is the whole
+# filesystem across every layer, and this leg fetches ONE blob.
+DOCKER_BLOB_MIN_BYTES=1000000
+check_anonymous_pull_docker() {
+  local ping_rc=0 ping_code="" challenge="" realm="" service=""
+  local token_rc=0 token_code="" token=""
+  local man_rc=0 man_code="" child="" layer=""
+  local child_rc=0 child_code=""
+  local blob_rc=0 blob_out="" blob_code="" blob_bytes=""
+
+  # Leg 1 — the ping. Every client starts here and every client expects to be
+  # challenged. A 200 is a FAILURE, not a shortcut: it would mean the registry
+  # is not issuing Bearer challenges at all, leaving legs 2-5 with nothing to
+  # follow and nothing to measure.
+  ping_code="$(curl -sS -o /dev/null -D "$OUT/docker-v2-ping.h" -w '%{http_code}' \
+    --connect-timeout 5 --max-time 30 "${NEXUS_HOST}/v2/")" || ping_rc=$?
+  if [ "$ping_rc" -ne 0 ]; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 1 (GET /v2/): curl exited ${ping_rc} (transport error, not an HTTP verdict)"
+    return 0
+  fi
+  if [ "$ping_code" != "401" ]; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 1 (GET /v2/) returned HTTP ${ping_code}, expected 401; a 200 here is a failure rather than a shortcut, because it means the registry never issued a Bearer challenge and the remaining four legs would measure nothing"
+    return 0
+  fi
+  if ! challenge="$(tr -d '\r' <"$OUT/docker-v2-ping.h" | grep -i '^www-authenticate: *bearer')"; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 1 (GET /v2/) returned 401 but carried no 'WWW-Authenticate: Bearer' header; a Basic-only challenge means no token endpoint is advertised and a Docker client cannot proceed"
+    return 0
+  fi
+
+  # Leg 2 — parse the challenge. PARSED, never hardcoded to the values this
+  # phase's research happened to observe: a hardcoded realm/service pair would
+  # keep passing against a server whose challenge had changed or stopped, which
+  # is precisely the failure this handshake exists to catch.
+  realm="$(printf '%s' "$challenge" | sed -n 's/.*[Rr]ealm="\([^"]*\)".*/\1/p')"
+  service="$(printf '%s' "$challenge" | sed -n 's/.*[Ss]ervice="\([^"]*\)".*/\1/p')"
+  if [ -z "$realm" ] || [ -z "$service" ]; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 2: could not parse both realm and service out of the challenge [${challenge}]; got realm='${realm}' service='${service}'"
+    return 0
+  fi
+
+  # Leg 3 — the token, with no credential supplied. --data-urlencode because
+  # both the service and the scope are values, not URL structure: service is
+  # itself a URL and the scope contains ':' and '/'.
+  token_code="$(curl -sS -o "$OUT/docker-token.json" -w '%{http_code}' \
+    --connect-timeout 5 --max-time 30 \
+    -G --data-urlencode "service=${service}" \
+       --data-urlencode "scope=repository:${DOCKER_IMAGE_PATH}:pull" \
+    "$realm")" || token_rc=$?
+  if [ "$token_rc" -ne 0 ]; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 3 (token from ${realm}): curl exited ${token_rc} (transport error, not an HTTP verdict)"
+    return 0
+  fi
+  if [ "$token_code" != "200" ]; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 3: the advertised token endpoint ${realm} returned HTTP ${token_code}, expected 200; an unauthenticated client cannot obtain a token, so legs 4 and 5 have nothing to present"
+    return 0
+  fi
+  if ! jq -e 'type == "object"' "$OUT/docker-token.json" >/dev/null 2>&1; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 3: the token endpoint returned HTTP 200 with a body that is not a JSON object"
+    return 0
+  fi
+  token="$(jq -r '.token // empty' "$OUT/docker-token.json")"
+  if [ -z "$token" ]; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 3: the token endpoint returned HTTP 200 but no non-empty .token field"
+    return 0
+  fi
+
+  # Leg 4 — the manifest index, WITH the bearer token. This is the evidence.
+  # A 401 here while legs 1-3 stayed green is the DockerToken-inactive
+  # signature: the challenge is still issued and the token is still minted, and
+  # only the PRESENTED token fails to validate.
+  man_code="$(curl -sS -o "$OUT/docker-index.json" -w '%{http_code}' \
+    --connect-timeout 5 --max-time 60 \
+    -H "Authorization: Bearer ${token}" \
+    -H "Accept: ${DOCKER_INDEX_ACCEPT}" \
+    "$DOCKER_MANIFEST_URL")" || man_rc=$?
+  if [ "$man_rc" -ne 0 ]; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 4 (bearer manifest GET of ${DOCKER_MANIFEST_URL}): curl exited ${man_rc} (transport error, not an HTTP verdict)"
+    return 0
+  fi
+  if [ "$man_code" != "200" ]; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 4: ${DOCKER_MANIFEST_URL} with 'Authorization: Bearer' returned HTTP ${man_code}, expected 200; a 401 here with legs 1-3 green means the DockerToken realm is not active, since the challenge and the token are unaffected by it and only the presented token fails to validate"
+    return 0
+  fi
+  if ! jq -e 'has("manifests") or has("layers")' "$OUT/docker-index.json" >/dev/null 2>&1; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 4: ${DOCKER_MANIFEST_URL} returned HTTP 200 but a body that does not parse as JSON carrying 'manifests' or 'layers'; a well-formed non-manifest body at 200 is exactly what a content-negotiation refusal or an error document looks like"
+    return 0
+  fi
+
+  # Leg 5 — follow a reference from that document down to a real blob, so the
+  # blob path is exercised and not merely the manifest. The amd64/linux entry
+  # is selected by platform rather than by position: the proxy serves the full
+  # upstream index regardless of the host architecture this smoke runs on, so
+  # the choice is workstation-independent, and selecting by platform also skips
+  # the attestation entries, whose platform is unknown/unknown.
+  if jq -e 'has("manifests")' "$OUT/docker-index.json" >/dev/null 2>&1; then
+    child="$(jq -r '[.manifests[]? | select(.platform.os == "linux" and .platform.architecture == "amd64")][0].digest // empty' "$OUT/docker-index.json")"
+    if [ -z "$child" ]; then
+      fail "ANONYMOUS-PULL-DOCKER" "leg 5: the image index carries no linux/amd64 manifest entry, so no layer digest can be resolved from it"
+      return 0
+    fi
+    child_code="$(curl -sS -o "$OUT/docker-manifest.json" -w '%{http_code}' \
+      --connect-timeout 5 --max-time 60 \
+      -H "Authorization: Bearer ${token}" \
+      -H "Accept: ${DOCKER_MANIFEST_ACCEPT}" \
+      "${NEXUS_HOST}/v2/${DOCKER_IMAGE_PATH}/manifests/${child}")" || child_rc=$?
+    if [ "$child_rc" -ne 0 ]; then
+      fail "ANONYMOUS-PULL-DOCKER" "leg 5 (bearer manifest GET of ${child}): curl exited ${child_rc} (transport error, not an HTTP verdict)"
+      return 0
+    fi
+    if [ "$child_code" != "200" ]; then
+      fail "ANONYMOUS-PULL-DOCKER" "leg 5: the linux/amd64 child manifest ${child} returned HTTP ${child_code} with 'Authorization: Bearer', expected 200"
+      return 0
+    fi
+    layer="$(jq -r '.layers[0].digest // empty' "$OUT/docker-manifest.json")"
+  else
+    layer="$(jq -r '.layers[0].digest // empty' "$OUT/docker-index.json")"
+  fi
+  if [ -z "$layer" ]; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 5: no layer digest could be read from the manifest, so no blob reference exists to follow"
+    return 0
+  fi
+
+  blob_out="$(curl -sS -o /dev/null -w '%{http_code} %{size_download}' \
+    --connect-timeout 5 --max-time 180 -L \
+    -H "Authorization: Bearer ${token}" \
+    "${NEXUS_HOST}/v2/${DOCKER_IMAGE_PATH}/blobs/${layer}")" || blob_rc=$?
+  if [ "$blob_rc" -ne 0 ]; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 5 (bearer blob GET of ${layer}): curl exited ${blob_rc} (transport error, not an HTTP verdict)"
+    return 0
+  fi
+  blob_code="${blob_out%% *}"
+  blob_bytes="${blob_out##* }"
+  if [ "$blob_code" != "200" ]; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 5: the layer blob ${layer} returned HTTP ${blob_code} with 'Authorization: Bearer', expected 200; the manifest is reachable but the blob path is not, so no client could complete a pull"
+    return 0
+  fi
+  if [ "$blob_bytes" -le "$DOCKER_BLOB_MIN_BYTES" ]; then
+    fail "ANONYMOUS-PULL-DOCKER" "leg 5: only ${blob_bytes} bytes of layer blob streamed, expected > ${DOCKER_BLOB_MIN_BYTES}; a few hundred bytes is an error document or a challenge page, not an image layer"
+    return 0
+  fi
+
+  pass "ANONYMOUS-PULL-DOCKER" "full anonymous client handshake: GET /v2/ -> 401 + Bearer challenge; token minted at ${realm} with no credential; ${DOCKER_MANIFEST_URL} -> 200 WITH Authorization: Bearer; linux/amd64 layer ${layer} streamed ${blob_bytes} bytes (> ${DOCKER_BLOB_MIN_BYTES})"
+}
+check_anonymous_pull_docker
+
+# ── ANONYMOUS-WRITE-DENIED (24-W0-08) ────────────────────────────────────────
+# The boundary anonymous READ must not cross. Anonymous is open across every
+# repository on this instance by now; this check asserts that opening read did
+# not open write.
+#
+# THE BODY MUST BE STRUCTURALLY VALID, and that is the whole subtlety
+# (24-RESEARCH.md Pitfall 5). Nexus validates the request body BEFORE it
+# authorises: measured, `{"name":"evil"}` returns 400 and the same endpoint with
+# a fully valid npm proxy body returns 403. A check that accepted "not 2xx", or
+# whose expected-status list read 400,401,403, would pass on the malformed body
+# for a reason that has nothing to do with authorisation — and would keep
+# passing on the day anonymous write was genuinely open, because the 400 would
+# still come back first. So: a valid body, and EXACTLY 403.
+#
+# The body is built with `jq -n` in the same shape the chart's own -repos
+# ConfigMap ships for the npm format, under a name that does not exist on this
+# instance, and the npm proxy REMOTE URL is never contacted: a 403 is answered
+# before any repository is created.
+#
+# The third assertion is not decoration. An admin GET of a name that was never
+# created returns 404 — but so does a GET at a URL shape that does not exist,
+# which would make the "nothing was created" proof vacuous in the exact way
+# Pitfall 5 describes for the POST. So the same URL shape is first exercised
+# against a repository that DOES exist (the chart's own npm proxy, whose name is
+# read from the rendered body rather than hardcoded) and must return 200.
+ANON_WRITE_REPO="anon-write-probe"
+ANON_WRITE_POST_URL="${NEXUS_HOST}/service/rest/v1/repositories/npm/proxy"
+NPM_REPO_NAME="$(jq -r '.name' "$OUT/config/000-npm.json")"
+jq -n --arg name "$ANON_WRITE_REPO" '{
+  name: $name,
+  online: true,
+  storage: {blobStoreName: "default", strictContentTypeValidation: true},
+  proxy: {remoteUrl: "https://registry.npmjs.org", contentMaxAge: 1440, metadataMaxAge: 1440},
+  negativeCache: {enabled: true, timeToLive: 1440},
+  httpClient: {blocked: false, autoBlock: true}
+}' >"$OUT/anon-write-body.json"
+
+write_ok=1
+anon_write_rc=0
+anon_write_code=""
+anon_write_code="$(curl -sS -o "$OUT/anon-write-response.txt" -w '%{http_code}' \
+  --connect-timeout 5 --max-time 30 \
+  -X POST -H 'Content-Type: application/json' \
+  --data-binary "@$OUT/anon-write-body.json" \
+  "$ANON_WRITE_POST_URL")" || anon_write_rc=$?
+
+if [ "$anon_write_rc" -ne 0 ]; then
+  fail "ANONYMOUS-WRITE-DENIED" "curl exited ${anon_write_rc} POSTing to ${ANON_WRITE_POST_URL} (transport error, not an HTTP verdict)"
+  write_ok=0
+elif [ "$anon_write_code" = "200" ] || [ "$anon_write_code" = "201" ] || [ "$anon_write_code" = "204" ]; then
+  fail "ANONYMOUS-WRITE-DENIED" "PRIVILEGE ESCALATION REGRESSION: an unauthenticated POST to ${ANON_WRITE_POST_URL} returned HTTP ${anon_write_code} and CREATED a repository. Anonymous read has become anonymous write; remove repository '${ANON_WRITE_REPO}' from this instance and treat this as a security defect, not a flaky check"
+  write_ok=0
+elif [ "$anon_write_code" != "403" ]; then
+  fail "ANONYMOUS-WRITE-DENIED" "unauthenticated POST to ${ANON_WRITE_POST_URL} returned HTTP ${anon_write_code}, expected exactly 403; 400 means the body was rejected as malformed BEFORE authorisation was ever consulted, which proves nothing about the write boundary, and 401 means the anonymous identity was not even resolved"
+  write_ok=0
+fi
+
+npm_get_rc=0
+npm_get_code=""
+npm_get_code="$(curl -sS -o /dev/null -w '%{http_code}' \
+  --connect-timeout 5 --max-time 30 \
+  -u admin:"$NEXUS_PASSWORD" \
+  "${ANON_WRITE_POST_URL}/${NPM_REPO_NAME}")" || npm_get_rc=$?
+
+if [ "$npm_get_rc" -ne 0 ]; then
+  fail "ANONYMOUS-WRITE-DENIED" "curl exited ${npm_get_rc} on the admin GET of the existing repository ${NPM_REPO_NAME} (transport error, not an HTTP verdict)"
+  write_ok=0
+elif [ "$npm_get_code" != "200" ]; then
+  fail "ANONYMOUS-WRITE-DENIED" "the admin GET of the EXISTING repository ${NPM_REPO_NAME} returned HTTP ${npm_get_code}, expected 200; this URL shape is the instrument the non-creation assertion below depends on, and an instrument that 404s on everything would prove nothing"
+  write_ok=0
+fi
+
+probe_get_rc=0
+probe_get_code=""
+probe_get_code="$(curl -sS -o /dev/null -w '%{http_code}' \
+  --connect-timeout 5 --max-time 30 \
+  -u admin:"$NEXUS_PASSWORD" \
+  "${ANON_WRITE_POST_URL}/${ANON_WRITE_REPO}")" || probe_get_rc=$?
+
+if [ "$probe_get_rc" -ne 0 ]; then
+  fail "ANONYMOUS-WRITE-DENIED" "curl exited ${probe_get_rc} on the admin GET of ${ANON_WRITE_REPO} (transport error, not an HTTP verdict)"
+  write_ok=0
+elif [ "$probe_get_code" != "404" ]; then
+  fail "ANONYMOUS-WRITE-DENIED" "the admin GET of ${ANON_WRITE_REPO} returned HTTP ${probe_get_code}, expected 404; the anonymous POST was refused but something by that name exists, so the refusal did not prevent creation"
+  write_ok=0
+fi
+
+if [ "$write_ok" -eq 1 ]; then
+  pass "ANONYMOUS-WRITE-DENIED" "an unauthenticated POST of a structurally valid npm proxy body returned HTTP 403 and created nothing (admin GET of ${ANON_WRITE_REPO} is 404, while the same URL shape returns 200 for the existing ${NPM_REPO_NAME}) - anonymous read does not extend to write"
+fi
+echo
+
+echo "--- 7. kind install smoke ---"
 # SOFT tier, unlike the hard-tier preflight at the top: a workstation without a
 # local cluster toolchain must not hard-fail the docker half. The skip is named
 # and accounted for, so it can never be mistaken for a pass.

@@ -41,10 +41,28 @@ set -euo pipefail
 #                    is worse than saying so. The Job supplies the value
 #                    through a secretKeyRef, never as a literal.
 #   EULA_ACCEPTED    the string "true" or "false"
+#   ANONYMOUS_ENABLED
+#                    the string "true" or "false". Compared as a string here
+#                    and converted to a JSON boolean by `jq --argjson` at the
+#                    point of use, which is why job-provision.yaml quotes it.
+#   ANONYMOUS_USER_ID
+#                    the Nexus user the anonymous identity maps to. The chart
+#                    ships Nexus's own default, "anonymous".
+#   ANONYMOUS_REALM_NAME
+#                    the realm that resolves that user. The chart ships Nexus's
+#                    own default, "NexusAuthorizingRealm".
+#   READY_ATTEMPTS   readiness poll attempts against /status/writable. Supplied
+#                    by the consumer through provision.readiness.attempts; the
+#                    chart ships 60. No default here, on purpose — see the
+#                    readiness-bounds comment below.
+#   READY_INTERVAL   seconds slept between readiness attempts. Supplied by the
+#                    consumer through provision.readiness.intervalSeconds; the
+#                    chart ships 10.
 #   REPO_CONFIG_DIR  directory of repository body JSON files, default /config
-# An unset NEXUS_HOST, NEXUS_USER, NEXUS_PASSWORD or EULA_ACCEPTED is a hard
-# failure under `set -u`: a provisioner that guesses a missing input is how a
-# chart ends up silently talking to the wrong instance.
+# An unset NEXUS_HOST, NEXUS_USER, NEXUS_PASSWORD, EULA_ACCEPTED,
+# ANONYMOUS_ENABLED, ANONYMOUS_USER_ID, ANONYMOUS_REALM_NAME, READY_ATTEMPTS or
+# READY_INTERVAL is a hard failure under `set -u`: a provisioner that guesses a
+# missing input is how a chart ends up silently talking to the wrong instance.
 #
 # Repository body files are read in glob order. The zero-padded NNN- prefixes
 # in configmap-repos.yaml exist to make that order deterministic. The Nexus
@@ -54,8 +72,10 @@ set -euo pipefail
 # Exit contract — deliberately two codes, and 0 must hold on BOTH of two
 # consecutive runs against the same instance:
 #   0  every step succeeded
-#   1  the readiness poll was exhausted, the EULA POST did not return 204, or a
-#      repository call returned a status outside {200, 201, 204}
+#   1  the readiness poll was exhausted, the EULA POST did not return 204, the
+#      anonymous PUT did not return 200, the active-realms GET did not return
+#      200, the active-realms PUT did not return 204, or a repository call
+#      returned a status outside {200, 201, 204}
 # There is no third "partially provisioned" code and no soft-failure path: a
 # repository that did not get created must fail the Job, not be logged and
 # skipped.
@@ -86,8 +106,15 @@ REPO_CONFIG_DIR="${REPO_CONFIG_DIR:-/config}"
 # the run — the bound only works if each request is itself bounded. 600s of
 # sleeping is therefore the nominal budget, per-request time adds to it, and
 # the Job's activeDeadlineSeconds remains the one hard ceiling.
-READY_ATTEMPTS=60
-READY_INTERVAL=10
+#
+# Both numbers are now CONSUMER-SUPPLIED — READY_ATTEMPTS and READY_INTERVAL
+# arrive in the environment from provision.readiness.attempts and
+# provision.readiness.intervalSeconds, so the 60 x 10s arithmetic above
+# describes the chart's shipped defaults rather than a bound this script
+# enforces. Whatever a consumer sets, the Job's activeDeadlineSeconds remains
+# the one hard ceiling: a poll budget larger than it does not extend the run,
+# it just means the Job is killed mid-poll instead of failing with the FATAL
+# line below.
 
 TMP_DIR="$(mktemp -d /tmp/nexus-provision.XXXXXX)"
 trap 'rm -rf -- "${TMP_DIR}"' EXIT
@@ -192,7 +219,112 @@ else
   echo "EULA: consequence — the proxy repositories below will be created and will serve metadata with HTTP 200, but every component download returns HTTP 403 until eula.accepted is set to true."
 fi
 
-# ── 3. Idempotent proxy repository upsert ────────────────────────────────────
+# ── 3. Anonymous access (NEXUS-02) ───────────────────────────────────────────
+# UNCONDITIONAL — deliberately NOT wrapped in an `if [ "${ANONYMOUS_ENABLED}" =
+# "true" ]` guard the way the EULA step above is. The difference is not an
+# oversight, and copying the EULA shape here would be a defect:
+#
+#   The EULA guard exists because accepting a licence agreement is a LEGAL ACT
+#   a chart must not perform on a consumer's behalf. Anonymous access is
+#   ordinary declarative configuration, and it lives in the Nexus database on
+#   the PVC. A guarded skip would therefore make `anonymous.enabled: false`
+#   unable to CLOSE access that an earlier install — or a human in the UI —
+#   had opened: the chart could only ever open, never close. The PUT is made on
+#   every run carrying exactly the value the consumer supplied, so the value is
+#   declarative rather than a one-way switch.
+anon_body="${TMP_DIR}/anonymous.json"
+
+# --argjson is what turns the STRING "true"/"false" that arrives in the
+# environment into a JSON boolean; --arg is what keeps the two identifiers out
+# of string concatenation, so no consumer-supplied value can break out of the
+# body. Nothing here is built by interpolating into a JSON literal.
+jq -n --argjson enabled "${ANONYMOUS_ENABLED}" \
+      --arg userId "${ANONYMOUS_USER_ID}" \
+      --arg realmName "${ANONYMOUS_REALM_NAME}" \
+      '{enabled: $enabled, userId: $userId, realmName: $realmName}' >"${anon_body}"
+
+http_status "${NEXUS_HOST}/service/rest/v1/security/anonymous" \
+  -X PUT -H 'Content-Type: application/json' -d "@${anon_body}"
+# 200, NOT 204. Measured on nexus3:3.96.0-ubi: this endpoint echoes the
+# resulting object back rather than answering empty, so a 204 expectation would
+# hard-fail a call that actually succeeded.
+if [ "${HTTP_CODE}" != "200" ]; then
+  echo "FATAL: PUT /service/rest/v1/security/anonymous returned HTTP ${HTTP_CODE}, expected 200" >&2
+  exit 1
+fi
+
+# Both outcomes log, and each names its consequence rather than the value alone.
+if [ "${ANONYMOUS_ENABLED}" = "true" ]; then
+  echo "anonymous: OPEN (HTTP 200) — unauthenticated READ is now allowed across every repository on this instance, as user '${ANONYMOUS_USER_ID}' via realm '${ANONYMOUS_REALM_NAME}'. Idempotent: a re-run returns 200 again."
+else
+  echo "anonymous: CLOSED (HTTP 200) — anonymous read is disabled and every unauthenticated fetch returns HTTP 401. Idempotent: a re-run returns 200 again."
+fi
+
+# ── 4. DockerToken realm — Docker bearer-token validation ────────────────────
+# ALSO UNCONDITIONAL, and deliberately outside any ANONYMOUS_ENABLED guard.
+#
+# WHY IT EXISTS. Every Docker client pings /v2/, receives 401 with a Bearer
+# challenge, fetches a token, and PRESENTS that token on every subsequent
+# request. Measured with the DockerToken realm INACTIVE: the token endpoint
+# still returns 200 and the manifest request carrying the token returns 401.
+# The same 401 occurs for a token issued to the ADMIN user, so this realm
+# governs Docker bearer-token validation GENERALLY rather than anonymity.
+#
+# WHY IT IS NOT GATED ON ANONYMOUS_ENABLED. Gating it would leave the
+# docker-proxy repository unusable by every Docker client whenever anonymous
+# access is off — and off is the SHIPPED DEFAULT. That is a NEXUS-01 defect,
+# not an anonymity posture. Do not "simplify" this step back inside the
+# anonymous guard.
+#
+# TWO TRAPS, both measured on nexus3:3.96.0-ubi:
+#   1. The PUT REPLACES the whole list, it does not patch it. Writing a literal
+#      ["NexusAuthenticatingRealm","DockerToken"] body would silently discard
+#      any realm a consumer had added, and a body that omits
+#      NexusAuthenticatingRealm locks every user out of the instance, admin
+#      included. The list is therefore READ first and the new one derived from
+#      what was read; no realm array literal appears in this file.
+#   2. The API STORES DUPLICATES. A PUT whose body carries DockerToken twice
+#      returns 204 and reads back with both entries. In a hook Job that reruns
+#      on every `helm upgrade`, an append with no membership test would grow
+#      the list without bound, so the append is guarded and the no-change path
+#      issues no request at all.
+realms_cur="${TMP_DIR}/realms-current.json"
+realms_norm="${TMP_DIR}/realms-normalised.json"
+realms_new="${TMP_DIR}/realms-new.json"
+
+http_body "${NEXUS_HOST}/service/rest/v1/security/realms/active" "${realms_cur}"
+if [ "${HTTP_CODE}" != "200" ]; then
+  echo "FATAL: GET /service/rest/v1/security/realms/active returned HTTP ${HTTP_CODE}, expected 200" >&2
+  exit 1
+fi
+
+# Both sides of the comparison go through `jq -c`, so what is compared is
+# CONTENT and not whitespace. MEASURED on nexus3:3.96.0-ubi: the GET body is
+# `[ "NexusAuthenticatingRealm" ]` — 30 bytes, padded inside the brackets and
+# with no trailing newline — while `jq -c` emits the 28-byte compact form plus
+# a newline. Comparing the raw body against the compact result would therefore
+# differ on EVERY run even when nothing changed, which would make the
+# no-change branch below dead code and re-issue the PUT on every single
+# `helm upgrade`. Normalising both sides is what makes the skip real.
+jq -c '.' "${realms_cur}" >"${realms_norm}"
+jq -c 'if index("DockerToken") then . else . + ["DockerToken"] end' "${realms_cur}" >"${realms_new}"
+
+if cmp -s "${realms_norm}" "${realms_new}"; then
+  echo "realms: DockerToken already active — no change, and no request was made."
+else
+  http_status "${NEXUS_HOST}/service/rest/v1/security/realms/active" \
+    -X PUT -H 'Content-Type: application/json' -d "@${realms_new}"
+  # 204, NOT 200. The asymmetry with the anonymous PUT above is measured, not a
+  # copy-paste slip: that endpoint echoes its object back, this one answers
+  # empty.
+  if [ "${HTTP_CODE}" != "204" ]; then
+    echo "FATAL: PUT /service/rest/v1/security/realms/active returned HTTP ${HTTP_CODE}, expected 204" >&2
+    exit 1
+  fi
+  echo "realms: appended DockerToken (HTTP 204). Every realm that was already active is preserved: $(cat "${realms_new}")"
+fi
+
+# ── 5. Idempotent proxy repository upsert ────────────────────────────────────
 # upsert_repo FORMAT NAME BODYFILE
 #   GET first, then PUT (204) if it exists or POST (201) if it does not. The
 #   GET is what makes an upgrade survivable: a blind POST returns 400 on the

@@ -6,7 +6,7 @@
 #              only the keys whose upstream default is wrong for this stack are
 #              restated below. Read the full surface with:
 #                tar -xOzf charts/nexus3-5.26.0.tgz nexus3/values.yaml
-#   eula / provision / repos   owned by this wrapper.
+#   eula / anonymous / provision / repos   owned by this wrapper.
 #
 # Annotation style is helm-docs (`# --`), matching the subchart, so a future
 # `helm-docs` run produces a values table. Every non-obvious default carries an
@@ -72,15 +72,15 @@ nexus3:
     # output. A value that changes nothing is worse than no value, because it
     # reads like a control.
     #
-    # Anonymous access is closed because NEXUS ships it closed, not because
-    # this chart closes it. Measured on `nexus3:3.96.0-ubi`, fresh instance,
-    # before any provisioning: `GET /service/rest/v1/security/anonymous`
-    # returns `{"enabled": false, "userId": "anonymous", ...}`, and an
-    # unauthenticated repository fetch returns HTTP 401. This chart leaves that
-    # default alone — `scripts/check-nexus-chart.sh` asserts the render ships
-    # no anonymous-access configuration at all, and
-    # `scripts/nexus-live-smoke.sh` asserts the 401 against a live instance.
-    # Opening read-only anonymous pull is NEXUS-02, a Phase 24 decision.
+    # Anonymous access is now a FIRST-CLASS value of this wrapper, and it lives
+    # in the top-level `anonymous:` block below (NEXUS-02) — not here. DO NOT
+    # PUT IT BACK HERE: this path is inert for the reason above, so a key here
+    # would configure nothing while looking as though it configured something.
+    # The top-level block is rendered into the provisioning Job's environment by
+    # templates/job-provision.yaml and applied to the Nexus security REST API by
+    # files/provision.sh; `scripts/check-nexus-chart.sh` asserts that wiring
+    # (ANONYMOUS-VALUE-PRESENT) and asserts the shipped default
+    # (ANONYMOUS-DEFAULT).
     enabled: false
 
 eula:
@@ -94,6 +94,51 @@ eula:
   # a ~192-byte body. The provisioning Job calls the EULA endpoint only when
   # this is `true`.
   accepted: false
+
+anonymous:
+  # -- Enable unauthenticated READ access to this Nexus instance (NEXUS-02).
+  # Ships `false`, an explicit consumer opt-in: a public chart must not open
+  # unauthenticated read for anyone who installs it without reading this file,
+  # and there is no TLS in front of the instance until Phase 25 (NEXUS-05), so
+  # anonymous traffic crosses the network in plaintext.
+  #
+  # WHAT `true` GRANTS, measured on `nexus3:3.96.0-ubi`. Access comes from
+  # Nexus's own built-in, read-only `nx-anonymous` role — this chart neither
+  # creates nor edits a role or a privilege. That role carries
+  # `nx-repository-view-*-*-read`, `nx-repository-view-*-*-browse`,
+  # `nx-search-read` and `nx-healthcheck-read`: read and browse across ALL
+  # formats and ALL repositories, including repositories that do not exist yet,
+  # so a hosted repository added later is world-readable from the moment it is
+  # created. The role is `readOnly: true` and cannot be narrowed in place;
+  # narrowing means creating a custom role and binding it to the anonymous
+  # user. It grants no write path — an anonymous POST of a fully valid
+  # repository body returns HTTP 403 and creates nothing.
+  #
+  # WHAT `true` DISCLOSES. `GET /service/rest/v1/repositories` answers HTTP 200
+  # anonymously, disclosing the name, format, type and URL of every repository.
+  # Not remote URLs, and not credentials.
+  #
+  # CE USAGE CEILING. Removing the authentication friction makes this instance
+  # easier to point CI at, and Nexus Repository Community Edition is capped at
+  # 40,000 components and 100,000 requests per day. Anonymous pull spends that
+  # budget without anyone having to hold a credential.
+  #
+  # THIS VALUE DOES NOT GOVERN DOCKER SUPPORT. The provisioning Job activates
+  # the `DockerToken` realm UNCONDITIONALLY, whatever this value is set to, and
+  # the docker-proxy repository works the same either way. Measured: while that
+  # realm is inactive, a bearer token issued to the ADMIN user is ALSO rejected
+  # with HTTP 401 on the manifest request, so the realm governs Docker
+  # bearer-token validation in general rather than anonymity. Leaving it off
+  # would make docker-proxy unusable by every Docker client — a NEXUS-01
+  # defect, not an anonymity posture.
+  enabled: false
+  # -- Nexus user the anonymous identity maps to. Nexus's own default, echoed
+  # rather than invented: `GET /service/rest/v1/security/anonymous` on a fresh
+  # instance returns `"userId": "anonymous"`.
+  userId: anonymous
+  # -- Realm that resolves that user. Nexus's own default, echoed rather than
+  # invented, read from the same measured response.
+  realmName: NexusAuthorizingRealm
 
 provision:
   # -- If `true`, run the post-install Job that creates the proxy repositories
@@ -115,10 +160,18 @@ provision:
   activeDeadlineSeconds: 900
   readiness:
     # -- Readiness poll attempts against `/service/rest/v1/status/writable`.
+    # READ by the provisioning Job's readiness poll: this value reaches
+    # `files/provision.sh` as `READY_ATTEMPTS` through the Job env, and the
+    # script supplies no default for it.
     attempts: 60
-    # -- Seconds between readiness poll attempts. 60 x 10s = 10 minutes, which
+    # -- Seconds between readiness poll attempts, reaching `files/provision.sh`
+    # as `READY_INTERVAL` through the same env. 60 x 10s = 10 minutes, which
     # covers a cold Nexus first boot (measured at 1-3 minutes on homelab
-    # hardware) inside `activeDeadlineSeconds`.
+    # hardware) inside `activeDeadlineSeconds`. The PRODUCT of the two must stay
+    # inside `provision.activeDeadlineSeconds` above: that deadline is a hard
+    # wall-clock ceiling on the Job, so a larger poll budget does not buy more
+    # time — it means the Job is killed mid-poll instead of exiting 1 with the
+    # script's own "did not become writable" message.
     intervalSeconds: 10
   # -- Resources for the provisioning Job container. All four of
   # requests/limits x cpu/memory are set on purpose: the CI Checkov gate runs
