@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: verifying
-stopped_at: "Completed 24-10-PLAN.md — Phase 24 SHIPPED. PR #15 merged as aed14b9 by the operator (out of band, 4th consecutive phase); merged tree hash a4a7962 identical to the gated tree; NEXUS-02 and NEXUS-04 marked Complete from git ls-tree origin/main evidence (commit fc6900e); 24-VALIDATION.md finalised 15/15 green"
-last_updated: "2026-09-20T20:53:23.413Z"
+stopped_at: Phase 25 context gathered
+last_updated: "2026-09-21T02:43:28.878Z"
 last_activity: 2026-09-20
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
   total_plans: 18
   completed_plans: 18
-  percent: 100
+  percent: 67
 ---
 
 # Project State
@@ -335,9 +335,9 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-09-20T20:12:54.048Z
-Stopped at: Completed 24-10-PLAN.md — Phase 24 SHIPPED. PR #15 merged as aed14b9 by the operator (out of band, 4th consecutive phase); merged tree hash a4a7962 identical to the gated tree; NEXUS-02 and NEXUS-04 marked Complete from git ls-tree origin/main evidence (commit fc6900e); 24-VALIDATION.md finalised 15/15 green
-Resume file: None — Phase 24 closed; next is Phase 25 (NEXUS-05, private ArgoCD overlay deploy)
+Last session: 2026-09-21T02:43:28.855Z
+Stopped at: Phase 25 context gathered
+Resume file: .planning/phases/25-nexus-live-validation/25-CONTEXT.md
 
 ## Operator Next Steps
 
