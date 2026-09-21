@@ -54,6 +54,11 @@ Plans:
 - [x] 24-09-PLAN.md — ADR-021, ADR index row, Phase 23 deferred items 2 and 3 (wave 5)
 - [x] 24-10-PLAN.md — PR, merge gate, origin/main verification, requirement marks (wave 6, checkpoint)
 
+### Phase 25: Nexus Live Validation
+
+**Goal:** The Nexus generic chart (Phase 23) with anonymous pull (Phase 24) is deployed to the operator's homelab cluster via a private ArgoCD overlay, and proxy pulls (npm/PyPI/Docker/Helm) are proven live against that deployment.
+**Requirements**: NEXUS-05
+
 </details>
 
 <details>
