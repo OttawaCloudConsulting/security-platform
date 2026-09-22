@@ -299,7 +299,7 @@ security_solution/                                    # THIS repo — documentat
 ### Pattern 1: The override file *is* the Application — write the delta, not a manifest
 
 ```yaml
-# application-sets/<project>/nexus/argocd-overrides.yaml
+# application-sets/security/nexus/argocd-overrides.yaml   (project `security` — see OQ2)
 # LIVE — THIS FILE IS THE APPLICATION. appset-apps discovers by FILE PRESENCE and merges this
 # through its templatePatch. DELETING THIS FILE DELETES THE APPLICATION.
 #
@@ -337,7 +337,7 @@ argocdOverrides:
       # sync-wave below actually orders it relative to the chart's resources.
       - repoURL: https://github.com/OttawaCloudConsulting/occ-k8s-app-config
         targetRevision: main
-        path: application-sets/<project>/nexus
+        path: application-sets/security/nexus
     syncPolicy:
       # R5 recipe: `$patch: replace` renders `automated` with exactly the keys stated.
       automated:
@@ -392,11 +392,16 @@ spec:
 
 Two residual races, both benign and both worth stating in the plan rather than discovering:
 
-1. The sealed-secrets controller decrypts **asynchronously**, and Argo CD has no health check that
-   waits for the derived `Secret`. If the provisioning pod starts first it sits in
-   `CreateContainerConfigError`; kubelet retries the same pod indefinitely, so this does **not**
-   consume `backoffLimit: 0` and the Job recovers when the Secret appears. `[ASSUMED — kubelet
-   behaviour is well established but was not measured this session]`
+1. The sealed-secrets controller decrypts **asynchronously**, and Argo CD has **no health
+   assessment for `bitnami.com/SealedSecret` on this cluster** — measured: every SealedSecret in
+   the live `authentik` Application reports `"health": null`, and `argocd-cm` carries no
+   `resource.customizations` entry for the kind `[VERIFIED: kubectl, 2026-09-21]`. A wave therefore
+   **cannot** wait for decryption: a resource with no health is not something Argo blocks on. If
+   the provisioning pod starts first it sits in `CreateContainerConfigError`; kubelet retries the
+   same pod indefinitely, so this does **not** consume `backoffLimit: 0` and the Job recovers when
+   the Secret appears. `[ASSUMED — the kubelet retry behaviour is well established but was not
+   measured this session]` The wave `-1` annotation is still worth setting: it orders the *apply*,
+   which shortens the window even though it cannot close it.
 2. `provision.activeDeadlineSeconds: 900` is the hard ceiling on that recovery window.
 
 ### Pattern 3: Extract, don't generalise, the live assertions
@@ -574,6 +579,16 @@ lists `SealedSecret` and not `Secret`.
 documentation states the allow-list restricts only the repository that is cloned, not Helm chart
 dependencies it then follows `[CITED: argo-cd/docs/operator-manual/security.md]`. That is a convenience
 here and a standing caution generally.
+
+**Sequencing — a transient red that must be predicted, not discovered.** `projects.yaml` is synced by
+the `argocd` Application while the new app directory is discovered by `appset-apps`; the two reconcile
+independently. If both land in one commit, `appset-apps` can generate `Application nexus` **before** the
+`AppProject` exists, producing `InvalidSpecError: Application referencing project … which does not
+exist`. It self-clears on the next reconcile, but under this project's anti-slop rule a red is a stop.
+Plan **two PRs**: (1) the `AppProject` amendment, confirmed with
+`kubectl -n argocd get appproject <name> -o json | jq .spec` showing the new repo, namespace and kinds;
+then (2) the app directory. If the planner prefers one PR, the transient must be named in the plan in
+advance so the executor does not report it as a defect.
 
 **Warning signs:** `Application` condition `InvalidSpecError`; per-resource sync errors naming the
 project; a `Namespace` that is never created despite `CreateNamespace=true`.
@@ -983,10 +998,10 @@ which is precisely what ADR-021 item 7 says was never exercised.
 | # | Claim | Section | Risk if wrong |
 |---|---|---|---|
 | A1 | The private ArgoCD overlay repo D-02 refers to is `https://github.com/OttawaCloudConsulting/occ-k8s-app-config`. **Discovered from live cluster state** (the `appset-apps` generator's `repoURL`), **not supplied by the user** | throughout | If the user means a different repo, the entire overlay design is retargeted. Confirm at execution time before writing any file |
-| A2 | The right project directory is a **new** `application-sets/security/` (Application `nexus`, project `security`), requiring a new `AppProject` | Pitfall 3, Open Question 2 | `check_appconfig.py`'s "project routing and successor rule (14g)" may forbid a new top-level project, or the operator may prefer amending `platform`. Read that script before choosing |
+| A2 | The right project directory is a **new** `application-sets/security/` (Application `nexus`, project `security`), requiring a new `AppProject` declared in `projects.yaml` | Pitfall 3, Open Question 2 | **Legality confirmed** — `check_appconfig.py` check 14b parses the project set from `projects.yaml`, so a new project is legal once declared `[VERIFIED]`. The residual risk is *preference*: the operator may prefer amending `platform`. Confirm before writing, since the directory path fixes the project permanently |
 | A3 | `repos.helm.remoteUrl: https://charts.jetstack.io` is the right Helm remote for the homelab | Pattern 1 | Wrong remote ⇒ helm-proxy proxies something the operator does not want. It is only the value the kind smoke used; any repo serving an `index.yaml` > 100 KB satisfies the gate |
 | A4 | Namespace and Application name `nexus`, Secret name `nexus-admin` | throughout | `nexus` is free `[VERIFIED]`; `nexus-admin` is copied from the chart README and the kind smoke. Renaming after sealing requires re-sealing (strict scope) |
-| A5 | A `SealedSecret` at sync-wave `-1` is sufficient ordering for the provisioning Job's `secretKeyRef` | Pattern 2 | If the kubelet retry behaviour differs from expectation the Job could fail instead of waiting. Mitigation is already in place (`activeDeadlineSeconds: 900`); observe the first sync rather than assume |
+| A5 | A `SealedSecret` at sync-wave `-1` plus kubelet's mount retry is sufficient ordering for the provisioning Job's `secretKeyRef`. **Argo CD reports no health for `SealedSecret` on this cluster** `[VERIFIED]`, so the wave orders the apply but cannot wait for decryption | Pattern 2 | If the kubelet retry behaviour differs from expectation the Job could fail instead of waiting. Mitigation is already in place (`activeDeadlineSeconds: 900`); observe the first sync rather than assume |
 | A6 | Pinning `targetRevision` to a commit SHA on `security-platform` is the right currency policy | Pattern 1 | A SHA pin means chart updates need an overlay commit. `main` would auto-track and contradict ADR-004's pinning habit and the overlay's R23 |
 | A7 | `ttlSecondsAfterFinished: 900` will not actually truncate a healthy sync | Pitfall 2 | If it does, the sync waits on a vanished Job. Watch the first sync; capture logs immediately |
 | A8 | The retry budget (5 × 30 s doubling to 10 m) is appropriate for a cold Nexus boot | Pattern 1 | Too small and a slow first boot ends as a hard failure that automated sync will not retry on the same revision |
@@ -1012,12 +1027,24 @@ which is precisely what ADR-021 item 7 says was never exercised.
      ADR-022 so ADR-021 item 4 is visibly still open rather than silently skipped. Surface this to the
      user at planning time — it is a scope call, not Claude's discretion.
 
-2. **Which `AppProject`?** A new `security` project (clean narrow allowlist, reusable by DefectDojo in
-   Phases 26–29) or an amendment to `platform` (smaller diff, widens an existing project for seven other
-   members)? The answer determines the directory path, which determines the Application's project
-   permanently. **Read `docs/argocd/conformance/check_appconfig.py` first** — its "project routing and
-   successor rule (14g)" may decide this for you. Requires user confirmation: amending a shared
-   AppProject is an irreversible-ish action under the session-management rule.
+2. **Which `AppProject`? — narrowed, needs a user decision only on preference.**
+   `docs/argocd/conformance/check_appconfig.py` was read this session. Its check **14b** requires that
+   every directory `appset-apps` selects "route to a project that (a) exists in `projects.yaml`, (b) is
+   not wildcard, (c) is not `default`", where the project set is **parsed from
+   `application-sets/automation/argocd/templates/projects.yaml`** — one of exactly two tracked paths it
+   accepts. The set is therefore **open**: a new project is legal the moment it is declared in that
+   file, and because 14b reads the *tracked tree* rather than the cluster, a single PR carrying both the
+   new project and the new directory passes CI (the runtime sequencing caveat in Pitfall 3 is separate).
+   `[VERIFIED: check_appconfig.py, lines ~1021–1265]`
+   - **Recommendation: a new `security` AppProject**, directory `application-sets/security/nexus/`. No
+     existing project's `namespaceResourceWhitelist` covers `apps/StatefulSet` **and** `batch/Job`; a
+     new narrow allowlist avoids widening `platform` for its seven current members, and Phases 26–29
+     (DefectDojo, another StatefulSet + Job + PVC workload) reuse it unchanged.
+   - **Alternative:** amend `platform` — a smaller diff, at the cost of granting every `platform` member
+     StatefulSet and Job, plus adding a third-party source repo to that project.
+   - Still requires user confirmation either way: writing to a shared `AppProject` is an
+     irreversible-ish action under the session-management rule, and the directory path fixes the
+     project permanently (renaming later means a different Application).
 
 3. **Does the plan modify the public chart at all?** Two optional, additive corrections are identified
    (Pitfall 2: an explicit `argocd.argoproj.io/hook-delete-policy`, and a documented position on
@@ -1064,7 +1091,9 @@ which is precisely what ADR-021 item 7 says was never exercised.
 - `OttawaCloudConsulting/occ-k8s-app-config` via `gh api` (read access confirmed): repository tree;
   `docs/reference/argocd-overrides-guide.md`; `application-sets/identity/authentik/{Chart.yaml,argocd-overrides.yaml}`;
   `application-sets/platform/homepage/argocd-overrides.yaml`;
-  `application-sets/automation/argocd/templates/projects.yaml`; `.pre-commit-config.yaml`;
+  `application-sets/automation/argocd/templates/projects.yaml`;
+  `docs/argocd/conformance/check_appconfig.py` (1854 lines — checks 14a/14b project routing);
+  `.pre-commit-config.yaml`;
   `.github/workflows/conformance.yaml`; `scripts/` listing; branch rulesets for `main`.
 - `OttawaCloudConsulting/security-platform` working clone at `repos/security-platform`
   (`aed14b9`): `kubernetes/nexus/{Chart.yaml,Chart.lock,values.yaml,README.md,templates/job-provision.yaml}`;
