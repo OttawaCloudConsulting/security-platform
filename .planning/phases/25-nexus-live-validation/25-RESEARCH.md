@@ -1010,7 +1010,12 @@ which is precisely what ADR-021 item 7 says was never exercised.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> **All seven questions below were closed at planning time (2026-09-23).** Each carries an inline
+> **RESOLVED** pointer naming the locked decision, plan task or checkpoint that closed it. The prose
+> under each question is the research-time record of *why* it was open, preserved unedited; the
+> RESOLVED line is the disposition that supersedes the research-time recommendation where they differ.
 
 1. **Is ingress / TLS in scope for NEXUS-05?**
    - What we know: ADR-021 (`## What was NOT verified` item 4) and the chart README both say "Phase 25's
@@ -1026,6 +1031,10 @@ which is precisely what ADR-021 item 7 says was never exercised.
      Phase 24 used and keeps unauthenticated plaintext on loopback. Record the exclusion explicitly in
      ADR-022 so ADR-021 item 4 is visibly still open rather than silently skipped. Surface this to the
      user at planning time — it is a scope call, not Claude's discretion.
+   - **RESOLVED — locked decision L-01: ingress/TLS is OUT of scope for Phase 25.** No IngressClass, Gateway API,
+     `Ingress` object or VIP is added by any plan. Validation runs over `kubectl port-forward`. Enforced by the
+     grep-based acceptance criteria in plans 25-02 and 25-03, and recorded in ADR-022 by plan 25-07 so ADR-021
+     item 4 stays visibly open rather than silently dropped.
 
 2. **Which `AppProject`? — narrowed, needs a user decision only on preference.**
    `docs/argocd/conformance/check_appconfig.py` was read this session. Its check **14b** requires that
@@ -1045,28 +1054,46 @@ which is precisely what ADR-021 item 7 says was never exercised.
    - Still requires user confirmation either way: writing to a shared `AppProject` is an
      irreversible-ish action under the session-management rule, and the directory path fixes the
      project permanently (renaming later means a different Application).
+   - **RESOLVED — locked decision L-02: amend the existing `platform` AppProject; do NOT create a `security`
+     project.** The operator chose the amend path over this section's new-project recommendation. The app
+     directory is `application-sets/platform/nexus/`. Enforced by the same grep-based acceptance criteria in
+     plans 25-02 and 25-03 (`no file under application-sets/security/`).
 
 3. **Does the plan modify the public chart at all?** Two optional, additive corrections are identified
    (Pitfall 2: an explicit `argocd.argoproj.io/hook-delete-policy`, and a documented position on
    `ttlSecondsAfterFinished` under Argo CD). Both are chart edits and therefore a separate
    `security-platform` PR with its own gates. Recommendation: hold them until the first live sync tells
    you whether they are needed, then land them with measured justification — the Phase 23/24 house style.
+   - **RESOLVED — deferred to a measured verdict, not decided here.** Plan 25-05 Task 3 ("Close Open Question 3")
+     decides both optional chart edits from what the two live syncs actually showed and writes the verdict to
+     `evidence/25-05-chart-edit-assessment.md`; plan 25-06 Task 1 executes that verdict conditionally, additively,
+     and asserts an empty diff on the no-edit branch.
 
 4. **Where does the homelab validation script live, and does it replace or sit beside
    `nexus-live-smoke.sh`?** Recommendation: a sibling script in `security-platform/scripts/`, so the
    existing 25-check gate keeps passing untouched. The alternative — parameterising
    `nexus-live-smoke.sh` in place — is cleaner long-term but puts a green gate at risk mid-phase.
+   - **RESOLVED — a sibling script, as recommended.** Fixed in plan 25-01's context block ("Two planner forks
+     resolved here", fork 2): `security-platform/scripts/nexus-homelab-validate.sh` is authored alongside
+     `nexus-live-smoke.sh`, whose 25 green checks stay byte-untouched (asserted in 25-01's verification block).
 
 5. **How is the Nexus PVC sized and reclaimed?** The chart defaults to `8Gi` on the default StorageClass
    (`Delete` reclaim policy, expansion allowed). Community Edition's ceiling is 40,000 components /
    100,000 requests per day. Is 8 Gi right for the homelab, and is a `Delete` reclaim policy acceptable
    for a cache whose loss means re-accepting the EULA and re-provisioning? Worth one explicit decision
    rather than an inherited default.
+   - **RESOLVED at the plan 25-02 Task 2 operator checkpoint.** PVC size and reclaim policy are one of the four
+     values that blocking `checkpoint:decision` fixes (proposed: the chart default `8Gi` on the cluster default
+     StorageClass, `Delete` reclaim); the operator's verbatim reply and the resolved value are recorded in
+     `25-02-SUMMARY.md`, which plan 25-03 reads.
 
 6. **Is a real `dockerd` pull in scope?** ADR-021 `## What was NOT verified` item 1 — no pull has ever
    been performed by the operator's own Docker daemon. Doing it needs a routable host plus either TLS or
    an `insecure-registries` entry, i.e. it is gated on Question 1. Recommendation: defer, and say so in
    ADR-022 rather than leaving it ambiguous.
+   - **RESOLVED — deferred, and recorded rather than left ambiguous.** No real `dockerd` pull is performed this
+     phase (it is gated on Question 1, which L-01 closed as out of scope). Plan 25-07 writes the exclusion into
+     ADR-022's `## What was NOT verified` section, so ADR-021 item 1 stays visibly open.
 
 7. **Retry/timeout budget.** Nexus cold boot is 1–3 minutes on homelab hardware; the Job's readiness poll
    is bounded at 600 s and `activeDeadlineSeconds` at 900 s. Argo CD's operation stays `Progressing` for
@@ -1074,6 +1101,10 @@ which is precisely what ADR-021 item 7 says was never exercised.
    revision** even once conditions improve — recovery then needs a manual `argocd app sync`
    `[CITED: overlay repo's own measured note on the authentik retry budget]`. Confirm the budget in the
    override file is the window the operator is content to wait unattended.
+   - **RESOLVED at the plan 25-02 Task 2 operator checkpoint.** The `syncPolicy.retry` budget is another of the
+     four values that checkpoint fixes (proposed `limit: 5`, backoff `30s` / factor `2` / `maxDuration: 10m`,
+     with both in-repo precedents quoted); the confirmed budget is recorded in `25-02-SUMMARY.md` and written
+     into `argocd-overrides.yaml` by plan 25-03.
 
 ---
 
