@@ -27,6 +27,7 @@
 **Plans:** 8 plans
 
 Plans:
+
 - [x] 23-01-PLAN.md — Repo guards (yamllint exclusion, .gitignore) and the standing offline chart gate
 - [x] 23-02-PLAN.md — Live smoke script: docker two-pass idempotency, post-EULA download, kind install
 - [x] 23-03-PLAN.md — Chart scaffold: Chart.yaml/Chart.lock, .helmignore, values.yaml, template helpers
@@ -43,6 +44,7 @@ Plans:
 **Plans:** 10 plans in 6 waves
 
 Plans:
+
 - [x] 24-01-PLAN.md — anonymous.enabled value, the two Nexus REST calls, offline gate inversion (wave 1)
 - [x] 24-02-PLAN.md — live gate: anonymous pull for npm/PyPI/Helm; readiness knobs wired (wave 3)
 - [x] 24-03-PLAN.md — scripts/check-nexus-setup.sh, the workstation script's offline gate (wave 1)
@@ -61,6 +63,7 @@ Plans:
 **Plans:** 7 plans in 6 waves
 
 Plans:
+
 - [x] 25-01-PLAN.md — scripts/nexus-homelab-validate.sh: the NEXUS_HOST-parameterised live gate, 14 checks (wave 1)
 - [x] 25-02-PLAN.md — amend the `platform` AppProject for StatefulSet/Job/SealedSecret, the `nexus` namespace and the security-platform repo (wave 1, checkpoint)
 - [x] 25-03-PLAN.md — author `application-sets/platform/nexus/`: two-source override, umbrella Chart.yaml, SealedSecret; open PR 2 unmerged (wave 2)
@@ -76,12 +79,32 @@ Plans:
 **Plans:** 7 plans in 7 waves
 
 Plans:
+**Wave 1**
+
 - [ ] 26-01-PLAN.md — Refresh security-platform onto main, phase branch, offline gate check-defectdojo-chart.sh (20 checks)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 26-02-PLAN.md — Live kind smoke defectdojo-live-smoke.sh: cert-manager + ingress-nginx + CA issuer, verified TLS, login, celery ping
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 26-03-PLAN.md — Wrapper chart: Chart.yaml/Chart.lock (defectdojo 1.9.53), values.yaml, validate-tls.yaml guard; gate green
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 26-04-PLAN.md — Chart README (Secret contract, issuer, limitations incl. media emptyDir) and root README
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 26-05-PLAN.md — Run gates live, measure Checkov (local + CI-equivalent), repo hygiene; record evidence
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 26-06-PLAN.md — PR, operator approval gate, merge to security-platform main, verify from origin/main
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
 - [ ] 26-07-PLAN.md — ADR-023, ADR index row, DDOJO-01 Complete
 
 ### Phase 27: DefectDojo CI Auto-Import
