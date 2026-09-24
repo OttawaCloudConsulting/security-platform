@@ -15,7 +15,7 @@ Architecture constraint (Key Decision, see PROJECT.md): generic Helm charts are 
 - [x] **NEXUS-02**: Proxy repos allow anonymous pull (no auth required for read/proxy access)
 - [x] **NEXUS-03**: Chart uses the cluster's default StorageClass unless overridden by the consumer
 - [x] **NEXUS-04**: Workstation install script configures a target repo's package manager files (`.npmrc`, `pip.conf`, Docker/Helm registry config) to route through a given Nexus instance
-- [ ] **NEXUS-05**: Nexus chart validated live via private ArgoCD overlay deploy to the operator's homelab cluster
+- [x] **NEXUS-05**: Nexus chart validated live via private ArgoCD overlay deploy to the operator's homelab cluster
 
 ### DefectDojo
 
@@ -48,7 +48,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NEXUS-03 | Phase 23 | Complete |
 | NEXUS-02 | Phase 24 | Complete |
 | NEXUS-04 | Phase 24 | Complete |
-| NEXUS-05 | Phase 25 | Pending |
+| NEXUS-05 | Phase 25 | Complete |
 | DDOJO-01 | Phase 26 | Pending |
 | DDOJO-02 | Phase 27 | Pending |
 | DDOJO-03 | Phase 28 | Pending |
