@@ -401,24 +401,31 @@ Measured results this session: Certificate `defectdojo-tls` Ready; served cert i
 | A6 | The uwsgi startup OOM is caused by fd-table sizing from RLIMIT_NOFILE (the fix, `maxFd: 102400`, is measured; the mechanism is inferred) | Pitfall 2 | Low. The setting is harmless whether or not the mechanism is right |
 | A7 | `celery -A dojo inspect ping -t 5` works inside the worker container as a broker-connectivity proof (upstream suggests it as a liveness command) | Code Examples / Validation | Medium. If it does not work, fall back to a log grep for the worker's broker-connected line |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Media volume is `emptyDir` upstream (`django.mediaPersistentVolume.type: emptyDir`).**
    - What we know: uploaded files and attachments are lost on pod restart. The PVC option defaults to RWX. CONTEXT is silent (D-08 covers Postgres and Valkey only).
    - Recommendation: keep the upstream default (thin, D-04) and list it as a README Limitations row. It is a data-loss property, not a backup callout, so D-06 does not forbid it. If the operator wants persistence, that is a new decision.
+   - RESOLVED: keep upstream `emptyDir` (no chart override). 26-04 Task 1 writes the README `## Limitations and Notes` bullet with the `defectdojo.django.mediaPersistentVolume.*` override key (threat T-26-17); 26-06 Task 2 asks the operator to accept or reject it as decision (a); 26-07 Task 1 records it in ADR-023.
 2. **`initializer.staticName` for ArgoCD (Phase 29).**
    - What we know: `false` gives a new Job name on every render, which ArgoCD shows as perpetually OutOfSync and re-runs on each sync. `true` gives a stable name, but with `keepSeconds: 60` the Job is TTL-deleted, which ArgoCD shows as missing, and selfHeal recreates it. The initializer is idempotent ("Admin user already exists; skipping"). Upstream says `staticName` is "handy for ArgoCD".
    - Recommendation: leave the upstream default in Phase 26 (D-15 defers resync). Put it on Phase 29's list together with the ArgoCD Job hook/ignore strategy. The gate should not depend on the Job name.
+   - RESOLVED: deferred to Phase 29. 26-03 Task 1 leaves `staticName` at the upstream default (values.yaml must not contain it); 26-07 Task 1 lists `initializer.staticName` under ArgoCD in ADR-023 `## What was NOT verified` (D-15, OQ2 → Phase 29). No smoke check depends on the Job name.
 3. **Dependabot `helm` ecosystem for the D-03 bump path.**
    - Recommendation: do not add it this phase. Document the manual bump procedure in the README (update Chart.yaml dep + appVersion + both image tags, `helm dependency update`, run the gate). IMAGE-PIN enforces consistency. See A4.
+   - RESOLVED: no Dependabot `helm` ecosystem this phase. 26-04 Task 1 documents the manual bump procedure (Chart.yaml dependency + appVersion + both image tags, `helm dependency update`, run the gate) in README Limitations; gate check 15 IMAGE-PIN (26-01 Task 2) enforces pin consistency; 26-07 Task 1 records it as an ADR-023 tradeoff (OQ3/A4).
 4. **CSRF behind a different proxy (carry to Phase 29).** The login POST passed CSRF behind ingress-nginx 1.15.1 on kind with neither `DD_SECURE_PROXY_SSL_HEADER` nor `DD_CSRF_TRUSTED_ORIGINS` set. The mechanism was not identified. Phase 29 will run behind whatever proxy the homelab ends up with (none exists yet, see OQ 6), so it must re-run the login POST there. Fallback if it returns 403: `defectdojo.extraConfigs.DD_CSRF_TRUSTED_ORIGINS: https://<host>` (and/or `DD_SECURE_PROXY_SSL_HEADER: "True"`) in the overlay. Neither needs a chart change.
+   - RESOLVED: carried to Phase 29, no chart change. 26-02 Task 2 KIND-LOGIN FAILs on 403 with the CSRF reason and must not add `DD_CSRF_TRUSTED_ORIGINS` to pass; 26-04 Task 1 README Limitations gives the `defectdojo.extraConfigs.DD_CSRF_TRUSTED_ORIGINS` fallback; 26-07 Task 1 lists the CSRF mechanism under ADR-023 `## What was NOT verified` (Phase 29 must re-run the login POST).
 5. **Should the smoke's login POST and celery ping become locked assertions?** D-14 names only "login page returns 200". The measurements show that is insufficient (Pitfall 2). Recommendation: planner includes `KIND-LOGIN` (CSRF-token POST, expect 302, then `/dashboard` 200) and `KIND-CELERY-PING` (a broker round-trip; worker `Running` is not evidence because upstream ships no celery probes and the wrapper changes Valkey persistence) as additional checks, and records both as going beyond D-14's literal text in the plan. The admin password comes from the smoke's own pre-created Secret, so no log scraping is needed.
+   - RESOLVED: adopted. 26-02 Task 2 implements KIND-LOGIN and KIND-CELERY-PING (26-02 objective records both as exceeding D-14's literal text); 26-05 Task 1 requires both to pass; 26-06 Task 2 surfaces them to the operator as decision (f).
 6. **Homelab readiness for Phase 29 (recorded, not blocking here).**
    - ClusterIssuers `letsencrypt-dns01-prod` and `letsencrypt-dns01-staging` (Route53 DNS-01) are defined in `~/git-repos/OCC-github/kubernetes_stack/occ-k8s-cluster-config/application-sets/cert-manager/templates/` (last commit on that dir 2026-09-07; repo HEAD `fe7af30`, 2026-09-19). Apps in `occ-k8s-app-config` use explicit `Certificate` objects plus ghostunnel sidecars on LoadBalancer IPs, not Ingress.
    - `ingressClassName: internal-nginx` appears only in `kubernetes_stack/_config_archive/kube-dash/templates/values.yaml` (archived config). No live-repo IngressClass, Ingress controller or Gateway was found.
    - This matches ADR-022 decision 4 ("no IngressClass") and refines its "no TLS anywhere" wording: cert-manager plus DNS-01 issuers exist for other apps.
    - **DDOJO-05 needs an ingress controller that appears absent.** Phase 29 must run `kubectl get ingressclass,clusterissuer` live and decide.
+   - RESOLVED: recorded, deferred to Phase 29. 26-07 Task 1 lists it under ADR-023 `## What was NOT verified` (no IngressClass/ingress controller found in config repos, DNS-01 ClusterIssuers exist; Phase 29 checks live).
 7. **Bitnami postgres `NetworkPolicy` is rendered by default** (`primary.networkPolicy.enabled`, `allowExternal: true`, egress `{}`). It is permissive and inert on kind (kindnet). On the homelab's Cilium it is enforced but allow-all on 5432. Record it for Phase 29; no action here.
+   - RESOLVED: recorded, no action in Phase 26. 26-07 Task 1 lists Bitnami Postgres NetworkPolicy behaviour on Cilium under ADR-023 `## What was NOT verified` (OQ7) for Phase 29.
 
 ## Environment Availability
 
