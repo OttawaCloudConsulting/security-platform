@@ -74,7 +74,7 @@ The upstream chart already does most of what DDOJO-01 needs. `defectdojo` 1.9.53
 - one `fail` guard template for the issuer.
 
 Two findings change what the planner must write.
-1. **Upstream defaults do not survive a real login on kind.** Measured: uwsgi at 4 processes was OOMKilled at its 512Mi limit, first on startup. The cause is `uwsgi` sizing its fd table from the container's `RLIMIT_NOFILE` (1073741816 on kind). After `maxFd: 102400` the pod started, but the **first login POST** OOMKilled it again. With `processes: 2` plus `maxFd: 102400`, idle memory was 286 MiB and peak after login was 388–430 MiB. A smoke that only GETs `/login` passed while the app was one POST away from crashing, so the smoke must do a real login.
+1. **Upstream defaults do not survive a real login on kind.** Measured: uwsgi at 4 processes was OOMKilled at its 512Mi limit, first on startup. The likely cause, inferred rather than proven, is `uwsgi` sizing its fd table from the container's `RLIMIT_NOFILE` (1073741816 on Docker Desktop kind). After `maxFd: 102400` the pod started, but the **first login POST** OOMKilled it again. With `processes: 2` plus `maxFd: 102400`, idle memory was 286 MiB and peak after login was 388–430 MiB. A smoke that only GETs `/login` passed while the app was one POST away from crashing, so the smoke must do a real login. Celery `Running` is equally uninformative, because upstream ships no celery probes, so the smoke also needs a broker round-trip (`celery inspect ping`).
 2. **D-11 cannot use Helm's `required` literally.** The issuer name lives inside the subchart's annotation map, and a parent chart cannot inject into subchart values. The mechanism is a wrapper template that calls `fail` when TLS is on and neither issuer annotation is set. This was prototyped and works.
 
 Wrapper and subchart are both named `defectdojo`, and Helm named templates are global. A wrapper `_helpers.tpl` defining `defectdojo.fullname` **silently replaced the subchart's**: the Ingress and ConfigMap were renamed to the wrapper's output [VERIFIED: measured]. The wrapper must not define any `defectdojo.*` template names.
@@ -288,14 +288,14 @@ The admin password is read **only on first boot** ("Admin user already exists; s
 
 ### Pitfall 2: uwsgi OOMKilled with upstream defaults
 **What goes wrong:** the django pod ends in CrashLoopBackOff (`OOMKilled`, exit 137), and `helm install --wait` never succeeds.
-**Why:** (a) `maxFd: 0` lets uwsgi size its fd table from `RLIMIT_NOFILE` (kind/containerd: 1073741816, visible in the uwsgi log line "detected max file descriptor number"); (b) 4 processes × Django ≈ 440 MiB idle against a 512Mi limit, and the first login pushes it over.
+**Why:** (a) `maxFd: 0` appears to let uwsgi size its fd table from `RLIMIT_NOFILE` (1073741816 here, visible in the uwsgi log line "detected max file descriptor number") [ASSUMED mechanism. It is consistent with the log line, with the chart exposing `maxFd` for this purpose, and with the isolation test: `maxFd` alone fixed the startup OOM and `processes: 2` alone did not. The *fix* is measured]. That limit comes from Docker Desktop/linuxkit; stock containerd defaults to 1048576, so the homelab may never have hit the startup OOM, and the setting is harmless either way; (b) 4 processes × Django ≈ 440 MiB idle against a 512Mi limit, and the first login pushes it over.
 **How to avoid:** `maxFd: 102400`, `processes: 2`, limit ≥ 512Mi (recommend 1Gi). Also have the smoke do a login POST.
 **Warning signs:** `Last State: Terminated, Reason: OOMKilled` on container `uwsgi`. A GET `/login` 200 does **not** rule this out (measured).
 
 ### Pitfall 3: Helm 4 `--wait` fails fast on a Deployment that already failed
 **What goes wrong:** `helm upgrade --wait` returned in 0 s with `Progress deadline exceeded`.
 **Why:** local Helm is **v4.3.0**, whose kstatus-based wait reports a `Failed` Deployment immediately [VERIFIED: measured]. Config-only changes also don't restart pods, because upstream `trackConfig: disabled` means a ConfigMap change (uwsgi settings live in the ConfigMap) needs a pod restart.
-**How to avoid:** the smoke only does a fresh install (D-15). Record the Helm client version in its output.
+**How to avoid:** the smoke only does a fresh install (D-15). Record the Helm client version in its output. Note that every measurement this session used Helm **v4.3.0**. Helm 3 behaviour (the CI Checkov container ships v3.22.0) was not measured, so write the scripts to depend only on exit codes and on `kubectl` readiness, not on Helm-version-specific wait semantics.
 
 ### Pitfall 4: Offline render depends on the operator's kubeconfig
 **What goes wrong:** `helm template` emitted `namespace: argocd` from the current context.
@@ -373,6 +373,9 @@ kubectl ... -n ingress-nginx port-forward svc/ingress-nginx-controller 18443:443
 curl --resolve defectdojo.smoke.test:18443:127.0.0.1 --cacert "$OUT/ca.crt" \
   -o /dev/null -w '%{http_code}' https://defectdojo.smoke.test:18443/login          # measured 200
 # Recommended extra: CSRF-token login POST as admin -> measured 302 to "/", then /dashboard 200
+# Recommended extra (UNMEASURED): broker proof -- celery Running 1/1 proves nothing (upstream ships no
+# celery probes; neither login nor the initializer dispatches a task), and the wrapper changes Valkey config:
+kubectl ... -n defectdojo exec deploy/defectdojo-celery-worker -c celery -- celery -A dojo inspect ping -t 5   # expect exit 0 and 'pong'
 ```
 Measured results this session: Certificate `defectdojo-tls` Ready; served cert issuer `CN=smoke-ca`, SAN `DNS:defectdojo.smoke.test`, `ssl_verify_result=0`; `/login` 200; `/` 302 to `/login?next=/`; wrong Host 404; unauthenticated `/api/v2/users/` 403; admin login POST 302 then `/dashboard` 200 **with no `DD_SECURE_PROXY_SSL_HEADER` or `DD_CSRF_TRUSTED_ORIGINS` set**. The mechanism behind that last point (why Django treated the proxied request as passing the CSRF origin check) was not identified; the result is empirical for 3.3.200 behind ingress-nginx 1.15.1. The postgres PVC bound on kind's default `standard` StorageClass.
 
@@ -395,6 +398,8 @@ Measured results this session: Certificate `defectdojo-tls` Ready; served cert i
 | A3 | The cert-manager webhook may briefly refuse ClusterIssuer creation right after rollout, so a retry loop is prudent | Pitfall 9 | Low. The measured run succeeded first try |
 | A4 | Dependabot's `helm` ecosystem (GA 2025-04) would bump the `Chart.yaml` dependency. A community report says chart/image name collisions can overwrite values image tags, and here the dependency `defectdojo` and the image `defectdojo/defectdojo-*` might collide | Open Questions | Medium. A partial bump would split the pins. The IMAGE-PIN gate check catches it either way |
 | A5 | uwsgi limit 1Gi / request 384Mi is "small footprint" enough for the operator | Pattern 2 | Low. The measured floor is 512Mi limit with 2 processes; 430 MiB peak left thin headroom |
+| A6 | The uwsgi startup OOM is caused by fd-table sizing from RLIMIT_NOFILE (the fix, `maxFd: 102400`, is measured; the mechanism is inferred) | Pitfall 2 | Low. The setting is harmless whether or not the mechanism is right |
+| A7 | `celery -A dojo inspect ping -t 5` works inside the worker container as a broker-connectivity proof (upstream suggests it as a liveness command) | Code Examples / Validation | Medium. If it does not work, fall back to a log grep for the worker's broker-connected line |
 
 ## Open Questions
 
@@ -406,13 +411,14 @@ Measured results this session: Certificate `defectdojo-tls` Ready; served cert i
    - Recommendation: leave the upstream default in Phase 26 (D-15 defers resync). Put it on Phase 29's list together with the ArgoCD Job hook/ignore strategy. The gate should not depend on the Job name.
 3. **Dependabot `helm` ecosystem for the D-03 bump path.**
    - Recommendation: do not add it this phase. Document the manual bump procedure in the README (update Chart.yaml dep + appVersion + both image tags, `helm dependency update`, run the gate). IMAGE-PIN enforces consistency. See A4.
-4. **Should the smoke's login POST become a locked assertion?** D-14 names only "login page returns 200". The measurements show that is insufficient (Pitfall 2). Recommendation: planner includes `KIND-LOGIN` (CSRF-token POST, expect 302, then `/dashboard` 200) as an additional check and records it as going beyond D-14 in the plan. The admin password comes from the smoke's own pre-created Secret, so no log scraping is needed.
-5. **Homelab readiness for Phase 29 (recorded, not blocking here).**
+4. **CSRF behind a different proxy (carry to Phase 29).** The login POST passed CSRF behind ingress-nginx 1.15.1 on kind with neither `DD_SECURE_PROXY_SSL_HEADER` nor `DD_CSRF_TRUSTED_ORIGINS` set. The mechanism was not identified. Phase 29 will run behind whatever proxy the homelab ends up with (none exists yet, see OQ 6), so it must re-run the login POST there. Fallback if it returns 403: `defectdojo.extraConfigs.DD_CSRF_TRUSTED_ORIGINS: https://<host>` (and/or `DD_SECURE_PROXY_SSL_HEADER: "True"`) in the overlay. Neither needs a chart change.
+5. **Should the smoke's login POST and celery ping become locked assertions?** D-14 names only "login page returns 200". The measurements show that is insufficient (Pitfall 2). Recommendation: planner includes `KIND-LOGIN` (CSRF-token POST, expect 302, then `/dashboard` 200) and `KIND-CELERY-PING` (a broker round-trip; worker `Running` is not evidence because upstream ships no celery probes and the wrapper changes Valkey persistence) as additional checks, and records both as going beyond D-14's literal text in the plan. The admin password comes from the smoke's own pre-created Secret, so no log scraping is needed.
+6. **Homelab readiness for Phase 29 (recorded, not blocking here).**
    - ClusterIssuers `letsencrypt-dns01-prod` and `letsencrypt-dns01-staging` (Route53 DNS-01) are defined in `~/git-repos/OCC-github/kubernetes_stack/occ-k8s-cluster-config/application-sets/cert-manager/templates/` (last commit on that dir 2026-09-07; repo HEAD `fe7af30`, 2026-09-19). Apps in `occ-k8s-app-config` use explicit `Certificate` objects plus ghostunnel sidecars on LoadBalancer IPs, not Ingress.
    - `ingressClassName: internal-nginx` appears only in `kubernetes_stack/_config_archive/kube-dash/templates/values.yaml` (archived config). No live-repo IngressClass, Ingress controller or Gateway was found.
    - This matches ADR-022 decision 4 ("no IngressClass") and refines its "no TLS anywhere" wording: cert-manager plus DNS-01 issuers exist for other apps.
    - **DDOJO-05 needs an ingress controller that appears absent.** Phase 29 must run `kubectl get ingressclass,clusterissuer` live and decide.
-6. **Bitnami postgres `NetworkPolicy` is rendered by default** (`primary.networkPolicy.enabled`, `allowExternal: true`, egress `{}`). It is permissive and inert on kind (kindnet). On the homelab's Cilium it is enforced but allow-all on 5432. Record it for Phase 29; no action here.
+7. **Bitnami postgres `NetworkPolicy` is rendered by default** (`primary.networkPolicy.enabled`, `allowExternal: true`, egress `{}`). It is permissive and inert on kind (kindnet). On the homelab's Cilium it is enforced but allow-all on 5432. Record it for Phase 29; no action here.
 
 ## Environment Availability
 
@@ -440,13 +446,13 @@ Measured results this session: Certificate `defectdojo-tls` Ready; served cert i
 | Config file | none. Wave 0 creates `repos/security-platform/scripts/check-defectdojo-chart.sh` |
 | Quick run command | `bash scripts/check-defectdojo-chart.sh` (offline, a few seconds; needs a vendored tgz) |
 | Full suite command | `bash scripts/check-defectdojo-chart.sh && bash scripts/defectdojo-live-smoke.sh` |
-| Estimated runtime | gate ~5–10 s; smoke ~4–6 min warm (cluster 11 s, cert-manager ~27 s, ingress-nginx ~22 s, helm install 101 s), plus cold image pulls |
+| Estimated runtime | gate ~5–10 s. Smoke: dominated by cold image pulls and not measured end to end. kind nodes run their own containerd and never share the host Docker image cache, so every fresh smoke run is cold. Measured pieces: cluster 11 s, cert-manager ~27 s, ingress-nginx ~22 s, and a 101 s helm install that was a reinstall on an already-warm cluster. The first cold install was confounded by the OOM. Keep the 15 m helm timeout. |
 
 ### Phase Requirements → Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
 | DDOJO-01 | Chart lints/renders; ingress on; TLS on; issuer required; class/SC unset; PG persistent; Valkey ephemeral; no secrets rendered; pins consistent; no helper collision; placeholders only | offline | `bash scripts/check-defectdojo-chart.sh` | ❌ Wave 0 |
-| DDOJO-01 | Install on kind → Deployments Ready → Certificate Ready → Ingress class defaulted → verified-TLS `/login` 200 → admin login 302 + `/dashboard` 200 | live smoke | `bash scripts/defectdojo-live-smoke.sh` | ❌ Wave 0 |
+| DDOJO-01 | Install on kind → Deployments Ready → Certificate Ready → Ingress class defaulted → verified-TLS `/login` 200 → admin login 302 + `/dashboard` 200 → `celery inspect ping` succeeds (KIND-CELERY-PING) | live smoke | `bash scripts/defectdojo-live-smoke.sh` | ❌ Wave 0 |
 | DDOJO-01 | Checkov measured on the rendered chart (count recorded; CI coverage = 0 recorded) | measurement | `helm template … > r.yaml && checkov -f r.yaml --framework kubernetes` | manual record in SUMMARY |
 | DDOJO-01 | Chart is public on `security-platform` main; CI green | human gate | `gh pr checks <n> --watch` | n/a (operator approval) |
 
