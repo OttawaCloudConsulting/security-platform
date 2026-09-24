@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: verifying
-stopped_at: Phase 25 context gathered
-last_updated: "2026-09-21T02:43:28.878Z"
-last_activity: 2026-09-20
+status: executing
+stopped_at: Completed 25-01-PLAN.md
+last_updated: "2026-09-24T00:22:54.103Z"
+last_activity: 2026-09-24
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 18
-  completed_plans: 18
+  total_plans: 25
+  completed_plans: 19
   percent: 67
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 24 — nexus-anonymous-access-and-workstation-script
+**Current focus:** Phase 25 — nexus-live-validation
 
 ## Current Position
 
-Phase: 24 (nexus-anonymous-access-and-workstation-script) — COMPLETE, ready for verification
-Plan: 10 of 10
-Status: Phase complete — ready for verification
-Last activity: 2026-09-20
+Phase: 25 (nexus-live-validation) — EXECUTING
+Plan: 2 of 7
+Status: Ready to execute
+Last activity: 2026-09-24
 
 ## Performance Metrics
 
@@ -239,6 +239,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 24]: 24-10 Task 3: merge verified from origin/main ONLY. Merge commit aed14b916e9aa8ec1d0d47699b457040b99f7eac, parents ea2770f + c3ba864. **origin/main^{tree} == c3ba864^{tree} == a4a79626fbd3782ed1d2e9f55c5ed5a0d3c89811** — the merged tree is byte-for-byte the tree the gates ran against, so nothing changed between verification and publication (the 18-08 technique). All 9 shipped paths present; nexus-setup.sh and check-nexus-setup.sh both mode 100644; `git show origin/main:kubernetes/nexus/values.yaml | yq .anonymous.enabled` -> false; provision.sh carries 4 security/realms/active references. Both offline gates re-run GREEN against the merged tree (18/0 and 12/0). Feature branch deleted on the remote, determined by `git ls-remote --heads`, never by a local branch listing.
 - [Phase 24]: 24-10: NEXUS-02 and NEXUS-04 MARKED COMPLETE (commit fc6900e), ending a withholding chain nine plans long. The marks were made by hand from quoted origin/main evidence; `requirements.mark-complete` was never run from plan frontmatter, per the 17-01 reverted-mark precedent. The Out-of-Scope Docker carve-out row was RECONCILED not reverted: the daemon-opt-in branch shipped, so the row is annotated 'carve-out EXERCISED as shipped' with ADR-021 decision 7, the measured mirror URL shape and the A3 verdict, plus the refinement that insecure-registries is emitted only for a plain-http URL.
 - [Phase 24]: 24-10: 24-VALIDATION.md finalised — status complete, nyquist_compliant true, wave_0_complete true, all 15 rows green with the observing SUMMARY named, 13/13 sign-off boxes ticked, 0 unticked. Row 24-W0-11 is green on its BEHAVIOUR with its stated COMMAND recorded as FALSIFIED rather than quietly swapped: `pip config get global.index-url` exits 1 with 'No such key' on pip 26.2.1 because `get` reads the writable scopes only and cannot see the ':env:' variant PIP_CONFIG_FILE creates; the readback uses `pip config list`. Feedback latency MEASURED at 127s (not the 660s estimate) with images warm — sonatype/nexus3:3.96.0-ubi and kindest/node were already cached, and the script's own estimate excludes image pulls.
+- [Phase 25]: 25-01: nexus-homelab-validate.sh requires --url/--context/--sync-pass, owns no port-forward, sibling of nexus-live-smoke.sh
+- [Phase 25]: 25-01: realms reads try anonymous first, fall back to admin only on 401/403 (unmeasured whether anonymous may read realms)
 
 ### Pending Todos
 
@@ -332,12 +334,13 @@ Carried forward from v1.1 close:
 | Phase 24 P08 | ~35min | 2 tasks | 2 files |
 | Phase 24 P09 | 40min | 2 tasks | 3 files |
 | Phase 24 P10 | ~1h15m | 3 tasks | 6 files |
+| Phase 25 P01 | 35 min | 3 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-21T02:43:28.855Z
-Stopped at: Phase 25 context gathered
-Resume file: .planning/phases/25-nexus-live-validation/25-CONTEXT.md
+Last session: 2026-09-24T00:22:54.048Z
+Stopped at: Completed 25-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
