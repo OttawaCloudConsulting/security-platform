@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 25-01-PLAN.md
-last_updated: "2026-09-24T00:22:54.103Z"
+stopped_at: Completed 25-02-PLAN.md
+last_updated: "2026-09-24T00:41:42.489Z"
 last_activity: 2026-09-24
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 25
-  completed_plans: 19
+  completed_plans: 20
   percent: 67
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 25 (nexus-live-validation) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-09-24
 
@@ -241,6 +241,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 24]: 24-10: 24-VALIDATION.md finalised — status complete, nyquist_compliant true, wave_0_complete true, all 15 rows green with the observing SUMMARY named, 13/13 sign-off boxes ticked, 0 unticked. Row 24-W0-11 is green on its BEHAVIOUR with its stated COMMAND recorded as FALSIFIED rather than quietly swapped: `pip config get global.index-url` exits 1 with 'No such key' on pip 26.2.1 because `get` reads the writable scopes only and cannot see the ':env:' variant PIP_CONFIG_FILE creates; the readback uses `pip config list`. Feedback latency MEASURED at 127s (not the 660s estimate) with images warm — sonatype/nexus3:3.96.0-ubi and kindest/node were already cached, and the script's own estimate excludes image pulls.
 - [Phase 25]: 25-01: nexus-homelab-validate.sh requires --url/--context/--sync-pass, owns no port-forward, sibling of nexus-live-smoke.sh
 - [Phase 25]: 25-01: realms reads try anonymous first, fall back to admin only on 401/403 (unmeasured whether anonymous may read realms)
+- [Phase 25]: 25-02: platform AppProject widened for Nexus via overlay PR #239 (merge 7b7e25c); operator approve-defaults (jetstack remote, 8Gi default SC, targetRevision aed14b9, retry 5/30s/x2/10m)
 
 ### Pending Todos
 
@@ -335,11 +336,12 @@ Carried forward from v1.1 close:
 | Phase 24 P09 | 40min | 2 tasks | 3 files |
 | Phase 24 P10 | ~1h15m | 3 tasks | 6 files |
 | Phase 25 P01 | 35 min | 3 tasks | 1 files |
+| Phase 25 P02 | 25min | 3 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-24T00:22:54.048Z
-Stopped at: Completed 25-01-PLAN.md
+Last session: 2026-09-24T00:41:37.783Z
+Stopped at: Completed 25-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
