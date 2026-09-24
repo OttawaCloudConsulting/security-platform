@@ -30,6 +30,7 @@ Every code change is automatically scanned for security issues, secrets, and sup
 - [x] DIST-08: Adoption docs cover both consumption modes — v2.0
 - [x] VAL-01: Full pipeline validated via branch-target PRs in canonical repo — v2.0
 - [x] VAL-02: Required-check enforcement exercised live on external repo (`terraform-pipelines`) — GitHub observably refused a merge with a red required check, then window closed and ruleset restored byte-identical — v2.0
+- [x] NEXUS-05: Nexus chart validated live via private ArgoCD overlay on the homelab cluster — anonymous npm/PyPI/Docker/Helm pulls and anonymous write refusal measured, second sync idempotent (ADR-022). Validated in Phase 25: Nexus Live Validation
 
 ## Current Milestone: v3.0 K8s Infra & Dashboards
 
@@ -84,6 +85,8 @@ Every code change is automatically scanned for security issues, secrets, and sup
 - Production Kubernetes workload deployment — this stack secures the development pipeline, not the application runtime
 
 ## Current State
+
+**In progress: v3.0 K8s Infra & Dashboards** — Phase 25 complete (2026-09-24): Nexus deployed to the homelab through the private ArgoCD overlay, all four proxies proven live, provisioning idempotent across syncs. Next: Phase 26 (DefectDojo Generic Chart).
 
 **Shipped: v2.0 CI/CD Security Pipeline** (2026-09-17) — Phases 14-22 (10 phases incl. inserted 20.1), 63 plans, 15/15 requirements.
 
@@ -167,4 +170,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-17 after starting v3.0 milestone*
+*Last updated: 2026-09-24 after Phase 25 (Nexus Live Validation)*
