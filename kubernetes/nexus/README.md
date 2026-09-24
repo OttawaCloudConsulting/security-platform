@@ -46,7 +46,7 @@ The Nexus version is deliberately **not** pinned here. It floats with the subcha
 | NEXUS-02 | Proxy repos allow anonymous pull | Complete (Phase 24) — **opt-in**, `anonymous.enabled`, which ships `false`; see §5 |
 | NEXUS-03 | Chart uses the cluster's default StorageClass unless overridden | Complete (Phase 23) |
 | NEXUS-04 | Workstation install script points package managers at a Nexus instance | Complete (Phase 24) — `workstation/nexus-setup.sh` |
-| NEXUS-05 | Chart validated live via private ArgoCD overlay | Planned (Phase 25) |
+| NEXUS-05 | Chart validated live via private ArgoCD overlay | Complete (Phase 25) — measured over a loopback `kubectl port-forward`; TLS and ingress unmeasured, see Limitations |
 
 ## Before You Install
 
@@ -186,6 +186,16 @@ kubectl -n nexus port-forward svc/nexus-nexus3 8081:8081
 
 The UI is then at <http://localhost:8081>, and the npm, PyPI and Helm proxies are served under `/repository/<name>/`, for example `http://localhost:8081/repository/npm-proxy/`. **The Docker proxy is the exception** — it is served directly under the host with no `/repository/` segment, and the analogous URL returns `404`. See §5 for all four shapes.
 
+### Validating an installed instance
+
+`scripts/nexus-homelab-validate.sh` (from the root of this repository) is the live gate for an instance that is already installed. It requires all three arguments and has no defaults for them:
+
+```bash
+bash scripts/nexus-homelab-validate.sh --url http://127.0.0.1:8081 --context <kube-context> --sync-pass first
+```
+
+`--url` is the base URL of the instance under test — typically the local end of the port-forward above; the script starts no port-forward of its own. `--context` pins every `kubectl` call it makes. `--sync-pass first` follows the first sync and expects the provisioning Job to log `action=created` for each repository. **`--sync-pass second` is what asserts idempotency**: run it after a later sync, against an instance whose PVC already carries state, and it additionally expects `action=updated` for every repository, no `action=created`, and an unchanged realm list. The active-realm list is not readable anonymously (measured: HTTP `403`), so after an unauthenticated attempt the gate falls back to reading it as admin, using the password from the `nexus-admin` Secret. The script prints `ALL PASS` only when every check that ran passed, and `NOTHING RAN` when nothing did.
+
 **Reads require authentication by default.** Anonymous access is closed on a default Nexus install — an unauthenticated fetch returns HTTP 401 — and this chart ships it closed. Setting `anonymous.enabled: true` opens unauthenticated read (NEXUS-02); it is an explicit opt-in, and it is not sufficient on its own, because `eula.accepted` is a second, independent gate — see §5. With `anonymous.enabled` left at `false`, clients authenticate with the admin credential you created above. (`nexus3.config.enabled` is `false` here, which leaves the subchart's own Groovy-based configuration Job off; this chart provisions over the REST API instead, which is why `anonymous.enabled` is a top-level value of this wrapper rather than a key under `nexus3.config`.)
 
 ## Values
@@ -228,6 +238,6 @@ Everything the `nexus3` subchart exposes can be overridden under the `nexus3` ke
 - **`anonymous.enabled: true` discloses the repository inventory.** `GET /service/rest/v1/repositories` answers HTTP `200` anonymously, disclosing the **name, format, type and URL** of every repository on the instance. It does not disclose remote URLs and it does not disclose credentials.
 - **Anonymous pull spends the Community Edition budget.** The 40,000-component / 100,000-request-per-day ceiling of §4 is unchanged by this value, but removing the authentication friction makes the instance easier to point CI at, and that budget is then spent without anyone having to hold a credential.
 - **Renaming is supported.** If you set the subchart's `nameOverride` or `fullnameOverride`, the provisioning Job resolves the Nexus `Service` name through the same helper logic the subchart uses, so it still finds the instance. This is informational — no extra step is required.
-- **`docker.pathEnabled: true`** means the Docker proxy is served on the same port under a path, with no separate connector port — which is why its client URL carries no `/repository/` segment (§5). The OCI distribution protocol that a `docker pull` speaks has since been measured anonymously end to end against a live instance (challenge, token, manifest, a 3,626,020-byte layer blob), so the repository definition is no longer the only thing verified. What remains Phase 25 work is a pull executed by a real `dockerd` against a real hostname with ingress and TLS in front of it.
+- **`docker.pathEnabled: true`** means the Docker proxy is served on the same port under a path, with no separate connector port — which is why its client URL carries no `/repository/` segment (§5). The OCI distribution protocol that a `docker pull` speaks has since been measured anonymously end to end against a live instance (challenge, token, manifest, a 3,626,020-byte layer blob), so the repository definition is no longer the only thing verified. A pull executed by a real `dockerd` against a routable hostname with TLS in front of it remains unmeasured: ingress and TLS were explicitly out of scope for the live validation (ADR-022).
 - **No NetworkPolicy ships with this chart.** The proxy repositories cause Nexus to make outbound HTTPS requests to the configured remotes. Constraining that is a Phase 24 decision.
-- **Validation so far is a throwaway kind cluster plus a live container**, not a long-lived cluster. NEXUS-05 covers validation via a private ArgoCD overlay in Phase 25.
+- **The chart has been validated on a long-lived Kubernetes cluster through Argo CD (NEXUS-05)**, not only on a throwaway kind cluster and a live container. An Argo CD Application generated from a private overlay repository deployed it; the provisioning Job was observed running as an Argo CD **Sync**-phase hook (not PostSync — `argocd.argoproj.io/hook: Sync` takes precedence over the `helm.sh/hook` mapping) and succeeding; the PVC bound on the cluster's default StorageClass; and all four proxies served real bytes to an unauthenticated client — a 318,961-byte npm tarball, a 76,776-byte PyPI simple index, a 291,818-byte Helm `index.yaml` and a 3,626,020-byte Docker layer blob. A second sync against the PVC that already held state re-ran the Job, which updated all four repositories (four `action=updated`, zero `action=created`) and left the realm list unchanged. What remains open: the validation ran over `kubectl port-forward` on loopback, so nothing has been measured against TLS or an ingress (ADR-022).
