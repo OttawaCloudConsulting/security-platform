@@ -65,7 +65,7 @@ Plans:
 - [x] 25-02-PLAN.md — amend the `platform` AppProject for StatefulSet/Job/SealedSecret, the `nexus` namespace and the security-platform repo (wave 1, checkpoint)
 - [x] 25-03-PLAN.md — author `application-sets/platform/nexus/`: two-source override, umbrella Chart.yaml, SealedSecret; open PR 2 unmerged (wave 2)
 - [x] 25-04-PLAN.md — merge PR 2, first sync to Synced+Healthy, capture hook/Job/PVC evidence, run the gate `--sync-pass first` (wave 3)
-- [ ] 25-05-PLAN.md — second sync idempotency (ADR-021 item 7), NEXUS-04 client verify, Open Question 3 assessment (wave 4)
+- [x] 25-05-PLAN.md — second sync idempotency (ADR-021 item 7), NEXUS-04 client verify, Open Question 3 assessment (wave 4)
 - [ ] 25-06-PLAN.md — security-platform PR: ship the gate, rewrite the chart README limitations, conditional chart edit (wave 5, checkpoint)
 - [ ] 25-07-PLAN.md — ADR-022 and NEXUS-05 closure in REQUIREMENTS.md (wave 6)
 
@@ -148,7 +148,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 22. branch-protection --apply live exercise | v2.0 | 6/6 | Complete | 2026-09-16 |
 | 23. Nexus Generic Chart | v3.0 | 8/8 | Complete   | 2026-09-19 |
 | 24. Nexus Anonymous Access and Workstation Script | v3.0 | 10/10 | Complete   | 2026-09-20 |
-| 25. Nexus Live Validation | v3.0 | 4/7 | In Progress|  |
+| 25. Nexus Live Validation | v3.0 | 5/7 | In Progress|  |
 | 26. DefectDojo Generic Chart | v3.0 | 0/? | Not started | — |
 | 27. DefectDojo CI Auto-Import | v3.0 | 0/? | Not started | — |
 | 28. DefectDojo Dedup and Triage | v3.0 | 0/? | Not started | — |

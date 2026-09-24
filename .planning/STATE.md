@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 25-04-PLAN.md
-last_updated: "2026-09-24T01:07:06.043Z"
+stopped_at: Completed 25-05-PLAN.md
+last_updated: "2026-09-24T01:17:41.748Z"
 last_activity: 2026-09-24
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 25
-  completed_plans: 22
+  completed_plans: 23
   percent: 67
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 25 (nexus-live-validation) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-09-24
 
@@ -245,6 +245,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 25]: 25-03: nexus sources[0] pinned to security-platform aed14b916e9aa8ec1d0d47699b457040b99f7eac; admin password sealed as nexus/nexus-admin via controller sealed-secrets/sealed-secrets (not script default kube-system); PR #241 open and unmerged for 25-04
 - [Phase 25]: 25-04: nexus-provision ran as an Argo CD Sync hook (argocd hook annotation overrides Helm post-install), confirming Pitfall 1
 - [Phase 25]: 25-04: anonymous realms read returns 403 live; the gate's admin fallback for DOCKER-REALM-ACTIVE is required
+- [Phase 25]: 25-05: Open Question 3 closed as NO CHART EDIT NEEDED (hookType Sync; BeforeHookCreation measured via new Job UID; 900s TTL truncated nothing). 25-06 leaves job-provision.yaml unchanged
+- [Phase 25]: 25-05: nexus-setup.sh --verify runs its configure writers first; run it from a throwaway git repo seeded with package.json
 
 ### Pending Todos
 
@@ -342,11 +344,12 @@ Carried forward from v1.1 close:
 | Phase 25 P02 | 25min | 3 tasks | 1 files |
 | Phase 25 P03 | 20 min | 3 tasks | 5 files |
 | Phase 25 P04 | 12 min | 2 tasks | 4 files |
+| Phase 25 P05 | 10 min | 3 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-09-24T01:06:57.955Z
-Stopped at: Completed 25-04-PLAN.md
+Last session: 2026-09-24T01:17:41.738Z
+Stopped at: Completed 25-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
