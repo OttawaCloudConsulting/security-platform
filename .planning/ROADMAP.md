@@ -73,7 +73,16 @@ Plans:
 
 **Goal:** Public Helm chart deploys DefectDojo with external ingress and cert-manager-issued TLS, generic for any Kubernetes cluster: environment-specific values (hostnames, StorageClass overrides, ClusterIssuer names) are consumer-supplied, never baked into the public package.
 **Requirements**: DDOJO-01
-**Plans:** TBD
+**Plans:** 7 plans in 7 waves
+
+Plans:
+- [ ] 26-01-PLAN.md — Refresh security-platform onto main, phase branch, offline gate check-defectdojo-chart.sh (20 checks)
+- [ ] 26-02-PLAN.md — Live kind smoke defectdojo-live-smoke.sh: cert-manager + ingress-nginx + CA issuer, verified TLS, login, celery ping
+- [ ] 26-03-PLAN.md — Wrapper chart: Chart.yaml/Chart.lock (defectdojo 1.9.53), values.yaml, validate-tls.yaml guard; gate green
+- [ ] 26-04-PLAN.md — Chart README (Secret contract, issuer, limitations incl. media emptyDir) and root README
+- [ ] 26-05-PLAN.md — Run gates live, measure Checkov (local + CI-equivalent), repo hygiene; record evidence
+- [ ] 26-06-PLAN.md — PR, operator approval gate, merge to security-platform main, verify from origin/main
+- [ ] 26-07-PLAN.md — ADR-023, ADR index row, DDOJO-01 Complete
 
 ### Phase 27: DefectDojo CI Auto-Import
 
