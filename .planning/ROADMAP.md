@@ -67,7 +67,7 @@ Plans:
 - [x] 25-04-PLAN.md — merge PR 2, first sync to Synced+Healthy, capture hook/Job/PVC evidence, run the gate `--sync-pass first` (wave 3)
 - [x] 25-05-PLAN.md — second sync idempotency (ADR-021 item 7), NEXUS-04 client verify, Open Question 3 assessment (wave 4)
 - [x] 25-06-PLAN.md — security-platform PR: ship the gate, rewrite the chart README limitations, conditional chart edit (wave 5, checkpoint)
-- [ ] 25-07-PLAN.md — ADR-022 and NEXUS-05 closure in REQUIREMENTS.md (wave 6)
+- [x] 25-07-PLAN.md — ADR-022 and NEXUS-05 closure in REQUIREMENTS.md (wave 6)
 
 </details>
 
@@ -148,7 +148,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 22. branch-protection --apply live exercise | v2.0 | 6/6 | Complete | 2026-09-16 |
 | 23. Nexus Generic Chart | v3.0 | 8/8 | Complete   | 2026-09-19 |
 | 24. Nexus Anonymous Access and Workstation Script | v3.0 | 10/10 | Complete   | 2026-09-20 |
-| 25. Nexus Live Validation | v3.0 | 6/7 | In Progress|  |
+| 25. Nexus Live Validation | v3.0 | 7/7 | Complete   | 2026-09-24 |
 | 26. DefectDojo Generic Chart | v3.0 | 0/? | Not started | — |
 | 27. DefectDojo CI Auto-Import | v3.0 | 0/? | Not started | — |
 | 28. DefectDojo Dedup and Triage | v3.0 | 0/? | Not started | — |
