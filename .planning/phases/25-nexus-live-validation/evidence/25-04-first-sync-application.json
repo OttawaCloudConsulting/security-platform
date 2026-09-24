@@ -1,0 +1,97 @@
+{
+  "sync": "Synced",
+  "health": "Healthy",
+  "operationPhase": "Succeeded",
+  "revisions": [
+    "aed14b916e9aa8ec1d0d47699b457040b99f7eac",
+    "a05471be7ea73d455d31e66f9026fccdaa4cd8f7"
+  ],
+  "hooks": [
+    {
+      "kind": "Job",
+      "name": "nexus-provision",
+      "hookType": "Sync",
+      "hookPhase": "Succeeded",
+      "status": "Synced"
+    }
+  ],
+  "resources": [
+    {
+      "group": null,
+      "kind": "ConfigMap",
+      "name": "nexus-nexus3-logback",
+      "status": "Synced",
+      "health": null
+    },
+    {
+      "group": null,
+      "kind": "ConfigMap",
+      "name": "nexus-nexus3-props",
+      "status": "Synced",
+      "health": null
+    },
+    {
+      "group": null,
+      "kind": "ConfigMap",
+      "name": "nexus-nexus3-scripts",
+      "status": "Synced",
+      "health": null
+    },
+    {
+      "group": null,
+      "kind": "ConfigMap",
+      "name": "nexus-provision-script",
+      "status": "Synced",
+      "health": null
+    },
+    {
+      "group": null,
+      "kind": "ConfigMap",
+      "name": "nexus-repos",
+      "status": "Synced",
+      "health": null
+    },
+    {
+      "group": null,
+      "kind": "Service",
+      "name": "nexus-nexus3",
+      "status": "Synced",
+      "health": null
+    },
+    {
+      "group": null,
+      "kind": "Service",
+      "name": "nexus-nexus3-hl",
+      "status": "Synced",
+      "health": null
+    },
+    {
+      "group": null,
+      "kind": "ServiceAccount",
+      "name": "nexus-nexus3",
+      "status": "Synced",
+      "health": null
+    },
+    {
+      "group": "apps",
+      "kind": "StatefulSet",
+      "name": "nexus-nexus3",
+      "status": "Synced",
+      "health": null
+    },
+    {
+      "group": "batch",
+      "kind": "Job",
+      "name": "nexus-provision",
+      "status": null,
+      "health": null
+    },
+    {
+      "group": "bitnami.com",
+      "kind": "SealedSecret",
+      "name": "nexus-admin",
+      "status": "Synced",
+      "health": null
+    }
+  ]
+}

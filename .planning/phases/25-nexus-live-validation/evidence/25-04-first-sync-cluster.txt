@@ -1,0 +1,40 @@
+# 25-04 first-sync cluster facts (context admin@occ-new), captured 2026-09-24T01:05:11Z
+## Job nexus-provision status
+{
+  "completionTime": "2026-09-24T01:04:55Z",
+  "startTime": "2026-09-24T01:03:09Z",
+  "succeeded": 1,
+  "failed": 0,
+  "conditions": [
+    {
+      "type": "SuccessCriteriaMet",
+      "status": "True",
+      "reason": "CompletionsReached"
+    },
+    {
+      "type": "Complete",
+      "status": "True",
+      "reason": "CompletionsReached"
+    }
+  ]
+}
+## PVCs
+{
+  "name": "data-nexus-nexus3-0",
+  "storageClass": "default",
+  "phase": "Bound",
+  "size": "8Gi"
+}
+## Cluster default StorageClass
+default
+## Pods
+[
+  {
+    "name": "nexus-nexus3-0",
+    "phase": "Running"
+  },
+  {
+    "name": "nexus-provision-9c8h9",
+    "phase": "Succeeded"
+  }
+]
