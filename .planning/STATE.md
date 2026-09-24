@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 25-02-PLAN.md
-last_updated: "2026-09-24T00:41:42.489Z"
+stopped_at: Completed 25-03-PLAN.md
+last_updated: "2026-09-24T00:56:29.666Z"
 last_activity: 2026-09-24
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 25
-  completed_plans: 20
+  completed_plans: 21
   percent: 67
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 25 (nexus-live-validation) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-09-24
 
@@ -242,6 +242,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 25]: 25-01: nexus-homelab-validate.sh requires --url/--context/--sync-pass, owns no port-forward, sibling of nexus-live-smoke.sh
 - [Phase 25]: 25-01: realms reads try anonymous first, fall back to admin only on 401/403 (unmeasured whether anonymous may read realms)
 - [Phase 25]: 25-02: platform AppProject widened for Nexus via overlay PR #239 (merge 7b7e25c); operator approve-defaults (jetstack remote, 8Gi default SC, targetRevision aed14b9, retry 5/30s/x2/10m)
+- [Phase 25]: 25-03: nexus sources[0] pinned to security-platform aed14b916e9aa8ec1d0d47699b457040b99f7eac; admin password sealed as nexus/nexus-admin via controller sealed-secrets/sealed-secrets (not script default kube-system); PR #241 open and unmerged for 25-04
 
 ### Pending Todos
 
@@ -337,11 +338,12 @@ Carried forward from v1.1 close:
 | Phase 24 P10 | ~1h15m | 3 tasks | 6 files |
 | Phase 25 P01 | 35 min | 3 tasks | 1 files |
 | Phase 25 P02 | 25min | 3 tasks | 1 files |
+| Phase 25 P03 | 20 min | 3 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-09-24T00:41:37.783Z
-Stopped at: Completed 25-02-PLAN.md
+Last session: 2026-09-24T00:56:29.656Z
+Stopped at: Completed 25-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
