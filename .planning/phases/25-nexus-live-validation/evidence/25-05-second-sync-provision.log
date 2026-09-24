@@ -1,0 +1,12 @@
+Waiting for Nexus to become writable at http://<nexus-service-fqdn>:8081 ...
+Nexus is writable (HTTP 200).
+EULA: eula.accepted is true — accepting the Sonatype Nexus Repository Community Edition licence agreement.
+EULA: accepted (HTTP 204). The call is idempotent — a re-run returns 204 again.
+anonymous: OPEN (HTTP 200) — unauthenticated READ is now allowed across every repository on this instance, as user 'anonymous' via realm 'NexusAuthorizingRealm'. Idempotent: a re-run returns 200 again.
+realms: DockerToken already active — no change, and no request was made.
+Provisioning 4 proxy repositor(ies) from /config ...
+repo: format=npm name=npm-proxy action=updated (HTTP 204)
+repo: format=pypi name=pypi-proxy action=updated (HTTP 204)
+repo: format=docker name=docker-proxy action=updated (HTTP 204)
+repo: format=helm name=helm-proxy action=updated (HTTP 204)
+Provisioning complete: 4 proxy repositor(ies) present and online.
