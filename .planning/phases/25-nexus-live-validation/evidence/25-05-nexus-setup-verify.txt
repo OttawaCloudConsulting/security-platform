@@ -1,0 +1,60 @@
+# Recorder header (not script output). Command, run 2026-09-24 from a throwaway 'git init' repository seeded with a minimal package.json:
+#   bash repos/security-platform/workstation/nexus-setup.sh --verify --url http://127.0.0.1:8081
+# --docker-daemon was NOT passed. Nexus reached through: kubectl --context admin@occ-new -n nexus port-forward svc/nexus-nexus3 8081:8081
+# Path substitutions made after capture: the throwaway repository path -> <throwaway-git-repo>; the operator home directory -> ~
+# Per-row verdict vocabulary is the script's own (see the STATUS column and the "Rows:" line). The final SETUP_RC line is the script's exit code, appended by the recorder.
+# ---- verbatim script output follows ----
+==> Target repository: <throwaway-git-repo>
+==> Nexus base URL:    http://127.0.0.1:8081 (scheme http, host 127.0.0.1:8081)
+WARNING: sourcing .nexus-env sets PIP_CONFIG_FILE, which REPLACES your user-level pip configuration rather than adding to it. Measured: with it set, 'pip config list -v' no longer lists EITHER user-scope variant, so settings such as a corporate CA bundle or an extra-index-url silently stop applying in that shell. Source it per shell session; never from a shell rc file.
+
+Nexus routing report
+--------------------
+Repository: <throwaway-git-repo>
+Nexus:      http://127.0.0.1:8081
+
+npm       configured — .npmrc registry=http://127.0.0.1:8081/repository/npm-proxy/ (no environment needed)
+pip       configured — pip.conf index-url set, no TLS bypass needed; needs 'source .nexus-env'
+helm      configured — entry 'nexus' at http://127.0.0.1:8081/repository/helm-proxy/; needs 'source .nexus-env'
+docker    MANUAL — no per-repository configuration exists; .nexus-env exports a prefix string and nothing routes until an image reference is edited to use it
+daemon    not touched (--docker-daemon was not given)
+.gitignore appended 4 entries to .gitignore (--commit-config skips this)
+
+Files generated this run: 2 (existing files are left alone unless --force)
+
+To make pip and Helm use any of this, run in this shell:
+
+    source .nexus-env
+
+npm needs no environment. Docker has no per-repository mechanism at all:
+NEXUS_DOCKER_REGISTRY is a prefix you paste into an image reference, and
+even a machine-global Docker mirror would only ever affect Docker Hub
+references — ghcr.io, quay.io and public.ecr.aws are never routed by one.
+
+NOT PROVEN BY THE ROWS ABOVE. They say what was WRITTEN. The verification
+table below is the part that measures whether any client reads it.
+
+Nexus routing verification
+--------------------------
+Repository: <throwaway-git-repo>
+Nexus:      http://127.0.0.1:8081
+
+ECOSYSTEM MECHANISM                                  STATUS        OBSERVED
+--------- ---------                                  ------        --------
+npm       .npmrc (project scope)                     ok            npm resolves registry=http://127.0.0.1:8081/repository/npm-proxy/; 'npm pack lodash@4.17.21' pulled 318961 bytes through it with an empty cache
+pip       pip.conf via PIP_CONFIG_FILE               ok            pip reads global.index-url=http://127.0.0.1:8081/repository/pypi-proxy/simple and reports 'Looking in indexes: http://127.0.0.1:8081/repository/pypi-proxy/simple'; downloaded six-1.17.0-py2.py3-none-any.whl with the cache disabled
+helm      .helm/repositories.yaml via env redirect   ok            'helm repo list' shows 'nexus' at http://127.0.0.1:8081/repository/helm-proxy/; 'helm repo update' fetched its index and 'helm search repo -r nexus/' returned 12 chart row(s) from that repository; the global list ~/Library/Preferences/helm/repositories.yaml is unchanged (f573be9315bf7642ea29005bdfe5b8f65e784403fb8ebbbbef3d7f9ff623c5cb)
+docker    none - no per-repo mechanism exists        MANUAL        NEXUS_DOCKER_REGISTRY=127.0.0.1:8081/docker-proxy — nothing routes until an image REFERENCE is edited to start with that prefix, e.g. 'docker pull 127.0.0.1:8081/docker-proxy/library/alpine:3.21'.
+
+Rows: 3 ok, 0 not ok, 1 MANUAL.
+
+What 'ok' means here: that client, run from this repository, resolved this
+Nexus AND pulled a real component through it just now. What it does not mean:
+that any other shell is configured — pip and Helm need 'source .nexus-env' in
+every shell that uses them.
+
+MANUAL is not a pass and never becomes one. Docker has no per-repository
+configuration of any kind, so no run of this script can prove a Docker pull
+routes; and even a machine-global mirror only ever affects docker.io
+references — ghcr.io, quay.io and public.ecr.aws are never mirrored.
+SETUP_RC=0
