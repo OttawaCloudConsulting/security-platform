@@ -13,8 +13,8 @@
 <summary>🔄 v3.0 K8s Infra & Dashboards (Phases 23-29) — IN PROGRESS</summary>
 
 - [x] **Phase 23: Nexus Generic Chart** - Public Helm chart deploys Nexus with npm/PyPI/Docker/Helm proxy repos, default StorageClass (completed 2026-09-19)
-- [ ] **Phase 24: Nexus Anonymous Access and Workstation Script** - Anonymous pull enabled; install script points a target repo's package-manager config at a Nexus instance
-- [ ] **Phase 25: Nexus Live Validation** - Chart deployed to the homelab cluster via private ArgoCD overlay; proxy pulls proven live
+- [x] **Phase 24: Nexus Anonymous Access and Workstation Script** - Anonymous pull enabled; install script points a target repo's package-manager config at a Nexus instance
+- [x] **Phase 25: Nexus Live Validation** - Chart deployed to the homelab cluster via private ArgoCD overlay; proxy pulls proven live
 - [ ] **Phase 26: DefectDojo Generic Chart** - Public Helm chart deploys DefectDojo with external ingress and cert-manager TLS
 - [ ] **Phase 27: DefectDojo CI Auto-Import** - security-platform scan jobs push SARIF/JSON findings into DefectDojo automatically
 - [ ] **Phase 28: DefectDojo Dedup and Triage** - Dedup rules collapse repeated findings; triage workflow documented and configured
@@ -68,6 +68,30 @@ Plans:
 - [x] 25-05-PLAN.md — second sync idempotency (ADR-021 item 7), NEXUS-04 client verify, Open Question 3 assessment (wave 4)
 - [x] 25-06-PLAN.md — security-platform PR: ship the gate, rewrite the chart README limitations, conditional chart edit (wave 5, checkpoint)
 - [x] 25-07-PLAN.md — ADR-022 and NEXUS-05 closure in REQUIREMENTS.md (wave 6)
+
+### Phase 26: DefectDojo Generic Chart
+
+**Goal:** Public Helm chart deploys DefectDojo with external ingress and cert-manager-issued TLS, generic for any Kubernetes cluster: environment-specific values (hostnames, StorageClass overrides, ClusterIssuer names) are consumer-supplied, never baked into the public package.
+**Requirements**: DDOJO-01
+**Plans:** TBD
+
+### Phase 27: DefectDojo CI Auto-Import
+
+**Goal:** `security-platform` scan jobs automatically import their SARIF/JSON findings into a DefectDojo instance after each run.
+**Requirements**: DDOJO-02
+**Plans:** TBD
+
+### Phase 28: DefectDojo Dedup and Triage
+
+**Goal:** Deduplication rules collapse repeated findings across scans and tools, and a triage workflow for reviewing and dispositioning findings is documented and configured.
+**Requirements**: DDOJO-03, DDOJO-04
+**Plans:** TBD
+
+### Phase 29: DefectDojo Live Validation
+
+**Goal:** The DefectDojo generic chart (Phase 26) is deployed to the operator's homelab cluster via a private ArgoCD overlay, and CI import (Phase 27) with dedup/triage (Phase 28) is proven live end-to-end against that deployment.
+**Requirements**: DDOJO-05
+**Plans:** TBD
 
 </details>
 
@@ -156,4 +180,4 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 
 ## Next Milestone
 
-v3.0 not yet defined. Run `/gsd:new-milestone` to start requirements gathering. Candidate scope (see PROJECT.md "Next Milestone Goals"): Nexus Repository, DefectDojo dashboard, CI-to-DefectDojo import pipeline, Checkov baseline for existing repos.
+Not yet defined. v3.0 (Phases 23-29) is in progress. Run `/gsd:new-milestone` after v3.0 ships. Candidate scope: Checkov baseline for existing repos, and the hardening bucket deferred from v3.0 (NetworkPolicy isolation, backup automation, monitoring/alerting).
