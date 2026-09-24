@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 25-05-PLAN.md
-last_updated: "2026-09-24T01:17:41.748Z"
+stopped_at: Completed 25-06-PLAN.md
+last_updated: "2026-09-24T03:48:33.446Z"
 last_activity: 2026-09-24
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 25
-  completed_plans: 23
+  completed_plans: 24
   percent: 67
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 25 (nexus-live-validation) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-09-24
 
@@ -247,6 +247,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 25]: 25-04: anonymous realms read returns 403 live; the gate's admin fallback for DOCKER-REALM-ACTIVE is required
 - [Phase 25]: 25-05: Open Question 3 closed as NO CHART EDIT NEEDED (hookType Sync; BeforeHookCreation measured via new Job UID; 900s TTL truncated nothing). 25-06 leaves job-provision.yaml unchanged
 - [Phase 25]: 25-05: nexus-setup.sh --verify runs its configure writers first; run it from a throwaway git repo seeded with package.json
+- [Phase 25]: 25-06: security-platform PR #16 merged (61589d5); job-provision.yaml untouched per 25-05 NO CHART EDIT NEEDED; operator accepted the public README's ADR-022 refs (written by 25-07) and the NEXUS-05 table-row change
 
 ### Pending Todos
 
@@ -345,11 +346,12 @@ Carried forward from v1.1 close:
 | Phase 25 P03 | 20 min | 3 tasks | 5 files |
 | Phase 25 P04 | 12 min | 2 tasks | 4 files |
 | Phase 25 P05 | 10 min | 3 tasks | 5 files |
+| Phase 25 P06 | 2h25m incl. operator review | 3 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-24T01:17:41.738Z
-Stopped at: Completed 25-05-PLAN.md
+Last session: 2026-09-24T03:48:33.436Z
+Stopped at: Completed 25-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
