@@ -87,6 +87,8 @@ Port-forward: `kubectl --context admin@occ-new -n nexus port-forward svc/nexus-n
 | 1 | `32c9e26` | docs(25-04): first-sync evidence (Application projection, cluster facts) |
 | 2 | `d969494` | docs(25-04): first-pass live gate run (ALL PASS, 17 checks) |
 | 1 (fix) | `e008990` | docs(25-04): provisioning Job log, force-added past the global `*.log` ignore |
+| 1 (fix) | `58bc8ab` | docs(25-04): redact the in-cluster service FQDN from the provisioning log |
+| docs | `88b23c1` | docs(25-04): SUMMARY, STATE, ROADMAP |
 | overlay | `a05471b` | occ-k8s-app-config merge of PR #241 (made through `gh`; nothing was pushed from this repo) |
 
 ## Deviations from Plan
@@ -94,8 +96,7 @@ Port-forward: `kubectl --context admin@occ-new -n nexus port-forward svc/nexus-n
 1. **[Rule 3 - Blocking] Provisioning log was ignored by git.** The user's global `~/.gitignore:18` (`*.log`) excluded `25-04-first-sync-provision.log`, so the Task 1 commit left it out. I force-added that one explicit path (`git add -f`) in a follow-up commit, `e008990`. The repo's own `.gitignore` is unchanged.
 2. **Resource names.** I used `applications.argoproj.io` / `applicationsets.argoproj.io` in place of the bare names, because crossplane also defines an `Application` CRD on this cluster.
 3. **Log captured on Job completion, before Healthy.** A scratchpad watcher saved the log when `.status.succeeded >= 1`, so the capture no longer waited for health assessment to catch up. In practice both happened in the same 20s poll.
-4. **In-cluster service DNS in the log.** The provisioning log contains the in-cluster Service DNS name, `nexus-nexus3.nexus.svc.cluster.local`, taken from the Job's readiness-wait lines. I kept the log verbatim and did not redact it. That name is the generic Kubernetes Service DNS for a release named `nexus` in namespace `nexus`, it can be derived from the public chart, and it does not resolve outside the cluster. It is not a homelab hostname, node name, VIP or NAS endpoint. The evidence contains no IPv4 literal other than `127.0.0.1`.
-
+4. **In-cluster service FQDN redacted from the log.** The Job's readiness-wait lines contained the in-cluster Service FQDN, the generic `<svc>.<ns>.svc.cluster.local` form. Task 1's acceptance criterion says no evidence file may contain a DNS hostname, and it allows no exceptions. I therefore replaced every occurrence with `<nexus-service-fqdn>` in `58bc8ab`. No load-bearing line changed: `action=created` still appears 4 times, and the anonymous, realms and EULA lines are byte-identical.
 5. **NEXUS-05 left unchecked in REQUIREMENTS.md.** Plans 25-01 to 25-07 all list NEXUS-05. The second-sync idempotency check (25-05) and the formal closure (25-07) are still to run, so I did not run `requirements.mark-complete`. Plans 25-01 to 25-03 made the same choice.
 
 ## Evidence hygiene (checked before staging)
@@ -108,7 +109,7 @@ Port-forward: `kubectl --context admin@occ-new -n nexus port-forward svc/nexus-n
 ## Notes for 25-05 (second sync)
 
 - The next sync deletes `nexus-provision` (`before-hook-creation`) and re-creates it. The first-sync Job log exists only in this evidence file.
-- The Job TTL (900s from 01:04:55) has passed by now, so the Job object is probably gone. The second-pass gate will read a fresh Job.
+- The Job TTL expires about 01:19:55Z (900s after 01:04:55). By the time 25-05 runs, the TTL controller will have reaped the Job object, and the second sync re-creates it for the second-pass gate to read.
 
 ## Known Stubs
 
@@ -121,7 +122,7 @@ None. T-25-18, T-25-21, T-25-22 and T-25-23 were mitigated as specified, and T-2
 ## Self-Check: PASSED
 
 - All four evidence files exist and are tracked: `git ls-files` lists them after commits `32c9e26`, `d969494` and `e008990`
-- Commits `32c9e26`, `d969494` and `e008990` exist on `feature/phase-12-repo-setup-script`
+- Commits `32c9e26`, `d969494`, `e008990`, `58bc8ab` and `88b23c1` exist on `feature/phase-12-repo-setup-script`
 - PR #241 is `MERGED` at `a05471b`
 - The plan's Task 1 and Task 2 `<verify>` blocks both passed (`T1-VERIFY-OK`, `T2-VERIFY-OK`)
 - No port-forward process is left running
