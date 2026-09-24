@@ -1,0 +1,37 @@
+=== nexus-homelab-validate: http://127.0.0.1:8081 (context admin@occ-new, namespace nexus, sync pass first) ===
+
+--- 1. Cluster-side: Argo CD hook phase, provisioning Job, PVC ---
+==> ARGOCD-HOOK-PHASE: PASS - Application nexus: Job nexus-provision ran as a Sync hook and its hookPhase is Succeeded
+job.batch/nexus-provision condition met
+==> PROVISION-JOB-COMPLETE-CONDITION: exit=0 (PASS - completed successfully)
+==> PROVISION-JOB-REPOS: PASS - provisioning log records action=created exactly 4 times (npm, pypi, docker, helm) on the first sync
+==> PVC-DEFAULT-STORAGECLASS: PASS - 1 PVC(s) in nexus are Bound on the measured cluster default StorageClass 'default'
+
+--- 2. Anonymous pull: npm, PyPI, Helm ---
+==> ANONYMOUS-PULL-ALLOWED-TRANSPORT: PASS - unauthenticated curl completed against http://127.0.0.1:8081/repository/npm-proxy/lodash/-/lodash-4.17.21.tgz
+==> ANONYMOUS-PULL-ALLOWED-HTTP-200: PASS - unauthenticated GET of http://127.0.0.1:8081/repository/npm-proxy/lodash/-/lodash-4.17.21.tgz returned HTTP 200 - anonymous pull is OPEN
+==> ANONYMOUS-PULL-ALLOWED-SIZE: PASS - 318961 bytes pulled with no credential (> 100000)
+==> ANONYMOUS-PULL-PYPI-TRANSPORT: PASS - unauthenticated curl completed against http://127.0.0.1:8081/repository/pypi-proxy/simple/requests/
+==> ANONYMOUS-PULL-PYPI-HTTP-200: PASS - unauthenticated GET of the requests simple page returned HTTP 200
+==> ANONYMOUS-PULL-PYPI-SIZE: PASS - 76776 bytes of simple index pulled with no credential (> 20000)
+==> ANONYMOUS-PULL-HELM-TRANSPORT: PASS - unauthenticated curl completed against http://127.0.0.1:8081/repository/helm-proxy/index.yaml
+==> ANONYMOUS-PULL-HELM-HTTP-200: PASS - unauthenticated GET of http://127.0.0.1:8081/repository/helm-proxy/index.yaml returned HTTP 200
+==> ANONYMOUS-PULL-HELM-SIZE: PASS - 291818 bytes of chart index pulled with no credential (> 100000)
+
+--- 3. Docker: realms, URL shape ---
+==> DOCKER-REALM-ACTIVE: PASS - active realms are ["NexusAuthenticatingRealm","DockerToken"] (read as admin (anonymous read returned HTTP 403)) - DockerToken exactly once, NexusAuthenticatingRealm intact
+==> DOCKER-PATH-SHAPE: PASS - /v2/docker-proxy/library/alpine/manifests/3.21 is 200 and /v2/repository/docker-proxy/library/alpine/manifests/3.21 is 404 - the documented Docker reference is the one that routes
+
+--- 4. Docker anonymous handshake, write boundary ---
+==> ANONYMOUS-PULL-DOCKER: PASS - full anonymous client handshake: GET /v2/ -> 401 + Bearer challenge; token minted at http://127.0.0.1:8081/repository/docker-proxy/v2/token with no credential; http://127.0.0.1:8081/v2/docker-proxy/library/alpine/manifests/3.21 -> 200 WITH Authorization: Bearer; linux/amd64 layer sha256:16333ee0c00fc65e025a2a4f839703ad37a74728832977fbdf080984de1b8e5a streamed 3626020 bytes (> 1000000)
+==> ANONYMOUS-WRITE-DENIED: PASS - an unauthenticated POST of a structurally valid npm proxy body returned exactly 403 and created nothing (admin GET of anon-write-probe is 404, while the same URL shape returns 200 for the existing npm-proxy) - anonymous read does not extend to write
+
+--- 5. Second-sync idempotency ---
+    SKIPPED - --sync-pass first
+
+
+=== Summary ===
+SKIPPED - 1 sub-check(s) did not run. A SKIP IS NOT A PASS:
+  - SECOND-SYNC-IDEMPOTENT: not evaluated on a --sync-pass first run; re-run this gate with --sync-pass second after the second Argo CD sync
+
+ALL PASS - 17 live check(s) executed and passed; 1 sub-check(s) skipped (not passed).
