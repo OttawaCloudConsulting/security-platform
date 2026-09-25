@@ -87,8 +87,23 @@ callee = load(HOST_SECURITY_YML)
 caller = load(HOST_PR_SECURITY_YML)
 
 callee_jobs = callee.get("jobs") or {}
-job_names = [body.get("name") for body in callee_jobs.values() if isinstance(body, dict)]
-job_names = [n for n in job_names if n]
+# Contexts are derived from the five SCAN jobs only, looked up by id in this
+# fixed order. The DefectDojo side-channel jobs (`defectdojo-import`,
+# `defectdojo-cleanup`) are deliberately excluded: they are never required
+# contexts (Phase 27 D-03). Deriving from "every job with a name:" would turn a
+# named side-channel job into a sixth context, and relying on the `if n` filter
+# to drop unnamed jobs would only work by accident (Phase 27 RESEARCH Pitfall 1).
+SCAN_JOB_IDS = ["sast", "iac", "sca", "container", "secrets"]
+job_names = []
+for jid in SCAN_JOB_IDS:
+    body = callee_jobs.get(jid)
+    if not isinstance(body, dict):
+        fail("DERIVE-CONTEXTS", "scan job {!r} missing from {}".format(jid, HOST_SECURITY_YML))
+        continue
+    if not body.get("name"):
+        fail("DERIVE-CONTEXTS", "scan job {!r} in {} has no name:".format(jid, HOST_SECURITY_YML))
+        continue
+    job_names.append(body["name"])
 
 caller_jobs = caller.get("jobs") or {}
 caller_job_names = [body.get("name") for body in caller_jobs.values() if isinstance(body, dict)]
