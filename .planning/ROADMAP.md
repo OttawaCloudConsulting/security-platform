@@ -111,7 +111,20 @@ Plans:
 
 **Goal:** `security-platform` scan jobs automatically import their SARIF/JSON findings into a DefectDojo instance after each run.
 **Requirements**: DDOJO-02
-**Plans:** TBD
+**Plans:** 10 plans in 10 waves (sequential: one working tree per repository)
+
+Plans:
+
+- [ ] 27-01-PLAN.md — Gates: split scan vs side-channel jobs in check-workflow-uploads.sh; adoption-guide contexts by job id
+- [ ] 27-02-PLAN.md — security.yml: optional secret, closed-skip on scan jobs, defectdojo-import job (reimport-scan loop + red verify)
+- [ ] 27-03-PLAN.md — security.yml: defectdojo-cleanup job with the exact-name, product-scoped, default-branch-refusing delete
+- [ ] 27-04-PLAN.md — Callers: pr-security.yml closed + secret pass, scheduled-security.yml (06:00 America/Toronto); gate made mandatory
+- [ ] 27-05-PLAN.md — Proof harness part 1: smoke post-hook, extract-and-run of committed bodies, staff token, run-1 assertions
+- [ ] 27-06-PLAN.md — Proof harness part 2: reimport, cleanup, hostile-name, scope, insecure-warning; proof workflow; local kind run
+- [ ] 27-07-PLAN.md — PR + real GitHub Actions proof run (D-19), operator approval, merge to security-platform main
+- [ ] 27-08-PLAN.md — Post-merge closed-event and dispatch evidence; operator-approved v1.1.0 tag and v1 move
+- [ ] 27-09-PLAN.md — Adoption guide "Enable DefectDojo Import" section plus its gate check
+- [ ] 27-10-PLAN.md — ADR-024, ADR index row, DDOJO-02 Complete
 
 ### Phase 28: DefectDojo Dedup and Triage
 
