@@ -43,11 +43,16 @@ set -euo pipefail
 #                   bodies, refuse `${{`, `bash -n` each, cross-check every
 #                   contract env name against the committed step env, and
 #                   assert the two dd-gate bodies are identical.
+#   --scheme-only   offline, no cluster, no network: P-HTTP only. Extracts and
+#                   runs the committed dd-import and dd-delete bodies with a
+#                   non-https DEFECTDOJO_URL and asserts they refuse before
+#                   any request (27-11, CR-01).
 #   --hook          live, called by the smoke: mint tokens, run the committed
 #                   bodies, assert run 1, the in-place reimport (run 2), the
 #                   schedule path, a hostile head ref, product-scoped cleanup,
 #                   the cleanup refusals and no-match no-op, and the
-#                   insecure-TLS warning. Prints one
+#                   insecure-TLS warning and the non-https refusal
+#                   (P-HTTP). Prints one
 #                   "PROOF: <ID> PASS|FAIL <detail>" line per assertion and
 #                   ends with "PROOF PASS - <n> assertions" or
 #                   "PROOF FAIL - <k> of <n>".
@@ -57,7 +62,7 @@ set -euo pipefail
 # Assertion groups (D-20): P-EXTRACT P-TLS P-ADMIN-TOKEN P-USER
 # P-IMPORTER-TOKEN P-GATE P-RUN1 P-CONTEXT P-TESTS P-COUNTS (run 1, 27-05);
 # P-RUN2 P-SCHEDULE P-HOSTILE P-SCOPE P-CLEANUP P-REFUSE P-NOMATCH P-INSECURE
-# (27-06). Every body run uses the ci-importer token.
+# (27-06); P-HTTP (27-11, CR-01). Every body run uses the ci-importer token.
 #
 # Credentials are generated or read at runtime, written only to 0600 files,
 # sent with `--data-binary @file` or `-H @file`, never placed on any argv and
@@ -66,6 +71,7 @@ set -euo pipefail
 # Never set the executable bit on this file (project rule). Invoke as:
 #   bash scripts/defectdojo-import-proof.sh <reports-dir>
 #   bash scripts/defectdojo-import-proof.sh --extract-only
+#   bash scripts/defectdojo-import-proof.sh --scheme-only
 #
 # Exit codes:
 #   0  --extract-only: every static check passed; --hook: every proof
@@ -107,7 +113,7 @@ readonly PROOF_HOSTILE_REF='@dd-proof/$(touch pwned)'
 readonly PROOF_NOMATCH_REF="never/existed"
 
 usage() {
-  echo "usage: bash scripts/defectdojo-import-proof.sh <reports-dir> | --extract-only | --hook" >&2
+  echo "usage: bash scripts/defectdojo-import-proof.sh <reports-dir> | --extract-only | --scheme-only | --hook" >&2
   exit 2
 }
 
@@ -521,6 +527,102 @@ read_engagement_total() {
   else
     echo "error"
   fi
+}
+
+# prove_http_refusal BODIES_DIR REPORTS_DIR: P-HTTP (27-11, CR-01). Runs the
+# COMMITTED dd-import and dd-delete bodies (extract_bodies output, never a
+# copy) with a non-https DEFECTDOJO_URL and asserts each one refuses before
+# anything else: exit 1, the "must be https://" line, no "TLS mode:" line (so
+# no false verified-system label), no "http=" line (no request was reported),
+# no results file, and the dummy token never in the log. REPORTS_DIR must be
+# POPULATED so an unrefused import would attempt requests; an empty dir would
+# make "no request" vacuous. Nothing listens on port 9. The token is a
+# gen_secret dummy, never a real credential. Emits one P-HTTP line per
+# sub-case through proof_pass/proof_fail and never aborts.
+prove_http_refusal() {
+  local bodies="$1" reports="$2"
+  local b_import="${bodies}/defectdojo-import__dd-import.sh"
+  local b_delete="${bodies}/defectdojo-cleanup__dd-delete.sh"
+  local tok label case_url res why
+  tok="p27http$(gen_secret 24)"
+
+  echo
+  echo "=== non-https DEFECTDOJO_URL is refused before any request (P-HTTP) ==="
+  for label in import-http import-noscheme delete-http; do
+    case "$label" in
+      import-noscheme) case_url="127.0.0.1:9" ;;
+      *) case_url="http://127.0.0.1:9" ;;
+    esac
+    res="${PROOF_DIR}/results-${label}.json"
+    rm -f "$res"
+    if [ "$label" = "delete-http" ]; then
+      run_body "$label" "$b_delete" \
+        "DD_URL=${case_url}" \
+        "DD_TOKEN=${tok}" \
+        "DD_PRODUCT=${PROOF_PRODUCT}" \
+        "DD_INSECURE=" \
+        "DD_CA_CERT=" \
+        "DD_DEFAULT_BRANCH=${PROOF_DEFAULT_BRANCH}" \
+        "DD_CLEANUP_RESULT_FILE=${res}" \
+        "GITHUB_HEAD_REF=${PROOF_BRANCH_A}"
+    else
+      run_body "$label" "$b_import" \
+        "DD_URL=${case_url}" \
+        "DD_TOKEN=${tok}" \
+        "DD_PRODUCT=${PROOF_PRODUCT}" \
+        "DD_PRODUCT_TYPE=${PROOF_PRODUCT_TYPE}" \
+        "DD_INSECURE=" \
+        "DD_CA_CERT=" \
+        "DD_REPORTS_DIR=${reports}" \
+        "DD_RESULTS_FILE=${res}" \
+        "GITHUB_ACTOR=proof-actor" \
+        "GITHUB_EVENT_NAME=pull_request" \
+        "GITHUB_HEAD_REF=${PROOF_BRANCH_A}" \
+        "GITHUB_REF_NAME=27/merge" \
+        "GITHUB_SHA=${PROOF_SHA}" \
+        "GITHUB_RUN_ID=${PROOF_RUN_ID}" \
+        "GITHUB_SERVER_URL=${PROOF_SERVER_URL}" \
+        "GITHUB_REPOSITORY=${PROOF_REPOSITORY}"
+    fi
+    # The token must not reach the terminal either: mask it before echoing.
+    sed -e "s/${tok}/<dummy-token>/g" -e 's/^/    | /' "$BODY_LOG"
+    why=""
+    [ "$BODY_RC" -eq 1 ] || why="${why} exit ${BODY_RC} (expected 1);"
+    grep -q 'must be https://' "$BODY_LOG" || why="${why} no 'must be https://' refusal line;"
+    if grep -q 'TLS mode:' "$BODY_LOG"; then why="${why} a 'TLS mode:' line was printed;"; fi
+    if grep -q 'http=' "$BODY_LOG"; then why="${why} an 'http=' request line was printed;"; fi
+    if [ -e "$res" ]; then why="${why} results file ${res##*/} was written;"; fi
+    if grep -qF -- "$tok" "$BODY_LOG"; then why="${why} the dummy token appears in the log;"; fi
+    if [ -z "$why" ]; then
+      proof_pass "P-HTTP" "${label}: DD_URL=${case_url} -> exit 1, refused before the TLS label, no request, no results file, token absent"
+    else
+      proof_fail "P-HTTP" "${label}: DD_URL=${case_url}:${why}"
+    fi
+  done
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# --scheme-only (offline P-HTTP; no cluster, no network)
+# ─────────────────────────────────────────────────────────────────────────────
+mode_scheme_only() {
+  require_bins jq yq python3
+  umask 077
+  DD_SMOKE_OUT="$(mktemp -d)"
+  # shellcheck disable=SC2064  # expand now: the path is fixed for this run
+  trap "rm -rf '${DD_SMOKE_OUT}'" EXIT
+  PROOF_DIR="${DD_SMOKE_OUT}/proof"
+  mkdir -p "$PROOF_DIR"
+  local bodies="${PROOF_DIR}/bodies" reports="${PROOF_DIR}/reports" ex_rc=0
+  mkdir -p "$bodies" "$reports"
+  extract_bodies "$bodies" || ex_rc=$?
+  if [ "$ex_rc" -ne 0 ]; then
+    echo "FATAL: --scheme-only: the committed side-channel bodies failed the static contract (exit ${ex_rc})" >&2
+    exit 1
+  fi
+  printf '{}\n' > "${reports}/semgrep-results.json"
+  printf '{}\n' > "${reports}/checkov-results.json"
+  prove_http_refusal "$bodies" "$reports"
+  proof_finish
 }
 
 mode_hook() {
@@ -1336,6 +1438,9 @@ PY
     proof_fail "P-INSECURE" "DD_INSECURE=true: exit ${BODY_RC}, results '${insecure_state}', warning marker $(grep -c '::warning::' "$BODY_LOG" || true); expected exit 0, the ::warning:: line and 'insecure attempted=0 skipped=8'"
   fi
 
+  # ── P-HTTP (27-11, CR-01) ─────────────────────────────────────────────────
+  prove_http_refusal "$bodies" "$DD_PROOF_REPORTS"
+
   proof_finish
 }
 
@@ -1348,6 +1453,10 @@ case "${1:-}" in
   --hook)
     [ "$#" -eq 1 ] || usage
     mode_hook
+    ;;
+  --scheme-only)
+    [ "$#" -eq 1 ] || usage
+    mode_scheme_only
     ;;
   "" | -*)
     usage
