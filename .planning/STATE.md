@@ -4,13 +4,13 @@ milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
 stopped_at: Phase 27 context gathered
-last_updated: "2026-09-25T13:44:17.443Z"
-last_activity: 2026-09-25 -- Phase 27 planning complete
+last_updated: "2026-09-25T14:01:56.510Z"
+last_activity: 2026-09-25
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 42
-  completed_plans: 32
+  completed_plans: 33
   percent: 57
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 27 — defectdojo ci auto import
+**Current focus:** Phase 27 — defectdojo-ci-auto-import
 
 ## Current Position
 
-Phase: 27
-Plan: Not started
+Phase: 27 (defectdojo-ci-auto-import) — EXECUTING
+Plan: 2 of 10
 Status: Ready to execute
-Last activity: 2026-09-25 -- Phase 27 planning complete
+Last activity: 2026-09-25
 
 ## Performance Metrics
 
@@ -261,6 +261,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 26]: 26-05: live smoke ALL PASS (12 checks, 196 s) at security-platform 60205bd; KIND-CELERY-PING passed on primary inspect ping, fallback never observed
 - [Phase 26]: 26-06: PR #19 merged OUT OF BAND by the operator (mergeCommit e097381, two parents 61589d5 + 60205bd, mergedAt 2026-09-25T02:20:25Z); gh pr merge never invoked. kubernetes/defectdojo (6 paths) + both scripts verified on origin/main via ls-tree after fetch, 0 paths under charts/; 12/12 CI checks pass; offline gate PASS 20/0 on a detached origin/main checkout. Decisions a-g recorded as accepted by the operator merge, not per-item approval. PRs #17/#18 (Dependabot) left unmerged, not needed for Phase 26.
 - [Phase 26]: 26-07: ADR-023 Accepted (DefectDojo chart base, fail-guard issuer, 3.3.200 pin); cites PR #19 e097381 and PR #20 71a112e (helm repo add fix); DDOJO-01 Complete. PR #17/#18 measured MERGED (785d807, db1adf8), correcting 'still open'; CI Checkov now 3.3.19, 26-05's 3.3.17 CI-equivalent not repeated. Nexus README build-only install likely same gap (not reproduced) - follow-up.
+- [Phase 27]: 27-01: gate side-channel checks are per job and vacuous (NOTE line) while jobs are absent; 27-04 makes them mandatory
+- [Phase 27]: 27-01: IMPORT-VERIFY-PAIRING reads the later red step's env:, not run:, to compose with NO-INTERPOLATION
 
 ### Pending Todos
 
@@ -368,12 +370,13 @@ Carried forward from v1.1 close:
 | Phase 26 P05 | ~20 min | 2 tasks | 4 files |
 | Phase 26 P06 | ~15 min | 3 tasks | 0 files |
 | Phase 26 P07 | ~20 min | 2 tasks | 3 files |
+| Phase 27 P01 | 20min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-25T12:31:51.246Z
+Last session: 2026-09-25T14:01:39.724Z
 Stopped at: Phase 27 context gathered
-Resume file: .planning/phases/27-defectdojo-ci-auto-import/27-CONTEXT.md
+Resume file: None
 
 ## Operator Next Steps
 
