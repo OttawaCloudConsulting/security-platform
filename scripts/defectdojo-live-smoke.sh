@@ -77,6 +77,22 @@ readonly INGRESS_NGINX_URL="https://raw.githubusercontent.com/kubernetes/ingress
 readonly RELEASE="defectdojo"
 readonly SMOKE_HOST="defectdojo.smoke.test"
 readonly ISSUER_NAME="smoke-ca"
+# The Secret (and Certificate) cert-manager's ingress-shim creates from the
+# Ingress annotation (D-10). It carries ca.crt, which is what curl verifies with.
+readonly TLS_SECRET="defectdojo-tls"
+# Local end of `port-forward svc/ingress-nginx-controller 18443:443`: a high
+# port, so no kind extraPortMappings and no clash with host 80/443 (Pitfall 7).
+readonly PF_PORT="18443"
+readonly BASE_URL="https://${SMOKE_HOST}:${PF_PORT}"
+# Upstream DD_ADMIN_USER default; the smoke does not override it.
+readonly ADMIN_USER="admin"
+# Workloads, confirmed by rendering the interface-contract prototype with
+# `helm template defectdojo ... | yq 'select(.kind=="Deployment") | .metadata.name'`.
+# Re-confirm against the real chart in plan 26-05; KIND-DEPLOYMENTS-READY FAILs
+# by name if any of them is absent, so a rename cannot pass silently.
+readonly DEPLOYMENTS=(defectdojo-django defectdojo-celery-worker defectdojo-celery-beat)
+readonly CELERY_DEPLOYMENT="defectdojo-celery-worker"
+readonly CELERY_CONTAINER="celery"
 
 # Assigned BEFORE the trap so `set -u` cannot trip inside the cleanup path.
 # KIND_CREATED is the trap's ownership flag: it flips to 1 only AFTER
@@ -480,5 +496,225 @@ require_success "KIND-INSTALL" helm install "$RELEASE" "$CHART_DIR" --kube-conte
   --set "defectdojo.siteUrl=https://${SMOKE_HOST}" \
   --set "defectdojo.django.ingress.annotations.cert-manager\\.io/cluster-issuer=${ISSUER_NAME}" \
   --wait --timeout 15m
+
+if [ "${#FAILURES[@]}" -gt 0 ]; then
+  # A failed install makes every assertion below a consequence of it; the pod
+  # table is the diagnostic that matters (Pitfall 2: look for OOMKilled uwsgi).
+  echo "    install failed; pod state in namespace ${KIND_NS}:"
+  kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" get pods -o wide || echo "    (could not list pods)"
+  print_summary
+fi
+
+echo "--- 7. workloads ---"
+# KIND-DEPLOYMENTS-READY. Deliberately NOT the Nexus KIND-JOB-COMPLETE shape:
+# the DefectDojo initializer Job has ttlSecondsAfterFinished 60 and is gone
+# about a minute after it completes (measured), so waiting on it, or treating an
+# empty Job set as a failure, fails spuriously. The migration signal is django
+# readiness instead: its db-migration-checker init container blocks until
+# `manage.py migrate --check` passes.
+dep_ok=1
+for d in "${DEPLOYMENTS[@]}"; do
+  if ! kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" get deployment "$d" >/dev/null 2>&1; then
+    dep_ok=0
+    fail "KIND-DEPLOYMENTS-READY" "Deployment ${d} does not exist in namespace ${KIND_NS} (renamed by the chart?)"
+  fi
+done
+if [ "$dep_ok" -eq 1 ]; then
+  if kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" wait --for=condition=Available deployment --all --timeout=600s >/dev/null; then
+    pass "KIND-DEPLOYMENTS-READY" "every Deployment in ${KIND_NS} is Available, including ${DEPLOYMENTS[*]}"
+  else
+    fail "KIND-DEPLOYMENTS-READY" "not every Deployment in ${KIND_NS} became Available within 600s"
+    kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" get pods -o wide || echo "    (could not list pods)"
+  fi
+fi
+
+# KIND-PG-PVC-BOUND (D-08: Postgres is persistent). At least one PVC whose name
+# contains `postgresql`, and every such PVC Bound.
+pvc_json="$(kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" get pvc -o json)"
+pg_pvcs="$(printf '%s' "$pvc_json" | jq -r '[.items[] | select(.metadata.name | test("postgresql"))] | map(.metadata.name + "=" + (.status.phase // "none")) | join(" ")')"
+pg_count="$(printf '%s' "$pvc_json" | jq '[.items[] | select(.metadata.name | test("postgresql"))] | length')"
+pg_unbound="$(printf '%s' "$pvc_json" | jq '[.items[] | select(.metadata.name | test("postgresql")) | select(.status.phase != "Bound")] | length')"
+if [ "$pg_count" -ge 1 ] && [ "$pg_unbound" -eq 0 ]; then
+  pass "KIND-PG-PVC-BOUND" "Postgres PVC(s) Bound: ${pg_pvcs}"
+else
+  fail "KIND-PG-PVC-BOUND" "expected >=1 Bound PVC matching 'postgresql' in ${KIND_NS}, found ${pg_count} (${pg_pvcs:-none})"
+fi
+
+echo "--- 8. ingress and certificate ---"
+# KIND-CERT-READY (D-10): ingress-shim created the Certificate from the Ingress
+# annotation; the chart ships no Certificate template.
+if kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" wait --for=condition=Ready "certificate/${TLS_SECRET}" --timeout=300s >/dev/null; then
+  pass "KIND-CERT-READY" "Certificate ${TLS_SECRET} (created by ingress-shim from the annotation) is Ready"
+else
+  fail "KIND-CERT-READY" "Certificate ${TLS_SECRET} did not become Ready within 300s (or ingress-shim never created it)"
+fi
+
+# KIND-INGRESSCLASS-DEFAULTED (D-12): the chart renders NO ingressClassName; the
+# API server's DefaultIngressClass admission fills it in from the IngressClass
+# annotated default in section 3. `nginx` here proves the chart deferred to the
+# cluster default rather than hardcoding a class.
+ing_json="$(kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" get ingress -o json)"
+ing_count="$(printf '%s' "$ing_json" | jq '.items | length')"
+ing_class="$(printf '%s' "$ing_json" | jq -r '.items[0].spec.ingressClassName // "<unset>"')"
+if [ "$ing_count" -eq 1 ] && [ "$ing_class" = "nginx" ]; then
+  pass "KIND-INGRESSCLASS-DEFAULTED" "the live Ingress has ingressClassName nginx, set by DefaultIngressClass admission"
+else
+  fail "KIND-INGRESSCLASS-DEFAULTED" "expected exactly 1 Ingress with live ingressClassName nginx, found ${ing_count} Ingress(es), class '${ing_class}'"
+fi
+
+echo "--- 9. verified TLS, login and broker ---"
+# The CA that signed the served certificate, taken from the Secret cert-manager
+# issued. Every curl below verifies against it; none uses -k (Pitfall 7: -k
+# would hide the ingress controller's fake default certificate).
+ca_rc=0
+kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" get secret "$TLS_SECRET" -o jsonpath='{.data.ca\.crt}' > "$OUT/ca.crt.b64" || ca_rc=$?
+if [ "$ca_rc" -ne 0 ] || [ ! -s "$OUT/ca.crt.b64" ]; then
+  fail "KIND-TLS-LOGIN-200" "Secret ${TLS_SECRET} has no ca.crt (read exited ${ca_rc}); nothing to verify the served certificate against"
+  print_summary
+fi
+base64 -d < "$OUT/ca.crt.b64" > "$OUT/ca.crt"
+if ! grep -q 'BEGIN CERTIFICATE' "$OUT/ca.crt"; then
+  fail "KIND-TLS-LOGIN-200" "ca.crt from Secret ${TLS_SECRET} is not a PEM certificate"
+  print_summary
+fi
+
+kubectl --context "$KIND_CONTEXT" --namespace ingress-nginx port-forward svc/ingress-nginx-controller "${PF_PORT}:443" > "$OUT/port-forward.log" 2>&1 &
+PF_PID=$!
+pf_up=0
+for _ in $(seq 1 30); do
+  if ! kill -0 "$PF_PID" 2>/dev/null; then
+    break
+  fi
+  if (exec 3<>"/dev/tcp/127.0.0.1/${PF_PORT}") 2>/dev/null; then
+    pf_up=1
+    break
+  fi
+  sleep 1
+done
+if [ "$pf_up" -ne 1 ]; then
+  fail "KIND-TLS-LOGIN-200" "port-forward svc/ingress-nginx-controller ${PF_PORT}:443 did not answer within 30s: $(tr '\n' ' ' < "$OUT/port-forward.log")"
+  print_summary
+fi
+
+# KIND-TLS-LOGIN-200 (the D-14 literal). --resolve sends the real Host/SNI to
+# the port-forward, so ingress-nginx routes it (a wrong Host is a measured 404)
+# and Django sees an allowed host. curl exits 60 on a verification failure, so
+# its exit status is asserted as well as ssl_verify_result.
+tls_rc=0
+tls_out="$(curl -sS --resolve "${SMOKE_HOST}:${PF_PORT}:127.0.0.1" --cacert "$OUT/ca.crt" -o /dev/null -w '%{http_code} %{ssl_verify_result}' "${BASE_URL}/login" 2>"$OUT/tls.err")" || tls_rc=$?
+tls_code="${tls_out%% *}"
+tls_verify="${tls_out##* }"
+# The served certificate itself: issuer must be the smoke CA and the SAN must be
+# the smoke host. This is what distinguishes cert-manager-issued TLS from the
+# controller's fake default certificate.
+cert_rc=0
+openssl s_client -connect "127.0.0.1:${PF_PORT}" -servername "$SMOKE_HOST" </dev/null 2>/dev/null \
+  | openssl x509 -noout -issuer -text > "$OUT/served-cert.txt" 2>&1 || cert_rc=$?
+cert_issuer="$(sed -n 's/^issuer=[[:space:]]*//p' "$OUT/served-cert.txt")"
+if [ "$tls_rc" -ne 0 ]; then
+  fail "KIND-TLS-LOGIN-200" "curl --cacert exited ${tls_rc} (60 = certificate verification failed): $(tr '\n' ' ' < "$OUT/tls.err")"
+elif [ "$tls_code" != "200" ] || [ "$tls_verify" != "0" ]; then
+  fail "KIND-TLS-LOGIN-200" "GET ${BASE_URL}/login returned http_code ${tls_code}, ssl_verify_result ${tls_verify}; expected 200 and 0"
+elif [ "$cert_rc" -ne 0 ]; then
+  fail "KIND-TLS-LOGIN-200" "could not read the served certificate with openssl s_client (exit ${cert_rc})"
+elif ! printf '%s\n' "$cert_issuer" | grep -qE "CN[[:space:]]*=[[:space:]]*${ISSUER_NAME}"; then
+  fail "KIND-TLS-LOGIN-200" "served certificate issuer is '${cert_issuer}', expected CN=${ISSUER_NAME}"
+elif ! grep -q "DNS:${SMOKE_HOST}" "$OUT/served-cert.txt"; then
+  fail "KIND-TLS-LOGIN-200" "served certificate has no SAN DNS:${SMOKE_HOST}"
+else
+  pass "KIND-TLS-LOGIN-200" "GET ${BASE_URL}/login -> 200 with ssl_verify_result 0 against the issued ca.crt; served cert issuer ${cert_issuer}, SAN DNS:${SMOKE_HOST}"
+fi
+
+# KIND-LOGIN (beyond D-14's literal text, RESEARCH OQ5). A GET /login 200 was
+# measured while uwsgi was one login POST from OOMKill, so the evidence is a real
+# admin login: fetch the CSRF cookie and form token, POST the credentials with a
+# same-origin Referer, expect 302, then load /dashboard with the session.
+# The password goes in via `password@FILE`, never on argv.
+#
+# If this FAILs with 403, report the CSRF reason and stop there. Do NOT add
+# DD_CSRF_TRUSTED_ORIGINS / DD_SECURE_PROXY_SSL_HEADER to make it pass: the
+# measured run passed without them, and a 403 is a finding for the operator
+# (RESEARCH OQ4), not a smoke defect.
+JAR="$OUT/cookies.txt"
+login_ok=1
+get_rc=0
+get_code="$(curl -sS --resolve "${SMOKE_HOST}:${PF_PORT}:127.0.0.1" --cacert "$OUT/ca.crt" -c "$JAR" -o "$OUT/login-form.html" -w '%{http_code}' "${BASE_URL}/login" 2>"$OUT/login-get.err")" || get_rc=$?
+csrf_token="$(sed -n 's/.*name="csrfmiddlewaretoken" value="\([^"]*\)".*/\1/p' "$OUT/login-form.html")"
+csrf_token="${csrf_token%%$'\n'*}"
+if [ "$get_rc" -ne 0 ] || [ "$get_code" != "200" ]; then
+  login_ok=0
+  fail "KIND-LOGIN" "GET /login for the CSRF token returned http_code ${get_code:-none} (curl exit ${get_rc}): $(tr '\n' ' ' < "$OUT/login-get.err")"
+elif [ -z "$csrf_token" ]; then
+  login_ok=0
+  fail "KIND-LOGIN" "the /login form carries no csrfmiddlewaretoken hidden field"
+elif ! grep -q 'csrftoken' "$JAR"; then
+  login_ok=0
+  fail "KIND-LOGIN" "GET /login set no csrftoken cookie"
+fi
+
+if [ "$login_ok" -eq 1 ]; then
+  post_rc=0
+  post_out="$(curl -sS --resolve "${SMOKE_HOST}:${PF_PORT}:127.0.0.1" --cacert "$OUT/ca.crt" -b "$JAR" -c "$JAR" \
+    -H "Referer: https://defectdojo.smoke.test:18443/login" \
+    --data-urlencode "username=${ADMIN_USER}" \
+    --data-urlencode "password@$OUT/admin-pw" \
+    --data-urlencode "csrfmiddlewaretoken=${csrf_token}" \
+    -o "$OUT/login-post.html" -w '%{http_code} %{redirect_url}' "${BASE_URL}/login" 2>"$OUT/login-post.err")" || post_rc=$?
+  post_code="${post_out%% *}"
+  post_location="${post_out#* }"
+  if [ "$post_rc" -ne 0 ]; then
+    fail "KIND-LOGIN" "login POST: curl exited ${post_rc}: $(tr '\n' ' ' < "$OUT/login-post.err")"
+  elif [ "$post_code" = "403" ]; then
+    csrf_reason="$(sed -n '/Reason given for failure/,/<\/pre>/p' "$OUT/login-post.html" | sed -e 's/<[^>]*>//g' | tr -s ' \n' ' ')"
+    if [ -z "$csrf_reason" ]; then
+      csrf_reason="$(sed -e 's/<[^>]*>//g' "$OUT/login-post.html" | tr -s ' \n' ' ' | cut -c1-300)"
+    fi
+    fail "KIND-LOGIN" "login POST returned 403 (CSRF rejection behind the proxy; see RESEARCH OQ4, do not paper over it): ${csrf_reason}"
+  elif [ "$post_code" != "302" ]; then
+    # A wrong password re-renders the form with 200; an OOMKilled uwsgi gives a
+    # 502/503 from the ingress. Either way it is not a login.
+    fail "KIND-LOGIN" "login POST returned http_code ${post_code}, expected 302 (200 = credentials rejected; 502/503 = backend died, check uwsgi for OOMKilled)"
+  elif printf '%s' "$post_location" | grep -q '/login'; then
+    fail "KIND-LOGIN" "login POST redirected back to the login page (${post_location}); the session was not established"
+  else
+    dash_rc=0
+    dash_code="$(curl -sS --resolve "${SMOKE_HOST}:${PF_PORT}:127.0.0.1" --cacert "$OUT/ca.crt" -b "$JAR" -o /dev/null -w '%{http_code}' "${BASE_URL}/dashboard" 2>"$OUT/dash.err")" || dash_rc=$?
+    if [ "$dash_rc" -ne 0 ]; then
+      fail "KIND-LOGIN" "GET /dashboard: curl exited ${dash_rc}: $(tr '\n' ' ' < "$OUT/dash.err")"
+    elif [ "$dash_code" != "200" ]; then
+      fail "KIND-LOGIN" "login POST gave 302 but GET /dashboard with the session returned ${dash_code}, expected 200"
+    else
+      pass "KIND-LOGIN" "admin login POST (CSRF token + Referer) -> 302 to ${post_location}; /dashboard with the session -> 200, all over verified TLS"
+    fi
+  fi
+fi
+
+# KIND-CELERY-PING (beyond D-14's literal text, RESEARCH OQ5). Upstream ships no
+# Celery probes, and neither login nor the initializer dispatches a task, so a
+# Running worker proves nothing about the broker. A broker round-trip does.
+#
+# RESEARCH A7: `celery -A dojo inspect ping` inside the worker is UNMEASURED.
+# If it errors for a reason that is NOT broker connectivity (the command or the
+# app module cannot be found), fall back to the worker's own broker-connected
+# log line, and say so in the pass message. kombu logs the URL scheme as
+# `redis://` even against Valkey; the exact line is to be confirmed from a live
+# log in plan 26-05. If both fail it is a FAIL, never a dropped check.
+ping_rc=0
+kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" exec "deploy/${CELERY_DEPLOYMENT}" -c "$CELERY_CONTAINER" -- celery -A dojo inspect ping -t 5 > "$OUT/celery-ping.txt" 2>&1 || ping_rc=$?
+if [ "$ping_rc" -eq 0 ] && grep -q 'pong' "$OUT/celery-ping.txt"; then
+  pass "KIND-CELERY-PING" "celery -A dojo inspect ping in ${CELERY_DEPLOYMENT}/${CELERY_CONTAINER} exited 0 with pong (broker round-trip)"
+elif [ "$ping_rc" -eq 126 ] || [ "$ping_rc" -eq 127 ] \
+  || grep -qE 'No module named|executable file not found|command not found|Unable to load celery application|Invalid value for .-A' "$OUT/celery-ping.txt"; then
+  echo "    celery inspect ping unusable here (exit ${ping_rc}, not a broker error): $(tr '\n' ' ' < "$OUT/celery-ping.txt" | cut -c1-300)"
+  logs_rc=0
+  kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" logs "deploy/${CELERY_DEPLOYMENT}" -c "$CELERY_CONTAINER" > "$OUT/celery-worker.log" 2>&1 || logs_rc=$?
+  if [ "$logs_rc" -eq 0 ] && grep -qE 'Connected to (redis|valkey)://' "$OUT/celery-worker.log"; then
+    pass "KIND-CELERY-PING" "(fallback: log grep) worker log shows: $(grep -E 'Connected to (redis|valkey)://' "$OUT/celery-worker.log" | sed -n '1p' | sed -e 's#//[^@]*@#//***@#')"
+  else
+    fail "KIND-CELERY-PING" "inspect ping unusable (exit ${ping_rc}) AND no 'Connected to redis://|valkey://' line in the worker log (logs exit ${logs_rc})"
+  fi
+else
+  fail "KIND-CELERY-PING" "celery -A dojo inspect ping exited ${ping_rc} without pong (broker unreachable or worker not replying): $(tr '\n' ' ' < "$OUT/celery-ping.txt" | cut -c1-300)"
+fi
 
 print_summary
