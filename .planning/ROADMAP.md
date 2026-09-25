@@ -129,7 +129,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 27-04-PLAN.md — Callers: pr-security.yml closed + secret pass, scheduled-security.yml (06:00 America/Toronto); gate made mandatory
+- [x] 27-04-PLAN.md — Callers: pr-security.yml closed + secret pass, scheduled-security.yml (06:00 America/Toronto); gate made mandatory
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -248,7 +248,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 24. Nexus Anonymous Access and Workstation Script | v3.0 | 10/10 | Complete   | 2026-09-20 |
 | 25. Nexus Live Validation | v3.0 | 7/7 | Complete    | 2026-09-24 |
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
-| 27. DefectDojo CI Auto-Import | v3.0 | 3/10 | In Progress|  |
+| 27. DefectDojo CI Auto-Import | v3.0 | 4/10 | In Progress|  |
 | 28. DefectDojo Dedup and Triage | v3.0 | 0/? | Not started | — |
 | 29. DefectDojo Live Validation | v3.0 | 0/? | Not started | — |
 
