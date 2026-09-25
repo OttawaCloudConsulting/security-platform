@@ -111,7 +111,7 @@ Plans:
 
 **Goal:** `security-platform` scan jobs automatically import their SARIF/JSON findings into a DefectDojo instance after each run.
 **Requirements**: DDOJO-02
-**Plans:** 10 plans in 10 waves (sequential: one working tree per repository)
+**Plans:** 14 plans in 14 waves (sequential: one working tree per repository; 27-11..27-14 are CR-01 gap closure)
 
 Plans:
 
@@ -154,6 +154,22 @@ Plans:
 **Wave 10** *(blocked on Wave 9 completion)*
 
 - [x] 27-10-PLAN.md — ADR-024, ADR index row, DDOJO-02 Complete
+
+**Wave 11** *(gap closure CR-01; blocked on Wave 10 completion)*
+
+- [ ] 27-11-PLAN.md — https-only refusal and curl --proto pins in dd-import/dd-delete; SCHEME gate check; P-HTTP proof and --scheme-only mode
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [ ] 27-12-PLAN.md — Operator-approved push/PR, live proof run with P-HTTP, operator-approved merge to security-platform main
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [ ] 27-13-PLAN.md — Dispatch proof on main; operator-approved v1.1.1 tag and v1 move
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [ ] 27-14-PLAN.md — ADR-025 (supersedes ADR-024 decision 13 in prose), index row, adoption-guide https requirement plus gate needle
 
 ### Phase 28: DefectDojo Dedup and Triage
 
