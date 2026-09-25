@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 26-04-PLAN.md
-last_updated: "2026-09-25T00:51:04.187Z"
+stopped_at: Completed 26-05-PLAN.md
+last_updated: "2026-09-25T01:09:00.728Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 32
-  completed_plans: 29
+  completed_plans: 30
   percent: 43
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 26 (defectdojo-generic-chart) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-09-25
 
@@ -257,6 +257,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 26]: 26-03: issuer kind selected by the annotation key itself (cluster-issuer vs issuer); no issuerKind value; guard is a fail, not required
 - [Phase 26]: 26-04: media stays upstream emptyDir, documented as README Limitation with defectdojo.django.mediaPersistentVolume.* override; operator acceptance in 26-06
 - [Phase 26]: 26-04: External PostgreSQL/Valkey recipe written from pinned 1.9.53 values and checked by offline render; upstream createSecret=true step not followed (D-13)
+- [Phase 26]: 26-05: CI Checkov coverage of kubernetes/defectdojo recorded as MEASURED-ZERO-WITH-A-NAMED-CAUSE (validate-tls issuer guard stops the bare render); local rendered 66 failed/568 passed/26 resources, 0 on wrapper resources
+- [Phase 26]: 26-05: live smoke ALL PASS (12 checks, 196 s) at security-platform 60205bd; KIND-CELERY-PING passed on primary inspect ping, fallback never observed
 
 ### Pending Todos
 
@@ -361,11 +363,12 @@ Carried forward from v1.1 close:
 | Phase 26 P02 | ~25 min | 2 tasks | 1 files |
 | Phase 26 P03 | ~10 min | 2 tasks | 5 files |
 | Phase 26 P04 | ~20 min | 2 tasks | 2 files |
+| Phase 26 P05 | ~20 min | 2 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-09-25T00:51:04.178Z
-Stopped at: Completed 26-04-PLAN.md
+Last session: 2026-09-25T01:09:00Z
+Stopped at: Completed 26-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
