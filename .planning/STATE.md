@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 26-01-PLAN.md
-last_updated: "2026-09-25T00:13:11.216Z"
+stopped_at: Completed 26-02-PLAN.md
+last_updated: "2026-09-25T00:36:52.614Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 32
-  completed_plans: 26
+  completed_plans: 27
   percent: 43
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 26 (defectdojo-generic-chart) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-09-25
 
@@ -251,6 +251,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 25]: 25-07: ADR-022 records ingress/TLS excluded (L-01); ADR-021 items 1 and 4 remain open; ADR-020 items 3-4 and ADR-021 item 7 closed by observation
 - [Phase 26]: 26-01: Gate counts objects with yq ea length (zero-safe) instead of grep -c || true; RENDERED-IMAGES and tarball path derive from Chart.yaml, never hardcoded
 - [Phase 26]: 26-01: DDOJO-01 stays Pending until the phase's final plan (23-08/24-10/25-07 precedent)
+- [Phase 26]: 26-02: smoke subchart vendoring is preflight (exit 2), not a counted live check, so vendoring alone can never produce ALL PASS
+- [Phase 26]: 26-02: KIND-CELERY-PING log-grep fallback only when the ping command is unusable; broker-side ping failure is a FAIL
 
 ### Pending Todos
 
@@ -352,11 +354,12 @@ Carried forward from v1.1 close:
 | Phase 25 P06 | 2h25m incl. operator review | 3 tasks | 2 files |
 | Phase 25 P07 | 15 min | 2 tasks | 3 files |
 | Phase 26 P01 | 30 min | 2 tasks | 1 files |
+| Phase 26 P02 | ~25 min | 2 tasks | 1 files |
 
 ## Session Continuity
 
 Last session: 2026-09-25T00:12:02.447Z
-Stopped at: Completed 26-01-PLAN.md
+Stopped at: Completed 26-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
