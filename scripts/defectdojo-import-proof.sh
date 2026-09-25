@@ -572,8 +572,11 @@ mode_hook() {
   # CURL_HOME resolve entry and --cacert apply. Each assertion is printed as a
   # "PROOF: <ID> PASS|FAIL" line and tallied below.
   local assert_log="${PROOF_DIR}/assert-run1.log" py_rc=0
+  # PROOF_PRODUCT / PROOF_PRODUCT_TYPE are readonly, and bash refuses a
+  # command-prefix assignment to a readonly name (the variable is then NOT
+  # passed), so they are exported instead.
+  export PROOF_PRODUCT PROOF_PRODUCT_TYPE
   PROOF_ADMIN_HDR="$admin_hdr" PROOF_RESULTS="$results1" PROOF_RUN1_OUT="${DD_SMOKE_OUT}/proof-run1.json" \
-    PROOF_PRODUCT="$PROOF_PRODUCT" PROOF_PRODUCT_TYPE="$PROOF_PRODUCT_TYPE" \
     PROOF_ENGAGEMENT="ci/${PROOF_BRANCH_A}" PROOF_TMP="$PROOF_DIR" \
     python3 - > "$assert_log" 2>&1 <<'PY' || py_rc=$?
 import glob
@@ -609,7 +612,7 @@ class ApiError(Exception):
     pass
 
 
-def get(path, params):
+def get(path, params, count_only=False):
     url = "{}{}?{}".format(base, path, urllib.parse.urlencode(params))
     cmd = ["curl", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
            "-w", "%{http_code} %{ssl_verify_result}", url]
@@ -624,7 +627,9 @@ def get(path, params):
         raise ApiError("GET {} -> curl exit {}, http {}, ssl_verify_result {}: {}".format(
             path, proc.returncode, code, verify, (body or proc.stderr)[:300]))
     data = json.loads(body)
-    if isinstance(data, dict) and data.get("next"):
+    # A list lookup must fit on one page (no guessing); a count-only query
+    # (limit=1, reads `count`) is paged by design.
+    if not count_only and isinstance(data, dict) and data.get("next"):
         raise ApiError("GET {} returned more than one page".format(path))
     return data
 
@@ -768,7 +773,8 @@ try:
         want = expected.get(name)
         stats = r.get("statistics") if isinstance(r.get("statistics"), dict) else {}
         after = ((stats.get("after") or {}).get("total") or {}).get("total")
-        count = get("/api/v2/findings/", {"test": r.get("test_id"), "limit": 1}).get("count")
+        count = get("/api/v2/findings/", {"test": r.get("test_id"), "limit": 1},
+                    count_only=True).get("count")
         raw = raw_count(name, want["path"]) if want else None
         kind = want["kind"] if want else "unknown"
         print("    {:<26} {:>5} {:>17} {:>13}  {}".format(name, str(raw), str(after), str(count), kind))
