@@ -75,7 +75,7 @@ Three of those keys need extra care:
 
 That last property is why this chart does not generate secrets. A chart-generated value can be regenerated on a `helm upgrade` or an ArgoCD sync, which would replace the AES key.
 
-Create the namespace and the three Secrets first. The example uses a release named `defectdojo`, so the application Secret is literally named `defectdojo`. The admin password is prompted for, and the other values are generated at the lengths upstream's own generator uses (22, 128, 128 and 32 alphanumeric characters). Everything reaches `kubectl` on stdin, so no secret value lands in shell history, a file or a process argument list:
+Create the namespace and the three Secrets first. The example uses a release named `defectdojo`, so the application Secret is literally named `defectdojo`. The admin password is prompted for, and the other values are generated at the lengths upstream's own generator uses (22, 128, 128 and 32 alphanumeric characters). Everything reaches `kubectl` on stdin, so no secret value lands in shell history, a file or a process argument list. The values are placed inside double-quoted YAML strings, so do not use `"` or `\` in the admin password:
 
 ```bash
 kubectl create namespace defectdojo
@@ -173,7 +173,7 @@ The shipped placeholder, `defectdojo.example.com`, is reserved by RFC 2606, and 
 
 With upstream's uwsgi defaults, the django pod was measured ending in `CrashLoopBackOff` with `OOMKilled` (exit 137), so `helm install --wait` never succeeded. Two causes were isolated on a kind cluster:
 
-- With `maxFd: 0`, uwsgi sizes its file-descriptor table from the container's open-file limit, which was 1073741816 on that node. The container was OOMKilled at startup. Setting `maxFd` alone fixed the startup OOM; setting `processes: 2` alone did not.
+- With `maxFd: 0`, the container was OOMKilled at startup, and the uwsgi log reported a detected max file descriptor number of 1073741816. Setting `maxFd` alone fixed the startup OOM; setting `processes: 2` alone did not. The mechanism, that uwsgi sizes its descriptor table from that limit, is inferred from the log line, not proven. The fix is measured.
 - With upstream's four processes, Django sits at about 440 MiB idle under a 512Mi limit, and the first admin login pushed it over the limit. A `GET /login` still returned 200 in that state, so a login-page check alone does not rule this out.
 
 This chart therefore sets:
