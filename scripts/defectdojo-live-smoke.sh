@@ -254,8 +254,19 @@ if [ -z "$DD_CHART_VERSION" ] || [ "$DD_CHART_VERSION" = "null" ]; then
   exit 2
 fi
 DD_TARBALL="${CHART_DIR}/charts/defectdojo-${DD_CHART_VERSION}.tgz"
+DD_REPO_URL="$(unquote "$(yq '.dependencies[0].repository' "${CHART_DIR}/Chart.yaml")")"
 if [ ! -f "$DD_TARBALL" ]; then
   echo "    ${DD_TARBALL} not vendored; running helm dependency build (needs network)"
+  # `helm dependency build` refuses an HTTP repository that is not registered
+  # with `helm repo add`. Register it in a throwaway repository config under
+  # $OUT (removed by the EXIT trap) so the operator's own Helm repo list is
+  # never modified.
+  export HELM_REPOSITORY_CONFIG="${OUT}/helm-repositories.yaml"
+  export HELM_REPOSITORY_CACHE="${OUT}/helm-cache"
+  if ! helm repo add defectdojo "$DD_REPO_URL" >/dev/null; then
+    echo "FATAL: helm repo add defectdojo ${DD_REPO_URL} failed; ${DD_TARBALL} is still absent" >&2
+    exit 2
+  fi
   if ! helm dependency build "$CHART_DIR"; then
     echo "FATAL: helm dependency build ${CHART_DIR} failed; ${DD_TARBALL} is still absent" >&2
     exit 2

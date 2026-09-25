@@ -188,9 +188,10 @@ With these settings, peak uwsgi memory after an admin login was measured at 388-
 
 ## Install
 
-The subchart tarball is not committed (`kubernetes/*/charts/*.tgz` is gitignored), so a fresh clone must resolve dependencies first:
+The subchart tarball is not committed (`kubernetes/*/charts/*.tgz` is gitignored), so a fresh clone must resolve dependencies first. `helm dependency build` only downloads from repositories registered with `helm repo add`, so register the DefectDojo chart repository once per machine:
 
 ```bash
+helm repo add defectdojo https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/helm-charts
 helm dependency build kubernetes/defectdojo
 ```
 
@@ -292,7 +293,7 @@ Two scripts in this repository check the chart. Run both from the repository roo
 - the uwsgi footprint is set;
 - the wrapper has no `defectdojo.*` helper, and `values.yaml` names no real environment.
 
-Exit code 1 means a chart defect. Exit code 2 means the machine is missing a tool or the vendored subchart; run `helm dependency build kubernetes/defectdojo` and retry.
+Exit code 1 means a chart defect. Exit code 2 means the machine is missing a tool or the vendored subchart; resolve the dependency as described under [Install](#install) and retry.
 
 **Live smoke.** `bash scripts/defectdojo-live-smoke.sh` builds a throwaway kind cluster named `dd-smoke`, installs the chart once, and asserts the following:
 
