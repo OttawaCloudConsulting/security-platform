@@ -125,7 +125,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 27-03-PLAN.md — security.yml: defectdojo-cleanup job with the exact-name, product-scoped, default-branch-refusing delete
+- [x] 27-03-PLAN.md — security.yml: defectdojo-cleanup job with the exact-name, product-scoped, default-branch-refusing delete
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -248,7 +248,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 24. Nexus Anonymous Access and Workstation Script | v3.0 | 10/10 | Complete   | 2026-09-20 |
 | 25. Nexus Live Validation | v3.0 | 7/7 | Complete    | 2026-09-24 |
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
-| 27. DefectDojo CI Auto-Import | v3.0 | 2/10 | In Progress|  |
+| 27. DefectDojo CI Auto-Import | v3.0 | 3/10 | In Progress|  |
 | 28. DefectDojo Dedup and Triage | v3.0 | 0/? | Not started | — |
 | 29. DefectDojo Live Validation | v3.0 | 0/? | Not started | — |
 

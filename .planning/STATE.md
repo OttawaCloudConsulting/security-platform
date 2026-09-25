@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 27-02-PLAN.md
-last_updated: "2026-09-25T14:17:12.776Z"
+stopped_at: Completed 27-03-PLAN.md
+last_updated: "2026-09-25T14:31:14.494Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 42
-  completed_plans: 34
+  completed_plans: 35
   percent: 57
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 27 (defectdojo-ci-auto-import) — EXECUTING
-Plan: 3 of 10
+Plan: 4 of 10
 Status: Ready to execute
 Last activity: 2026-09-25
 
@@ -264,6 +264,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 27]: 27-01: gate side-channel checks are per job and vacuous (NOTE line) while jobs are absent; 27-04 makes them mandatory
 - [Phase 27]: 27-01: IMPORT-VERIFY-PAIRING reads the later red step's env:, not run:, to compose with NO-INTERPOLATION
 - [Phase 27]: 27-02: defectdojo-import job added (gate/download/reimport/verify); curl transport failures record http_code 000 so verify goes red; bodies proven against a local mock, live proof deferred to 27-05/06
+- [Phase 27]: 27-03: defectdojo-cleanup job added (exact product/engagement guard, default-branch refusal, no-match no-op, re-GET confirm); all exit-0 paths write the result file; bodies proven against a local mock, live proof deferred to 27-06
 
 ### Pending Todos
 
@@ -373,11 +374,12 @@ Carried forward from v1.1 close:
 | Phase 26 P07 | ~20 min | 2 tasks | 3 files |
 | Phase 27 P01 | 20min | 2 tasks | 2 files |
 | Phase 27 P02 | 35min | 2 tasks | 1 files |
+| Phase 27 P03 | 25min | 1 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-25T14:17:12.768Z
-Stopped at: Completed 27-02-PLAN.md
+Last session: 2026-09-25T14:31:14.485Z
+Stopped at: Completed 27-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
