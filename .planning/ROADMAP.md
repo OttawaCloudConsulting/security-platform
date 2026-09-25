@@ -157,7 +157,7 @@ Plans:
 
 **Wave 11** *(gap closure CR-01; blocked on Wave 10 completion)*
 
-- [ ] 27-11-PLAN.md — https-only refusal and curl --proto pins in dd-import/dd-delete; SCHEME gate check; P-HTTP proof and --scheme-only mode
+- [x] 27-11-PLAN.md — https-only refusal and curl --proto pins in dd-import/dd-delete; SCHEME gate check; P-HTTP proof and --scheme-only mode
 
 **Wave 12** *(blocked on Wave 11 completion)*
 
@@ -264,7 +264,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 24. Nexus Anonymous Access and Workstation Script | v3.0 | 10/10 | Complete   | 2026-09-20 |
 | 25. Nexus Live Validation | v3.0 | 7/7 | Complete    | 2026-09-24 |
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
-| 27. DefectDojo CI Auto-Import | v3.0 | 10/10 | Complete   | 2026-09-25 |
+| 27. DefectDojo CI Auto-Import | v3.0 | 11/14 | In Progress|  |
 | 28. DefectDojo Dedup and Triage | v3.0 | 0/? | Not started | — |
 | 29. DefectDojo Live Validation | v3.0 | 0/? | Not started | — |
 
