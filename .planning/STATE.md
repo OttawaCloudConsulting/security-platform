@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Phase 26 context gathered
-last_updated: "2026-09-24T20:52:38.144Z"
-last_activity: 2026-09-24 -- Phase 26 planning complete
+stopped_at: Completed 26-01-PLAN.md
+last_updated: "2026-09-25T00:13:11.216Z"
+last_activity: 2026-09-25
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 32
-  completed_plans: 25
+  completed_plans: 26
   percent: 43
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 26 — DefectDojo Generic Chart
+**Current focus:** Phase 26 — defectdojo-generic-chart
 
 ## Current Position
 
-Phase: 26
-Plan: Not started
+Phase: 26 (defectdojo-generic-chart) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-09-24 -- Phase 26 planning complete
+Last activity: 2026-09-25
 
 ## Performance Metrics
 
@@ -249,6 +249,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 25]: 25-05: nexus-setup.sh --verify runs its configure writers first; run it from a throwaway git repo seeded with package.json
 - [Phase 25]: 25-06: security-platform PR #16 merged (61589d5); job-provision.yaml untouched per 25-05 NO CHART EDIT NEEDED; operator accepted the public README's ADR-022 refs (written by 25-07) and the NEXUS-05 table-row change
 - [Phase 25]: 25-07: ADR-022 records ingress/TLS excluded (L-01); ADR-021 items 1 and 4 remain open; ADR-020 items 3-4 and ADR-021 item 7 closed by observation
+- [Phase 26]: 26-01: Gate counts objects with yq ea length (zero-safe) instead of grep -c || true; RENDERED-IMAGES and tarball path derive from Chart.yaml, never hardcoded
+- [Phase 26]: 26-01: DDOJO-01 stays Pending until the phase's final plan (23-08/24-10/25-07 precedent)
 
 ### Pending Todos
 
@@ -349,12 +351,13 @@ Carried forward from v1.1 close:
 | Phase 25 P05 | 10 min | 3 tasks | 5 files |
 | Phase 25 P06 | 2h25m incl. operator review | 3 tasks | 2 files |
 | Phase 25 P07 | 15 min | 2 tasks | 3 files |
+| Phase 26 P01 | 30 min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-24T19:04:48.728Z
-Stopped at: Phase 26 context gathered
-Resume file: .planning/phases/26-defectdojo-generic-chart/26-CONTEXT.md
+Last session: 2026-09-25T00:12:02.447Z
+Stopped at: Completed 26-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
