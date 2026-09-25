@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: executing
-stopped_at: Completed 26-06-PLAN.md
-last_updated: "2026-09-25T02:23:54.616Z"
+status: verifying
+stopped_at: Completed 26-07-PLAN.md
+last_updated: "2026-09-25T03:02:19.095Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 32
-  completed_plans: 31
-  percent: 43
+  completed_plans: 32
+  percent: 57
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 Phase: 26 (defectdojo-generic-chart) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-25
 
 ## Performance Metrics
@@ -260,6 +260,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 26]: 26-05: CI Checkov coverage of kubernetes/defectdojo recorded as MEASURED-ZERO-WITH-A-NAMED-CAUSE (validate-tls issuer guard stops the bare render); local rendered 66 failed/568 passed/26 resources, 0 on wrapper resources
 - [Phase 26]: 26-05: live smoke ALL PASS (12 checks, 196 s) at security-platform 60205bd; KIND-CELERY-PING passed on primary inspect ping, fallback never observed
 - [Phase 26]: 26-06: PR #19 merged OUT OF BAND by the operator (mergeCommit e097381, two parents 61589d5 + 60205bd, mergedAt 2026-09-25T02:20:25Z); gh pr merge never invoked. kubernetes/defectdojo (6 paths) + both scripts verified on origin/main via ls-tree after fetch, 0 paths under charts/; 12/12 CI checks pass; offline gate PASS 20/0 on a detached origin/main checkout. Decisions a-g recorded as accepted by the operator merge, not per-item approval. PRs #17/#18 (Dependabot) left unmerged, not needed for Phase 26.
+- [Phase 26]: 26-07: ADR-023 Accepted (DefectDojo chart base, fail-guard issuer, 3.3.200 pin); cites PR #19 e097381 and PR #20 71a112e (helm repo add fix); DDOJO-01 Complete. PR #17/#18 measured MERGED (785d807, db1adf8), correcting 'still open'; CI Checkov now 3.3.19, 26-05's 3.3.17 CI-equivalent not repeated. Nexus README build-only install likely same gap (not reproduced) - follow-up.
 
 ### Pending Todos
 
@@ -366,11 +367,12 @@ Carried forward from v1.1 close:
 | Phase 26 P04 | ~20 min | 2 tasks | 2 files |
 | Phase 26 P05 | ~20 min | 2 tasks | 4 files |
 | Phase 26 P06 | ~15 min | 3 tasks | 0 files |
+| Phase 26 P07 | ~20 min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-09-25T02:24:07Z
-Stopped at: Completed 26-06-PLAN.md
+Last session: 2026-09-25T03:02:24Z
+Stopped at: Completed 26-07-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
