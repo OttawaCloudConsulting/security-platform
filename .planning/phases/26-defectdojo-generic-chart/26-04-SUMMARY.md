@@ -40,7 +40,7 @@ metrics:
 
 | # | Task | Commit (security-platform) | Files |
 |---|------|--------|-------|
-| 1 | Chart README for kubernetes/defectdojo | `2b039c5` | `kubernetes/defectdojo/README.md` |
+| 1 | Chart README for kubernetes/defectdojo | `2b039c5`, fix `60205bd` | `kubernetes/defectdojo/README.md` |
 | 2 | Root README tree and Milestones row | `56fa939` | `README.md` |
 
 ## Verification (measured, from repos/security-platform/)
@@ -63,6 +63,8 @@ None that change scope. Two editorial choices were made within the plan's latitu
 - The Requirements table phrases DDOJO-05 as "validated live via a private ArgoCD overlay". The REQUIREMENTS.md text contains "homelab", which the acceptance grep forbids.
 - The Checkov Limitations bullet gives no finding count. RESEARCH's 66 failed / 568 passed was measured on the prototype render, not on the committed chart, so the README points at the phase record instead. 26-06 or 26-07 should re-measure against the final chart if a number is wanted.
 
+**Post-task fix (`60205bd`, found in review).** §4 had stated the uwsgi fd-table mechanism as fact, but RESEARCH A6 marks it as assumed. It now says the mechanism is inferred from the log line and that only the `maxFd` fix is measured. The same commit adds a caveat that the admin password must not contain `"` or `\`, because the Secret heredoc puts it in a double-quoted YAML string. The Task 1 `<automated>` block was re-run against this commit and exited 0, with markdownlint Passed.
+
 ## Notes for later plans
 
 - 26-05: the README quotes these measurements, all from RESEARCH and all taken on kind: the 101 s warm install, the uwsgi peak of 388-430 MiB, and the OOM causes. If the live smoke measures different values, update them. The README does not claim the smoke has passed.
@@ -76,4 +78,4 @@ None. `defectdojo.example.com`/`.org`, `NAME`, `db.example.org` and `cache.examp
 ## Self-Check: PASSED
 
 - FOUND: repos/security-platform/kubernetes/defectdojo/README.md
-- FOUND: 2b039c5, 56fa939 on feature/phase-26-defectdojo-generic-chart
+- FOUND: 2b039c5, 56fa939, 60205bd on feature/phase-26-defectdojo-generic-chart
