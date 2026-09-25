@@ -46,6 +46,7 @@ The Phase 26 kind smoke now has an optional post-hook. `scripts/defectdojo-impor
 |------|------|--------|------|
 | 1 | Add the optional post-hook to the kind smoke | `7e43593` | security-platform (branch `feature/phase-27-defectdojo-ci-auto-import`) |
 | 2 | Write defectdojo-import-proof.sh (entry, --extract-only, token minting, run-1 assertions) | `7e43593` | security-platform |
+| 2 (fix) | Read-side assertions: readonly env prefix, paged findings count | `bdbc34a` | security-platform |
 
 The plan asked for one commit covering both tasks: `test(27-05): add DefectDojo import proof harness and smoke post-hook`.
 
@@ -91,6 +92,9 @@ The plan asked for one commit covering both tasks: `test(27-05): add DefectDojo 
 | Read-side Python heredoc | `py_compile` OK (222 lines) |
 | Pre-commit hooks (shellcheck) on commit | Passed |
 | curl 8.7.1: `CURL_HOME` curlrc `resolve` | observed `Added proof.smoke.invalid:18999:127.0.0.1 to DNS cache` |
+| After fix `bdbc34a`: the readonly names reach Python via `export` (sourced functions) | printed `proof/security-platform CI` |
+| After fix `bdbc34a`: stubbed `get()`, where the response has `next` set | `count_only=True` returns count 5; a list lookup is still refused ("more than one page") |
+| After fix: shellcheck both, `--extract-only`, the four greps, mode 644, uploads 18/0, `/nonexistent` exit 2 | all unchanged and green |
 
 No kind cluster was started and no live smoke was run (static-only per plan). The live run happens in 27-06.
 
@@ -116,6 +120,18 @@ No kind cluster was started and no live smoke was run (static-only per plan). Th
 - **Fix:** For each package, the raw count is the number of dict-typed `via` entries, or 1 when `via` holds only package names.
 - **Commit:** `7e43593`
 
+**4. [Rule 1 - Bug] Readonly names in a command-prefix assignment**
+- **Found during:** final review, before handback
+- **Issue:** The read-side `python3 -` call assigned the readonly `PROOF_PRODUCT` / `PROOF_PRODUCT_TYPE` in its command prefix. Bash refuses that: observed `A: readonly variable`, and the name was not passed to the child. Python would therefore raise `KeyError` before any P-CONTEXT/P-TESTS/P-COUNTS line printed.
+- **Fix:** `export PROOF_PRODUCT PROOF_PRODUCT_TYPE` before the call.
+- **Commit:** `bdbc34a`
+
+**5. [Rule 1 - Bug] One-page guard rejected the count-only findings query**
+- **Found during:** final review, before handback
+- **Issue:** `get()` raised on any response with `next` set. The P-COUNTS query `findings/?test=<id>&limit=1` is paged whenever a test has more than one finding, so it would have aborted the whole read-side block.
+- **Fix:** Added `get(..., count_only=True)` for that one call. List lookups keep the one-page refusal.
+- **Commit:** `bdbc34a`
+
 No other deviations. None of the five 26-REVIEW warnings blocked the hook (T-27-17 accept).
 
 ## Known Stubs
@@ -138,3 +154,4 @@ None. The only new surface is the harness itself (T-27-01/02/04/05 in the plan's
 - FOUND: repos/security-platform/scripts/defectdojo-import-proof.sh
 - FOUND: repos/security-platform/scripts/defectdojo-live-smoke.sh (hook block)
 - FOUND: commit 7e43593 in repos/security-platform
+- FOUND: commit bdbc34a in repos/security-platform
