@@ -115,15 +115,44 @@ Plans:
 
 Plans:
 
+**Wave 1**
+
 - [ ] 27-01-PLAN.md — Gates: split scan vs side-channel jobs in check-workflow-uploads.sh; adoption-guide contexts by job id
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 27-02-PLAN.md — security.yml: optional secret, closed-skip on scan jobs, defectdojo-import job (reimport-scan loop + red verify)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 27-03-PLAN.md — security.yml: defectdojo-cleanup job with the exact-name, product-scoped, default-branch-refusing delete
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 27-04-PLAN.md — Callers: pr-security.yml closed + secret pass, scheduled-security.yml (06:00 America/Toronto); gate made mandatory
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 27-05-PLAN.md — Proof harness part 1: smoke post-hook, extract-and-run of committed bodies, staff token, run-1 assertions
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 27-06-PLAN.md — Proof harness part 2: reimport, cleanup, hostile-name, scope, insecure-warning; proof workflow; local kind run
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
 - [ ] 27-07-PLAN.md — PR + real GitHub Actions proof run (D-19), operator approval, merge to security-platform main
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
 - [ ] 27-08-PLAN.md — Post-merge closed-event and dispatch evidence; operator-approved v1.1.0 tag and v1 move
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
 - [ ] 27-09-PLAN.md — Adoption guide "Enable DefectDojo Import" section plus its gate check
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
 - [ ] 27-10-PLAN.md — ADR-024, ADR index row, DDOJO-02 Complete
 
 ### Phase 28: DefectDojo Dedup and Triage
