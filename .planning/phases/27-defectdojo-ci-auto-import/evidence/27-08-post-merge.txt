@@ -181,6 +181,83 @@ $ gh run view 36159160216 -R OttawaCloudConsulting/security-platform --log --job
 2026-09-25T16:17:07.9390935Z   - KIND-CELERY-PING: celery -A dojo inspect ping exited 69 without pong (broker unreachable or worker not replying): Error: No nodes replied within time constraint command terminated with exit code 69
 2026-09-25T16:17:19.3772971Z ##[error]Process completed with exit code 1.
 
+== 4b. Re-dispatch of the workflow_dispatch proof run on main (operator choice: "Re-dispatch once") ==
+The operator authorised exactly ONE re-dispatch after run 36159160216 failed at KIND-CELERY-PING.
+Run 36159160216 was not rerun. No second re-dispatch was made.
+$ gh workflow run defectdojo-import-proof.yml -R OttawaCloudConsulting/security-platform --ref main   (dispatched 2026-09-25T16:22:43Z)
+https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36160366711
+
+$ gh run list -R OttawaCloudConsulting/security-platform --workflow defectdojo-import-proof.yml --event workflow_dispatch --branch main --limit 5 --json databaseId,headSha,status,conclusion,createdAt --jq '.[]|select(.createdAt>="2026-09-25T16:22:43Z")|[.databaseId,.headSha,.status,.conclusion,.createdAt]|@tsv'   (right after the dispatch)
+36160366711	0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	queued	2026-09-25T16:22:45Z
+(the empty conclusion field of the queued run was stripped with the trailing whitespace)
+
+$ gh api repos/OttawaCloudConsulting/security-platform/actions/runs/36160366711 --jq '{id,event,status,conclusion,head_sha,head_branch,created_at,html_url,run_attempt}'
+{"conclusion":"success","created_at":"2026-09-25T16:22:45Z","event":"workflow_dispatch","head_branch":"main","head_sha":"0f7e4e141d2a300d4be9a54efc137eb4510bb7ea","html_url":"https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36160366711","id":36160366711,"run_attempt":1,"status":"completed"}
+
+$ gh run view 36160366711 -R OttawaCloudConsulting/security-platform --json jobs --jq '.jobs[] | [.name, .conclusion, .databaseId] | @tsv'
+scans / Secrets — Gitleaks	success	108155161294
+scans / SAST — Semgrep CE	success	108155161442
+scans / IaC — Checkov	success	108155161490
+scans / Container — Trivy Image	success	108155161570
+scans / SCA — Trivy Filesystem	success	108155161708
+scans / DefectDojo Cleanup	skipped	108155162407
+scans / DefectDojo Import	skipped	108155405143
+prove-import	success	108155405276
+
+$ gh run view 36160366711 -R OttawaCloudConsulting/security-platform --json jobs --jq '.jobs[] | select(.name=="prove-import") | .steps[] | [.number, .name, .conclusion] | @tsv'
+1	Set up job	success
+2	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	success
+3	Download scan reports	success
+4	Install Helm v4.3.0	success
+5	Live proof	success
+10	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	success
+11	Complete job	success
+
+$ gh run view 36160366711 -R OttawaCloudConsulting/security-platform --log --job 108155405276   ('Live proof' step only; ANSI colour
+  codes removed; the 'prove-import<TAB>Live proof<TAB>' prefix removed; trailing whitespace stripped; no tokens appear)
+Smoke checks (every '==>' line, in order):
+2026-09-25T16:23:59.9336309Z ==> KIND-CLUSTER: PASS - cluster dd-smoke is up (context kind-dd-smoke)
+2026-09-25T16:24:26.2537428Z ==> KIND-CERT-MANAGER: PASS - cert-manager v1.21.2 applied; cert-manager, cert-manager-webhook and cert-manager-cainjector rolled out
+2026-09-25T16:24:42.2907955Z ==> KIND-INGRESS-NGINX: PASS - ingress-nginx controller-v1.15.1 rolled out; IngressClass nginx annotated is-default-class=true
+2026-09-25T16:24:42.7669869Z ==> KIND-CA-ISSUER: PASS - ClusterIssuer selfsigned -> Certificate smoke-ca (isCA, Ready) -> ClusterIssuer smoke-ca
+2026-09-25T16:28:19.2197007Z ==> KIND-INSTALL: exit=0 (PASS - completed successfully)
+2026-09-25T16:28:19.9360409Z ==> KIND-DEPLOYMENTS-READY: PASS - every Deployment in defectdojo is Available, including defectdojo-django defectdojo-celery-worker defectdojo-celery-beat
+2026-09-25T16:28:20.0412732Z ==> KIND-PG-PVC-BOUND: PASS - Postgres PVC(s) Bound: data-defectdojo-postgresql-0=Bound
+2026-09-25T16:28:20.2439239Z ==> KIND-CERT-READY: PASS - Certificate defectdojo-tls (created by ingress-shim from the annotation) is Ready
+2026-09-25T16:28:20.3480436Z ==> KIND-INGRESSCLASS-DEFAULTED: PASS - the live Ingress has ingressClassName nginx, set by DefaultIngressClass admission
+2026-09-25T16:28:23.8079457Z ==> KIND-TLS-LOGIN-200: PASS - GET https://defectdojo.smoke.test:18443/login -> 200 with ssl_verify_result 0 against the issued ca.crt; served cert issuer CN = smoke-ca, SAN DNS:defectdojo.smoke.test
+2026-09-25T16:28:24.0828198Z ==> KIND-LOGIN: PASS - admin login POST (CSRF token + Referer) -> 302 to https://defectdojo.smoke.test:18443/; /dashboard with the session -> 200, all over verified TLS
+2026-09-25T16:28:30.1294773Z ==> KIND-CELERY-PING: PASS - celery -A dojo inspect ping in defectdojo-celery-worker/celery exited 0 with pong (broker round-trip)
+2026-09-25T16:28:56.1085649Z ==> POST-HOOK: PASS - /home/runner/work/security-platform/security-platform/scripts/defectdojo-import-proof.sh exited 0
+Final lines of the step:
+2026-09-25T16:28:56.1017916Z     | attempted=0 skipped=8 failed=0
+2026-09-25T16:28:56.1081179Z PROOF: P-INSECURE PASS DD_INSECURE=true -> ::warning:: line printed, exit 0, insecure attempted=0 skipped=8: no request was made
+2026-09-25T16:28:56.1082592Z
+2026-09-25T16:28:56.1083151Z PROOF PASS - 85 assertions
+2026-09-25T16:28:56.1085649Z ==> POST-HOOK: PASS - /home/runner/work/security-platform/security-platform/scripts/defectdojo-import-proof.sh exited 0
+2026-09-25T16:28:56.1088832Z
+2026-09-25T16:28:56.1089626Z === Summary ===
+2026-09-25T16:28:56.1090884Z ALL PASS - 13 live check(s) executed and passed; 0 sub-check(s) skipped (not passed).
+
+RESULT: GREEN. Run 36160366711, event workflow_dispatch, on main at head 0f7e4e141d2a300d4be9a54efc137eb4510bb7ea
+(the PR #21 merge commit), conclusion success. prove-import conclusion: success (job 108155405276).
+Line: 'PROOF PASS - 85 assertions'. KIND-CELERY-PING passed this time (exit 0 with pong). The smoke summary
+is 'ALL PASS - 13 live check(s)'. The opt-out path held again: scans / DefectDojo Import and Cleanup were
+skipped (no DEFECTDOJO_URL on security-platform).
+The same tree failed at KIND-CELERY-PING in 36159160216 and passed it here and in PR run 36156728300.
+So that failure is recorded as a transient harness flake (celery ping, 5s timeout, right after the
+Deployments turned Available), not an import regression. The harness was not changed.
+The Task 1 acceptance criterion for the dispatch proof on main is met by run 36160366711. Run 36159160216 stays
+recorded above as the failed first attempt.
+
+== Open concerns (operator choice: "Leave for now, note it"; nothing was changed) ==
+- The public repository OttawaCloudConsulting/security-platform carries tag v2.0 (tag object
+  8d47cf9f86e9f79a42a57a2b4298d34b5dcda449, pointing at commit c6395e145643c21a724df9225f3a5210d5d98bde).
+  It was NOT deleted or modified; the decision is deferred to the operator.
+- The parent planning repository's origin remote is the public security-platform repository.
+  Nobody should run 'git push' from the parent repository. Pushing would publish planning history
+  (and could move refs) on the public repository.
+
 == 5. Tags (filled by Task 3 after operator approval) ==
 PENDING operator approval (Task 2). Nothing tagged or moved in Task 1.
 State at Task 1 (2026-09-25):
