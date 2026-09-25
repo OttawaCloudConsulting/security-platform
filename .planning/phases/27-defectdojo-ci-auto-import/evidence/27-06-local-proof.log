@@ -1,0 +1,278 @@
+# 27-06 local DefectDojo import proof
+# started (UTC): 2026-09-25T15:20:08Z
+# reports: artifacts '*-results' of PR Security run 36088129070 (OttawaCloudConsulting/security-platform), copied flat
+# report files: checkov-results.json checkov.sarif gitleaks-results.json gitleaks.sarif npm-audit-1.json pip-audit-1.json semgrep-results.json semgrep.sarif tflint.sarif trivy-fs.json trivy-fs.sarif trivy-image.json trivy-image.sarif
+# security-platform HEAD: 7c47270 (feature/phase-27-defectdojo-ci-auto-import)
+# docker server 28.3.2; kind v0.33.0 go1.27.0 darwin/arm64; helm v4.3.0+gbec5b06; Client Version: v1.37.1; curl 8.7.1; yq (https://github.com/mikefarah/yq/) version v4.53.6; jq-1.8.2; python3 3.12.0
+# command: bash scripts/defectdojo-import-proof.sh <scratch>/dd-reports (from repos/security-platform)
+
+PASS: defectdojo-import/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+PASS: defectdojo-import/dd-import: extracted (182 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_INSECURE', 'DD_PRODUCT', 'DD_PRODUCT_TYPE', 'DD_REPORTS_DIR', 'DD_RESULTS_FILE', 'DD_TOKEN', 'DD_URL']
+PASS: defectdojo-import/dd-verify: extracted (39 lines), no ${{, bash -n clean, env names match the contract ['DD_IMPORT_OUTCOME', 'DD_RESULTS_FILE']
+PASS: defectdojo-cleanup/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+PASS: defectdojo-cleanup/dd-delete: extracted (175 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_CLEANUP_RESULT_FILE', 'DD_DEFAULT_BRANCH', 'DD_INSECURE', 'DD_PRODUCT', 'DD_TOKEN', 'DD_URL']
+PASS: defectdojo-cleanup/dd-cleanup-verify: extracted (23 lines), no ${{, bash -n clean, env names match the contract ['DD_CLEANUP_RESULT_FILE', 'DD_DELETE_OUTCOME']
+PASS: DD-GATE-IDENTICAL: the import and cleanup dd-gate bodies are byte-identical
+extract: 7 passed, 0 failed
+EXTRACT PASS - .github/workflows/security.yml
+helm client: v4.3.0+gbec5b06
+--- 1. kind cluster ---
+    creating cluster dd-smoke (cold image pulls follow; this is the slow part)
+==> KIND-CLUSTER: PASS - cluster dd-smoke is up (context kind-dd-smoke)
+--- 2. cert-manager v1.21.2 ---
+==> KIND-CERT-MANAGER: PASS - cert-manager v1.21.2 applied; cert-manager, cert-manager-webhook and cert-manager-cainjector rolled out
+--- 3. ingress-nginx controller-v1.15.1 (smoke-only; archived upstream) ---
+==> KIND-INGRESS-NGINX: PASS - ingress-nginx controller-v1.15.1 rolled out; IngressClass nginx annotated is-default-class=true
+--- 4. CA ClusterIssuer ---
+==> KIND-CA-ISSUER: PASS - ClusterIssuer selfsigned -> Certificate smoke-ca (isCA, Ready) -> ClusterIssuer smoke-ca
+--- 5. namespace and pre-created Secrets ---
+    Secrets defectdojo, defectdojo-postgresql-specific, defectdojo-valkey-specific applied from stdin
+--- 6. install (D-15: first install only) ---
+NAME: defectdojo
+LAST DEPLOYED: Fri Sep 25 11:21:20 2026
+NAMESPACE: defectdojo
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+==> KIND-INSTALL: exit=0 (PASS - completed successfully)
+--- 7. workloads ---
+==> KIND-DEPLOYMENTS-READY: PASS - every Deployment in defectdojo is Available, including defectdojo-django defectdojo-celery-worker defectdojo-celery-beat
+==> KIND-PG-PVC-BOUND: PASS - Postgres PVC(s) Bound: data-defectdojo-postgresql-0=Bound
+--- 8. ingress and certificate ---
+==> KIND-CERT-READY: PASS - Certificate defectdojo-tls (created by ingress-shim from the annotation) is Ready
+==> KIND-INGRESSCLASS-DEFAULTED: PASS - the live Ingress has ingressClassName nginx, set by DefaultIngressClass admission
+--- 9. verified TLS, login and broker ---
+==> KIND-TLS-LOGIN-200: PASS - GET https://defectdojo.smoke.test:18443/login -> 200 with ssl_verify_result 0 against the issued ca.crt; served cert issuer CN=smoke-ca, SAN DNS:defectdojo.smoke.test
+==> KIND-LOGIN: PASS - admin login POST (CSRF token + Referer) -> 302 to https://defectdojo.smoke.test:18443/; /dashboard with the session -> 200, all over verified TLS
+==> KIND-CELERY-PING: PASS - celery -A dojo inspect ping in defectdojo-celery-worker/celery exited 0 with pong (broker round-trip)
+--- 10. post-hook /Users/christian/git-repos/OCC-github/development_environment/security_solution/repos/security-platform/scripts/defectdojo-import-proof.sh ---
+=== DefectDojo import proof against https://defectdojo.smoke.test:18443 (run 1) ===
+PASS: defectdojo-import/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+PASS: defectdojo-import/dd-import: extracted (182 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_INSECURE', 'DD_PRODUCT', 'DD_PRODUCT_TYPE', 'DD_REPORTS_DIR', 'DD_RESULTS_FILE', 'DD_TOKEN', 'DD_URL']
+PASS: defectdojo-import/dd-verify: extracted (39 lines), no ${{, bash -n clean, env names match the contract ['DD_IMPORT_OUTCOME', 'DD_RESULTS_FILE']
+PASS: defectdojo-cleanup/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+PASS: defectdojo-cleanup/dd-delete: extracted (175 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_CLEANUP_RESULT_FILE', 'DD_DEFAULT_BRANCH', 'DD_INSECURE', 'DD_PRODUCT', 'DD_TOKEN', 'DD_URL']
+PASS: defectdojo-cleanup/dd-cleanup-verify: extracted (23 lines), no ${{, bash -n clean, env names match the contract ['DD_CLEANUP_RESULT_FILE', 'DD_DELETE_OUTCOME']
+PASS: DD-GATE-IDENTICAL: the import and cleanup dd-gate bodies are byte-identical
+extract: 7 passed, 0 failed
+PROOF: P-EXTRACT PASS six committed side-channel bodies extracted from .github/workflows/security.yml
+PROOF: P-TLS PASS GET https://defectdojo.smoke.test:18443/api/v2/ -> http 403, ssl_verify_result 0 against the kind CA; host resolved by the CURL_HOME curlrc
+PROOF: P-ADMIN-TOKEN PASS api-token-auth as admin -> 200 with a token, over verified TLS
+PROOF: P-USER PASS ci-importer created and read back with is_staff=true, is_superuser=false (the documented minimum, not superuser)
+PROOF: P-IMPORTER-TOKEN PASS api-token-auth as ci-importer -> 200 with a token, over verified TLS; all body runs use this token
+PROOF: P-GATE PASS token absent -> exit 0, enabled=false, SKIP line printed
+PROOF: P-GATE PASS Dependabot actor with a token set -> exit 0, enabled=false
+PROOF: P-GATE PASS token present, normal actor -> exit 0, enabled=true
+    | TLS mode: verified-ca
+    | product=proof/security-platform product_type=CI engagement=ci/proof/branch-a
+    | IMPORTED: semgrep-results.json scan_type=Semgrep JSON Report test=semgrep http=201 test_id=1 after_total=7
+    | IMPORTED: checkov-results.json scan_type=Checkov Scan test=checkov http=201 test_id=2 after_total=14
+    | IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=3 after_total=6
+    | IMPORTED: trivy-image.json scan_type=Trivy Scan test=trivy-image http=201 test_id=4 after_total=59
+    | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=5 after_total=18
+    | IMPORTED: npm-audit-1.json scan_type=NPM Audit v7+ Scan test=npm-audit-1 http=201 test_id=6 after_total=2
+    | IMPORTED: pip-audit-1.json scan_type=pip-audit Scan test=pip-audit-1 http=201 test_id=7 after_total=46
+    | IMPORTED: tflint.sarif scan_type=SARIF test=tflint http=201 test_id=8 after_total=3
+    | attempted=8 skipped=0 failed=0
+PROOF: P-RUN1 PASS committed dd-import body exited 0 as ci-importer, tls_mode verified-ca, no ::warning::
+    | OK   semgrep-results.json test=semgrep http=201 test_id=1 after_total=7
+    | OK   checkov-results.json test=checkov http=201 test_id=2 after_total=14
+    | OK   trivy-fs.json test=trivy-fs http=201 test_id=3 after_total=6
+    | OK   trivy-image.json test=trivy-image http=201 test_id=4 after_total=59
+    | OK   gitleaks-results.json test=gitleaks http=201 test_id=5 after_total=18
+    | OK   npm-audit-1.json test=npm-audit-1 http=201 test_id=6 after_total=2
+    | OK   pip-audit-1.json test=pip-audit-1 http=201 test_id=7 after_total=46
+    | OK   tflint.sarif test=tflint http=201 test_id=8 after_total=3
+    | DefectDojo import verified: 8 report(s) into proof/security-platform / ci/proof/branch-a
+PROOF: P-RUN1 PASS committed dd-verify body exited 0 on the run-1 results
+PROOF: P-CONTEXT PASS product type exactly named 'CI': 1 found
+PROOF: P-CONTEXT PASS product exactly named 'proof/security-platform': 1 found
+PROOF: P-CONTEXT PASS product 1 is under product type 'CI' (id 2), found prod_type 2
+PROOF: P-CONTEXT PASS engagement exactly named 'ci/proof/branch-a' in product 1: 1 found
+PROOF: P-CONTEXT PASS every attempted import reported product 1 / engagement 1
+PROOF: P-TESTS PASS engagement 1 holds 8 Test(s); 8 report file(s) were attempted
+PROOF: P-TESTS PASS attempted files ['checkov-results.json', 'gitleaks-results.json', 'npm-audit-1.json', 'pip-audit-1.json', 'semgrep-results.json', 'tflint.sarif', 'trivy-fs.json', 'trivy-image.json'] == present known report files ['checkov-results.json', 'gitleaks-results.json', 'npm-audit-1.json', 'pip-audit-1.json', 'semgrep-results.json', 'tflint.sarif', 'trivy-fs.json', 'trivy-image.json']
+PROOF: P-TESTS PASS no present report file was skipped
+PROOF: P-TESTS PASS semgrep-results.json: test 1 title='semgrep' scan_type='Semgrep JSON Report'; expected 'semgrep' / 'Semgrep JSON Report'
+PROOF: P-TESTS PASS checkov-results.json: test 2 title='checkov' scan_type='Checkov Scan'; expected 'checkov' / 'Checkov Scan'
+PROOF: P-TESTS PASS trivy-fs.json: test 3 title='trivy-fs' scan_type='Trivy Scan'; expected 'trivy-fs' / 'Trivy Scan'
+PROOF: P-TESTS PASS trivy-image.json: test 4 title='trivy-image' scan_type='Trivy Scan'; expected 'trivy-image' / 'Trivy Scan'
+PROOF: P-TESTS PASS gitleaks-results.json: test 5 title='gitleaks' scan_type='Gitleaks Scan'; expected 'gitleaks' / 'Gitleaks Scan'
+PROOF: P-TESTS PASS npm-audit-1.json: test 6 title='npm-audit-1' scan_type='NPM Audit v7+ Scan'; expected 'npm-audit-1' / 'NPM Audit v7+ Scan'
+PROOF: P-TESTS PASS pip-audit-1.json: test 7 title='pip-audit-1' scan_type='pip-audit Scan'; expected 'pip-audit-1' / 'pip-audit Scan'
+PROOF: P-TESTS PASS tflint.sarif: test 8 title='tflint' scan_type='SARIF'; expected 'tflint' / 'SARIF'
+    file                       raw   imported(after)  findings-api  rule
+    semgrep-results.json           7                 7             7  bounded
+PROOF: P-COUNTS PASS semgrep-results.json: statistics.after.total.total 7 == findings?test=1 count 7
+PROOF: P-COUNTS PASS semgrep-results.json: 1 <= imported 7 <= raw 7 (bounded: parser merges entries)
+    checkov-results.json          14                14            14  exact
+PROOF: P-COUNTS PASS checkov-results.json: statistics.after.total.total 14 == findings?test=2 count 14
+PROOF: P-COUNTS PASS checkov-results.json: imported 14 == raw 14 (exact: parser does not merge)
+    trivy-fs.json                  6                 6             6  exact
+PROOF: P-COUNTS PASS trivy-fs.json: statistics.after.total.total 6 == findings?test=3 count 6
+PROOF: P-COUNTS PASS trivy-fs.json: imported 6 == raw 6 (exact: parser does not merge)
+    trivy-image.json              59                59            59  exact
+PROOF: P-COUNTS PASS trivy-image.json: statistics.after.total.total 59 == findings?test=4 count 59
+PROOF: P-COUNTS PASS trivy-image.json: imported 59 == raw 59 (exact: parser does not merge)
+    gitleaks-results.json         18                18            18  bounded
+PROOF: P-COUNTS PASS gitleaks-results.json: statistics.after.total.total 18 == findings?test=5 count 18
+PROOF: P-COUNTS PASS gitleaks-results.json: 1 <= imported 18 <= raw 18 (bounded: parser merges entries)
+    npm-audit-1.json               8                 2             2  bounded
+PROOF: P-COUNTS PASS npm-audit-1.json: statistics.after.total.total 2 == findings?test=6 count 2
+PROOF: P-COUNTS PASS npm-audit-1.json: 1 <= imported 2 <= raw 8 (bounded: parser merges entries)
+    pip-audit-1.json              46                46            46  exact
+PROOF: P-COUNTS PASS pip-audit-1.json: statistics.after.total.total 46 == findings?test=7 count 46
+PROOF: P-COUNTS PASS pip-audit-1.json: imported 46 == raw 46 (exact: parser does not merge)
+    tflint.sarif                   3                 3             3  bounded
+PROOF: P-COUNTS PASS tflint.sarif: statistics.after.total.total 3 == findings?test=8 count 3
+PROOF: P-COUNTS PASS tflint.sarif: 1 <= imported 3 <= raw 3 (bounded: parser merges entries)
+
+=== run 2: reimport the same reports into ci/proof/branch-a ===
+    | TLS mode: verified-ca
+    | product=proof/security-platform product_type=CI engagement=ci/proof/branch-a
+    | IMPORTED: semgrep-results.json scan_type=Semgrep JSON Report test=semgrep http=201 test_id=1 after_total=7
+    | IMPORTED: checkov-results.json scan_type=Checkov Scan test=checkov http=201 test_id=2 after_total=14
+    | IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=3 after_total=6
+    | IMPORTED: trivy-image.json scan_type=Trivy Scan test=trivy-image http=201 test_id=4 after_total=59
+    | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=5 after_total=18
+    | IMPORTED: npm-audit-1.json scan_type=NPM Audit v7+ Scan test=npm-audit-1 http=201 test_id=6 after_total=2
+    | IMPORTED: pip-audit-1.json scan_type=pip-audit Scan test=pip-audit-1 http=201 test_id=7 after_total=46
+    | IMPORTED: tflint.sarif scan_type=SARIF test=tflint http=201 test_id=8 after_total=3
+    | attempted=8 skipped=0 failed=0
+    | OK   semgrep-results.json test=semgrep http=201 test_id=1 after_total=7
+    | OK   checkov-results.json test=checkov http=201 test_id=2 after_total=14
+    | OK   trivy-fs.json test=trivy-fs http=201 test_id=3 after_total=6
+    | OK   trivy-image.json test=trivy-image http=201 test_id=4 after_total=59
+    | OK   gitleaks-results.json test=gitleaks http=201 test_id=5 after_total=18
+    | OK   npm-audit-1.json test=npm-audit-1 http=201 test_id=6 after_total=2
+    | OK   pip-audit-1.json test=pip-audit-1 http=201 test_id=7 after_total=46
+    | OK   tflint.sarif test=tflint http=201 test_id=8 after_total=3
+    | DefectDojo import verified: 8 report(s) into proof/security-platform / ci/proof/branch-a
+PROOF: P-RUN2 PASS committed dd-import (run 2) and dd-verify bodies exited 0
+PROOF: P-RUN2 PASS run 2 attempted ['checkov-results.json', 'gitleaks-results.json', 'npm-audit-1.json', 'pip-audit-1.json', 'semgrep-results.json', 'tflint.sarif', 'trivy-fs.json', 'trivy-image.json'] == run 1 files ['checkov-results.json', 'gitleaks-results.json', 'npm-audit-1.json', 'pip-audit-1.json', 'semgrep-results.json', 'tflint.sarif', 'trivy-fs.json', 'trivy-image.json']
+    file                       test(run1) test(run2)  after(run1) after(run2)  delta.created
+    semgrep-results.json                1          1            7           7              0
+PROOF: P-RUN2 PASS semgrep-results.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS semgrep-results.json: after.total.total 7 == run-1 7
+PROOF: P-RUN2 PASS semgrep-results.json: test_id 1 == run-1 test_id 1 (reimported in place)
+    checkov-results.json                2          2           14          14              0
+PROOF: P-RUN2 PASS checkov-results.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS checkov-results.json: after.total.total 14 == run-1 14
+PROOF: P-RUN2 PASS checkov-results.json: test_id 2 == run-1 test_id 2 (reimported in place)
+    trivy-fs.json                       3          3            6           6              0
+PROOF: P-RUN2 PASS trivy-fs.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS trivy-fs.json: after.total.total 6 == run-1 6
+PROOF: P-RUN2 PASS trivy-fs.json: test_id 3 == run-1 test_id 3 (reimported in place)
+    trivy-image.json                    4          4           59          59              0
+PROOF: P-RUN2 PASS trivy-image.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS trivy-image.json: after.total.total 59 == run-1 59
+PROOF: P-RUN2 PASS trivy-image.json: test_id 4 == run-1 test_id 4 (reimported in place)
+    gitleaks-results.json               5          5           18          18              0
+PROOF: P-RUN2 PASS gitleaks-results.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS gitleaks-results.json: after.total.total 18 == run-1 18
+PROOF: P-RUN2 PASS gitleaks-results.json: test_id 5 == run-1 test_id 5 (reimported in place)
+    npm-audit-1.json                    6          6            2           2              0
+PROOF: P-RUN2 PASS npm-audit-1.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS npm-audit-1.json: after.total.total 2 == run-1 2
+PROOF: P-RUN2 PASS npm-audit-1.json: test_id 6 == run-1 test_id 6 (reimported in place)
+    pip-audit-1.json                    7          7           46          46              0
+PROOF: P-RUN2 PASS pip-audit-1.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS pip-audit-1.json: after.total.total 46 == run-1 46
+PROOF: P-RUN2 PASS pip-audit-1.json: test_id 7 == run-1 test_id 7 (reimported in place)
+    tflint.sarif                        8          8            3           3              0
+PROOF: P-RUN2 PASS tflint.sarif: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS tflint.sarif: after.total.total 3 == run-1 3
+PROOF: P-RUN2 PASS tflint.sarif: test_id 8 == run-1 test_id 8 (reimported in place)
+PROOF: P-RUN2 PASS engagement 'ci/proof/branch-a': 1 match(es), Test count 8 == run-1 8
+
+=== schedule event: branch from GITHUB_REF_NAME ===
+    | TLS mode: verified-ca
+    | product=proof/security-platform product_type=CI engagement=ci/main
+    | SKIP: semgrep-results.json not in artifacts — report missing
+    | SKIP: checkov-results.json not in artifacts — report missing
+    | SKIP: trivy-fs.json not in artifacts — report missing
+    | SKIP: trivy-image.json not in artifacts — no Dockerfile in this repository
+    | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=9 after_total=18
+    | SKIP: npm-audit-*.json not in artifacts — no package-lock.json in this repository
+    | SKIP: pip-audit-*.json not in artifacts — no requirements file in this repository
+    | SKIP: tflint.sarif not in artifacts — no Terraform in this repository
+    | attempted=1 skipped=7 failed=0
+PROOF: P-SCHEDULE PASS schedule event, empty head ref, GITHUB_REF_NAME=main -> exit 0 and engagement 'ci/main' exists in proof/security-platform (1 Test)
+
+=== hostile head ref ===
+    | TLS mode: verified-ca
+    | product=proof/security-platform product_type=CI engagement=ci/@dd-proof/$(touch pwned)
+    | SKIP: semgrep-results.json not in artifacts — report missing
+    | SKIP: checkov-results.json not in artifacts — report missing
+    | SKIP: trivy-fs.json not in artifacts — report missing
+    | SKIP: trivy-image.json not in artifacts — no Dockerfile in this repository
+    | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=10 after_total=18
+    | SKIP: npm-audit-*.json not in artifacts — no package-lock.json in this repository
+    | SKIP: pip-audit-*.json not in artifacts — no requirements file in this repository
+    | SKIP: tflint.sarif not in artifacts — no Terraform in this repository
+    | attempted=1 skipped=7 failed=0
+PROOF: P-HOSTILE PASS import with the hostile head ref exited 0
+PROOF: P-HOSTILE PASS exactly one engagement named literally 'ci/@dd-proof/$(touch pwned)' exists in proof/security-platform
+PROOF: P-HOSTILE PASS no file named pwned in the body's cwd, /Users/christian/git-repos/OCC-github/development_environment/security_solution/repos/security-platform or anywhere under $DD_SMOKE_OUT: the $( ) never ran
+
+=== same hostile engagement name in proof/other-product ===
+    | TLS mode: verified-ca
+    | product=proof/other-product product_type=CI engagement=ci/@dd-proof/$(touch pwned)
+    | SKIP: semgrep-results.json not in artifacts — report missing
+    | SKIP: checkov-results.json not in artifacts — report missing
+    | SKIP: trivy-fs.json not in artifacts — report missing
+    | SKIP: trivy-image.json not in artifacts — no Dockerfile in this repository
+    | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=11 after_total=18
+    | SKIP: npm-audit-*.json not in artifacts — no package-lock.json in this repository
+    | SKIP: pip-audit-*.json not in artifacts — no requirements file in this repository
+    | SKIP: tflint.sarif not in artifacts — no Terraform in this repository
+    | attempted=1 skipped=7 failed=0
+PROOF: P-SCOPE PASS an engagement with the identical hostile name exists in proof/other-product too
+
+=== cleanup: delete ci/<hostile ref> in proof/security-platform only ===
+    | TLS mode: verified-ca
+    | product='proof/security-platform' target='ci/@dd-proof/$(touch pwned)' default_branch='main'
+    | DELETED: engagement id=3 name='ci/@dd-proof/$(touch pwned)' product=1
+PROOF: P-CLEANUP PASS committed dd-delete body exited 0 with outcome deleted, as ci-importer
+PROOF: P-CLEANUP PASS the hostile engagement is gone from proof/security-platform
+PROOF: P-CLEANUP PASS the same-named engagement in proof/other-product still exists (product-scoped delete)
+PROOF: P-CLEANUP PASS ci/proof/branch-a still exists with its run-2 Test count 8
+PROOF: P-CLEANUP PASS ci/main still exists
+    | DefectDojo cleanup verified: outcome=deleted target=ci/@dd-proof/$(touch pwned) product=proof/security-platform product_id=1 deleted_ids=[3]
+PROOF: P-CLEANUP PASS committed dd-cleanup-verify body exited 0 on the deleted result
+
+=== cleanup refusals ===
+    | REFUSE: head ref 'main' is empty or the default branch — nothing deleted
+PROOF: P-REFUSE PASS head ref 'main' (default-branch) -> exit 0, outcome refused, REFUSE: line
+    | REFUSE: head ref '' is empty or the default branch — nothing deleted
+PROOF: P-REFUSE PASS head ref '' (empty-head) -> exit 0, outcome refused, REFUSE: line
+PROOF: P-REFUSE PASS ci/main still exists after both refusals
+
+=== cleanup of a branch that never existed ===
+    | TLS mode: verified-ca
+    | product='proof/security-platform' target='ci/never/existed' default_branch='main'
+    | NOTHING TO DELETE: no engagement 'ci/never/existed' in product 1
+PROOF: P-NOMATCH PASS head ref 'never/existed' -> exit 0, outcome nothing-to-delete, instance engagement count 3 -> 3
+
+=== insecure-TLS warning, no request ===
+    | ::warning::DefectDojo TLS verification is OFF (DEFECTDOJO_INSECURE=true) — this run's findings were sent over an unverified connection
+    | TLS mode: insecure
+    | product=proof/security-platform product_type=CI engagement=ci/proof/branch-a
+    | SKIP: semgrep-results.json not in artifacts — report missing
+    | SKIP: checkov-results.json not in artifacts — report missing
+    | SKIP: trivy-fs.json not in artifacts — report missing
+    | SKIP: trivy-image.json not in artifacts — no Dockerfile in this repository
+    | SKIP: gitleaks-results.json not in artifacts — report missing
+    | SKIP: npm-audit-*.json not in artifacts — no package-lock.json in this repository
+    | SKIP: pip-audit-*.json not in artifacts — no requirements file in this repository
+    | SKIP: tflint.sarif not in artifacts — no Terraform in this repository
+    | attempted=0 skipped=8 failed=0
+PROOF: P-INSECURE PASS DD_INSECURE=true -> ::warning:: line printed, exit 0, insecure attempted=0 skipped=8: no request was made
+
+PROOF PASS - 85 assertions
+==> POST-HOOK: PASS - /Users/christian/git-repos/OCC-github/development_environment/security_solution/repos/security-platform/scripts/defectdojo-import-proof.sh exited 0
+
+=== Summary ===
+ALL PASS - 13 live check(s) executed and passed; 0 sub-check(s) skipped (not passed).
+
+# finished (UTC): 2026-09-25T15:23:53Z; wall-clock 225s; harness exit 0; kind clusters after run: No kind clusters found.
