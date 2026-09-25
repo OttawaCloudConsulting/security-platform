@@ -1,0 +1,198 @@
+# 27-08 post-merge evidence (OttawaCloudConsulting/security-platform)
+# Recorded 2026-09-25 by the 27-08 executor. Command outputs are verbatim except that
+# trailing whitespace (trailing tabs from empty @tsv fields) was stripped for this repo's
+# pre-commit whitespace hook. No tokens or local paths appear in any output.
+
+== 1. PR #21 merge anchor ==
+$ gh pr view 21 -R OttawaCloudConsulting/security-platform --json mergedAt,closedAt,state,mergeCommit --jq '[.state,.mergedAt,.closedAt,.mergeCommit.oid]|@tsv'
+MERGED	2026-09-25T16:08:32Z	2026-09-25T16:08:32Z	0f7e4e141d2a300d4be9a54efc137eb4510bb7ea
+
+== 2. Closed-event run of pr-security.yml (D-10, D-15) ==
+$ gh run list -R OttawaCloudConsulting/security-platform --workflow pr-security.yml --event pull_request --limit 10 --json databaseId,headSha,conclusion,status,displayTitle,createdAt --jq '.[]|[.databaseId,.headSha,.status,.conclusion,.createdAt,.displayTitle]|@tsv'
+36158851741	7c47270db60e7f6ef8dae89c42870ad06fd5e5d6	completed	skipped	2026-09-25T16:08:36Z	feat: opt-in DefectDojo import, PR-close cleanup and daily scheduled scan (Phase 27)
+36156728417	7c47270db60e7f6ef8dae89c42870ad06fd5e5d6	completed	success	2026-09-25T15:49:08Z	feat: opt-in DefectDojo import, PR-close cleanup and daily scheduled scan (Phase 27)
+36088129070	e07926f65c90cf058fd57d211db394d35d3a37be	completed	success	2026-09-25T02:53:52Z	fix(defectdojo): register the chart repo before helm dependency build
+36081157024	60205bd15a0cd6154831ce28619a0e7f044352a3	completed	success	2026-09-25T01:14:40Z	feat: add DefectDojo generic Helm chart (Phase 26)
+36037636359	83197fa49991e7ad3a22085f3f264ef2c27cbed5	completed	success	2026-09-24T17:55:13Z	chore(deps): bump github/codeql-action/upload-sarif from 4.38.0 to 4.38.1
+36037542417	a3642c51e65f108ffe68c06a62c75b613e2b012b	completed	success	2026-09-24T17:54:24Z	chore(deps): bump bridgecrewio/checkov-action from 12.3123.0 to 12.3125.0
+35943484849	5cc2a34fe5854d6dab8138d4c405e323e3a7156e	completed	success	2026-09-24T01:33:58Z	feat(nexus): homelab validation gate and measured README limitations (NEXUS-05)
+35536504868	c3ba86470fc26483f16acdeb161417190126ac64	completed	success	2026-09-20T20:44:27Z	Phase 24: anonymous pull for the Nexus proxy repos, and the workstation routing script
+35416306666	162bdf4b2fa684831aa973f6f4a33c520ca1c562	completed	success	2026-09-19T02:39:36Z	Phase 23: Nexus Repository Helm chart with npm, PyPI, Docker and Helm proxy repos
+35388165765	e157a44135f98e7b718655c0a12ced5f7a9899f5	completed	success	2026-09-18T19:50:26Z	Phase 23: Nexus Repository Helm chart with npm, PyPI, Docker and Helm proxy repos
+
+The run created by the merge is 36158851741: created 2026-09-25T16:08:36Z, 4s after mergedAt
+16:08:32Z, on head 7c47270db60e7f6ef8dae89c42870ad06fd5e5d6. It is the only pull_request run after the merge.
+
+$ gh api repos/OttawaCloudConsulting/security-platform/actions/runs/36158851741 --jq '{id,event,status,conclusion,head_sha,head_branch,created_at,html_url,run_attempt,path}'
+{"conclusion":"skipped","created_at":"2026-09-25T16:08:36Z","event":"pull_request","head_branch":"feature/phase-27-defectdojo-ci-auto-import","head_sha":"7c47270db60e7f6ef8dae89c42870ad06fd5e5d6","html_url":"https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36158851741","id":36158851741,"path":".github/workflows/pr-security.yml","run_attempt":1,"status":"completed"}
+
+$ gh run view 36158851741 -R OttawaCloudConsulting/security-platform --json jobs --jq '.jobs[] | [.name, .conclusion] | @tsv'
+security / Secrets — Gitleaks	skipped
+security / DefectDojo Cleanup	skipped
+security / SAST — Semgrep CE	skipped
+security / DefectDojo Import	skipped
+security / SCA — Trivy Filesystem	skipped
+security / IaC — Checkov	skipped
+security / Container — Trivy Image	skipped
+
+RESULT: all seven jobs are skipped: the five scan jobs (Gitleaks, Semgrep, Trivy fs, Checkov,
+Trivy image) and both DefectDojo jobs. D-15 observed: the closed event did not rescan. The
+DefectDojo Cleanup job is skipped because security-platform sets no DEFECTDOJO_URL (opt-out path),
+so cleanup did nothing. No scan job ran, so there is no D-15 violation.
+
+== 3. Check-runs on the PR head SHA 7c47270db60e7f6ef8dae89c42870ad06fd5e5d6 (RESEARCH A2 / Pitfall 8) ==
+$ gh api 'repos/OttawaCloudConsulting/security-platform/commits/7c47270db60e7f6ef8dae89c42870ad06fd5e5d6/check-runs?per_page=100' --jq '.total_count, (.check_runs[] | [.name, .status, .conclusion, .started_at, .html_url] | @tsv)'
+29
+security / Container — Trivy Image	completed	skipped	2026-09-25T16:08:44Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36158851741/job/108150111975
+security / IaC — Checkov	completed	skipped	2026-09-25T16:08:42Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36158851741/job/108150102328
+security / SCA — Trivy Filesystem	completed	skipped	2026-09-25T16:08:42Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36158851741/job/108150102167
+security / DefectDojo Import	completed	skipped	2026-09-25T16:08:37Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36158851741/job/108150071874
+security / SAST — Semgrep CE	completed	skipped	2026-09-25T16:08:37Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36158851741/job/108150069949
+security / DefectDojo Cleanup	completed	skipped	2026-09-25T16:08:37Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36158851741/job/108150069579
+security / Secrets — Gitleaks	completed	skipped	2026-09-25T16:08:37Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36158851741/job/108150068881
+security / DefectDojo Import	completed	skipped	2026-09-25T15:50:03Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108143290076
+scans / DefectDojo Import	completed	skipped	2026-09-25T15:49:51Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108143220309
+prove-import	completed	success	2026-09-25T15:49:53Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108143219234
+tflint-errors	completed	success	2026-09-25T15:49:42Z	https://github.com/OttawaCloudConsulting/security-platform/runs/108143163831
+tflint	completed	success	2026-09-25T15:49:42Z	https://github.com/OttawaCloudConsulting/security-platform/runs/108143162797
+Semgrep OSS	completed	success	2026-09-25T15:49:35Z	https://github.com/OttawaCloudConsulting/security-platform/runs/108143123496
+Checkov	completed	success	2026-09-25T15:49:33Z	https://github.com/OttawaCloudConsulting/security-platform/runs/108143109097
+Trivy	completed	success	2026-09-25T15:49:26Z	https://github.com/OttawaCloudConsulting/security-platform/runs/108143069818
+gitleaks	completed	success	2026-09-25T15:49:20Z	https://github.com/OttawaCloudConsulting/security-platform/runs/108143030867
+security / Container — Trivy Image	completed	success	2026-09-25T15:49:11Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108142967266
+security / DefectDojo Cleanup	completed	skipped	2026-09-25T15:49:09Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108142967253
+scans / DefectDojo Cleanup	completed	skipped	2026-09-25T15:49:09Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108142967058
+security / SAST — Semgrep CE	completed	success	2026-09-25T15:49:11Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108142966394
+security / SCA — Trivy Filesystem	completed	success	2026-09-25T15:49:10Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108142966299
+security / IaC — Checkov	completed	success	2026-09-25T15:49:11Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108142966260
+security / Secrets — Gitleaks	completed	success	2026-09-25T15:49:11Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108142966181
+scans / SAST — Semgrep CE	completed	success	2026-09-25T15:49:11Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108142965649
+scans / IaC — Checkov	completed	success	2026-09-25T15:49:11Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108142965625
+scans / Container — Trivy Image	completed	success	2026-09-25T15:49:11Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108142965617
+scans / SCA — Trivy Filesystem	completed	success	2026-09-25T15:49:10Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108142965380
+scans / Secrets — Gitleaks	completed	success	2026-09-25T15:49:11Z	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108142965305
+GitGuardian Security Checks	completed	success	2026-09-25T15:49:07Z	https://github.com/OttawaCloudConsulting/security-platform/runs/108142958387
+
+Run membership (from the html_url of each check-run):
+- actions/runs/36158851741 = PR Security, closed event (16:08): the 7 'security / ...' check-runs, all skipped
+- actions/runs/36156728417 = PR Security, synchronize/opened event (15:49): the 7 'security / ...' check-runs,
+  5 scan contexts success, DefectDojo Import and Cleanup skipped
+- actions/runs/36156728300 = DefectDojo Import Proof (15:49): prove-import success, the 'scans / ...' check-runs
+  (5 success, DefectDojo Import and Cleanup skipped)
+- /runs/<id> without an actions/ path = third-party apps and code-scanning (Checkov, Trivy, Semgrep OSS,
+  gitleaks, tflint, tflint-errors, GitGuardian Security Checks), all success
+
+OBSERVATION (A2 / Pitfall 8, T-27-11 accepted residual): each of the seven 'security / ...' contexts now
+has two check-runs on the head SHA: success at 15:49 (run 36156728417) and skipped at 16:08 (run
+36158851741). The newest check-run per name is 'skipped'. PR #21 is already merged, so this blocks
+nothing. The residual reopen window is recorded for ADR-024 (known gap f in 27-07).
+
+== 4. workflow_dispatch proof run on main (D-19, D-21) ==
+$ gh workflow run defectdojo-import-proof.yml -R OttawaCloudConsulting/security-platform --ref main   (dispatched 2026-09-25T16:11:27Z)
+https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36159160216
+
+$ gh api repos/OttawaCloudConsulting/security-platform/actions/runs/36159160216 --jq '{id,event,status,conclusion,head_sha,head_branch,created_at,html_url,run_attempt}'
+{"conclusion":"failure","created_at":"2026-09-25T16:11:29Z","event":"workflow_dispatch","head_branch":"main","head_sha":"0f7e4e141d2a300d4be9a54efc137eb4510bb7ea","html_url":"https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36159160216","id":36159160216,"run_attempt":1,"status":"completed"}
+
+$ gh run view 36159160216 -R OttawaCloudConsulting/security-platform --json jobs --jq '.jobs[] | [.name, .conclusion, .databaseId] | @tsv'
+scans / IaC — Checkov	success	108151120649
+scans / SCA — Trivy Filesystem	success	108151120897
+scans / Secrets — Gitleaks	success	108151120988
+scans / Container — Trivy Image	success	108151121056
+scans / SAST — Semgrep CE	success	108151121128
+scans / DefectDojo Cleanup	skipped	108151122611
+prove-import	failure	108151411715
+scans / DefectDojo Import	skipped	108151413148
+
+$ gh run view 36159160216 -R OttawaCloudConsulting/security-platform --json jobs --jq '.jobs[] | select(.name=="prove-import") | .steps[] | [.number, .name, .conclusion] | @tsv'
+1	Set up job	success
+2	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	success
+3	Download scan reports	success
+4	Install Helm v4.3.0	success
+5	Live proof	failure
+10	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	success
+11	Complete job	success
+
+RESULT: FAILURE. prove-import conclusion: failure (job 108151411715). There is NO 'PROOF PASS' line.
+The failure is in the kind live smoke that the harness runs BEFORE any import assertion:
+KIND-CELERY-PING failed (celery -A dojo inspect ping, 5s timeout, exit 69, no nodes replied).
+Every earlier smoke check passed (cluster, cert-manager, ingress, issuer, install, deployments
+Available, PVC bound, cert Ready, verified-TLS login). The import/reimport/cleanup assertions never
+ran, so this run neither proves nor disproves the import code. The same code (merged tree equals PR
+head 7c47270) passed KIND-CELERY-PING in PR run 36156728300. The opt-out path held again: the
+scans / DefectDojo Import and Cleanup jobs were skipped (no DEFECTDOJO_URL). Not rerun: the executor
+stopped and reported per the hard rules.
+
+$ gh run view 36159160216 -R OttawaCloudConsulting/security-platform --log --job 108151411715   ('Live proof' step only; ANSI colour
+  codes removed; the 'prove-import<TAB>Live proof<TAB>' prefix removed; scrubbed: no tokens appear)
+2026-09-25T16:12:24.1450790Z ##[group]Run bash scripts/defectdojo-import-proof.sh dd-reports
+2026-09-25T16:12:24.1451421Z ^[[36;1mbash scripts/defectdojo-import-proof.sh dd-reports^[[0m
+2026-09-25T16:12:24.1515925Z shell: /usr/bin/bash -e {0}
+2026-09-25T16:12:24.1516329Z ##[endgroup]
+2026-09-25T16:12:24.3016662Z PASS: defectdojo-import/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+2026-09-25T16:12:24.3019535Z PASS: defectdojo-import/dd-import: extracted (182 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_INSECURE', 'DD_PRODUCT', 'DD_PRODUCT_TYPE', 'DD_REPORTS_DIR', 'DD_RESULTS_FILE', 'DD_TOKEN', 'DD_URL']
+2026-09-25T16:12:24.3021059Z PASS: defectdojo-import/dd-verify: extracted (39 lines), no ${{, bash -n clean, env names match the contract ['DD_IMPORT_OUTCOME', 'DD_RESULTS_FILE']
+2026-09-25T16:12:24.3022126Z PASS: defectdojo-cleanup/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+2026-09-25T16:12:24.3023410Z PASS: defectdojo-cleanup/dd-delete: extracted (175 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_CLEANUP_RESULT_FILE', 'DD_DEFAULT_BRANCH', 'DD_INSECURE', 'DD_PRODUCT', 'DD_TOKEN', 'DD_URL']
+2026-09-25T16:12:24.3024893Z PASS: defectdojo-cleanup/dd-cleanup-verify: extracted (23 lines), no ${{, bash -n clean, env names match the contract ['DD_CLEANUP_RESULT_FILE', 'DD_DELETE_OUTCOME']
+2026-09-25T16:12:24.3025853Z PASS: DD-GATE-IDENTICAL: the import and cleanup dd-gate bodies are byte-identical
+2026-09-25T16:12:24.3026404Z extract: 7 passed, 0 failed
+2026-09-25T16:12:24.3066102Z EXTRACT PASS - .github/workflows/security.yml
+2026-09-25T16:12:24.3498178Z helm client: v4.3.0+gbec5b06
+2026-09-25T16:12:24.3687064Z     kubernetes/defectdojo/charts/defectdojo-1.9.53.tgz not vendored; running helm dependency build (needs network)
+2026-09-25T16:12:24.5364697Z Hang tight while we grab the latest from your chart repositories...
+2026-09-25T16:12:24.6074495Z ...Successfully got an update from the "defectdojo" chart repository
+2026-09-25T16:12:24.6075659Z Update Complete. ⎈Happy Helming!⎈
+2026-09-25T16:12:24.6372425Z Saving 1 charts
+2026-09-25T16:12:24.6373543Z Downloading defectdojo from repo https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/helm-charts
+2026-09-25T16:12:24.7947633Z Deleting outdated charts
+2026-09-25T16:12:24.8167999Z --- 1. kind cluster ---
+2026-09-25T16:12:29.1042210Z     creating cluster dd-smoke (cold image pulls follow; this is the slow part)
+2026-09-25T16:12:49.8271752Z ==> KIND-CLUSTER: PASS - cluster dd-smoke is up (context kind-dd-smoke)
+2026-09-25T16:12:49.8273296Z --- 2. cert-manager v1.21.2 ---
+2026-09-25T16:13:15.1104550Z ==> KIND-CERT-MANAGER: PASS - cert-manager v1.21.2 applied; cert-manager, cert-manager-webhook and cert-manager-cainjector rolled out
+2026-09-25T16:13:15.1109007Z --- 3. ingress-nginx controller-v1.15.1 (smoke-only; archived upstream) ---
+2026-09-25T16:13:31.1463853Z ==> KIND-INGRESS-NGINX: PASS - ingress-nginx controller-v1.15.1 rolled out; IngressClass nginx annotated is-default-class=true
+2026-09-25T16:13:31.1464775Z --- 4. CA ClusterIssuer ---
+2026-09-25T16:13:31.6199462Z ==> KIND-CA-ISSUER: PASS - ClusterIssuer selfsigned -> Certificate smoke-ca (isCA, Ready) -> ClusterIssuer smoke-ca
+2026-09-25T16:13:31.6201240Z --- 5. namespace and pre-created Secrets ---
+2026-09-25T16:13:31.9997588Z     Secrets defectdojo, defectdojo-postgresql-specific, defectdojo-valkey-specific applied from stdin
+2026-09-25T16:13:31.9999527Z --- 6. install (D-15: first install only) ---
+2026-09-25T16:16:58.0989375Z NAME: defectdojo
+2026-09-25T16:16:58.1000475Z LAST DEPLOYED: Fri Sep 25 16:13:32 2026
+2026-09-25T16:16:58.1001635Z NAMESPACE: defectdojo
+2026-09-25T16:16:58.1002132Z STATUS: deployed
+2026-09-25T16:16:58.1002570Z REVISION: 1
+2026-09-25T16:16:58.1002994Z DESCRIPTION: Install complete
+2026-09-25T16:16:58.1049838Z ==> KIND-INSTALL: exit=0 (PASS - completed successfully)
+2026-09-25T16:16:58.1053590Z --- 7. workloads ---
+2026-09-25T16:16:58.9597108Z ==> KIND-DEPLOYMENTS-READY: PASS - every Deployment in defectdojo is Available, including defectdojo-django defectdojo-celery-worker defectdojo-celery-beat
+2026-09-25T16:16:59.1220230Z ==> KIND-PG-PVC-BOUND: PASS - Postgres PVC(s) Bound: data-defectdojo-postgresql-0=Bound
+2026-09-25T16:16:59.1221588Z --- 8. ingress and certificate ---
+2026-09-25T16:16:59.3230673Z ==> KIND-CERT-READY: PASS - Certificate defectdojo-tls (created by ingress-shim from the annotation) is Ready
+2026-09-25T16:16:59.4342951Z ==> KIND-INGRESSCLASS-DEFAULTED: PASS - the live Ingress has ingressClassName nginx, set by DefaultIngressClass admission
+2026-09-25T16:16:59.4344778Z --- 9. verified TLS, login and broker ---
+2026-09-25T16:17:00.7062732Z ==> KIND-TLS-LOGIN-200: PASS - GET https://defectdojo.smoke.test:18443/login -> 200 with ssl_verify_result 0 against the issued ca.crt; served cert issuer CN = smoke-ca, SAN DNS:defectdojo.smoke.test
+2026-09-25T16:17:01.3264802Z ==> KIND-LOGIN: PASS - admin login POST (CSRF token + Referer) -> 302 to https://defectdojo.smoke.test:18443/; /dashboard with the session -> 200, all over verified TLS
+2026-09-25T16:17:07.9261207Z ==> KIND-CELERY-PING: FAIL - celery -A dojo inspect ping exited 69 without pong (broker unreachable or worker not replying): Error: No nodes replied within time constraint command terminated with exit code 69
+2026-09-25T16:17:07.9276682Z
+2026-09-25T16:17:07.9307192Z === Summary ===
+2026-09-25T16:17:07.9322602Z FAILED - one or more live checks did not produce the expected result:
+2026-09-25T16:17:07.9390935Z   - KIND-CELERY-PING: celery -A dojo inspect ping exited 69 without pong (broker unreachable or worker not replying): Error: No nodes replied within time constraint command terminated with exit code 69
+2026-09-25T16:17:19.3772971Z ##[error]Process completed with exit code 1.
+
+== 5. Tags (filled by Task 3 after operator approval) ==
+PENDING operator approval (Task 2). Nothing tagged or moved in Task 1.
+State at Task 1 (2026-09-25):
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v1 --jq '[.object.type,.object.sha]|@tsv'
+commit	cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v1.0.0 --jq '[.object.type,.object.sha]|@tsv'
+tag	fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4
+$ git ls-remote --tags origin   (in repos/security-platform)
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+8d47cf9f86e9f79a42a57a2b4298d34b5dcda449	refs/tags/v2.0
+c6395e145643c21a724df9225f3a5210d5d98bde	refs/tags/v2.0^{}
+Planned (not done): annotated v1.1.0 at 0f7e4e141d2a300d4be9a54efc137eb4510bb7ea; lightweight v1
+force-moved from cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef to 0f7e4e141d2a300d4be9a54efc137eb4510bb7ea.
