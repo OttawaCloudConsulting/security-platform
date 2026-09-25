@@ -1,0 +1,53 @@
+PR: #21 https://github.com/OttawaCloudConsulting/security-platform/pull/21 (state: OPEN)
+head SHA: 7c47270db60e7f6ef8dae89c42870ad06fd5e5d6
+captured: 2026-09-25T15:56:32Z
+PR Security run: https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417 (conclusion: success)
+DefectDojo Import Proof run: https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300 (conclusion: success)
+
+===== gh pr checks 21 (verbatim except the empty trailing description column, a trailing tab, was stripped for the repo whitespace hook) =====
+Checkov	pass	3s	https://github.com/OttawaCloudConsulting/security-platform/runs/108143109097
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com
+Semgrep OSS	pass	5s	https://github.com/OttawaCloudConsulting/security-platform/runs/108143123496
+Trivy	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/108143069818
+gitleaks	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/108143030867
+prove-import	pass	5m34s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108143219234
+scans / Container — Trivy Image	pass	32s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108142965617
+scans / IaC — Checkov	pass	33s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108142965625
+scans / SAST — Semgrep CE	pass	37s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108142965649
+security / DefectDojo Import	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108143290076
+security / Secrets — Gitleaks	pass	19s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108142966181
+scans / Secrets — Gitleaks	pass	18s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108142965305
+security / IaC — Checkov	pass	31s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108142966260
+tflint-errors	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/108143163831
+security / SAST — Semgrep CE	pass	34s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108142966394
+security / Container — Trivy Image	pass	26s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108142967266
+tflint	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/108143162797
+security / SCA — Trivy Filesystem	pass	52s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108142966299
+scans / SCA — Trivy Filesystem	pass	41s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108142965380
+security / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728417/job/108142967253
+scans / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108142967058
+scans / DefectDojo Import	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36156728300/job/108143220309
+
+===== gh api repos/OttawaCloudConsulting/security-platform/commits/7c47270db60e7f6ef8dae89c42870ad06fd5e5d6/check-runs --paginate (name, status, conclusion) =====
+security / DefectDojo Import	completed	skipped
+scans / DefectDojo Import	completed	skipped
+prove-import	completed	success
+tflint-errors	completed	success
+tflint	completed	success
+Semgrep OSS	completed	success
+Checkov	completed	success
+Trivy	completed	success
+gitleaks	completed	success
+security / Container — Trivy Image	completed	success
+security / DefectDojo Cleanup	completed	skipped
+scans / DefectDojo Cleanup	completed	skipped
+security / SAST — Semgrep CE	completed	success
+security / SCA — Trivy Filesystem	completed	success
+security / IaC — Checkov	completed	success
+security / Secrets — Gitleaks	completed	success
+scans / SAST — Semgrep CE	completed	success
+scans / IaC — Checkov	completed	success
+scans / Container — Trivy Image	completed	success
+scans / SCA — Trivy Filesystem	completed	success
+scans / Secrets — Gitleaks	completed	success
+GitGuardian Security Checks	completed	success
