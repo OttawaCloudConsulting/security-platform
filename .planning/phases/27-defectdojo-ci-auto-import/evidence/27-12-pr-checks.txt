@@ -1,0 +1,48 @@
+# 27-12 CR-01 fix PR #22 checks (head ba3683aae86fefdfc004f158c6022a0ef38da5fe), captured after proof run 36186258881 attempt 2 (trailing tabs stripped for the whitespace hook; content otherwise verbatim)
+## gh pr checks 22
+Checkov	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/108240331611
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com
+Semgrep OSS	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/108240334598
+Trivy	pass	3s	https://github.com/OttawaCloudConsulting/security-platform/runs/108240275890
+gitleaks	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/108240245030
+prove-import	pass	6m17s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258881/job/108243485918
+scans / Container — Trivy Image	pass	21s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258881/job/108243526236
+scans / IaC — Checkov	pass	32s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258881/job/108243537691
+scans / SAST — Semgrep CE	pass	34s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258881/job/108243517324
+scans / SCA — Trivy Filesystem	pass	41s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258881/job/108243486163
+scans / Secrets — Gitleaks	pass	19s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258881/job/108243485301
+security / Container — Trivy Image	pass	26s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258863/job/108240197451
+security / IaC — Checkov	pass	37s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258863/job/108240197701
+security / SCA — Trivy Filesystem	pass	42s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258863/job/108240197669
+tflint	pass	3s	https://github.com/OttawaCloudConsulting/security-platform/runs/108240376837
+tflint-errors	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/108240377809
+security / DefectDojo Import	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258863/job/108240436686
+security / Secrets — Gitleaks	pass	15s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258863/job/108240197745
+scans / DefectDojo Import	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258881/job/108243486659
+security / SAST — Semgrep CE	pass	36s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258863/job/108240197660
+scans / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258881/job/108243486781
+security / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36186258863/job/108240198905
+
+## gh api repos/OttawaCloudConsulting/security-platform/commits/ba3683aae86fefdfc004f158c6022a0ef38da5fe/check-runs --paginate --jq '.check_runs[] | [.name, .status, .conclusion] | @tsv'
+scans / IaC — Checkov	completed	success
+scans / Container — Trivy Image	completed	success
+scans / SAST — Semgrep CE	completed	success
+scans / DefectDojo Cleanup	completed	skipped
+scans / DefectDojo Import	completed	skipped
+scans / SCA — Trivy Filesystem	completed	success
+prove-import	completed	success
+scans / Secrets — Gitleaks	completed	success
+security / DefectDojo Import	completed	skipped
+tflint-errors	completed	success
+tflint	completed	success
+Semgrep OSS	completed	success
+Checkov	completed	success
+Trivy	completed	success
+gitleaks	completed	success
+security / DefectDojo Cleanup	completed	skipped
+security / Secrets — Gitleaks	completed	success
+security / IaC — Checkov	completed	success
+security / SCA — Trivy Filesystem	completed	success
+security / SAST — Semgrep CE	completed	success
+security / Container — Trivy Image	completed	success
+GitGuardian Security Checks	completed	success
