@@ -530,7 +530,12 @@ fi
 
 # KIND-PG-PVC-BOUND (D-08: Postgres is persistent). At least one PVC whose name
 # contains `postgresql`, and every such PVC Bound.
-pvc_json="$(kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" get pvc -o json)"
+pvc_rc=0
+pvc_json="$(kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" get pvc -o json)" || pvc_rc=$?
+if [ "$pvc_rc" -ne 0 ]; then
+  pvc_json='{"items":[]}'
+  echo "    listing PVCs exited ${pvc_rc}"
+fi
 pg_pvcs="$(printf '%s' "$pvc_json" | jq -r '[.items[] | select(.metadata.name | test("postgresql"))] | map(.metadata.name + "=" + (.status.phase // "none")) | join(" ")')"
 pg_count="$(printf '%s' "$pvc_json" | jq '[.items[] | select(.metadata.name | test("postgresql"))] | length')"
 pg_unbound="$(printf '%s' "$pvc_json" | jq '[.items[] | select(.metadata.name | test("postgresql")) | select(.status.phase != "Bound")] | length')"
@@ -553,7 +558,12 @@ fi
 # API server's DefaultIngressClass admission fills it in from the IngressClass
 # annotated default in section 3. `nginx` here proves the chart deferred to the
 # cluster default rather than hardcoding a class.
-ing_json="$(kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" get ingress -o json)"
+ing_rc=0
+ing_json="$(kubectl --context "$KIND_CONTEXT" --namespace "$KIND_NS" get ingress -o json)" || ing_rc=$?
+if [ "$ing_rc" -ne 0 ]; then
+  ing_json='{"items":[]}'
+  echo "    listing Ingresses exited ${ing_rc}"
+fi
 ing_count="$(printf '%s' "$ing_json" | jq '.items | length')"
 ing_class="$(printf '%s' "$ing_json" | jq -r '.items[0].spec.ingressClassName // "<unset>"')"
 if [ "$ing_count" -eq 1 ] && [ "$ing_class" = "nginx" ]; then
@@ -639,7 +649,10 @@ JAR="$OUT/cookies.txt"
 login_ok=1
 get_rc=0
 get_code="$(curl -sS --resolve "${SMOKE_HOST}:${PF_PORT}:127.0.0.1" --cacert "$OUT/ca.crt" -c "$JAR" -o "$OUT/login-form.html" -w '%{http_code}' "${BASE_URL}/login" 2>"$OUT/login-get.err")" || get_rc=$?
-csrf_token="$(sed -n 's/.*name="csrfmiddlewaretoken" value="\([^"]*\)".*/\1/p' "$OUT/login-form.html")"
+csrf_token=""
+if [ -f "$OUT/login-form.html" ]; then
+  csrf_token="$(sed -n 's/.*name="csrfmiddlewaretoken" value="\([^"]*\)".*/\1/p' "$OUT/login-form.html")"
+fi
 csrf_token="${csrf_token%%$'\n'*}"
 if [ "$get_rc" -ne 0 ] || [ "$get_code" != "200" ]; then
   login_ok=0
