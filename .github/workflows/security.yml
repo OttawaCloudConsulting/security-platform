@@ -9,10 +9,16 @@
 #
 # ADOPTION: this file IS the canonical copy. A Mode A consumer fetches it
 # byte-identical at a published tag (alongside pr-security.yml) and edits
-# NOTHING in it. There is exactly ONE per-repo substitution point across the
-# whole bundle, `gate_mode`, and it lives in the CALLER repository, set with
+# NOTHING in it. `gate_mode` is the only per-repo setting that changes
+# gating, and it lives in the CALLER repository, set with
 # `gh variable set GATE_MODE --body blocking -R OWNER/REPO`; `report-only`
 # is the default and needs no action from a consumer that wants it.
+# The opt-in DefectDojo import (Phase 27, ADR-024) also reads caller-repo
+# settings: the `DEFECTDOJO_URL` variable (the on/off switch — unset means
+# the import job is skipped), the `DEFECTDOJO_PRODUCT`,
+# `DEFECTDOJO_PRODUCT_TYPE`, `DEFECTDOJO_INSECURE` and `DEFECTDOJO_CA_CERT`
+# variables, and the `DEFECTDOJO_API_TOKEN` secret. None of them affects any
+# required check.
 
 name: Security Scans
 
@@ -25,6 +31,17 @@ on:
           GATE_MODE variable, then to "report-only" (D-03).
         required: false
         type: string
+    # Declared by name rather than received through `secrets: inherit`: least
+    # privilege (the callee sees this one secret and nothing else), and Mode B
+    # callers invoke a REMOTE workflow, which should never be handed the
+    # caller's whole secret store. `required: false` so every caller that has
+    # not opted in keeps working unchanged (D-12, D-16).
+    secrets:
+      DEFECTDOJO_API_TOKEN:
+        description: >-
+          DefectDojo API v2 token. Optional — the DefectDojo import is skipped
+          with a logged reason when it is absent (ADR-024).
+        required: false
 
 # Explicit FULL permission set, not a subset. A called workflow's block can
 # only REDUCE what the caller granted — leaving this at `contents: read`
@@ -55,6 +72,14 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────
   sast:
     name: SAST — Semgrep CE
+    # Skipped on a `closed` pull_request event: on a closed PR only the
+    # DefectDojo cleanup job runs (Phase 27 D-15). `github.event.action` is
+    # empty on schedule and workflow_dispatch, so the scans still run there.
+    # A skipped job reports success for a required context — harmless on a
+    # closed PR; ADR-024 records the small reopen window this leaves (a
+    # close/reopen/merge before the reopen run queues). The job id and name
+    # are unchanged, so the five required contexts are unchanged.
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
       # This is the enum control: GitHub does not validate a `type: string`
@@ -221,6 +246,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────
   iac:
     name: IaC — Checkov
+    if: github.event.action != 'closed'   # skip on closed PRs — see sast
     runs-on: ubuntu-latest
     steps:
       # This is the enum control: GitHub does not validate a `type: string`
@@ -356,6 +382,7 @@ jobs:
     # it stays anyway: renaming it would leave branch protection pointing at a
     # check that no longer exists — silently non-blocking.
     name: SCA — Trivy Filesystem
+    if: github.event.action != 'closed'   # skip on closed PRs — see sast
     runs-on: ubuntu-latest
     steps:
       # This is the enum control: GitHub does not validate a `type: string`
@@ -882,6 +909,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────
   container:
     name: Container — Trivy Image
+    if: github.event.action != 'closed'   # skip on closed PRs — see sast
     runs-on: ubuntu-latest
     steps:
       # This is the enum control: GitHub does not validate a `type: string`
@@ -922,6 +950,11 @@ jobs:
       # four literal GitHub strings and the ids are server-generated. 17-03
       # added the first of those and left this comment saying "only" — true
       # when it was written, stale from that plan onward.
+      # The DefectDojo job's run: bodies (Phase 27) contain no context
+      # interpolation at all: every value, including the attacker-controlled
+      # branch name, arrives through step env: or the runner-provided GITHUB_*
+      # variables, and its verify step reads the import outcome through env:
+      # too. check-workflow-uploads.sh NO-INTERPOLATION enforces this.
       #
       # Pathspec: the corrected five-item form measured in 20-02 (A4) —
       # 'Dockerfile' '*/Dockerfile' 'Dockerfile.*' '*/Dockerfile.*'
@@ -1068,6 +1101,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────
   secrets:
     name: Secrets — Gitleaks
+    if: github.event.action != 'closed'   # skip on closed PRs — see sast
     runs-on: ubuntu-latest
     steps:
       # This is the enum control: GitHub does not validate a `type: string`
@@ -1204,3 +1238,371 @@ jobs:
           # cross-check against the gh api artifact listing for this run.
           echo "artifact-secrets artifact-id=${{ steps.artifact-secrets.outputs.artifact-id }}"
           echo "artifact-secrets artifact-url=${{ steps.artifact-secrets.outputs.artifact-url }}"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # DefectDojo Import (Phase 27, ADR-024)
+  # Imports every report file the five scan jobs retained into DefectDojo
+  # through POST /api/v2/reimport-scan/. A SIDE-CHANNEL job, not a scan job:
+  # it is opt-in (skipped unless the caller repo sets DEFECTDOJO_URL),
+  # non-blocking (never a required check, D-03) and runs after the scans
+  # whatever their result. The logic is inline because Mode A consumers copy
+  # this file without any scripts/ directory (RESEARCH Pitfall 7), and every
+  # run: body reads env only, so the proof harness (27-05) can extract and
+  # execute the committed bodies unchanged.
+  #
+  # TOKEN IDENTITY: auto_create_context may create a Product Type, which in
+  # DefectDojo 3.x open-source needs a staff (is_staff) user, and the cleanup
+  # job's engagement DELETE needs staff too. Staff is a GLOBAL bypass on that
+  # instance — see the DefectDojo section of the adoption guide for the
+  # dedicated-user recommendation.
+  # ─────────────────────────────────────────────────────────────────────────
+  defectdojo-import:
+    name: DefectDojo Import
+    needs: [sast, iac, sca, container, secrets]
+    # always(): under gate_mode blocking the scan jobs fail by design, and
+    # their findings are exactly what should reach DefectDojo. The closed
+    # event belongs to the cleanup job (D-15). vars resolves to the CALLER
+    # repository in both Mode A and Mode B, so an unset DEFECTDOJO_URL skips
+    # the whole job (D-02). `secrets` is not an allowed context in a job-level
+    # if:, which is why the token is checked by the dd-gate step instead.
+    if: always() && github.event.action != 'closed' && vars.DEFECTDOJO_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read          # download-artifact of this run's own artifacts
+    # A slow import on the final push could otherwise finish after the
+    # PR-close cleanup and re-create ci/<branch> (RESEARCH Pitfall 9). Queued,
+    # never cancelled: an in-flight import is allowed to finish.
+    concurrency:
+      group: defectdojo-${{ github.repository }}-${{ github.head_ref || github.ref_name }}
+      cancel-in-progress: false
+    # NO job-level env: the token would then be visible to every step,
+    # including the third-party download action. It lives only in the step
+    # env: of dd-gate and dd-import.
+    steps:
+      # Gate on token PRESENCE, not on the pull_request.head.repo guard the
+      # scan jobs' verify steps use: github.event.pull_request is null on
+      # schedule, so that guard is false there and would skip every scheduled
+      # import (RESEARCH Pitfall 3). Fork and Dependabot pull requests get no
+      # Actions secrets, so an empty token IS the fork/Dependabot condition
+      # (D-13). The Dependabot actor check additionally refuses a token that
+      # was stored as a Dependabot secret by mistake. The step writes only a
+      # boolean to GITHUB_OUTPUT and never echoes the value.
+      - name: Gate — DefectDojo token present?
+        id: dd-gate
+        env:
+          DD_TOKEN: ${{ secrets.DEFECTDOJO_API_TOKEN }}
+        run: |
+          if [ "${GITHUB_ACTOR:-}" = "dependabot[bot]" ]; then
+            echo "SKIP: Dependabot run — DefectDojo import refused even if a Dependabot secret exists"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "${DD_TOKEN:-}" ]; then
+            echo "SKIP: DEFECTDOJO_API_TOKEN is not available to this run (fork or Dependabot pull request, or the secret is unset) — nothing sent to DefectDojo"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "DefectDojo token present — import enabled"
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      # Pattern mode, not name: mode. A name: download throws "Artifact not
+      # found" when an artifact is absent (trivy-image-results on a
+      # Dockerfile-free repository); a pattern that matches fewer artifacts
+      # does not. merge-multiple: true keeps the layout flat whatever the
+      # match count (without it, one match extracts flat and several extract
+      # into per-artifact subdirectories). Every report filename is unique
+      # across the five artifacts, so the merge cannot collide. No token in
+      # this step's env.
+      - name: Download this run's scan reports
+        id: dd-download
+        if: steps.dd-gate.outputs.enabled == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          pattern: '*-results'
+          merge-multiple: true
+          path: dd-reports
+
+      # ADR-001 side-channel carve-out (D-03): continue-on-error so a
+      # DefectDojo outage can never fail the run's scan results; the dd-verify
+      # step below turns this job red instead, and this job is never a
+      # required check.
+      #
+      # reimport-scan ONLY, with auto_create_context=true: the server
+      # get-or-creates the Product Type, Product, Engagement and Test on the
+      # first run, and every later run updates the same Test in place and
+      # closes fixed findings (close_old_findings) instead of piling up a new
+      # Test per run as import-scan would (D-07, D-09).
+      #
+      # An explicit, unique test_title on every call: Trivy fs and Trivy image
+      # share the scan_type "Trivy Scan", and without a title reimport takes
+      # the LAST Test of that scan_type, so the two would overwrite each other.
+      # Each report uses its native parser (D-08); tflint alone imports as
+      # SARIF because DefectDojo's native TFLint parser reads JSON only and
+      # this workflow keeps tflint output as SARIF.
+      #
+      # KNOWN CAVEAT (RESEARCH OQ3, accepted): npm-audit-<N> / pip-audit-<N>
+      # titles follow the lockfile/requirements discovery order, so adding a
+      # lockfile can shift which file a numbered Test holds. close_old_findings
+      # keeps each Test self-consistent; the history attribution can drift.
+      #
+      # --form-string for every non-file field: with plain -F, a value that
+      # starts with @ or < makes curl READ A RUNNER FILE, and the branch name
+      # is attacker-controlled on a pull request. Only file=@<path> uses -F,
+      # and those paths come from the fixed table below.
+      #
+      # The token is written to a 0600 header file read with -H @file, so it
+      # never appears on curl's argv (visible in ps) or in the log; the file
+      # is removed in a finally block. TLS is verified by default;
+      # DEFECTDOJO_CA_CERT adds --cacert; DEFECTDOJO_INSECURE=true adds -k and
+      # warns on every run (D-18).
+      - name: Import reports into DefectDojo (reimport-scan)
+        id: dd-import
+        if: steps.dd-gate.outputs.enabled == 'true'
+        continue-on-error: true          # ADR-001 side-channel carve-out (D-03)
+        env:
+          DD_URL: ${{ vars.DEFECTDOJO_URL }}
+          DD_TOKEN: ${{ secrets.DEFECTDOJO_API_TOKEN }}
+          DD_PRODUCT: ${{ vars.DEFECTDOJO_PRODUCT || github.repository }}
+          DD_PRODUCT_TYPE: ${{ vars.DEFECTDOJO_PRODUCT_TYPE || 'CI' }}
+          DD_INSECURE: ${{ vars.DEFECTDOJO_INSECURE }}
+          DD_CA_CERT: ${{ vars.DEFECTDOJO_CA_CERT }}
+          DD_REPORTS_DIR: dd-reports
+          DD_RESULTS_FILE: dd-import-results.json
+        run: |
+          python3 - <<'PY'
+          import glob
+          import json
+          import os
+          import re
+          import subprocess
+          import sys
+          import tempfile
+
+          env = os.environ
+          url = env.get("DD_URL", "").rstrip("/")
+          reports_dir = env.get("DD_REPORTS_DIR", "dd-reports")
+          results_file = env.get("DD_RESULTS_FILE", "dd-import-results.json")
+          product = env.get("DD_PRODUCT", "")
+          product_type = env.get("DD_PRODUCT_TYPE", "")
+
+          # Fixed import table: (glob, scan_type, title, skip reason), verified
+          # against DefectDojo 3.3.200. A title of None means "<prefix>-<N>".
+          TABLE = [
+              ("semgrep-results.json", "Semgrep JSON Report", "semgrep", "report missing"),
+              ("checkov-results.json", "Checkov Scan", "checkov", "report missing"),
+              ("trivy-fs.json", "Trivy Scan", "trivy-fs", "report missing"),
+              ("trivy-image.json", "Trivy Scan", "trivy-image",
+               "no Dockerfile in this repository"),
+              ("gitleaks-results.json", "Gitleaks Scan", "gitleaks", "report missing"),
+              ("npm-audit-*.json", "NPM Audit v7+ Scan", None,
+               "no package-lock.json in this repository"),
+              ("pip-audit-*.json", "pip-audit Scan", None,
+               "no requirements file in this repository"),
+              ("tflint.sarif", "SARIF", "tflint", "no Terraform in this repository"),
+          ]
+
+          insecure = env.get("DD_INSECURE", "") == "true"
+          ca_cert = env.get("DD_CA_CERT", "")
+          tmpdir = tempfile.mkdtemp()
+          hdr_path = os.path.join(tmpdir, "auth-header")
+          ca_path = os.path.join(tmpdir, "ca.pem")
+
+
+          def write_private(path, text):
+              fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+              with os.fdopen(fd, "w") as handle:
+                  handle.write(text)
+
+
+          def number_of(path):
+              match = re.search(r"-(\d+)\.json$", path)
+              return int(match.group(1)) if match else 0
+
+
+          def main():
+              if insecure:
+                  tls_mode = "insecure"
+                  tls_args = ["-k"]
+                  print("::warning::DefectDojo TLS verification is OFF (DEFECTDOJO_INSECURE=true) — this run's findings were sent over an unverified connection")
+                  if ca_cert:
+                      print("::warning::DEFECTDOJO_CA_CERT is ignored because DEFECTDOJO_INSECURE=true")
+              elif ca_cert:
+                  tls_mode = "verified-ca"
+                  write_private(ca_path, ca_cert if ca_cert.endswith("\n") else ca_cert + "\n")
+                  tls_args = ["--cacert", ca_path]
+              else:
+                  tls_mode = "verified-system"
+                  tls_args = []
+              print("TLS mode: {}".format(tls_mode))
+
+              if env.get("GITHUB_EVENT_NAME", "") == "pull_request":
+                  branch = env.get("GITHUB_HEAD_REF", "")
+              else:
+                  branch = env.get("GITHUB_REF_NAME", "")
+              if not branch:
+                  print("FAILED: cannot resolve a branch name")
+                  return 1
+              engagement = "ci/" + branch
+              print("product={} product_type={} engagement={}".format(
+                  product, product_type, engagement))
+
+              write_private(hdr_path, "Authorization: Token {}\n".format(env.get("DD_TOKEN", "")))
+
+              results = {
+                  "branch": branch,
+                  "engagement_name": engagement,
+                  "product_name": product,
+                  "product_type_name": product_type,
+                  "tls_mode": tls_mode,
+                  "attempted": [],
+                  "skipped": [],
+              }
+
+              for pattern, scan_type, title, reason in TABLE:
+                  if "*" in pattern:
+                      files = sorted(glob.glob(os.path.join(reports_dir, pattern)), key=number_of)
+                  else:
+                      path = os.path.join(reports_dir, pattern)
+                      files = [path] if os.path.isfile(path) else []
+                  if not files:
+                      print("SKIP: {} not in artifacts — {}".format(pattern, reason))
+                      results["skipped"].append({"file": pattern, "reason": reason})
+                      continue
+                  for path in files:
+                      name = os.path.basename(path)
+                      if title is None:
+                          test_title = "{}-{}".format(pattern.split("-*")[0], number_of(path))
+                      else:
+                          test_title = title
+                      resp_path = os.path.join(tmpdir, "response.json")
+                      fields = [
+                          "scan_type=" + scan_type,
+                          "product_type_name=" + product_type,
+                          "product_name=" + product,
+                          "engagement_name=" + engagement,
+                          "test_title=" + test_title,
+                          "auto_create_context=true",
+                          "close_old_findings=true",
+                          "branch_tag=" + branch[:150],
+                          "commit_hash=" + env.get("GITHUB_SHA", ""),
+                          "build_id=" + env.get("GITHUB_RUN_ID", ""),
+                          "source_code_management_uri={}/{}".format(
+                              env.get("GITHUB_SERVER_URL", ""), env.get("GITHUB_REPOSITORY", "")),
+                      ]
+                      cmd = ["curl", "-sS", "-o", resp_path, "-w", "%{http_code}"] + tls_args
+                      cmd += ["-H", "@" + hdr_path, "-F", "file=@" + path]
+                      for field in fields:
+                          cmd += ["--form-string", field]
+                      cmd.append(url + "/api/v2/reimport-scan/")
+                      proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                            universal_newlines=True)
+                      http_code = (proc.stdout or "").strip() or "000"
+                      body = ""
+                      if os.path.isfile(resp_path):
+                          with open(resp_path, encoding="utf-8", errors="replace") as handle:
+                              body = handle.read()
+                          os.remove(resp_path)
+                      record = {
+                          "file": name,
+                          "scan_type": scan_type,
+                          "test_title": test_title,
+                          "http_code": http_code,
+                          "test_id": None,
+                          "engagement_id": None,
+                          "product_id": None,
+                          "statistics": None,
+                      }
+                      if http_code == "201":
+                          try:
+                              data = json.loads(body)
+                          except ValueError:
+                              data = {}
+                          if not isinstance(data, dict):
+                              data = {}
+                          record["test_id"] = data.get("test_id")
+                          record["engagement_id"] = data.get("engagement_id")
+                          record["product_id"] = data.get("product_id")
+                          record["statistics"] = data.get("statistics")
+                          stats = record["statistics"] if isinstance(record["statistics"], dict) else {}
+                          after = stats.get("after") if isinstance(stats.get("after"), dict) else {}
+                          total = after.get("total") if isinstance(after.get("total"), dict) else {}
+                          print("IMPORTED: {} scan_type={} test={} http=201 test_id={} after_total={}".format(
+                              name, scan_type, test_title, record["test_id"], total.get("total")))
+                      else:
+                          detail = body[:500] if body else (proc.stderr or "").strip()[:500]
+                          print("FAILED: {} http={} body={}".format(name, http_code, detail))
+                      results["attempted"].append(record)
+
+              with open(results_file, "w", encoding="utf-8") as handle:
+                  json.dump(results, handle, indent=2)
+              bad = [r for r in results["attempted"]
+                     if r["http_code"] != "201" or r["test_id"] in (None, "")]
+              print("attempted={} skipped={} failed={}".format(
+                  len(results["attempted"]), len(results["skipped"]), len(bad)))
+              return 1 if bad else 0
+
+
+          try:
+              rc = main()
+          finally:
+              for leftover in (hdr_path, ca_path, os.path.join(tmpdir, "response.json")):
+                  if os.path.exists(leftover):
+                      os.remove(leftover)
+              os.rmdir(tmpdir)
+          sys.exit(rc)
+          PY
+
+      # Deliberately WITHOUT continue-on-error: the import step above carries
+      # it (ADR-001), so without this step a failed import is invisible. It
+      # reads the import outcome and the results file through env only
+      # (NO-INTERPOLATION), and "nothing attempted" is a failure, not a pass.
+      # A red result here cannot block a merge: this job is never a required
+      # check (D-03).
+      - name: Verify DefectDojo import landed
+        id: dd-verify
+        if: always() && steps.dd-gate.outputs.enabled == 'true'
+        env:
+          DD_IMPORT_OUTCOME: ${{ steps.dd-import.outcome }}
+          DD_RESULTS_FILE: dd-import-results.json
+        run: |
+          if [ "${DD_IMPORT_OUTCOME:-}" != "success" ]; then
+            echo "import outcome=${DD_IMPORT_OUTCOME:-} — at least one report did not land in DefectDojo (see the FAILED lines above)."
+            exit 1
+          fi
+          if [ ! -f "${DD_RESULTS_FILE:-}" ]; then
+            echo "results file ${DD_RESULTS_FILE:-} is missing — the import step recorded nothing."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          with open(os.environ["DD_RESULTS_FILE"], encoding="utf-8") as handle:
+              results = json.load(handle)
+          attempted = results.get("attempted") or []
+          if not attempted:
+              print("NOTHING IMPORTED is not a pass: no report file was found in the downloaded artifacts")
+              sys.exit(1)
+          bad = 0
+          for record in attempted:
+              ok = record.get("http_code") == "201" and record.get("test_id") not in (None, "")
+              stats = record.get("statistics") if isinstance(record.get("statistics"), dict) else {}
+              after = stats.get("after") if isinstance(stats.get("after"), dict) else {}
+              total = after.get("total") if isinstance(after.get("total"), dict) else {}
+              print("{} {} test={} http={} test_id={} after_total={}".format(
+                  "OK  " if ok else "FAIL", record.get("file"), record.get("test_title"),
+                  record.get("http_code"), record.get("test_id"), total.get("total")))
+              if not ok:
+                  bad += 1
+          for record in results.get("skipped") or []:
+              print("SKIP {} — {}".format(record.get("file"), record.get("reason")))
+          if bad:
+              print("{} of {} attempted report(s) did not return HTTP 201 with a test_id".format(
+                  bad, len(attempted)))
+              sys.exit(1)
+          print("DefectDojo import verified: {} report(s) into {} / {}".format(
+              len(attempted), results.get("product_name"), results.get("engagement_name")))
+          PY
