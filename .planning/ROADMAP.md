@@ -137,7 +137,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 27-06-PLAN.md — Proof harness part 2: reimport, cleanup, hostile-name, scope, insecure-warning; proof workflow; local kind run
+- [x] 27-06-PLAN.md — Proof harness part 2: reimport, cleanup, hostile-name, scope, insecure-warning; proof workflow; local kind run
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
@@ -248,7 +248,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 24. Nexus Anonymous Access and Workstation Script | v3.0 | 10/10 | Complete   | 2026-09-20 |
 | 25. Nexus Live Validation | v3.0 | 7/7 | Complete    | 2026-09-24 |
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
-| 27. DefectDojo CI Auto-Import | v3.0 | 5/10 | In Progress|  |
+| 27. DefectDojo CI Auto-Import | v3.0 | 6/10 | In Progress|  |
 | 28. DefectDojo Dedup and Triage | v3.0 | 0/? | Not started | — |
 | 29. DefectDojo Live Validation | v3.0 | 0/? | Not started | — |
 
