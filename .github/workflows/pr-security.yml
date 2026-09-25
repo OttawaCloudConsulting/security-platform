@@ -1,12 +1,16 @@
 ---
 # Repo-local trigger policy: invokes the callable security workflow on every
-# pull request, all branches. The relative reference takes no @ref and resolves
+# pull request, all branches, and once more when a pull request closes. The relative reference takes no @ref and resolves
 # to the caller's own commit, so a PR exercises its own workflow changes.
 #
-# ADOPTION: this file is the Mode A/B caller. It has exactly ONE per-repo
-# substitution point, `gate_mode`, set with
+# ADOPTION: this file is the Mode A/B caller. `gate_mode` is the only
+# per-repo setting that changes gating, set with
 # `gh variable set GATE_MODE --body blocking -R OWNER/REPO` — never by
 # editing this YAML; `report-only` is the default and needs no action.
+# The opt-in DefectDojo import and PR-close cleanup (Phase 27, ADR-024) read
+# the caller repo's `DEFECTDOJO_*` variables and the `DEFECTDOJO_API_TOKEN`
+# secret passed below; none of them affects any required check, and leaving
+# them unset skips both DefectDojo jobs.
 # `name: security` on the job below must never be renamed: it is the job ID
 # and therefore the prefix of all five branch-protection required-context
 # names. Mode A (this repo carries its own copy of security.yml alongside
@@ -17,12 +21,19 @@
 # and copies nothing else. No owner-name, repo-name, or branch-name
 # placeholder token exists anywhere in this file: `github.repository` is
 # resolved by the runner at trigger time, and the trigger below is
-# `pull_request: {}` — all branches.
+# `pull_request` with no branch filter — all branches.
 
 name: PR Security
 
 on:
-  pull_request: {}
+  pull_request:
+    # Listing `types:` REPLACES GitHub's default activity set (opened,
+    # synchronize, reopened), so all three defaults are restated here — drop
+    # one and PRs stop being scanned while every required context sits
+    # pending (Phase 27 RESEARCH Pitfall 2). `closed` exists only to fire the
+    # DefectDojo cleanup job in security.yml; the five scan jobs skip on it
+    # (D-10, D-15).
+    types: [opened, synchronize, reopened, closed]
 
 # Workflow-level FLOOR. Deliberately left at contents: read — it is what any
 # job added to this file later inherits by default. The security-events grant
@@ -58,13 +69,23 @@ jobs:
       # Phase 20 consumer-template portability.
       actions: read
     uses: ./.github/workflows/security.yml
+    # The one secret the callee needs, passed by name — explicit, never
+    # `secrets: inherit` (D-12): the callee sees this secret and nothing else
+    # from this repo's store. An unset caller secret passes an empty string,
+    # and the DefectDojo import then skips cleanly with a logged reason.
+    # Mode B consumers must make the same two edits in their own caller — the
+    # `closed` type above and this `secrets:` block — because moving `@v1`
+    # does not change a file that lives in their repository (Pitfall 13a).
+    secrets:
+      DEFECTDOJO_API_TOKEN: ${{ secrets.DEFECTDOJO_API_TOKEN }}
     # No `with:` block, deliberately — omission is the mechanism, not an
     # oversight. With gate_mode omitted, inputs.gate_mode resolves to "",
     # so the callee's env.GATE_MODE chain falls through to this CALLER
     # repo's `GATE_MODE` variable and then to 'report-only' (D-03). That
     # means the mode is switched with `gh variable set GATE_MODE --body
     # blocking`, never a YAML edit — exactly what Success Criterion 3 asks
-    # for.
+    # for. `DEFECTDOJO_*` variables are not passed here either, because the
+    # callee reads this caller repo's `vars` directly.
     #
     # Two traps to avoid if a `with:` block is ever added here:
     #   - A bare passthrough `gate_mode: ${{ vars.GATE_MODE }}` is FORBIDDEN:

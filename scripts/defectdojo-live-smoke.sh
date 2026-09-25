@@ -57,6 +57,17 @@ set -euo pipefail
 #   2  preflight failure: a required hard-tier binary is missing, or the
 #      subchart could not be vendored. `kind`/`kubectl` are SOFT tier: absent,
 #      they produce a SKIPPED entry, not a failure.
+#
+# OPTIONAL POST-HOOK (Phase 27). If DD_SMOKE_POST_HOOK names a script, and
+# only once EVERY live check above has passed, the smoke runs
+#   bash "$DD_SMOKE_POST_HOOK" --hook
+# immediately before the final summary. The cluster and the port-forward are
+# still up at that point: the EXIT trap tears them down after the hook
+# returns. Exported for the hook: BASE_URL SMOKE_HOST PF_PORT KIND_CONTEXT
+# ADMIN_USER, DD_CA_FILE (the issued ca.crt), DD_ADMIN_PW_FILE and DD_SMOKE_OUT
+# (this run's temp dir). The admin password is passed as a FILE PATH, never as
+# a value. The hook's exit status becomes one more check, POST-HOOK. With the
+# variable unset the smoke prints nothing new and behaves exactly as before.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
@@ -739,6 +750,22 @@ elif [ "$ping_rc" -eq 126 ] || [ "$ping_rc" -eq 127 ] \
   fi
 else
   fail "KIND-CELERY-PING" "celery -A dojo inspect ping exited ${ping_rc} without pong (broker unreachable or worker not replying): $(tr '\n' ' ' < "$OUT/celery-ping.txt" | cut -c1-300)"
+fi
+
+# Optional post-hook (see the header). Runs only on an all-pass smoke, while
+# the cluster and port-forward are still up; placed before print_summary
+# because print_summary exits. Unset variable: no output, no behaviour change.
+if [ "${#FAILURES[@]}" -eq 0 ] && [ -n "${DD_SMOKE_POST_HOOK:-}" ]; then
+  echo "--- 10. post-hook ${DD_SMOKE_POST_HOOK} ---"
+  export BASE_URL SMOKE_HOST PF_PORT KIND_CONTEXT ADMIN_USER
+  export DD_CA_FILE="$OUT/ca.crt" DD_ADMIN_PW_FILE="$OUT/admin-pw" DD_SMOKE_OUT="$OUT"
+  hook_rc=0
+  bash "$DD_SMOKE_POST_HOOK" --hook || hook_rc=$?
+  if [ "$hook_rc" -eq 0 ]; then
+    pass "POST-HOOK" "${DD_SMOKE_POST_HOOK} exited 0"
+  else
+    fail "POST-HOOK" "${DD_SMOKE_POST_HOOK} exited ${hook_rc}"
+  fi
 fi
 
 print_summary

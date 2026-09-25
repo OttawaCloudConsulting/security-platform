@@ -1,0 +1,122 @@
+---
+# DefectDojo Import Proof (Phase 27, D-19/D-20/D-21).
+#
+# Proves, on a GitHub runner, that the committed DefectDojo side-channel
+# steps in security.yml land real scanner output in a real DefectDojo
+# 3.3.200, as a least-privilege (staff, non-superuser) user, over verified
+# TLS: run-1 import, in-place reimport, schedule branch resolution, a hostile
+# branch name, product-scoped cleanup with its refusals, and the
+# insecure-TLS warning. The assertions live in
+# scripts/defectdojo-import-proof.sh; this file only feeds it real reports.
+#
+# WHY TWO JOBS. The ephemeral DefectDojo is a kind cluster, reachable only
+# from the runner that created it. A `uses: ./.github/workflows/security.yml`
+# job runs the callee's jobs on OTHER runners, so calling security.yml with
+# DEFECTDOJO_URL pointed at the kind cluster cannot work (RESEARCH Pattern 7).
+# Instead `scans` runs the real scanners and uploads their `*-results`
+# artifacts, and `prove-import` downloads them, brings DefectDojo up on its
+# own runner and executes the committed side-channel run: bodies (extracted
+# from security.yml with yq, never copied) against it.
+#
+# OPT-OUT REGRESSION PROOF (D-02). security-platform sets no DEFECTDOJO_URL
+# variable, so inside `scans` the defectdojo-import and defectdojo-cleanup
+# jobs are skipped: every run of this workflow also shows that a repository
+# which has not opted in scans normally and sends nothing anywhere. Once
+# Phase 29 sets DEFECTDOJO_URL on this repository (RESEARCH OQ5), `scans`
+# additionally imports into the real instance; the kind proof in
+# `prove-import` is unaffected by that.
+#
+# WHY THE PATHS FILTER (D-21). The proof takes 15-30 minutes, so it runs on
+# pull requests only when something it proves changes: the callable
+# workflow, either caller, this file, the harness, the kind smoke it builds
+# on, or the DefectDojo chart. workflow_dispatch runs it on demand.
+#
+# Security: `pull_request`, never `pull_request_target`; no secrets are
+# passed to `scans` (the import is skipped anyway, and the harness mints its
+# own throwaway credentials inside the kind cluster); job permissions are
+# read-only apart from the SARIF grant `scans` needs.
+
+name: DefectDojo Import Proof
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - .github/workflows/security.yml
+      - .github/workflows/pr-security.yml
+      - .github/workflows/scheduled-security.yml
+      - .github/workflows/defectdojo-import-proof.yml
+      - scripts/defectdojo-import-proof.sh
+      - scripts/defectdojo-live-smoke.sh
+      - kubernetes/defectdojo/**
+
+# Workflow-level floor; each job restates what it needs.
+permissions:
+  contents: read
+
+jobs:
+  scans:
+    # NOT `security`: that job id is the frozen prefix of the five required
+    # check contexts (`security / <job name>`) in pr-security.yml. Any other
+    # id keeps this workflow's check runs (`scans / ...`) from ever colliding
+    # with, or satisfying, a required context.
+    name: scans
+    # Same block as pr-security.yml's `security` job: a job-level permissions
+    # block replaces the workflow-level set, the SARIF upload inside the
+    # callee needs security-events: write, and actions: read covers private
+    # repositories.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: ./.github/workflows/security.yml
+    # No `secrets:` and no `with:`: DEFECTDOJO_API_TOKEN stays unset here on
+    # purpose (see OPT-OUT REGRESSION PROOF above), and gate_mode falls
+    # through to the repository's GATE_MODE variable as in pr-security.yml.
+
+  prove-import:
+    name: prove-import
+    needs: scans
+    # always(): the scanners exit non-zero by design and a blocking gate can
+    # fail `scans`, but the reports are uploaded regardless, and the proof
+    # needs only the reports.
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      # Every `*-results` artifact of this run, flat into dd-reports: the
+      # same pattern and layout the defectdojo-import job's dd-download
+      # step uses.
+      - name: Download scan reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          pattern: '*-results'
+          merge-multiple: true
+          path: dd-reports
+
+      # ubuntu-latest ships Helm 3.x, and the Phase 26 kind smoke was measured
+      # on Helm v4 only. Download-then-verify-then-extract, never curl | sh
+      # (the same shape as the Gitleaks install in security.yml).
+      - name: Install Helm v4.3.0
+        run: |
+          curl -sSfL -o helm.tar.gz https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz
+          echo "86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb  helm.tar.gz" \
+            | sha256sum -c -
+          sudo tar xzf helm.tar.gz -C /usr/local/bin --strip-components=1 linux-amd64/helm
+          rm -f helm.tar.gz
+          helm_version="$(helm version --short)"
+          echo "helm ${helm_version}"
+          case "$helm_version" in
+            v4.3.0*) ;;
+            *) echo "expected Helm v4.3.0, found ${helm_version}"; exit 1 ;;
+          esac
+
+      # Brings up the kind DefectDojo (Phase 26 smoke) with the harness as its
+      # post-hook; exits non-zero on any failed assertion.
+      - name: Live proof
+        run: bash scripts/defectdojo-import-proof.sh dd-reports
