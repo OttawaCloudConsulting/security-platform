@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: executing
-stopped_at: Completed 27-09-PLAN.md
-last_updated: "2026-09-25T18:17:45.942Z"
+status: verifying
+stopped_at: Completed 27-10-PLAN.md
+last_updated: "2026-09-25T18:27:10.338Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 42
-  completed_plans: 41
-  percent: 57
+  completed_plans: 42
+  percent: 71
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 Phase: 27 (defectdojo-ci-auto-import) — EXECUTING
 Plan: 10 of 10
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-25
 
 ## Performance Metrics
@@ -272,6 +272,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 27]: 27-08: v1.1.0 (annotated, 414fd3b) and lightweight v1 both at 0f7e4e1; v1.0.0 and v2.0 untouched; release v1.1.0 Latest. Operator: "Approved — tag v1.1.0 and move v1"
 - [Phase 27]: 27-08: stray public v2.0 tag left as-is (operator: "Leave for now, note it"); recommend Phase 26 harness follow-up to retry the single-shot KIND-CELERY-PING
 - [Phase 27]: 27-09: adoption guide section 12 'Enable DefectDojo Import' gated by DEFECTDOJO-SECTION; 'one substitution point' reworded as the one gating setting
+- [Phase 27]: 27-10: ADR-024 narrows ADR-018's single substitution point: gate_mode stays the only gating setting; DEFECTDOJO_* are opt-in side channels
 
 ### Pending Todos
 
@@ -388,11 +389,12 @@ Carried forward from v1.1 close:
 | Phase 27 P07 | 25min | 4 tasks | 3 files |
 | Phase 27 P08 | 40min | 3 tasks | 1 files |
 | Phase 27 P09 | 20min | 2 tasks | 2 files |
+| Phase 27 P10 | 25min | 2 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-09-25T18:17:45.933Z
-Stopped at: Completed 27-09-PLAN.md
+Last session: 2026-09-25T18:27:10.328Z
+Stopped at: Completed 27-10-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
