@@ -1,0 +1,117 @@
+# values.yaml — consumer value surface for the `defectdojo` wrapper chart.
+#
+# One value tree lives here:
+#   defectdojo.*   passed through to the pinned official `defectdojo` 1.9.53
+#                  subchart. Anything the subchart exposes is overridable from
+#                  here; only the keys whose upstream default is wrong (or must
+#                  not silently drift) for this stack are restated below (D-04).
+#                  Read the full surface with:
+#                    tar -xOzf charts/defectdojo-1.9.53.tgz defectdojo/values.yaml
+#
+# This wrapper owns no values of its own. Its only template is
+# `templates/validate-tls.yaml`, a render-time guard that renders nothing on
+# success and aborts the render when TLS is on without a cert-manager issuer.
+#
+# Annotation style is helm-docs (`# --`), matching the subchart, so a future
+# `helm-docs` run produces a values table. Every non-obvious default carries an
+# inline rationale citing its decision ID (26-CONTEXT.md) or measurement
+# (26-RESEARCH.md).
+
+defectdojo:
+  # -- Hostname of the Ingress rule and TLS certificate. PLACEHOLDER: override
+  # it. `example.com` is reserved by RFC 2606 and ACME CAs refuse to issue for
+  # it, so a forgotten override fails loudly instead of publishing a wrong host.
+  host: defectdojo.example.com
+  # -- Public URL DefectDojo writes into links and uses as DD_SITE_URL. It MUST
+  # move together with `host` (upstream default is http://localhost:8080 at
+  # runtime). Keep the `https://` scheme: TLS is on by default (D-10).
+  siteUrl: https://defectdojo.example.com
+
+  # NOTE: this INVERTS the nexus wrapper's "no image block" rule, deliberately.
+  # The DefectDojo image tags ARE pinned here (D-03) because DefectDojo runs
+  # Django schema migrations on upgrade: a version change must be an explicit,
+  # reviewed act, never a side effect of a chart bump. A version bump changes
+  # four pin points together: Chart.yaml `appVersion`, the dependency version
+  # (via Chart.lock), and both tags below. The IMAGE-PIN check in
+  # scripts/check-defectdojo-chart.sh fails if they disagree.
+  # There is NO image `repository` override anywhere (D-07): the upstream
+  # images are used as-is, and that applies equally to the Postgres and Valkey
+  # subcharts.
+  images:
+    django:
+      image:
+        # -- defectdojo-django image tag; must equal the subchart appVersion (D-03).
+        tag: "3.3.200"
+    nginx:
+      image:
+        # -- defectdojo-nginx image tag; must equal the subchart appVersion (D-03).
+        tag: "3.3.200"
+
+  django:
+    ingress:
+      # -- Render the upstream Ingress (D-09). Upstream default is already
+      # `true`; restated so D-09 does not depend on that default surviving a
+      # chart bump.
+      enabled: true
+      # -- Emit `spec.tls` for `host` (D-10). Restated for the same reason.
+      # Set to `false` only for a plaintext Ingress; the TLS guard then stands down.
+      activateTLS: true
+      # -- Name of the TLS Secret. cert-manager ingress-shim names the
+      # Certificate after it, so it must be non-empty while TLS is on
+      # (enforced by templates/validate-tls.yaml).
+      secretName: defectdojo-tls
+      # -- Ingress annotations, passed through verbatim. The consumer puts
+      # EXACTLY ONE of `cert-manager.io/cluster-issuer` or
+      # `cert-manager.io/issuer` here (D-11). The annotation key is itself the
+      # issuer-kind selector, so there is no separate `issuerKind` value.
+      # There is deliberately no default issuer: the render fails until one
+      # is set. `--set` form:
+      #   --set 'defectdojo.django.ingress.annotations.cert-manager\.io/cluster-issuer=NAME'
+      annotations: {}
+      # NOTE ON `ingressClassName` — the key is deliberately ABSENT (D-12).
+      # Upstream omits the field when it is empty, so the cluster's default
+      # IngressClass applies. Never write it as `null` (the upstream schema
+      # types it `string`); set a real class name only to override.
+
+    uwsgi:
+      appSettings:
+        # -- uwsgi worker processes. Upstream default is 4; measured: 4
+        # processes x Django is about 440 MiB idle and was OOMKilled at the
+        # 512Mi upstream limit on the first login (26-RESEARCH Pitfall 2).
+        processes: 2
+        # -- Maximum file descriptors for uwsgi. Upstream default 0 lets uwsgi
+        # size its fd table from RLIMIT_NOFILE (1073741816 measured on kind),
+        # which OOMKilled the container on start; this value alone fixed the
+        # startup OOM (26-RESEARCH Pitfall 2).
+        maxFd: 102400
+      # -- uwsgi container resources. Measured peak 388-430 MiB after an admin
+      # login with the settings above; the limit leaves headroom above that.
+      # Do not lower the limit below 512Mi with 2 processes.
+      resources:
+        requests:
+          cpu: 100m
+          memory: 384Mi
+        limits:
+          cpu: 2000m
+          memory: 1Gi
+
+  valkey:
+    persistence:
+      # -- Valkey is only the Celery broker; queued tasks are transient. The
+      # upstream valkey 0.25.8 subchart defaults this to `true` with an 8Gi PVC,
+      # so it is turned off here (ephemeral Valkey, D-08).
+      enabled: false
+
+  # NOTE: deliberately NOT restated (upstream defaults already match):
+  #   - Secrets (D-13): `createSecret`, `createPostgresqlSecret` and
+  #     `createValkeySecret` all default to `false` upstream, so the chart
+  #     renders zero Secrets and the consumer pre-creates them. Setting any of
+  #     them to `true` is an explicit opt-in to chart-generated secrets, which
+  #     are regenerated on every sync and break DD_CREDENTIAL_AES_256_KEY.
+  #   - Postgres persistence (D-08): upstream default is `true`, with the
+  #     `storageClass` key ABSENT, not empty, so no `storageClassName` field is
+  #     emitted and Kubernetes substitutes the cluster's default StorageClass.
+  #     Set it only to override:
+  #       --set defectdojo.postgresql.primary.persistence.storageClass=NAME
+  #   - Single replica (D-05): upstream defaults run one django, one Celery
+  #     worker and one Celery beat pod, with autoscaling off.
