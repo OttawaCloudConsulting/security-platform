@@ -19,7 +19,7 @@ Architecture constraint (Key Decision, see PROJECT.md): generic Helm charts are 
 
 ### DefectDojo
 
-- [ ] **DDOJO-01**: Public Helm chart deploys DefectDojo with external ingress and cert-manager-issued TLS
+- [x] **DDOJO-01**: Public Helm chart deploys DefectDojo with external ingress and cert-manager-issued TLS
 - [ ] **DDOJO-02**: `security-platform` CI scan jobs automatically import SARIF/JSON findings into DefectDojo after each run
 - [ ] **DDOJO-03**: Deduplication rules configured so repeated findings across scans/tools collapse rather than duplicate
 - [ ] **DDOJO-04**: Triage workflow documented/configured for reviewing and dispositioning findings in DefectDojo
@@ -49,7 +49,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NEXUS-02 | Phase 24 | Complete |
 | NEXUS-04 | Phase 24 | Complete |
 | NEXUS-05 | Phase 25 | Complete |
-| DDOJO-01 | Phase 26 | Pending |
+| DDOJO-01 | Phase 26 | Complete |
 | DDOJO-02 | Phase 27 | Pending |
 | DDOJO-03 | Phase 28 | Pending |
 | DDOJO-04 | Phase 28 | Pending |
@@ -62,4 +62,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-09-17*
-*Last updated: 2026-09-17 after initial v3.0 definition*
+*Last updated: 2026-09-24 after Phase 26*

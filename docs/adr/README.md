@@ -30,3 +30,4 @@ For the full findings that prompted ADR-001 through ADR-012, see [`red-team/00-c
 | [ADR-020](adr020-nexus-chart-base-and-eula-opt-in.md) | Nexus Chart Base, EULA Opt-In and the Unset Helm Proxy Remote | 2026-09-18 | Accepted |
 | [ADR-021](adr021-nexus-anonymous-read-and-workstation-routing.md) | Nexus Anonymous Read and Workstation Routing | 2026-09-20 | Accepted |
 | [ADR-022](adr022-nexus-live-validation-via-argocd-overlay.md) | Nexus Live Validation via a Private ArgoCD Overlay | 2026-09-23 | Accepted |
+| [ADR-023](adr023-defectdojo-chart-base-tls-guard-and-version-pin.md) | DefectDojo Chart Base, cert-manager Issuer Guard and Pinned Version | 2026-09-24 | Accepted |
