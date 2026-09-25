@@ -44,15 +44,20 @@ set -euo pipefail
 #                   contract env name against the committed step env, and
 #                   assert the two dd-gate bodies are identical.
 #   --hook          live, called by the smoke: mint tokens, run the committed
-#                   bodies, assert the run-1 state. Prints one
-#                   "PROOF: <ID> PASS|FAIL <detail>" line per assertion.
+#                   bodies, assert run 1, the in-place reimport (run 2), the
+#                   schedule path, a hostile head ref, product-scoped cleanup,
+#                   the cleanup refusals and no-match no-op, and the
+#                   insecure-TLS warning. Prints one
+#                   "PROOF: <ID> PASS|FAIL <detail>" line per assertion and
+#                   ends with "PROOF PASS - <n> assertions" or
+#                   "PROOF FAIL - <k> of <n>".
 #
 # DD_PROOF_WORKFLOW overrides the workflow path (scratch-copy self-tests only).
 #
-# INTERMEDIATE STATE (27-05): run 2, the cleanup assertions and the
-# insecure-warning check land in 27-06. Until then --hook never reports a pass:
-# its last line is "PROOF INCOMPLETE - ..." and it exits 1. A partial proof is
-# not a proof.
+# Assertion groups (D-20): P-EXTRACT P-TLS P-ADMIN-TOKEN P-USER
+# P-IMPORTER-TOKEN P-GATE P-RUN1 P-CONTEXT P-TESTS P-COUNTS (run 1, 27-05);
+# P-RUN2 P-SCHEDULE P-HOSTILE P-SCOPE P-CLEANUP P-REFUSE P-NOMATCH P-INSECURE
+# (27-06). Every body run uses the ci-importer token.
 #
 # Credentials are generated or read at runtime, written only to 0600 files,
 # sent with `--data-binary @file` or `-H @file`, never placed on any argv and
@@ -63,7 +68,8 @@ set -euo pipefail
 #   bash scripts/defectdojo-import-proof.sh --extract-only
 #
 # Exit codes:
-#   0  --extract-only: every static check passed (--hook: reserved for 27-06)
+#   0  --extract-only: every static check passed; --hook: every proof
+#      assertion passed
 #   1  at least one check or proof assertion failed, or the proof is incomplete
 #   2  preflight failure: a required binary, report file or hook variable is
 #      missing
@@ -89,6 +95,16 @@ readonly PROOF_SHA="0123456789abcdef0123456789abcdef01234567"
 readonly PROOF_RUN_ID="2705001"
 readonly PROOF_SERVER_URL="https://github.com"
 readonly PROOF_REPOSITORY="OttawaCloudConsulting/security-platform"
+
+# Run 2 and cleanup identities (27-06). The hostile head ref is a LITERAL
+# (single quotes): it must reach the committed bodies unchanged, and the
+# proof asserts nothing ever executes it. It is only ever passed as a quoted
+# expansion into an exported environment value or a Python env dict.
+readonly PROOF_DEFAULT_BRANCH="main"
+readonly PROOF_OTHER_PRODUCT="proof/other-product"
+# shellcheck disable=SC2016  # the $( ) is the point: it must stay literal
+readonly PROOF_HOSTILE_REF='@dd-proof/$(touch pwned)'
+readonly PROOF_NOMATCH_REF="never/existed"
 
 usage() {
   echo "usage: bash scripts/defectdojo-import-proof.sh <reports-dir> | --extract-only | --hook" >&2
@@ -307,17 +323,15 @@ proof_fail() {
   echo "PROOF: $1 FAIL $2"
 }
 
-# proof_finish: the terminal verdict. Never PASS in 27-05.
+# proof_finish: the terminal verdict.
 proof_finish() {
   echo
   if [ "$PROOF_FAILED" -gt 0 ]; then
     echo "PROOF FAIL - ${PROOF_FAILED} of ${PROOF_N}"
     exit 1
   fi
-  # 27-06: once run 2, the cleanup assertions and the insecure-warning check
-  # exist, this branch becomes "PROOF PASS - <n> assertions" with exit 0.
-  echo "PROOF INCOMPLETE - run-2 and cleanup assertions pending (27-06)"
-  exit 1
+  echo "PROOF PASS - ${PROOF_N} assertions"
+  exit 0
 }
 
 # proof_abort ID DETAIL: a failure every later assertion depends on.
@@ -393,6 +407,122 @@ gate_output() {
   sed -n '/^enabled=/p' "$BODY_OUTPUT" | tr '\n' ' ' | sed 's/ $//'
 }
 
+# tally_assert_log FILE: relay every "PROOF: <ID> PASS|FAIL <detail>" line a
+# read-side Python script wrote into the harness tally; other lines are
+# printed as they are.
+tally_assert_log() {
+  local line id verdict detail
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^PROOF:\ ([A-Z0-9-]+)\ (PASS|FAIL)\ (.*)$ ]]; then
+      id="${BASH_REMATCH[1]}"
+      verdict="${BASH_REMATCH[2]}"
+      detail="${BASH_REMATCH[3]}"
+      if [ "$verdict" = "PASS" ]; then
+        proof_pass "$id" "$detail"
+      else
+        proof_fail "$id" "$detail"
+      fi
+    else
+      echo "$line"
+    fi
+  done < "$1"
+}
+
+# write_read_py PATH: the read-side lookup script used after run 1 (admin
+# token, --cacert, the CURL_HOME resolve entry). Inputs come from the
+# environment only, so a hostile engagement name is never part of any shell
+# string. Modes:
+#   engagements       READ_PRODUCT, READ_ENGAGEMENT -> JSON
+#                     {"product_id": <id|null>, "engagements": [{"id", "tests"}]}
+#                     (exact product name, then exact engagement name inside it)
+#   engagement-total  -> JSON {"count": <engagements on the whole instance>}
+write_read_py() {
+  cat > "$1" <<'PY'
+import json
+import os
+import subprocess
+import sys
+import urllib.parse
+
+env = os.environ
+base = env["BASE_URL"].rstrip("/")
+ca = env["DD_CA_FILE"]
+hdr = env["PROOF_ADMIN_HDR"]
+resp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "read-response.json")
+
+
+def get(path, params, count_only=False):
+    url = "{}{}?{}".format(base, path, urllib.parse.urlencode(params))
+    cmd = ["curl", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
+           "-w", "%{http_code} %{ssl_verify_result}", url]
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    code, _, verify = (proc.stdout or "000 -").strip().partition(" ")
+    body = ""
+    if os.path.isfile(resp_path):
+        with open(resp_path, encoding="utf-8", errors="replace") as handle:
+            body = handle.read()
+        os.remove(resp_path)
+    if proc.returncode != 0 or code != "200" or verify != "0":
+        sys.exit("GET {} -> curl exit {}, http {}, ssl_verify_result {}: {}".format(
+            path, proc.returncode, code, verify, (body or proc.stderr)[:300]))
+    data = json.loads(body)
+    if not count_only and isinstance(data, dict) and data.get("next"):
+        sys.exit("GET {} returned more than one page".format(path))
+    return data
+
+
+mode = sys.argv[1] if len(sys.argv) > 1 else ""
+if mode == "engagements":
+    product, name = env["READ_PRODUCT"], env["READ_ENGAGEMENT"]
+    products = [p for p in get("/api/v2/products/", {"name_exact": product, "limit": 100})["results"]
+                if p.get("name") == product]
+    if len(products) > 1:
+        sys.exit("{} products exactly named {!r}".format(len(products), product))
+    out = {"product_id": None, "engagements": []}
+    if products:
+        pid = products[0]["id"]
+        out["product_id"] = pid
+        for e in get("/api/v2/engagements/", {"product": pid, "name": name, "limit": 100})["results"]:
+            if e.get("name") == name and e.get("product") == pid:
+                tests = get("/api/v2/tests/", {"engagement": e["id"], "limit": 1}, count_only=True).get("count")
+                out["engagements"].append({"id": e["id"], "tests": tests})
+    print(json.dumps(out))
+elif mode == "engagement-total":
+    print(json.dumps({"count": get("/api/v2/engagements/", {"limit": 1}, count_only=True).get("count")}))
+else:
+    sys.exit("unknown read mode {!r}".format(mode))
+PY
+}
+
+# read_engagements PRODUCT NAME: exact-name engagements of NAME inside the
+# product exactly named PRODUCT. Sets READ_N (match count, or "error"),
+# READ_TESTS (Test count of the first match, or "none") and READ_ERR.
+read_engagements() {
+  local out="${PROOF_DIR}/read-engagements.json" rc=0
+  READ_PRODUCT="$1" READ_ENGAGEMENT="$2" python3 "$PROOF_READ_PY" engagements \
+    > "$out" 2> "${out}.err" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    READ_N="error"
+    READ_TESTS="none"
+    READ_ERR="(read-side lookup failed: $(head -c 300 "${out}.err" | tr '\n' ' '))"
+    return 0
+  fi
+  READ_N="$(jq -r '.engagements | length' "$out")"
+  READ_TESTS="$(jq -r '.engagements[0].tests // "none"' "$out")"
+  READ_ERR=""
+}
+
+# read_engagement_total: prints the instance-wide engagement count, or
+# "error".
+read_engagement_total() {
+  local out="${PROOF_DIR}/read-total.json"
+  if python3 "$PROOF_READ_PY" engagement-total > "$out" 2> "${out}.err"; then
+    jq -r '.count' "$out"
+  else
+    echo "error"
+  fi
+}
+
 mode_hook() {
   local v
   for v in BASE_URL SMOKE_HOST PF_PORT KIND_CONTEXT ADMIN_USER DD_CA_FILE DD_ADMIN_PW_FILE DD_SMOKE_OUT DD_PROOF_REPORTS; do
@@ -421,7 +551,7 @@ mode_hook() {
   local bodies="${PROOF_DIR}/bodies"
   mkdir -p "$bodies"
 
-  echo "=== DefectDojo import proof (run 1) against ${BASE_URL} ==="
+  echo "=== DefectDojo import proof against ${BASE_URL} (run 1) ==="
   # The bodies must be the committed ones, re-checked here: a hook run never
   # executes a body that did not pass the static contract.
   local ex_rc=0
@@ -433,6 +563,8 @@ mode_hook() {
   local b_gate="${bodies}/defectdojo-import__dd-gate.sh"
   local b_import="${bodies}/defectdojo-import__dd-import.sh"
   local b_verify="${bodies}/defectdojo-import__dd-verify.sh"
+  local b_delete="${bodies}/defectdojo-cleanup__dd-delete.sh"
+  local b_cleanup_verify="${bodies}/defectdojo-cleanup__dd-cleanup-verify.sh"
 
   # ── P-TLS ─────────────────────────────────────────────────────────────────
   local curlhome="${DD_SMOKE_OUT}/curlhome"
@@ -800,40 +932,409 @@ except (ApiError, ValueError, KeyError, TypeError) as exc:
     say("P-CONTEXT", False, "read-side assertions aborted: {}".format(exc))
     failures += 1
 
-# Saved for 27-06's run-2 comparison (Pitfall 6 c).
+# Saved for the run-2 comparison below (Pitfall 6 c).
 with open(env["PROOF_RUN1_OUT"], "w", encoding="utf-8") as handle:
     json.dump(run1, handle, indent=2)
 sys.exit(1 if failures else 0)
 PY
-  local line id verdict detail
-  while IFS= read -r line; do
-    if [[ "$line" =~ ^PROOF:\ ([A-Z0-9-]+)\ (PASS|FAIL)\ (.*)$ ]]; then
-      id="${BASH_REMATCH[1]}"
-      verdict="${BASH_REMATCH[2]}"
-      detail="${BASH_REMATCH[3]}"
-      if [ "$verdict" = "PASS" ]; then
-        proof_pass "$id" "$detail"
-      else
-        proof_fail "$id" "$detail"
-      fi
-    else
-      echo "$line"
-    fi
-  done < "$assert_log"
+  tally_assert_log "$assert_log"
   if [ "$py_rc" -ne 0 ] && [ "$PROOF_FAILED" -eq 0 ]; then
     proof_fail "P-COUNTS" "the read-side assertion script exited ${py_rc} without reporting a failed assertion (see ${assert_log})"
   fi
+  if [ "$PROOF_FAILED" -gt 0 ]; then
+    # Run 2 compares against run 1; a failed run-1 read side leaves nothing
+    # sound to compare with.
+    echo "    aborting: run 2 and the cleanup assertions depend on a clean run 1"
+    proof_finish
+  fi
 
-  # 27-06: run 2 goes here — reimport the same files into ci/proof/branch-a
-  #        and compare against $DD_SMOKE_OUT/proof-run1.json (delta.created 0,
-  #        after_total unchanged, Test count unchanged).
-  # 27-06: cleanup assertions go here — run the committed dd-delete and
-  #        dd-cleanup-verify bodies (and the default-branch refusal) as
-  #        ci-importer.
-  # 27-06: insecure-warning check goes here — assert the ::warning:: marker
-  #        with DD_INSECURE=true WITHOUT any network call (the cleanup wording
-  #        differs from the import wording, so match the marker, not the
-  #        sentence).
+  # Read-side helper for everything below (admin token, verified TLS).
+  PROOF_ADMIN_HDR="$admin_hdr"
+  PROOF_READ_PY="${PROOF_DIR}/read.py"
+  export PROOF_ADMIN_HDR PROOF_READ_PY
+  write_read_py "$PROOF_READ_PY"
+
+  local reports_one="${PROOF_DIR}/reports-gitleaks-only" reports_none="${PROOF_DIR}/reports-empty"
+  mkdir -p "$reports_one" "$reports_none"
+  cp "${DD_PROOF_REPORTS}/gitleaks-results.json" "${reports_one}/gitleaks-results.json"
+
+  # ── P-RUN2 ────────────────────────────────────────────────────────────────
+  # The SAME env as P-RUN1: a reimport in place (D-07). Every file must
+  # create zero findings, keep its after-total and keep its Test (Pitfall 6c).
+  echo
+  echo "=== run 2: reimport the same reports into ci/${PROOF_BRANCH_A} ==="
+  local results2="${PROOF_DIR}/results-run2.json"
+  run_body import-run2 "$b_import" \
+    "DD_URL=${BASE_URL}" \
+    "DD_TOKEN=$(cat "$importer_tok")" \
+    "DD_PRODUCT=${PROOF_PRODUCT}" \
+    "DD_PRODUCT_TYPE=${PROOF_PRODUCT_TYPE}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=${ca_pem}" \
+    "DD_REPORTS_DIR=${DD_PROOF_REPORTS}" \
+    "DD_RESULTS_FILE=${results2}" \
+    "GITHUB_ACTOR=proof-actor" \
+    "GITHUB_EVENT_NAME=pull_request" \
+    "GITHUB_HEAD_REF=${PROOF_BRANCH_A}" \
+    "GITHUB_REF_NAME=27/merge" \
+    "GITHUB_SHA=${PROOF_SHA}" \
+    "GITHUB_RUN_ID=${PROOF_RUN_ID}" \
+    "GITHUB_SERVER_URL=${PROOF_SERVER_URL}" \
+    "GITHUB_REPOSITORY=${PROOF_REPOSITORY}"
+  sed -e 's/^/    | /' "$BODY_LOG"
+  if [ "$BODY_RC" -ne 0 ] || [ ! -s "$results2" ]; then
+    proof_abort "P-RUN2" "committed dd-import body (run 2) exited ${BODY_RC} (results file present: $([ -s "$results2" ] && echo yes || echo no)); log ${BODY_LOG}"
+  fi
+  run_body verify-run2 "$b_verify" "DD_IMPORT_OUTCOME=success" "DD_RESULTS_FILE=${results2}"
+  sed -e 's/^/    | /' "$BODY_LOG"
+  if [ "$BODY_RC" -eq 0 ]; then
+    proof_pass "P-RUN2" "committed dd-import (run 2) and dd-verify bodies exited 0"
+  else
+    proof_fail "P-RUN2" "committed dd-verify body exited ${BODY_RC} on the run-2 results (log ${BODY_LOG})"
+  fi
+  local run2_log="${PROOF_DIR}/assert-run2.log" run2_rc=0
+  PROOF_RESULTS2="$results2" PROOF_RUN1_OUT="${DD_SMOKE_OUT}/proof-run1.json" \
+    python3 - > "$run2_log" 2>&1 <<'PY' || run2_rc=$?
+import json
+import os
+import subprocess
+import sys
+
+env = os.environ
+with open(env["PROOF_RUN1_OUT"], encoding="utf-8") as handle:
+    run1 = json.load(handle)
+with open(env["PROOF_RESULTS2"], encoding="utf-8") as handle:
+    run2 = json.load(handle)
+failures = 0
+
+
+def check(ok, detail):
+    global failures
+    print("PROOF: P-RUN2 {} {}".format("PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+def total_of(stats, *path):
+    node = stats
+    for key in path:
+        if not isinstance(node, dict):
+            return None
+        node = node.get(key)
+    return node
+
+
+files1 = run1.get("files") or {}
+attempted2 = run2.get("attempted") or []
+names1 = sorted(files1)
+names2 = sorted(r.get("file") for r in attempted2)
+# Iterate run 2, and require the same non-empty file set: an empty run-1
+# record must not let this pass vacuously.
+check(bool(names2) and names1 == names2,
+      "run 2 attempted {} == run 1 files {}".format(names2, names1))
+print("    file                       test(run1) test(run2)  after(run1) after(run2)  delta.created")
+for r in attempted2:
+    name = r.get("file")
+    one = files1.get(name) or {}
+    stats = r.get("statistics") if isinstance(r.get("statistics"), dict) else {}
+    created = total_of(stats, "delta", "created", "total", "total")
+    after = total_of(stats, "after", "total", "total")
+    print("    {:<26} {:>10} {:>10} {:>12} {:>11} {:>14}".format(
+        str(name), str(one.get("test_id")), str(r.get("test_id")), str(one.get("after_total")),
+        str(after), str(created)))
+    if created is None:
+        check(False, "{}: statistics.delta.created.total.total missing; statistics keys {} (delta keys {})".format(
+            name, sorted(stats), sorted((stats.get("delta") or {}) if isinstance(stats.get("delta"), dict) else [])))
+    else:
+        check(created == 0, "{}: delta.created.total.total {} == 0".format(name, created))
+    check(after is not None and after == one.get("after_total"),
+          "{}: after.total.total {} == run-1 {}".format(name, after, one.get("after_total")))
+    check(r.get("test_id") is not None and r.get("test_id") == one.get("test_id"),
+          "{}: test_id {} == run-1 test_id {} (reimported in place)".format(
+              name, r.get("test_id"), one.get("test_id")))
+
+proc = subprocess.run([sys.executable, env["PROOF_READ_PY"], "engagements"],
+                      env=dict(env, READ_PRODUCT=run1.get("product", ""),
+                               READ_ENGAGEMENT=run1.get("engagement", "")),
+                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+if proc.returncode != 0:
+    check(False, "engagement read-back failed: {}".format((proc.stderr or proc.stdout).strip()[:300]))
+else:
+    state = json.loads(proc.stdout)
+    engs = state.get("engagements") or []
+    tests_now = engs[0].get("tests") if len(engs) == 1 else None
+    check(len(engs) == 1 and tests_now == run1.get("test_count"),
+          "engagement {!r}: {} match(es), Test count {} == run-1 {}".format(
+              run1.get("engagement"), len(engs), tests_now, run1.get("test_count")))
+    run1["test_count_run2"] = tests_now
+    with open(env["PROOF_RUN1_OUT"], "w", encoding="utf-8") as handle:
+        json.dump(run1, handle, indent=2)
+sys.exit(1 if failures else 0)
+PY
+  tally_assert_log "$run2_log"
+  if [ "$run2_rc" -ne 0 ] && ! grep -q '^PROOF: P-RUN2 FAIL' "$run2_log"; then
+    proof_fail "P-RUN2" "the run-2 comparison script exited ${run2_rc} without reporting a failed assertion (see ${run2_log})"
+  fi
+  local branch_a_tests
+  branch_a_tests="$(jq -r '.test_count_run2 // "unknown"' "${DD_SMOKE_OUT}/proof-run1.json")"
+
+  # ── P-SCHEDULE ────────────────────────────────────────────────────────────
+  # A scheduled run has no head ref: the branch comes from GITHUB_REF_NAME
+  # and the default-branch engagement is created (D-07, D-14).
+  echo
+  echo "=== schedule event: branch from GITHUB_REF_NAME ==="
+  run_body import-schedule "$b_import" \
+    "DD_URL=${BASE_URL}" \
+    "DD_TOKEN=$(cat "$importer_tok")" \
+    "DD_PRODUCT=${PROOF_PRODUCT}" \
+    "DD_PRODUCT_TYPE=${PROOF_PRODUCT_TYPE}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=${ca_pem}" \
+    "DD_REPORTS_DIR=${reports_one}" \
+    "DD_RESULTS_FILE=${PROOF_DIR}/results-schedule.json" \
+    "GITHUB_ACTOR=proof-actor" \
+    "GITHUB_EVENT_NAME=schedule" \
+    "GITHUB_HEAD_REF=" \
+    "GITHUB_REF_NAME=${PROOF_DEFAULT_BRANCH}" \
+    "GITHUB_SHA=${PROOF_SHA}" \
+    "GITHUB_RUN_ID=${PROOF_RUN_ID}" \
+    "GITHUB_SERVER_URL=${PROOF_SERVER_URL}" \
+    "GITHUB_REPOSITORY=${PROOF_REPOSITORY}"
+  sed -e 's/^/    | /' "$BODY_LOG"
+  read_engagements "$PROOF_PRODUCT" "ci/${PROOF_DEFAULT_BRANCH}"
+  if [ "$BODY_RC" -eq 0 ] && [ "$READ_N" = "1" ]; then
+    proof_pass "P-SCHEDULE" "schedule event, empty head ref, GITHUB_REF_NAME=${PROOF_DEFAULT_BRANCH} -> exit 0 and engagement 'ci/${PROOF_DEFAULT_BRANCH}' exists in ${PROOF_PRODUCT} (${READ_TESTS} Test)"
+  else
+    proof_fail "P-SCHEDULE" "schedule import exited ${BODY_RC}; engagement 'ci/${PROOF_DEFAULT_BRANCH}' matches in ${PROOF_PRODUCT}: ${READ_N} ${READ_ERR}"
+  fi
+
+  # ── P-HOSTILE ─────────────────────────────────────────────────────────────
+  # The hostile head ref reaches the body ONLY as an exported environment
+  # value (run_body's `export` builtin; nothing re-parses it). The leading @
+  # would make curl read a file if the body ever used -F for it; the $( )
+  # would run if anything interpolated it into a shell string (T-27-01).
+  echo
+  echo "=== hostile head ref ==="
+  local hostile_dir
+  run_body import-hostile "$b_import" \
+    "DD_URL=${BASE_URL}" \
+    "DD_TOKEN=$(cat "$importer_tok")" \
+    "DD_PRODUCT=${PROOF_PRODUCT}" \
+    "DD_PRODUCT_TYPE=${PROOF_PRODUCT_TYPE}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=${ca_pem}" \
+    "DD_REPORTS_DIR=${reports_one}" \
+    "DD_RESULTS_FILE=${PROOF_DIR}/results-hostile.json" \
+    "GITHUB_ACTOR=proof-actor" \
+    "GITHUB_EVENT_NAME=pull_request" \
+    "GITHUB_HEAD_REF=${PROOF_HOSTILE_REF}" \
+    "GITHUB_REF_NAME=28/merge" \
+    "GITHUB_SHA=${PROOF_SHA}" \
+    "GITHUB_RUN_ID=${PROOF_RUN_ID}" \
+    "GITHUB_SERVER_URL=${PROOF_SERVER_URL}" \
+    "GITHUB_REPOSITORY=${PROOF_REPOSITORY}"
+  hostile_dir="$BODY_DIR"
+  sed -e 's/^/    | /' "$BODY_LOG"
+  if [ "$BODY_RC" -eq 0 ]; then
+    proof_pass "P-HOSTILE" "import with the hostile head ref exited 0"
+  else
+    proof_fail "P-HOSTILE" "import with the hostile head ref exited ${BODY_RC} (log above)"
+  fi
+  read_engagements "$PROOF_PRODUCT" "ci/${PROOF_HOSTILE_REF}"
+  if [ "$READ_N" = "1" ]; then
+    proof_pass "P-HOSTILE" "exactly one engagement named literally 'ci/${PROOF_HOSTILE_REF}' exists in ${PROOF_PRODUCT}"
+  else
+    proof_fail "P-HOSTILE" "engagement named literally 'ci/${PROOF_HOSTILE_REF}' in ${PROOF_PRODUCT}: ${READ_N} match(es) ${READ_ERR}"
+  fi
+  local pwned
+  pwned="$( { [ -e "${hostile_dir}/pwned" ] && echo "${hostile_dir}/pwned"; [ -e "${REPO_ROOT}/pwned" ] && echo "${REPO_ROOT}/pwned"; find "$DD_SMOKE_OUT" -name pwned -print; } 2>/dev/null | tr '\n' ' ')" || pwned="find failed"
+  if [ -z "$pwned" ]; then
+    proof_pass "P-HOSTILE" "no file named pwned in the body's cwd, ${REPO_ROOT} or anywhere under \$DD_SMOKE_OUT: the \$( ) never ran"
+  else
+    proof_fail "P-HOSTILE" "a file named pwned exists: ${pwned}- the hostile ref was executed"
+  fi
+
+  # ── P-SCOPE ───────────────────────────────────────────────────────────────
+  # The identical engagement name in a SECOND product: the cleanup below
+  # must leave this one alone (delete is product-scoped, D-10).
+  echo
+  echo "=== same hostile engagement name in ${PROOF_OTHER_PRODUCT} ==="
+  run_body import-scope "$b_import" \
+    "DD_URL=${BASE_URL}" \
+    "DD_TOKEN=$(cat "$importer_tok")" \
+    "DD_PRODUCT=${PROOF_OTHER_PRODUCT}" \
+    "DD_PRODUCT_TYPE=${PROOF_PRODUCT_TYPE}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=${ca_pem}" \
+    "DD_REPORTS_DIR=${reports_one}" \
+    "DD_RESULTS_FILE=${PROOF_DIR}/results-scope.json" \
+    "GITHUB_ACTOR=proof-actor" \
+    "GITHUB_EVENT_NAME=pull_request" \
+    "GITHUB_HEAD_REF=${PROOF_HOSTILE_REF}" \
+    "GITHUB_REF_NAME=28/merge" \
+    "GITHUB_SHA=${PROOF_SHA}" \
+    "GITHUB_RUN_ID=${PROOF_RUN_ID}" \
+    "GITHUB_SERVER_URL=${PROOF_SERVER_URL}" \
+    "GITHUB_REPOSITORY=${PROOF_REPOSITORY}"
+  sed -e 's/^/    | /' "$BODY_LOG"
+  read_engagements "$PROOF_OTHER_PRODUCT" "ci/${PROOF_HOSTILE_REF}"
+  if [ "$BODY_RC" -eq 0 ] && [ "$READ_N" = "1" ]; then
+    proof_pass "P-SCOPE" "an engagement with the identical hostile name exists in ${PROOF_OTHER_PRODUCT} too"
+  else
+    proof_fail "P-SCOPE" "import into ${PROOF_OTHER_PRODUCT} exited ${BODY_RC}; matches there: ${READ_N} ${READ_ERR}"
+  fi
+
+  # ── P-CLEANUP ─────────────────────────────────────────────────────────────
+  echo
+  echo "=== cleanup: delete ci/<hostile ref> in ${PROOF_PRODUCT} only ==="
+  local cleanup_res="${PROOF_DIR}/cleanup-hostile.json" outcome
+  run_body delete-hostile "$b_delete" \
+    "DD_URL=${BASE_URL}" \
+    "DD_TOKEN=$(cat "$importer_tok")" \
+    "DD_PRODUCT=${PROOF_PRODUCT}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=${ca_pem}" \
+    "DD_DEFAULT_BRANCH=${PROOF_DEFAULT_BRANCH}" \
+    "DD_CLEANUP_RESULT_FILE=${cleanup_res}" \
+    "GITHUB_ACTOR=proof-actor" \
+    "GITHUB_EVENT_NAME=pull_request" \
+    "GITHUB_HEAD_REF=${PROOF_HOSTILE_REF}"
+  sed -e 's/^/    | /' "$BODY_LOG"
+  outcome="$(jq -r '.outcome // "none"' "$cleanup_res" 2>/dev/null || echo "no-result-file")"
+  if [ "$BODY_RC" -eq 0 ] && [ "$outcome" = "deleted" ]; then
+    proof_pass "P-CLEANUP" "committed dd-delete body exited 0 with outcome deleted, as ${PROOF_USER}"
+  else
+    proof_fail "P-CLEANUP" "dd-delete exited ${BODY_RC} with outcome '${outcome}'; expected exit 0 and deleted"
+  fi
+  read_engagements "$PROOF_PRODUCT" "ci/${PROOF_HOSTILE_REF}"
+  if [ "$READ_N" = "0" ]; then
+    proof_pass "P-CLEANUP" "the hostile engagement is gone from ${PROOF_PRODUCT}"
+  else
+    proof_fail "P-CLEANUP" "the hostile engagement in ${PROOF_PRODUCT}: ${READ_N} match(es) remain ${READ_ERR}"
+  fi
+  read_engagements "$PROOF_OTHER_PRODUCT" "ci/${PROOF_HOSTILE_REF}"
+  if [ "$READ_N" = "1" ]; then
+    proof_pass "P-CLEANUP" "the same-named engagement in ${PROOF_OTHER_PRODUCT} still exists (product-scoped delete)"
+  else
+    proof_fail "P-CLEANUP" "the same-named engagement in ${PROOF_OTHER_PRODUCT}: ${READ_N} match(es), expected 1 ${READ_ERR}"
+  fi
+  read_engagements "$PROOF_PRODUCT" "ci/${PROOF_BRANCH_A}"
+  if [ "$READ_N" = "1" ] && [ "$READ_TESTS" = "$branch_a_tests" ]; then
+    proof_pass "P-CLEANUP" "ci/${PROOF_BRANCH_A} still exists with its run-2 Test count ${READ_TESTS}"
+  else
+    proof_fail "P-CLEANUP" "ci/${PROOF_BRANCH_A}: ${READ_N} match(es), Test count ${READ_TESTS}; expected 1 with ${branch_a_tests} ${READ_ERR}"
+  fi
+  read_engagements "$PROOF_PRODUCT" "ci/${PROOF_DEFAULT_BRANCH}"
+  if [ "$READ_N" = "1" ]; then
+    proof_pass "P-CLEANUP" "ci/${PROOF_DEFAULT_BRANCH} still exists"
+  else
+    proof_fail "P-CLEANUP" "ci/${PROOF_DEFAULT_BRANCH}: ${READ_N} match(es), expected 1 ${READ_ERR}"
+  fi
+  run_body cleanup-verify "$b_cleanup_verify" "DD_DELETE_OUTCOME=success" "DD_CLEANUP_RESULT_FILE=${cleanup_res}"
+  sed -e 's/^/    | /' "$BODY_LOG"
+  if [ "$BODY_RC" -eq 0 ]; then
+    proof_pass "P-CLEANUP" "committed dd-cleanup-verify body exited 0 on the deleted result"
+  else
+    proof_fail "P-CLEANUP" "committed dd-cleanup-verify body exited ${BODY_RC} (log above)"
+  fi
+
+  # ── P-REFUSE ──────────────────────────────────────────────────────────────
+  # The default branch and an empty head ref are refused before any request.
+  echo
+  echo "=== cleanup refusals ==="
+  local refuse_head refuse_label
+  for refuse_head in "$PROOF_DEFAULT_BRANCH" ""; do
+    refuse_label="default-branch"
+    [ -z "$refuse_head" ] && refuse_label="empty-head"
+    cleanup_res="${PROOF_DIR}/cleanup-${refuse_label}.json"
+    run_body "delete-${refuse_label}" "$b_delete" \
+      "DD_URL=${BASE_URL}" \
+      "DD_TOKEN=$(cat "$importer_tok")" \
+      "DD_PRODUCT=${PROOF_PRODUCT}" \
+      "DD_INSECURE=" \
+      "DD_CA_CERT=${ca_pem}" \
+      "DD_DEFAULT_BRANCH=${PROOF_DEFAULT_BRANCH}" \
+      "DD_CLEANUP_RESULT_FILE=${cleanup_res}" \
+      "GITHUB_ACTOR=proof-actor" \
+      "GITHUB_EVENT_NAME=pull_request" \
+      "GITHUB_HEAD_REF=${refuse_head}"
+    sed -e 's/^/    | /' "$BODY_LOG"
+    outcome="$(jq -r '.outcome // "none"' "$cleanup_res" 2>/dev/null || echo "no-result-file")"
+    if [ "$BODY_RC" -eq 0 ] && [ "$outcome" = "refused" ] && grep -q '^REFUSE:' "$BODY_LOG"; then
+      proof_pass "P-REFUSE" "head ref '${refuse_head}' (${refuse_label}) -> exit 0, outcome refused, REFUSE: line"
+    else
+      proof_fail "P-REFUSE" "head ref '${refuse_head}' (${refuse_label}): exit ${BODY_RC}, outcome '${outcome}'; expected exit 0, refused and a REFUSE: line"
+    fi
+  done
+  read_engagements "$PROOF_PRODUCT" "ci/${PROOF_DEFAULT_BRANCH}"
+  if [ "$READ_N" = "1" ]; then
+    proof_pass "P-REFUSE" "ci/${PROOF_DEFAULT_BRANCH} still exists after both refusals"
+  else
+    proof_fail "P-REFUSE" "ci/${PROOF_DEFAULT_BRANCH}: ${READ_N} match(es) after the refusals, expected 1 ${READ_ERR}"
+  fi
+
+  # ── P-NOMATCH ─────────────────────────────────────────────────────────────
+  echo
+  echo "=== cleanup of a branch that never existed ==="
+  local total_before total_after
+  total_before="$(read_engagement_total)"
+  cleanup_res="${PROOF_DIR}/cleanup-nomatch.json"
+  run_body delete-nomatch "$b_delete" \
+    "DD_URL=${BASE_URL}" \
+    "DD_TOKEN=$(cat "$importer_tok")" \
+    "DD_PRODUCT=${PROOF_PRODUCT}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=${ca_pem}" \
+    "DD_DEFAULT_BRANCH=${PROOF_DEFAULT_BRANCH}" \
+    "DD_CLEANUP_RESULT_FILE=${cleanup_res}" \
+    "GITHUB_ACTOR=proof-actor" \
+    "GITHUB_EVENT_NAME=pull_request" \
+    "GITHUB_HEAD_REF=${PROOF_NOMATCH_REF}"
+  sed -e 's/^/    | /' "$BODY_LOG"
+  total_after="$(read_engagement_total)"
+  outcome="$(jq -r '.outcome // "none"' "$cleanup_res" 2>/dev/null || echo "no-result-file")"
+  if [ "$BODY_RC" -eq 0 ] && [ "$outcome" = "nothing-to-delete" ] \
+    && [ "$total_before" != "error" ] && [ "$total_before" = "$total_after" ]; then
+    proof_pass "P-NOMATCH" "head ref '${PROOF_NOMATCH_REF}' -> exit 0, outcome nothing-to-delete, instance engagement count ${total_before} -> ${total_after}"
+  else
+    proof_fail "P-NOMATCH" "head ref '${PROOF_NOMATCH_REF}': exit ${BODY_RC}, outcome '${outcome}', engagement count ${total_before} -> ${total_after}; expected exit 0, nothing-to-delete, unchanged"
+  fi
+
+  # ── P-INSECURE ────────────────────────────────────────────────────────────
+  # The D-18 warning path WITHOUT any unverified request: nothing listens on
+  # port 9 and the reports dir is empty, so every table row is skipped before
+  # a request could be made. DD_CA_CERT is empty so exactly the one warning
+  # line is expected. Match the ::warning:: marker (the cleanup wording
+  # differs from the import wording) plus the shared "TLS verification is
+  # OFF" phrase.
+  echo
+  echo "=== insecure-TLS warning, no request ==="
+  local results_insecure="${PROOF_DIR}/results-insecure.json" insecure_state
+  run_body import-insecure "$b_import" \
+    "DD_URL=https://127.0.0.1:9" \
+    "DD_TOKEN=$(cat "$importer_tok")" \
+    "DD_PRODUCT=${PROOF_PRODUCT}" \
+    "DD_PRODUCT_TYPE=${PROOF_PRODUCT_TYPE}" \
+    "DD_INSECURE=true" \
+    "DD_CA_CERT=" \
+    "DD_REPORTS_DIR=${reports_none}" \
+    "DD_RESULTS_FILE=${results_insecure}" \
+    "GITHUB_ACTOR=proof-actor" \
+    "GITHUB_EVENT_NAME=pull_request" \
+    "GITHUB_HEAD_REF=${PROOF_BRANCH_A}" \
+    "GITHUB_REF_NAME=27/merge" \
+    "GITHUB_SHA=${PROOF_SHA}" \
+    "GITHUB_RUN_ID=${PROOF_RUN_ID}" \
+    "GITHUB_SERVER_URL=${PROOF_SERVER_URL}" \
+    "GITHUB_REPOSITORY=${PROOF_REPOSITORY}"
+  sed -e 's/^/    | /' "$BODY_LOG"
+  insecure_state="$(jq -r '"\(.tls_mode) attempted=\(.attempted | length) skipped=\(.skipped | length)"' "$results_insecure" 2>/dev/null || echo "no-result-file")"
+  if [ "$BODY_RC" -eq 0 ] && grep -q '::warning::' "$BODY_LOG" && grep -q 'TLS verification is OFF' "$BODY_LOG" \
+    && [ "$insecure_state" = "insecure attempted=0 skipped=8" ]; then
+    proof_pass "P-INSECURE" "DD_INSECURE=true -> ::warning:: line printed, exit 0, ${insecure_state}: no request was made"
+  else
+    proof_fail "P-INSECURE" "DD_INSECURE=true: exit ${BODY_RC}, results '${insecure_state}', warning marker $(grep -c '::warning::' "$BODY_LOG" || true); expected exit 0, the ::warning:: line and 'insecure attempted=0 skipped=8'"
+  fi
 
   proof_finish
 }
