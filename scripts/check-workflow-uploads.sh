@@ -15,16 +15,31 @@ set -euo pipefail
 # It parses EVERY workflow file (*.yml and *.yaml under .github/workflows)
 # with PyYAML and reports EVERY failure rather than stopping at the first, so
 # one run tells you the whole story. The caller/callee-specific checks still
-# read pr-security.yml and security.yml by name; PERMISSIONS-FORBIDDEN, SHA-PIN
+# read pr-security.yml, security.yml and (CALLER-WIRING) scheduled-security.yml
+# by name; PERMISSIONS-FORBIDDEN, SHA-PIN
 # and the step-level checks walk every file (Phase 27 D-22), so a new workflow
 # file cannot slip in an unpinned action.
 #
-# SCAN JOBS vs SIDE-CHANNEL JOBS (Phase 27, D-01/D-03). security.yml carries the
-# five frozen scan jobs (SCAN_JOB_IDS) and MAY carry the two allow-listed
-# DefectDojo side-channel jobs (SIDE_CHANNEL_JOB_IDS). Any other job id fails
-# JOB-SHAPE. The side-channel jobs must never become required checks, and when
-# they exist their shape is enforced by the SIDE-CHANNEL-* checks below. Those
-# checks pass vacuously (printing a NOTE line) while the jobs are absent.
+# SCAN JOBS vs SIDE-CHANNEL JOBS (Phase 27, ADR-024). security.yml carries the
+# five frozen scan jobs (SCAN_JOB_IDS) and MUST carry the two allow-listed
+# DefectDojo side-channel jobs (SIDE_CHANNEL_JOB_IDS); any other job id fails
+# JOB-SHAPE. No Phase 27 check passes vacuously: an absent side-channel job or
+# an absent scheduled-security.yml is a named failure. Which check guards which
+# Phase 27 decision:
+#   D-01  JOB-SHAPE                  scan jobs keep ids, names, no needs:
+#   D-03  SIDE-CHANNEL-NOT-REQUIRED  a DefectDojo job is never a required check
+#         SIDE-CHANNEL-SHAPE         needs/if/env/shell contract of both jobs
+#         IMPORT-VERIFY-PAIRING      a continue-on-error step is read back red
+#   D-12  OPTIONAL-SECRET            DEFECTDOJO_API_TOKEN declared required: false
+#         CALLER-WIRING              both callers pass exactly that one secret,
+#                                    never `secrets: inherit`, and no with:
+#         NO-INTERPOLATION           no ${{ }} inside a DefectDojo run: body
+#   D-15  SCAN-JOB-CLOSED-SKIP       all five scan jobs skip on PR `closed`
+#         CALLER-WIRING              pr-security.yml types are exactly
+#                                    [opened, synchronize, reopened, closed];
+#                                    scheduled-security.yml runs daily at
+#                                    06:00 America/Toronto plus workflow_dispatch
+#   D-18  INSECURE-WARNING           the insecure-TLS path prints ::warning::
 #
 # Self-test overrides (optional, used only to point the gate at scratch copies):
 #   WORKFLOWS_DIR           default .github/workflows
@@ -75,6 +90,7 @@ REQUIRED_CHECKS_SCRIPT = os.environ.get("REQUIRED_CHECKS_SCRIPT") or "scripts/se
 
 CALLER = os.path.join(WORKFLOWS_DIR, "pr-security.yml")
 CALLEE = os.path.join(WORKFLOWS_DIR, "security.yml")
+SCHEDULED = os.path.join(WORKFLOWS_DIR, "scheduled-security.yml")
 
 # The five check-run names Phase 14-02 captured and Phase 18 hard-codes into
 # the branch-protection required-check list. Byte-identical, em dash U+2014.
@@ -124,11 +140,10 @@ ARTIFACT_PATH_RE = re.compile(r"^[A-Za-z0-9_.*-]+\.(json|sarif)$")
 GITLEAKS_INVOCATION_RE = re.compile(r"^[ \t]*gitleaks[ \t]", re.MULTILINE)
 
 # NOTE: PyYAML parses the bare workflow key `on:` as the boolean True, not the
-# string "on". OPTIONAL-SECRET reads the trigger key, so it indexes doc[True]
-# first and falls back to doc.get("on").
+# string "on". OPTIONAL-SECRET and CALLER-WIRING read the trigger key through
+# trigger_of(), which tries doc.get("on") and falls back to doc[True].
 
 failures = []
-notes = []
 
 
 def fail(label, message):
@@ -152,6 +167,11 @@ for _path in sorted(glob.glob(os.path.join(WORKFLOWS_DIR, "*.yml"))
     _key = os.path.normpath(_path)
     _doc = _loaded[_key] if _key in _loaded else load(_path)
     DOCS.append((_path, _doc if isinstance(_doc, dict) else {}))
+
+
+def trigger_of(doc):
+    trigger = doc.get("on", doc.get(True))
+    return trigger if isinstance(trigger, dict) else {}
 
 
 def jobs_of(doc):
@@ -373,9 +393,10 @@ for needle in SIDE_CHANNEL_JOB_NAMES + SIDE_CHANNEL_JOB_IDS:
              "(Phase 27 D-03)".format(REQUIRED_CHECKS_SCRIPT, needle))
 
 
-# ── 12-16. Side-channel contract (vacuous per absent job) ────────────────────
-def note_vacuous(label, jid):
-    notes.append("NOTE: {} vacuous — {} not present".format(label, jid))
+# ── 12-16. Side-channel contract (mandatory for both jobs) ───────────────────
+def fail_absent(label, jid):
+    fail(label, "jobs.{} is absent from {} — the Phase 27 side-channel job is "
+                "mandatory (ADR-024)".format(jid, CALLEE))
 
 
 def job_if(body):
@@ -393,7 +414,7 @@ SHAPE_IF = {
 for jid in SIDE_CHANNEL_JOB_IDS:
     body = present.get(jid)
     if body is None:
-        note_vacuous("SIDE-CHANNEL-SHAPE", jid)
+        fail_absent("SIDE-CHANNEL-SHAPE", jid)
         continue
     needs = body.get("needs")
     if jid == "defectdojo-import":
@@ -423,30 +444,28 @@ for jid in SIDE_CHANNEL_JOB_IDS:
                  "jobs.{}.steps[{}] declares shell: — keep the default bash -eo pipefail".format(jid, idx))
 
 # 13. OPTIONAL-SECRET
-if not present:
-    notes.append("NOTE: OPTIONAL-SECRET vacuous — {} not present".format(
-        " and ".join(SIDE_CHANNEL_JOB_IDS)))
-else:
-    trigger = callee.get(True, callee.get("on"))
-    trigger = trigger if isinstance(trigger, dict) else {}
-    wc = trigger.get("workflow_call")
-    wc = wc if isinstance(wc, dict) else {}
-    secrets_decl = wc.get("secrets")
-    secrets_decl = secrets_decl if isinstance(secrets_decl, dict) else {}
-    token = secrets_decl.get("DEFECTDOJO_API_TOKEN")
-    if not isinstance(token, dict):
-        fail("OPTIONAL-SECRET",
-             "{} on.workflow_call.secrets.DEFECTDOJO_API_TOKEN is not declared".format(CALLEE))
-    elif token.get("required") is not False:
-        fail("OPTIONAL-SECRET",
-             "on.workflow_call.secrets.DEFECTDOJO_API_TOKEN.required must be false, got {!r} — "
-             "a required secret breaks every caller that has not opted in".format(token.get("required")))
+# Unconditional: both callers now pass DEFECTDOJO_API_TOKEN (CALLER-WIRING), and
+# passing an undeclared secret to a reusable workflow is an error, so the
+# declaration must exist whether or not the side-channel jobs do. Absent jobs
+# are reported under SIDE-CHANNEL-SHAPE and the other per-job checks.
+wc = trigger_of(callee).get("workflow_call")
+wc = wc if isinstance(wc, dict) else {}
+secrets_decl = wc.get("secrets")
+secrets_decl = secrets_decl if isinstance(secrets_decl, dict) else {}
+token = secrets_decl.get("DEFECTDOJO_API_TOKEN")
+if not isinstance(token, dict):
+    fail("OPTIONAL-SECRET",
+         "{} on.workflow_call.secrets.DEFECTDOJO_API_TOKEN is not declared".format(CALLEE))
+elif token.get("required") is not False:
+    fail("OPTIONAL-SECRET",
+         "on.workflow_call.secrets.DEFECTDOJO_API_TOKEN.required must be false, got {!r} — "
+         "a required secret breaks every caller that has not opted in".format(token.get("required")))
 
 # 14. NO-INTERPOLATION
 for jid in SIDE_CHANNEL_JOB_IDS:
     body = present.get(jid)
     if body is None:
-        note_vacuous("NO-INTERPOLATION", jid)
+        fail_absent("NO-INTERPOLATION", jid)
         continue
     for idx, step in enumerate(steps_of(body)):
         if "${{" in str(step.get("run") or ""):
@@ -460,7 +479,7 @@ for jid in SIDE_CHANNEL_JOB_IDS:
 for jid in SIDE_CHANNEL_JOB_IDS:
     body = present.get(jid)
     if body is None:
-        note_vacuous("IMPORT-VERIFY-PAIRING", jid)
+        fail_absent("IMPORT-VERIFY-PAIRING", jid)
         continue
     steps = steps_of(body)
     for idx, step in enumerate(steps):
@@ -490,7 +509,7 @@ for jid in SIDE_CHANNEL_JOB_IDS:
 for jid, step_id in (("defectdojo-import", "dd-import"), ("defectdojo-cleanup", "dd-delete")):
     body = present.get(jid)
     if body is None:
-        note_vacuous("INSECURE-WARNING", jid)
+        fail_absent("INSECURE-WARNING", jid)
         continue
     matches = [s for s in steps_of(body) if s.get("id") == step_id]
     if not matches:
@@ -503,14 +522,93 @@ for jid, step_id in (("defectdojo-import", "dd-import"), ("defectdojo-cleanup", 
                  "jobs.{} step {} run: does not contain {!r} — the insecure-TLS path must be "
                  "loud".format(jid, step_id, fragment))
 
+# ── 17. SCAN-JOB-CLOSED-SKIP (D-15) ──────────────────────────────────────────
+# pr-security.yml subscribes to `closed` only to fire defectdojo-cleanup. Each
+# scan job must skip on it with exactly this job-level if:, or a closed PR
+# re-runs all five scans for nothing. On schedule and workflow_dispatch
+# github.event.action is empty, so the scans still run there.
+CLOSED_SKIP_IF = "github.event.action != 'closed'"
+for jid in SCAN_JOB_IDS:
+    body = callee_jobs.get(jid)
+    if not isinstance(body, dict):
+        continue  # already reported by JOB-SHAPE
+    got = str(body.get("if") or "").strip()
+    if got != CLOSED_SKIP_IF:
+        fail("SCAN-JOB-CLOSED-SKIP",
+             "jobs.{}.if must be exactly {!r}, got {!r}".format(jid, CLOSED_SKIP_IF, got))
+
+# ── 18. CALLER-WIRING (D-12, D-15) ───────────────────────────────────────────
+# The callee can use the token only if each caller passes it, and cleanup can
+# fire only if pr-security.yml subscribes to `closed`. Listing types: REPLACES
+# the default set, so a list missing any default silently stops PR scanning
+# while every required context sits pending (RESEARCH Pitfall 2).
+PR_TYPES = ["opened", "synchronize", "reopened", "closed"]
+TOKEN_PASS = "${{ secrets.DEFECTDOJO_API_TOKEN }}"
+
+pr_trigger = trigger_of(caller).get("pull_request")
+pr_types = pr_trigger.get("types") if isinstance(pr_trigger, dict) else None
+if pr_types != PR_TYPES:
+    fail("CALLER-WIRING",
+         "{} on.pull_request.types must be exactly {!r}, got {!r}".format(CALLER, PR_TYPES, pr_types))
+
+scheduled = None
+if os.path.isfile(SCHEDULED):
+    scheduled = load(SCHEDULED)
+    scheduled = scheduled if isinstance(scheduled, dict) else {}
+else:
+    fail("CALLER-WIRING",
+         "{} is missing — the daily default-branch caller is part of the Phase 27 "
+         "bundle (D-14, D-15)".format(SCHEDULED))
+
+for path, doc in ((CALLER, caller), (SCHEDULED, scheduled)):
+    if doc is None:
+        continue
+    job = (doc.get("jobs") or {}).get("security")
+    if not isinstance(job, dict):
+        fail("CALLER-WIRING", "{} has no jobs.security".format(path))
+        continue
+    secrets_pass = job.get("secrets")
+    if isinstance(secrets_pass, str):
+        fail("CALLER-WIRING",
+             "{} jobs.security.secrets is {!r} — pass DEFECTDOJO_API_TOKEN explicitly, never "
+             "`secrets: inherit` (D-12)".format(path, secrets_pass))
+    elif not isinstance(secrets_pass, dict):
+        fail("CALLER-WIRING",
+             "{} jobs.security.secrets must be a mapping with only DEFECTDOJO_API_TOKEN, "
+             "got {!r}".format(path, secrets_pass))
+    else:
+        if sorted(secrets_pass) != ["DEFECTDOJO_API_TOKEN"]:
+            fail("CALLER-WIRING",
+                 "{} jobs.security.secrets keys must be exactly ['DEFECTDOJO_API_TOKEN'], "
+                 "got {!r}".format(path, sorted(secrets_pass)))
+        value = str(secrets_pass.get("DEFECTDOJO_API_TOKEN") or "").strip()
+        if value != TOKEN_PASS:
+            fail("CALLER-WIRING",
+                 "{} jobs.security.secrets.DEFECTDOJO_API_TOKEN must be {!r}, got {!r}".format(
+                     path, TOKEN_PASS, value))
+    if "with" in job:
+        fail("CALLER-WIRING",
+             "{} jobs.security declares with: — gate_mode and DEFECTDOJO_* are read from the "
+             "caller repo's vars by the callee, never passed".format(path))
+
+if scheduled is not None:
+    sched_trigger = trigger_of(scheduled)
+    entries = sched_trigger.get("schedule")
+    entries = [e for e in entries if isinstance(e, dict)] if isinstance(entries, list) else []
+    if not any(str(e.get("cron")) == "0 6 * * *" and e.get("timezone") == "America/Toronto"
+               for e in entries):
+        fail("CALLER-WIRING",
+             "{} on.schedule has no entry with cron '0 6 * * *' and timezone "
+             "'America/Toronto', got {!r}".format(SCHEDULED, sched_trigger.get("schedule")))
+    if "workflow_dispatch" not in sched_trigger:
+        fail("CALLER-WIRING", "{} on has no workflow_dispatch key".format(SCHEDULED))
+
 # PERMISSIONS-CALLER, PERMISSIONS-CALLEE, PERMISSIONS-FORBIDDEN, SHA-PIN,
 # SARIF-CATEGORY, ARTIFACT-RETENTION, ARTIFACT-PATH-SAFETY, UPLOAD-VERIFY-PAIRING,
 # REDACT-RETAINED, JOB-SHAPE, SIDE-CHANNEL-NOT-REQUIRED, SIDE-CHANNEL-SHAPE,
-# OPTIONAL-SECRET, NO-INTERPOLATION, IMPORT-VERIFY-PAIRING, INSECURE-WARNING.
-CHECK_COUNT = 16
-
-for line in notes:
-    print(line)
+# OPTIONAL-SECRET, NO-INTERPOLATION, IMPORT-VERIFY-PAIRING, INSECURE-WARNING,
+# SCAN-JOB-CLOSED-SKIP, CALLER-WIRING.
+CHECK_COUNT = 18
 
 if failures:
     for line in failures:
