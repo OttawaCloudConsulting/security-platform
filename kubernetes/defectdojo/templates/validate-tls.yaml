@@ -1,0 +1,47 @@
+{{/*
+templates/validate-tls.yaml — the ONLY template in this wrapper. It renders
+nothing on success; it aborts the render when the TLS path is misconfigured.
+
+Why `fail` and not `required` (D-11 intent): the cert-manager issuer is set as
+an annotation on the upstream subchart's Ingress, via
+`defectdojo.django.ingress.annotations`. A parent chart cannot inject a value
+into that subchart annotation map (Helm values are static and upstream does not
+`tpl` annotations), so a wrapper-owned `required` value would have nowhere to
+go. Instead this guard inspects the map the consumer actually fills and fails
+fast, with no default issuer.
+
+The annotation KEY is the issuer-kind selector: `cert-manager.io/cluster-issuer`
+for a ClusterIssuer, `cert-manager.io/issuer` for a namespaced Issuer. Exactly
+one of them must be set.
+
+`secretName` must be non-empty: cert-manager ingress-shim names the
+Certificate after `tls.secretName`, and upstream omits `secretName` from the
+Ingress when it is empty.
+
+A missing `annotations` map is treated as empty (`default dict`).
+
+The three message substrings `cert-manager.io/cluster-issuer`, `set only one of`
+and `secretName must be non-empty` are asserted by the ISSUER-REQUIRED,
+ISSUER-NOT-BOTH and TLS-SECRETNAME-REQUIRED checks in
+scripts/check-defectdojo-chart.sh. Rewording a message turns the gate red
+(the same coupling as the nexus job-provision.yaml guard).
+
+Do NOT add a `define` here or a `_helpers.tpl` beside it: Helm's template
+namespace is global across parent and subcharts, so any `defectdojo.*` define
+silently renames every subchart object (26-RESEARCH Pitfall 1).
+*/}}
+{{- $ing := .Values.defectdojo.django.ingress -}}
+{{- if and $ing.enabled $ing.activateTLS -}}
+{{-   $a := $ing.annotations | default dict -}}
+{{-   $ci := get $a "cert-manager.io/cluster-issuer" -}}
+{{-   $ns := get $a "cert-manager.io/issuer" -}}
+{{-   if not (or $ci $ns) -}}
+{{-     fail "defectdojo.django.ingress.activateTLS is true but no cert-manager issuer is set: set defectdojo.django.ingress.annotations.\"cert-manager.io/cluster-issuer\" (or \"cert-manager.io/issuer\"), or set defectdojo.django.ingress.activateTLS=false" -}}
+{{-   end -}}
+{{-   if and $ci $ns -}}
+{{-     fail "set only one of cert-manager.io/cluster-issuer and cert-manager.io/issuer" -}}
+{{-   end -}}
+{{-   if not $ing.secretName -}}
+{{-     fail "defectdojo.django.ingress.secretName must be non-empty when TLS is on (cert-manager ingress-shim names the Certificate after it)" -}}
+{{-   end -}}
+{{- end -}}
