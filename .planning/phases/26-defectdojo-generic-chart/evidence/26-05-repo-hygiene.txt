@@ -1,0 +1,52 @@
+HEAD=60205bd15a0cd6154831ce28619a0e7f044352a3
+cwd: repos/security-platform, branch feature/phase-26-defectdojo-generic-chart
+date: 2026-09-25T00:56:03Z
+pre-commit: pre-commit 4.5.1
+shellcheck: version: 0.11.0
+
+$ pre-commit run --all-files
+Terraform fmt........................................(no files to check)Skipped
+Terraform validate...................................(no files to check)Skipped
+ruff (legacy alias)......................................................Passed
+ruff format..............................................................Passed
+shellcheck...............................................................Passed
+Lint Dockerfiles.....................................(no files to check)Skipped
+yamllint.................................................................Passed
+markdownlint.............................................................Passed
+eslint...............................................(no files to check)Skipped
+npm audit............................................(no files to check)Skipped
+exit=0
+
+$ pre-commit run --all-files --hook-stage pre-push
+Terraform fmt........................................(no files to check)Skipped
+Terraform validate...................................(no files to check)Skipped
+ruff (legacy alias)......................................................Passed
+ruff format..............................................................Passed
+shellcheck...............................................................Passed
+Lint Dockerfiles.....................................(no files to check)Skipped
+yamllint.................................................................Passed
+markdownlint.............................................................Passed
+eslint...............................................(no files to check)Skipped
+npm audit............................................(no files to check)Skipped
+Detect hardcoded secrets.................................................Passed
+exit=0
+
+$ shellcheck scripts/check-defectdojo-chart.sh scripts/defectdojo-live-smoke.sh
+exit=0
+
+$ git ls-files -s scripts/*defectdojo*.sh
+100644 e37e773d9003d6124f44cf79d45c060134d8e3f8 0	scripts/check-defectdojo-chart.sh
+100644 5b4e2881d46b98a91a36bdce332a500467561f6d 0	scripts/defectdojo-live-smoke.sh
+exit=0
+
+$ git ls-files kubernetes/defectdojo/charts
+exit=0 (output above empty = no vendored tarball tracked)
+
+$ grep -rn checkov:skip kubernetes/defectdojo
+exit=1 (1 = no match)
+
+$ find . -name ".checkov.y*ml" -not -path "./.git/*"
+exit=0
+
+$ git status --porcelain
+exit=0 (output above empty = clean tree)

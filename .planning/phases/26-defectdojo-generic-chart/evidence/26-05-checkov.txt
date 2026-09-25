@@ -1,0 +1,77 @@
+HEAD=60205bd15a0cd6154831ce28619a0e7f044352a3
+date: 2026-09-25T01:06:28Z
+
+== 1. Local rendered measurement (kubernetes framework, values supplied) ==
+$ helm template t kubernetes/defectdojo --namespace defectdojo --set 'defectdojo.django.ingress.annotations.cert-manager\.io/cluster-issuer=gate-issuer' > $SCRATCH/rendered.yaml   # exit 0, 1229 lines, helm v4.3.0+gbec5b06
+$ checkov -f $SCRATCH/rendered.yaml --framework kubernetes -o json   # exit 1
+checkov version: 3.2.396
+passed=568 failed=66 skipped=0 parsing_errors=0 resource_count=26
+RESEARCH Pitfall 5 (prototype render, same checkov 3.2.396): failed=66 passed=568 resources=26 -> identical, no difference
+
+Top failing check IDs (count):
+   7 CKV_K8S_40
+   6 CKV2_K8S_6
+   6 CKV_K8S_43
+   6 CKV_K8S_35
+   6 CKV_K8S_31
+
+Failures per resource:
+  10 Deployment.defectdojo.t-defectdojo-celery-beat
+  10 Deployment.defectdojo.t-defectdojo-celery-worker
+   9 Deployment.defectdojo.t-defectdojo-django
+   8 Job.defectdojo.t-initializer-2026-09-24-20-55
+  15 Pod.default.t-defectdojo-unit-tests
+   1 Pod.defectdojo.t-defectdojo-celery-beat
+   1 Pod.defectdojo.t-defectdojo-celery-worker
+   1 Pod.defectdojo.t-defectdojo-django
+   1 Pod.defectdojo.t-initializer-2026-09-24-20-55
+   1 Pod.defectdojo.t-valkey
+   3 StatefulSet.defectdojo.t-postgresql
+   6 StatefulSet.defectdojo.t-valkey
+
+Rendered object origin (# Source: prefixes, 20 objects):
+   9 defectdojo/charts/defectdojo/
+   6 defectdojo/charts/defectdojo/charts/postgresql/
+   5 defectdojo/charts/defectdojo/charts/valkey/
+Wrapper-owned (defectdojo/templates/*) rendered objects: 0  (templates/validate-tls.yaml is a guard that renders no object)
+Failures on wrapper-owned resources: 0 (every failed resource is sourced from charts/defectdojo or its postgresql/valkey subcharts)
+Note: Pod.default.t-defectdojo-unit-tests (15 of the 66) is the upstream helm-test hook Pod, rendered into namespace default by upstream; the Job name t-initializer-<date> carries the render timestamp.
+
+== 2. CI-equivalent measurement (23-06 method) ==
+image: ghcr.io/bridgecrewio/checkov:3.3.17 (security.yml: bridgecrewio/checkov-action@a8664e3a... v12.3123.0, directory: ., quiet: true, soft_fail: false, no framework filter)
+digest: ghcr.io/bridgecrewio/checkov@sha256:41c4701c6a56d8952e5aba7a420f871c8b70b57da94eb4f142dcdf7295bb0be3  (same digest 23-06 measured)
+in-image: helm v3.22.0+g144ca65, checkov 3.3.17
+trees: git archive HEAD (60205bd15a0cd6154831ce28619a0e7f044352a3) | tar -x -C $SCRATCH/ci-head ; git archive origin/main (61589d509505442a3e26110fbc5c4bf156a6a488) | tar -x -C $SCRATCH/ci-main
+       origin/main == merge-base; ci-main has kubernetes/nexus only; ci-head has kubernetes/defectdojo + nexus; no charts/ dir and no .checkov config in either archive
+$ docker run --rm -v "$T":/src -w /src ghcr.io/bridgecrewio/checkov:3.3.17 --directory . --quiet -o json   # WRITABLE mount, no --soft-fail (CI setting)
+main: exit=1  terraform p=8 f=12; dockerfile p=2 f=2; gitlab_ci p=22 f=0; github_actions p=296 f=0; azure_pipelines p=5 f=0  total_failed=14
+head: exit=1  terraform p=8 f=12; dockerfile p=2 f=2; gitlab_ci p=22 f=0; github_actions p=296 f=0; azure_pipelines p=5 f=0  total_failed=14
+Failed count: origin/main=14  HEAD=14  ; no helm and no kubernetes section in either report
+
+Set diff on check_id+file_path (diff set-main set-head):
+NO DIFFERENCE
+The 14 failures (both trees):
+CKV2_AWS_5 /fixtures/main.tf
+CKV2_AWS_6 /fixtures/main.tf
+CKV2_AWS_61 /fixtures/main.tf
+CKV2_AWS_62 /fixtures/main.tf
+CKV_AWS_144 /fixtures/main.tf
+CKV_AWS_145 /fixtures/main.tf
+CKV_AWS_18 /fixtures/main.tf
+CKV_AWS_21 /fixtures/main.tf
+CKV_AWS_23 /fixtures/main.tf
+CKV_AWS_24 /fixtures/main.tf
+CKV_DOCKER_2 /fixtures/Dockerfile
+CKV_DOCKER_3 /fixtures/Dockerfile
+CKV_TF_1 /fixtures/main.tf
+CKV_TF_2 /fixtures/main.tf
+
+Helm-runner stderr, HEAD tree (verbatim):
+2026-09-25 01:05:58,424 [MainThread  ] [WARNI]  Failed processing helm chart defectdojo at dir: ./kubernetes/defectdojo. Working dir: /tmp/tmpeags3dk1. Failure details: Error: execution error at (defectdojo/templates/validate-tls.yaml:39:8): defectdojo.django.ingress.activateTLS is true but no cert-manager issuer is set: set defectdojo.django.ingress.annotations."cert-manager.io/cluster-issuer" (or "cert-manager.io/issuer"), or set defectdojo.django.ingress.activateTLS=false
+2026-09-25 01:05:58,611 [MainThread  ] [WARNI]  Failed processing helm chart nexus at dir: ./kubernetes/nexus. Working dir: /tmp/tmpeags3dk1. Failure details: Error: execution error at (nexus/templates/job-provision.yaml:44:10): A Nexus admin password Secret is required. Create a Secret holding the admin password and name it in nexus3.rootPassword.secret (the key defaults to 'password'); this chart deliberately ships no default credential.
+Helm-runner stderr, origin/main tree (verbatim):
+2026-09-25 01:05:54,310 [MainThread  ] [WARNI]  Failed processing helm chart nexus at dir: ./kubernetes/nexus. Working dir: /tmp/tmpqnm0hm8g. Failure details: Error: execution error at (nexus/templates/job-provision.yaml:44:10): A Nexus admin password Secret is required. Create a Secret holding the admin password and name it in nexus3.rootPassword.secret (the key defaults to 'password'); this chart deliberately ships no default credential.
+ERROR-level lines in HEAD stderr: 0
+The helm runner fetched the dependency (ci-head/kubernetes/defectdojo/charts/ after the run: defectdojo-1.9.53.tgz), then helm template failed on the chart's validate-tls.yaml guard.
+
+RESULT: MEASURED-ZERO-WITH-A-NAMED-CAUSE. CI's Checkov covers kubernetes/defectdojo zero times: the pinned helm runner engages but the bare render (no values) fails the chart's cert-manager issuer guard (validate-tls.yaml), logged at WARNI, exit code unaffected. This is not 'clean': the latent set is section 1 (66 failed on upstream-rendered objects). The guard was not relaxed; no checkov:skip comment and no .checkov.yaml were added.
