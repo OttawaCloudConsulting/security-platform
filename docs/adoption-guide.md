@@ -8,7 +8,9 @@ what each mode costs in files, and what a green first run does and does not prov
 **Proven in:** every command in this guide has been executed against a real repository, not
 merely reviewed — except where an inline note directly beneath the command states otherwise
 (`gh variable set GATE_MODE` in section 7 was deliberately never run against any pilot; its
-effect is measured separately, on this project's own repository) — across three live pull
+effect is measured separately, on this project's own repository; the section 12 DefectDojo
+settings commands were likewise never run against a pilot, and the import itself is measured by
+this project's own proof harness) — across three live pull
 requests on repositories outside this project, 2026-09-14: Mode A on
 `OttawaCloudConsulting/terraform-pipelines` (PR #12, run `34884582425`, public), Mode B on
 `OttawaCloudConsulting/terraform-pipelines` (PR #13, run `34885287142`, public), and Mode A on
@@ -35,7 +37,8 @@ no new accounts, no secrets to manage, and no ongoing cost. After adopting this 
 **There are no secrets to provision.** Every scanner in this pipeline is account-free — Semgrep CE
 runs the `p/default` registry ruleset with no API key, Checkov and Trivy and tflint and Gitleaks
 and npm audit and pip-audit are all local, unauthenticated tools. The pipeline's only credential is
-the `GITHUB_TOKEN` GitHub already issues to every workflow run; nothing else is ever supplied.
+the `GITHUB_TOKEN` GitHub already issues to every workflow run; nothing else is supplied unless you
+opt in to the DefectDojo import (section 12), which needs one secret, `DEFECTDOJO_API_TOKEN`.
 
 ## 2. Preflight
 
@@ -105,7 +108,9 @@ byte-identical — the same five check runs, same names, same branch-protection 
 either mode. This is why section 8's branch-protection procedure is written once and serves both
 modes without a mode-specific variant.
 
-The one substitution point in either mode is `gate_mode` — see sections 4 and 5.
+The one per-repo setting that changes gating in either mode is `gate_mode` — see sections 4, 5
+and 7. The `DEFECTDOJO_*` settings of the opt-in import (section 12) are a side channel: they
+change no check's outcome and no required context.
 
 ## 4. Mode A — Copy the Files
 
@@ -165,7 +170,12 @@ file — every grant and every comment shown below matters and should be kept:
 name: PR Security
 
 on:
-  pull_request: {}
+  pull_request:
+    # Listing `types:` REPLACES GitHub's default activity set, so all three
+    # defaults are restated — drop one and pull requests stop being scanned
+    # while every required context sits pending. `closed` exists only to fire
+    # the DefectDojo cleanup job; the five scan jobs skip on it.
+    types: [opened, synchronize, reopened, closed]
 
 ## Workflow-level FLOOR. Any job added later inherits this by default.
 permissions:
@@ -192,6 +202,11 @@ jobs:
       security-events: write
       actions: read          # required only for private repositories
     uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1
+    # The one secret the callee needs, passed by name — never `secrets:
+    # inherit`. An unset secret passes an empty string, and the opt-in
+    # DefectDojo import then skips cleanly with a logged reason (section 12).
+    secrets:
+      DEFECTDOJO_API_TOKEN: ${{ secrets.DEFECTDOJO_API_TOKEN }}
     # No `with:` block, deliberately. Two traps to avoid if one is ever added:
     #   - A bare passthrough, `with: { gate_mode: ${{ vars.GATE_MODE }} }`, is
     #     FORBIDDEN: an unset variable resolves to the empty string, which
@@ -211,6 +226,11 @@ immutable, audit-stable reference instead, pin `@v1.0.0` directly; that costs yo
 request every time you want to move forward, in exchange for a reference that never changes
 underneath you.
 
+The `types:` line and the `secrets:` block arrived with `v1.1.0`. A Mode B caller written before
+that release still works unchanged — it simply never imports into DefectDojo and never cleans up.
+Moving `@v1` cannot add them for you, because this file lives in your repository; section 12 says
+when you need them.
+
 **The plus-one file for Mode B** is the same `dependabot.yml` shown in Mode A — copy it verbatim
 so Dependabot keeps your `@v1` reference (an external reusable-workflow reference, supported since
 2023-03-13) current, exactly as it would keep Mode A's pinned action SHAs current.
@@ -219,7 +239,9 @@ so Dependabot keeps your `@v1` reference (an external reusable-workflow referenc
 
 Open a pull request after adopting either mode. You should see:
 
-- Five check runs, prefixed by your caller job's id, on the pull request.
+- Five check runs, prefixed by your caller job's id, on the pull request. From `v1.1.0` two more
+  appear, for the opt-in DefectDojo import and cleanup jobs. They are skipped unless you opt in
+  (section 12) and are never required.
 - The pull request stays mergeable.
 - Up to five artifacts downloadable from the run page — the applicable subset for your
   repository's ecosystems (see below).
@@ -570,10 +592,226 @@ owns can carry GitHub Advanced Security — this is a platform limitation, not a
 pipeline. An organisation-owned repository with GHAS enabled would behave differently (its SARIF
 uploads would land and its verify steps would run normally). The correct evolution there is a new
 `workflow_call` boolean input naming that expectation explicitly, deliberately not built
-speculatively here — a second per-repo substitution point would break D-04's "one substitution
-point" guarantee.
+speculatively here — a second per-repo gating setting would break D-04's "one substitution
+point" guarantee. (The section 12 `DEFECTDOJO_*` settings do not count against it: they change no
+check's outcome.)
 
-## 12. Troubleshooting
+## 12. Enable DefectDojo Import
+
+This section is optional. Nothing in sections 1-11 depends on it, and a repository that never sets
+`DEFECTDOJO_URL` behaves exactly as described there.
+
+### What It Does
+
+From `v1.1.0` (reached through `@v1`), `security.yml` has an opt-in import job. After the five scan
+jobs finish, whatever their result, the import job downloads the run's own report artifacts. It
+then sends each report to your DefectDojo instance through the API v2 `reimport-scan` endpoint:
+
+- **Product:** the value of `DEFECTDOJO_PRODUCT`, or `owner/repo` if that is unset.
+- **Product Type:** the value of `DEFECTDOJO_PRODUCT_TYPE`, or `CI` if that is unset.
+- **Engagement:** `ci/<branch>`, where `<branch>` is the pull request's head branch, or the run's
+  own branch on a scheduled or manual run (the default branch, for the schedule).
+- **Test:** one Test per report file, updated in place on every later run. Fixed findings are
+  closed rather than piling up a new Test per run.
+- **Creation:** Product Type, Product, Engagement and Test are created on the first run if they
+  do not exist.
+
+When a pull request closes, merged or abandoned, a cleanup job **deletes** that pull request's
+`ci/<branch>` engagement. It deletes only exact-name matches inside the one exactly named product.
+The five scan jobs skip on the close event, so nothing is rescanned.
+
+**The import can never block a merge.** The import and cleanup jobs are never required checks, the
+import step tolerates a DefectDojo outage, and the five required contexts of section 8 are
+unchanged. If an import does fail, only the import job itself turns red.
+
+### Prerequisites
+
+You need a running DefectDojo instance, and its URL must be **reachable from the GitHub runner**,
+not merely from your workstation. With GitHub-hosted runners, that means reachable from the public
+internet. How a homelab or private-network instance is reached (a self-hosted runner, a tunnel or a
+public ingress) is not covered by this guide. That decision belongs to a later phase of this
+project (Phase 29). An unreachable URL does not break your pipeline; it turns only the import job
+red.
+
+### The Token
+
+The import and the cleanup use one DefectDojo API v2 token. Create a **dedicated** DefectDojo user
+for it, with `is_staff` on and superuser off (`is_staff=true`, `is_superuser=false`). Do not reuse
+an administrator's token.
+
+Why staff: in DefectDojo 3.x open source, deleting an engagement (the cleanup job) and creating a
+new Product Type (the first import into a new type) both require `is_staff`. **Staff is an
+instance-wide bypass.** A staff user can read, edit, import into and delete **any** product in the
+instance, not only the CI ones. That is why the user should be dedicated to this pipeline and the
+token held only as a GitHub secret. Ideally, point CI at a DefectDojo instance dedicated to CI. The
+DefectDojo Pro edition uses a different permission model, which this project has not researched.
+
+To mint the token without putting the password or the token on a command line, keep the password
+in a file readable only by you, then pipe the result straight into the secret:
+
+```bash
+jq -n --arg u ci-importer --rawfile p "$HOME/.config/defectdojo/ci-importer.password" \
+    '{username: $u, password: ($p | rtrimstr("\n"))}' \
+  | curl -fsS -X POST https://defectdojo.example.com/api/v2/api-token-auth/ \
+      -H 'Content-Type: application/json' --data @- \
+  | jq -r '.token' \
+  | gh secret set DEFECTDOJO_API_TOKEN -R OWNER/REPO
+  ## Never executed against any pilot repository. The endpoint itself (POST /api/v2/api-token-auth/
+  ## returning {"token": "..."}) is what this project's proof harness uses against DefectDojo 3.3.200.
+  ## `ci-importer` is an illustrative user name.
+```
+
+### Settings
+
+Same idiom as section 7: repository settings, not YAML edits.
+
+```bash
+gh secret set DEFECTDOJO_API_TOKEN -R OWNER/REPO
+  ## Prompts for the value; skip it if you piped the token in above.
+gh variable set DEFECTDOJO_URL --body https://defectdojo.example.com -R OWNER/REPO
+  ## The on/off switch. Unset, the import and cleanup jobs are skipped.
+gh variable set DEFECTDOJO_PRODUCT --body "my-product" -R OWNER/REPO
+  ## Optional. Default: owner/repo.
+gh variable set DEFECTDOJO_PRODUCT_TYPE --body "CI" -R OWNER/REPO
+  ## Optional. Default: CI. Set it once and never change it (see Caveats below).
+gh variable set DEFECTDOJO_CA_CERT -R OWNER/REPO < internal-ca.pem
+  ## Optional. The PEM text of a private CA that signed DefectDojo's certificate.
+gh variable set DEFECTDOJO_INSECURE --body true -R OWNER/REPO
+  ## Optional and NOT recommended: disables TLS verification (see TLS below).
+  ## None of these commands was executed against any pilot repository.
+```
+
+`DEFECTDOJO_URL` is the only setting that turns the import on. The token being set alone
+does nothing, and `DEFECTDOJO_URL` set without the token produces a logged SKIP line, not a red job.
+
+### Caller Changes for Both Modes
+
+The import needs two things in your `pr-security.yml` caller: the `closed` activity type, so the
+cleanup job fires, and a `secrets:` block that passes the token by name. `v1.1.0`'s own
+`pr-security.yml` already carries both.
+
+- **Mode A:** re-fetch `pr-security.yml` and `security.yml` with the section 4 commands. There are
+  still no edits to make, and the `uses:` line stays `uses: ./.github/workflows/security.yml`.
+- **Mode B:** edit your own caller. **Moving `@v1` does not enable the import for Mode B.** It
+  updates `security.yml`, but your caller lives in your repository and GitHub never changes it.
+  Without the two edits, the import skips because the token arrives empty, and the cleanup never
+  fires. That is safe, but it is not on.
+
+The full updated caller for Mode B is below. It is section 5's file with the two edits. For
+Mode A, the only difference is the `uses:` line noted above.
+
+```yaml
+---
+name: PR Security
+
+on:
+  pull_request:
+    # Listing `types:` REPLACES GitHub's default activity set, so all three
+    # defaults are restated — drop one and pull requests stop being scanned
+    # while every required context sits pending. `closed` exists only to fire
+    # the DefectDojo cleanup job; the five scan jobs skip on it.
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    # FROZEN — the prefix of every required context (see section 5).
+    name: security
+    permissions:
+      contents: read
+      security-events: write
+      actions: read          # required only for private repositories
+    uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1
+    # Passed by name, never `secrets: inherit`: the callee sees this one
+    # secret and nothing else from your repository's store.
+    secrets:
+      DEFECTDOJO_API_TOKEN: ${{ secrets.DEFECTDOJO_API_TOKEN }}
+```
+
+Adding `closed` does not change the five required contexts. On a closed pull request, the five
+scan jobs report as skipped, which counts as success. The pull request is already closed at that
+point, so nothing is blocked.
+
+### Optional Daily Scan
+
+A pull request engagement disappears when the pull request closes. To keep a current
+`ci/<default branch>` engagement in DefectDojo, add the optional second caller,
+`scheduled-security.yml`. It scans the default branch every day at 06:00 America/Toronto, and it
+can also be run by hand through `workflow_dispatch`.
+
+```bash
+curl -fsSL -o .github/workflows/scheduled-security.yml \
+  https://raw.githubusercontent.com/OttawaCloudConsulting/security-platform/v1/.github/workflows/scheduled-security.yml
+  ## Mode A: use the file unmodified. Mode B: replace its single
+  ## `uses: ./.github/workflows/security.yml` line with the same
+  ## OttawaCloudConsulting/security-platform ... security.yml@v1 reference as your pr-security.yml.
+  ## This fetch was checked to return HTTP 200 after v1 moved; it was not executed in a pilot.
+```
+
+The schedule uses GitHub's IANA `timezone:` key (`timezone: "America/Toronto"`), so daylight saving
+time is handled by GitHub rather than by editing a UTC cron twice a year. In a **public**
+repository, GitHub disables scheduled workflows after 60 days without repository activity.
+Re-enable the workflow from the Actions tab, or run it once through `workflow_dispatch`. The file's
+job id is `security` too, so its check runs carry the same names on the default-branch commit.
+Required checks are evaluated on pull requests only, so these runs never affect one.
+
+### TLS
+
+TLS is **verified by default** against the runner's system trust store. A private CA is covered by
+`DEFECTDOJO_CA_CERT`, which the job writes to a private file and passes to `curl --cacert`.
+
+`DEFECTDOJO_INSECURE=true` disables verification (`curl -k`), and every run then emits a warning
+annotation saying the findings went over an unverified connection. If both variables are set,
+`DEFECTDOJO_INSECURE` wins and a second warning says the CA certificate was ignored. Use it only on
+a network you trust, and prefer `DEFECTDOJO_CA_CERT`.
+
+### What You Will See
+
+Since `v1.1.0`, every run carries two more check runs beside the five scan checks: the import job
+and the cleanup job. Both are skipped unless `DEFECTDOJO_URL` is set, and neither is ever a
+required check. When the import runs but has no token, its first step prints one of these lines:
+
+```text
+SKIP: Dependabot run — DefectDojo import refused even if a Dependabot secret exists
+SKIP: DEFECTDOJO_API_TOKEN is not available to this run (fork or Dependabot pull request, or the secret is unset) — nothing sent to DefectDojo
+```
+
+Fork and Dependabot pull requests receive no Actions secrets, so they always take one of these
+skip paths. For each report that the run did not produce, the import step prints:
+
+```text
+SKIP: <file> not in artifacts — <reason>
+```
+
+For example: `SKIP: trivy-image.json not in artifacts — no Dockerfile in this repository`.
+
+### Caveats
+
+- **Set `DEFECTDOJO_PRODUCT_TYPE` once.** If the product already exists under a different Product
+  Type (the variable changed, or someone moved the product in the DefectDojo UI), every import fails
+  with HTTP 400. Imports resume only once the product is moved back or the variable is restored.
+- **`npm-audit-N` Test titles can shift.** npm audit (and pip-audit) Tests are numbered in manifest
+  discovery order. Adding a lockfile can therefore change which lockfile a numbered Test holds, so
+  that Test's history can mix two files.
+- **tflint imports as SARIF**, not through DefectDojo's native TFLint parser, which reads JSON only.
+
+### Measured
+
+The import and cleanup were measured by this project's own proof harness, not on a consumer pilot.
+The harness ran on GitHub Actions against an ephemeral DefectDojo 3.3.200. PR run `36156728300`
+(27-07) passed 85 assertions, and so did the `workflow_dispatch` run `36160366711` on `main` after
+the merge (27-08). Among those assertions:
+
+- a user with `is_staff=true` and `is_superuser=false` imports and deletes;
+- a scheduled run creates `ci/main`;
+- the cleanup leaves a same-named engagement in another product alone;
+- `DEFECTDOJO_INSECURE=true` prints its warning.
+
+The design and its known gaps are recorded in ADR-024.
+
+## 13. Troubleshooting
 
 ### Private-repo SARIF verify steps skip instead of running
 
@@ -652,7 +890,7 @@ failed.
 missing from the CALLER (.github/workflows/pr-security.yml), which a called workflow cannot
 elevate.` Add the missing permission to the caller's job-level `permissions:` block.
 
-## 13. Cross-References and Validation Checklist
+## 14. Cross-References and Validation Checklist
 
 - The blueprint's [§Phase 2 — CI/CD Security Gate](development-security-stack-option-1.md) — the
   original branch-protection rationale this guide's section 8 implements without restating.
@@ -662,6 +900,9 @@ elevate.` Add the missing permission to the caller's job-level `permissions:` bl
   the required-checks design this guide documents.
 - [ADR-018](adr/adr018-workflow-packaging-canonical-host-and-versioning.md) — this phase's
   packaging, canonical-host and versioning decisions.
+- [ADR-024](adr/adr024-defectdojo-ci-import-reimport-per-branch-and-opt-in.md) — the opt-in
+  DefectDojo import: `ci/<branch>` reimport, delete on close, the token and TLS stance, and the
+  known gaps that section 12 summarises.
 
 **Validation checklist**, adapted from the canonical repository's own:
 

@@ -260,6 +260,39 @@ if fixtures_hits:
 else:
     ok("NO-FIXTURES-DIR", "'fixtures/' never appears outside a sentence naming it security-platform-only")
 
+# ── DEFECTDOJO-SECTION (Phase 27 D-22) ───────────────────────────────────────
+# The opt-in DefectDojo import is usable only through the guide: Mode B
+# consumers must edit their own caller, and the token advice is security
+# critical (staff is an instance-wide bypass). The section is located by
+# NUMBERED headings only (`## <n>. `), so a column-0 `## ` comment line inside
+# a fence can never truncate it, and a renumbering never breaks the check.
+DD_REQUIRED = [
+    "DEFECTDOJO_URL", "DEFECTDOJO_API_TOKEN", "DEFECTDOJO_PRODUCT_TYPE",
+    "DEFECTDOJO_INSECURE", "DEFECTDOJO_CA_CERT",
+    "is_staff", "reachable", "closed", "scheduled-security.yml", "secrets:",
+]
+dd_start = None
+for i, line in enumerate(lines):
+    if re.match(r"^## \d+\. Enable DefectDojo Import\s*$", line):
+        dd_start = i
+        break
+if dd_start is None:
+    fail("DEFECTDOJO-SECTION", "no '## <n>. Enable DefectDojo Import' heading in {}".format(GUIDE_PATH))
+else:
+    dd_end = len(lines)
+    for j in range(dd_start + 1, len(lines)):
+        if re.match(r"^## \d+\. ", lines[j]):
+            dd_end = j
+            break
+    dd_text = "\n".join(lines[dd_start:dd_end])
+    dd_missing = [needle for needle in DD_REQUIRED if needle not in dd_text]
+    if dd_missing:
+        fail("DEFECTDOJO-SECTION", "section at line {} is missing required string(s): {!r}".format(
+            dd_start + 1, dd_missing))
+    else:
+        ok("DEFECTDOJO-SECTION", "section at lines {}-{} carries all {} required strings".format(
+            dd_start + 1, dd_end, len(DD_REQUIRED)))
+
 # ── MARKDOWNLINT ─────────────────────────────────────────────────────────────
 if not any(os.access(os.path.join(p, "markdownlint-cli2"), os.X_OK)
            for p in os.environ.get("PATH", "").split(os.pathsep) if p):
