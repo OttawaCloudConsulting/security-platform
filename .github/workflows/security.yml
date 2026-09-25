@@ -1606,3 +1606,313 @@ jobs:
           print("DefectDojo import verified: {} report(s) into {} / {}".format(
               len(attempted), results.get("product_name"), results.get("engagement_name")))
           PY
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # DefectDojo Cleanup (Phase 27, ADR-024)
+  # When a pull request closes, deletes that PR's ci/<head-branch>
+  # engagement; its tests and findings cascade with it (D-10). A SIDE-CHANNEL
+  # job like defectdojo-import: opt-in (skipped unless the caller repo sets
+  # DEFECTDOJO_URL), non-blocking (never a required check, D-03).
+  #
+  # It lives in security.yml, gated on the closed action, rather than in a
+  # separate workflow: the caller already triggers security.yml on
+  # pull_request, so one extra `closed` type reaches it in both Mode A and
+  # Mode B, and the five scan jobs skip on closed so nothing is rescanned
+  # (D-15). Merged and abandoned PRs take the SAME path: GITHUB_HEAD_REF is
+  # populated on both, and a merged branch's findings live on in the
+  # default-branch engagement once the scheduled run imports them.
+  #
+  # DELETE IS IRREVERSIBLE, so it is guarded (D-10): the product is resolved
+  # by name_exact plus a client-side == (exactly one required), the
+  # engagement by its exact name plus a client-side == plus a product-id
+  # re-check, an empty head ref or the default branch is refused, ci/<default>
+  # is refused again right before any DELETE, and no match is a no-op. Never
+  # a pattern. Every exact-name match inside the resolved product is deleted
+  # and logged by id: engagement names are not unique, and duplicates only
+  # arise from import races (RESEARCH OQ1), so each is still this branch's
+  # engagement.
+  #
+  # TOKEN IDENTITY: DELETE /api/v2/engagements/{id}/ requires a staff
+  # (is_staff) DefectDojo user at 3.3.200 open-source. Staff is a GLOBAL
+  # bypass on that instance — see the DefectDojo section of the adoption
+  # guide for the dedicated-user recommendation.
+  # ─────────────────────────────────────────────────────────────────────────
+  defectdojo-cleanup:
+    name: DefectDojo Cleanup
+    # No needs: the scan jobs are skipped on closed (D-15), and a skipped
+    # dependency would skip this job too. vars resolves to the CALLER
+    # repository in both modes, so an unset DEFECTDOJO_URL skips the job
+    # (D-02); the token is checked by the dd-gate step, as in the import job.
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && vars.DEFECTDOJO_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    # Same group as defectdojo-import: an import still running from the final
+    # push finishes BEFORE this delete starts, instead of re-creating
+    # ci/<branch> after it (RESEARCH Pitfall 9). Queued, never cancelled.
+    concurrency:
+      group: defectdojo-${{ github.repository }}-${{ github.head_ref || github.ref_name }}
+      cancel-in-progress: false
+    # NO job-level env: the token lives only in the step env: of dd-gate and
+    # dd-delete.
+    steps:
+      # Byte-identical to the defectdojo-import dd-gate step (same messages,
+      # same D-13 fork/Dependabot semantics): an empty token is a clean skip.
+      - name: Gate — DefectDojo token present?
+        id: dd-gate
+        env:
+          DD_TOKEN: ${{ secrets.DEFECTDOJO_API_TOKEN }}
+        run: |
+          if [ "${GITHUB_ACTOR:-}" = "dependabot[bot]" ]; then
+            echo "SKIP: Dependabot run — DefectDojo import refused even if a Dependabot secret exists"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "${DD_TOKEN:-}" ]; then
+            echo "SKIP: DEFECTDOJO_API_TOKEN is not available to this run (fork or Dependabot pull request, or the secret is unset) — nothing sent to DefectDojo"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "DefectDojo token present — import enabled"
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      # ADR-001 side-channel carve-out (D-03): continue-on-error so a
+      # DefectDojo outage never fails the run; dd-cleanup-verify below turns
+      # the job red instead.
+      #
+      # The head ref is attacker-controlled on a pull request, so it arrives
+      # ONLY through the runner-provided GITHUB_HEAD_REF (never ${{ }} in the
+      # body), and every query string is built with urllib.parse.urlencode.
+      # Products are looked up with name_exact, NEVER ?name= (icontains).
+      # Engagements are looked up with ?product=<id>&name= (exact) and then
+      # re-checked client-side, because the server filter alone is not the
+      # guard.
+      #
+      # Same token header file (0600, -H @file, removed in finally) and the
+      # same TLS rules and ::warning:: lines as dd-import (D-11, D-18).
+      - name: Delete this PR's ci/<branch> DefectDojo engagement
+        id: dd-delete
+        if: steps.dd-gate.outputs.enabled == 'true'
+        continue-on-error: true          # ADR-001 side-channel carve-out (D-03)
+        env:
+          DD_URL: ${{ vars.DEFECTDOJO_URL }}
+          DD_TOKEN: ${{ secrets.DEFECTDOJO_API_TOKEN }}
+          DD_PRODUCT: ${{ vars.DEFECTDOJO_PRODUCT || github.repository }}
+          DD_INSECURE: ${{ vars.DEFECTDOJO_INSECURE }}
+          DD_CA_CERT: ${{ vars.DEFECTDOJO_CA_CERT }}
+          DD_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          DD_CLEANUP_RESULT_FILE: dd-cleanup-result.json
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+          import tempfile
+          import urllib.parse
+
+          env = os.environ
+          url = env.get("DD_URL", "").rstrip("/")
+          product = env.get("DD_PRODUCT", "")
+          default_branch = env.get("DD_DEFAULT_BRANCH", "")
+          head = env.get("GITHUB_HEAD_REF", "")
+          result_file = env.get("DD_CLEANUP_RESULT_FILE", "dd-cleanup-result.json")
+
+          insecure = env.get("DD_INSECURE", "") == "true"
+          ca_cert = env.get("DD_CA_CERT", "")
+          tmpdir = tempfile.mkdtemp()
+          hdr_path = os.path.join(tmpdir, "auth-header")
+          ca_path = os.path.join(tmpdir, "ca.pem")
+          resp_path = os.path.join(tmpdir, "response.json")
+
+
+          class Failed(Exception):
+              pass
+
+
+          def write_private(path, text):
+              fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+              with os.fdopen(fd, "w") as handle:
+                  handle.write(text)
+
+
+          def finish(outcome, target, product_id, deleted_ids):
+              with open(result_file, "w", encoding="utf-8") as handle:
+                  json.dump({
+                      "outcome": outcome,
+                      "target": target,
+                      "product_name": product,
+                      "product_id": product_id,
+                      "deleted_ids": deleted_ids,
+                  }, handle, indent=2)
+              return 0
+
+
+          def api(tls_args, method, path, expect):
+              cmd = ["curl", "-sS", "-X", method, "-o", resp_path, "-w", "%{http_code}"] + tls_args
+              cmd += ["-H", "@" + hdr_path, url + path]
+              proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    universal_newlines=True)
+              code = (proc.stdout or "").strip() or "000"
+              body = ""
+              if os.path.isfile(resp_path):
+                  with open(resp_path, encoding="utf-8", errors="replace") as handle:
+                      body = handle.read()
+                  os.remove(resp_path)
+              if code != expect:
+                  detail = body[:500] if body else (proc.stderr or "").strip()[:500]
+                  print("FAILED: {} {} http={} body={}".format(method, path, code, detail))
+                  raise Failed()
+              if expect != "200":
+                  return None
+              try:
+                  data = json.loads(body)
+              except ValueError:
+                  data = None
+              if not isinstance(data, dict) or not isinstance(data.get("results"), list):
+                  print("FAILED: {} {} http=200 but the response has no results list".format(method, path))
+                  raise Failed()
+              if data.get("next"):
+                  print("FAILED: {} {} returned more than one page — refusing to guess".format(method, path))
+                  raise Failed()
+              return data["results"]
+
+
+          def exact_engagements(tls_args, pid, target):
+              query = urllib.parse.urlencode({"product": pid, "name": target, "limit": 100})
+              found = api(tls_args, "GET", "/api/v2/engagements/?" + query, "200")
+              return [e for e in found
+                      if isinstance(e, dict) and e.get("name") == target and e.get("product") == pid]
+
+
+          def main():
+              # 1. Refuse before any request: empty head, unknown default, or the
+              #    default branch itself.
+              if not default_branch:
+                  print("REFUSE: the default branch is unknown (DD_DEFAULT_BRANCH is empty) — nothing deleted")
+                  return finish("refused", None, None, [])
+              if not head or head == default_branch:
+                  print("REFUSE: head ref {!r} is empty or the default branch — nothing deleted".format(head))
+                  return finish("refused", None, None, [])
+
+              # 2. Literal concatenation, never a pattern.
+              target = "ci/" + head
+
+              if insecure:
+                  tls_mode = "insecure"
+                  tls_args = ["-k"]
+                  print("::warning::DefectDojo TLS verification is OFF (DEFECTDOJO_INSECURE=true) — this run's cleanup request was sent over an unverified connection")
+                  if ca_cert:
+                      print("::warning::DEFECTDOJO_CA_CERT is ignored because DEFECTDOJO_INSECURE=true")
+              elif ca_cert:
+                  tls_mode = "verified-ca"
+                  write_private(ca_path, ca_cert if ca_cert.endswith("\n") else ca_cert + "\n")
+                  tls_args = ["--cacert", ca_path]
+              else:
+                  tls_mode = "verified-system"
+                  tls_args = []
+              print("TLS mode: {}".format(tls_mode))
+              print("product={!r} target={!r} default_branch={!r}".format(product, target, default_branch))
+
+              write_private(hdr_path, "Authorization: Token {}\n".format(env.get("DD_TOKEN", "")))
+
+              # 3. Exactly one product whose name equals DD_PRODUCT (name_exact is
+              #    case-insensitive server-side, hence the client-side ==).
+              query = urllib.parse.urlencode({"name_exact": product, "limit": 100})
+              products = [p for p in api(tls_args, "GET", "/api/v2/products/?" + query, "200")
+                          if isinstance(p, dict) and p.get("name") == product]
+              if not products:
+                  print("NOTHING TO DELETE: no product named {!r}".format(product))
+                  return finish("nothing-to-delete", target, None, [])
+              if len(products) > 1:
+                  print("FAILED: {} products exactly named {!r} — refusing to guess".format(
+                      len(products), product))
+                  return 1
+              pid = products[0].get("id")
+
+              # 4. Exact engagement name inside that one product.
+              engagements = exact_engagements(tls_args, pid, target)
+              if not engagements:
+                  print("NOTHING TO DELETE: no engagement {!r} in product {}".format(target, pid))
+                  return finish("nothing-to-delete", target, pid, [])
+
+              # 5. Defence in depth: step 1 already refused the default branch;
+              #    refuse again before anything irreversible happens.
+              protected = "ci/" + default_branch
+              if any(e.get("name") == protected for e in engagements):
+                  print("FAILED: refusing to delete the default-branch engagement {!r} — nothing deleted".format(
+                      protected))
+                  return 1
+
+              # 6. Delete every exact match (duplicates only arise from races).
+              deleted_ids = []
+              for engagement in engagements:
+                  eid = engagement.get("id")
+                  if not isinstance(eid, int):
+                      print("FAILED: engagement {!r} has no integer id: {!r}".format(target, eid))
+                      return 1
+                  api(tls_args, "DELETE", "/api/v2/engagements/{}/".format(eid), "204")
+                  print("DELETED: engagement id={} name={!r} product={}".format(eid, target, pid))
+                  deleted_ids.append(eid)
+
+              # 7. Re-read: nothing with that exact name may remain.
+              remaining = exact_engagements(tls_args, pid, target)
+              if remaining:
+                  print("FAILED: {} engagement(s) named {!r} still exist in product {} after delete: ids={}".format(
+                      len(remaining), target, pid, [e.get("id") for e in remaining]))
+                  return 1
+
+              # 8.
+              return finish("deleted", target, pid, deleted_ids)
+
+
+          try:
+              try:
+                  rc = main()
+              except Failed:
+                  rc = 1
+          finally:
+              for leftover in (hdr_path, ca_path, resp_path):
+                  if os.path.exists(leftover):
+                      os.remove(leftover)
+              os.rmdir(tmpdir)
+          sys.exit(rc)
+          PY
+
+      # Deliberately WITHOUT continue-on-error, like dd-verify: it reads the
+      # delete outcome and the result file through env only, and fails red
+      # when the delete step failed, recorded nothing, or recorded an outcome
+      # outside deleted / nothing-to-delete / refused. A red result here
+      # cannot block anything: the PR is already closed and this job is never
+      # a required check (D-03).
+      - name: Verify DefectDojo cleanup landed
+        id: dd-cleanup-verify
+        if: always() && steps.dd-gate.outputs.enabled == 'true'
+        env:
+          DD_DELETE_OUTCOME: ${{ steps.dd-delete.outcome }}
+          DD_CLEANUP_RESULT_FILE: dd-cleanup-result.json
+        run: |
+          if [ "${DD_DELETE_OUTCOME:-}" != "success" ]; then
+            echo "delete outcome=${DD_DELETE_OUTCOME:-} — the cleanup did not complete (see the FAILED line above)."
+            exit 1
+          fi
+          if [ ! -f "${DD_CLEANUP_RESULT_FILE:-}" ]; then
+            echo "result file ${DD_CLEANUP_RESULT_FILE:-} is missing — the delete step recorded nothing."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          with open(os.environ["DD_CLEANUP_RESULT_FILE"], encoding="utf-8") as handle:
+              result = json.load(handle)
+          outcome = result.get("outcome") if isinstance(result, dict) else None
+          if outcome not in ("deleted", "nothing-to-delete", "refused"):
+              print("unexpected cleanup outcome {!r} — expected deleted, nothing-to-delete or refused".format(outcome))
+              sys.exit(1)
+          print("DefectDojo cleanup verified: outcome={} target={} product={} product_id={} deleted_ids={}".format(
+              outcome, result.get("target"), result.get("product_name"), result.get("product_id"),
+              result.get("deleted_ids")))
+          PY
