@@ -614,21 +614,21 @@ Illustrative only. The planner owns the final shape, including writing the heade
 | A5 | dojo-pro deployments have a different minimum-permission answer | Authorization | Only matters if the operator runs Pro |
 | A6 | GitHub `github.event.action` is empty on `schedule`/`workflow_dispatch` in a called workflow | Pattern 3 | If non-empty but != 'closed', behaviour is still correct |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Delete one match or all exact matches?**
+1. RESOLVED: delete every exact-name match inside the resolved product, logging each id — carried in 27-03 (cleanup job action) and proven by 27-06 P-CLEANUP / P-SCOPE. **Delete one match or all exact matches?**
    - Known: engagement names are not unique, and auto-create reuses the last match, so duplicates arise only from races.
    - Recommendation: delete every exact-name match inside the resolved product and log each id. It satisfies D-10: no pattern, not the default branch.
-2. **Should the five scan jobs' verify guards gain a `schedule` arm?** (Pitfall 4)
+2. RESOLVED: no `schedule` arm in this phase; the gap is recorded — carried in 27-10 ADR-024 "What was NOT verified" (Pitfall 4) and presented as decision f in the 27-07 merge checkpoint. **Should the five scan jobs' verify guards gain a `schedule` arm?** (Pitfall 4)
    - Recommendation: no in this phase. Record the gap in ADR-024 and let the operator decide.
-3. **Numbered `npm-audit-N.json` titles drift when a lockfile is added.**
+3. RESOLVED: accept and document the drift — carried in 27-10 ADR-024 "What was NOT verified" (npm title drift, OQ3) and 27-07 merge-checkpoint decision f. **Numbered `npm-audit-N.json` titles drift when a lockfile is added.**
    - Known: numbering follows `git ls-files` order, and the mapping file `npm-lockfiles.txt` is not in the artifact.
    - Effect: adding a lockfile shifts titles, so `npm-audit-2` then holds a different lockfile's findings. `close_old_findings` keeps each Test self-consistent, but history is attributed to the wrong lockfile.
    - Recommendation: accept this and document it. Fixing it means adding the list file to the `sca-results` artifact (a scan-job change, deferred).
-4. **`deduplication_on_engagement` is fixed when the engagement is created.** It is read only in `get_or_create_engagement` (auto_create_context.py). Sending it on later reimports has no effect. Hand-forward to Phase 28: changing it on existing `ci/*` engagements needs `PATCH /api/v2/engagements/{id}/`, or deleting and re-creating them. Recommendation for this phase: omit it, so the server default False applies, and let Phase 28 decide.
-5. **Phase 29 side effect.** Once security-platform itself sets `DEFECTDOJO_URL` and the secret, the proof workflow's `scans` job, which calls `security.yml`, will also import into the real instance under `ci/<branch>`. This is harmless but may surprise; note it in ADR-024 or the Phase 29 context.
-6. **Product Type default string.** Recommend `CI`. It is short, and a Product Type is a grouping; the engagement type is already `CI/CD`.
-7. **Scheduled caller job id.** Recommend `security`, which keeps the adoption-guide single-caller logic simple. `scheduled` is also fine; either way the gate only reads `pr-security.yml`.
+4. RESOLVED: omit `deduplication_on_engagement` (server default False) and hand forward to Phase 28 — carried in 27-10 ADR-024 Consequences (Phase 28 hand-forward, OQ4). **`deduplication_on_engagement` is fixed when the engagement is created.** It is read only in `get_or_create_engagement` (auto_create_context.py). Sending it on later reimports has no effect. Hand-forward to Phase 28: changing it on existing `ci/*` engagements needs `PATCH /api/v2/engagements/{id}/`, or deleting and re-creating them. Recommendation for this phase: omit it, so the server default False applies, and let Phase 28 decide.
+5. RESOLVED: note the side effect, no code change — carried in 27-10 ADR-024 Consequences (Phase 29 side effect, OQ5). **Phase 29 side effect.** Once security-platform itself sets `DEFECTDOJO_URL` and the secret, the proof workflow's `scans` job, which calls `security.yml`, will also import into the real instance under `ci/<branch>`. This is harmless but may surprise; note it in ADR-024 or the Phase 29 context.
+6. RESOLVED: default Product Type `CI`, overridable by `DEFECTDOJO_PRODUCT_TYPE` — carried in 27-02 (`DD_PRODUCT_TYPE: ${{ vars.DEFECTDOJO_PRODUCT_TYPE || 'CI' }}`) and 27-07 merge-checkpoint decision a. **Product Type default string.** Recommend `CI`. It is short, and a Product Type is a grouping; the engagement type is already `CI/CD`.
+7. RESOLVED: job id `security` in `scheduled-security.yml` — carried in 27-04 and 27-07 merge-checkpoint decision d. **Scheduled caller job id.** Recommend `security`, which keeps the adoption-guide single-caller logic simple. `scheduled` is also fine; either way the gate only reads `pr-security.yml`.
 
 ## Environment Availability
 
