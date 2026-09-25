@@ -259,7 +259,7 @@ recorded above as the failed first attempt.
   (and could move refs) on the public repository.
 
 == 5. Tags (filled by Task 3 after operator approval) ==
-PENDING operator approval (Task 2). Nothing tagged or moved in Task 1.
+5a. Snapshot before any tag write. Nothing was tagged or moved in Task 1.
 State at Task 1 (2026-09-25):
 $ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v1 --jq '[.object.type,.object.sha]|@tsv'
 commit	cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef
@@ -273,3 +273,121 @@ cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
 c6395e145643c21a724df9225f3a5210d5d98bde	refs/tags/v2.0^{}
 Planned (not done): annotated v1.1.0 at 0f7e4e141d2a300d4be9a54efc137eb4510bb7ea; lightweight v1
 force-moved from cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef to 0f7e4e141d2a300d4be9a54efc137eb4510bb7ea.
+
+5b. Operator approval (Task 2 checkpoint), verbatim: "Approved — tag v1.1.0 and move v1"
+Scope approved: annotated v1.1.0 at 0f7e4e1 pushed; lightweight v1 force-moved to 0f7e4e1;
+'gh release create v1.1.0 --verify-tag' (becomes Latest). NOT approved and NOT done: any change to
+v1.0.0 or v2.0, branch deletion, branch-protection change, any push from the parent repository.
+
+5c. Pre-checks (2026-09-25, in repos/security-platform, local branch feature/phase-27-defectdojo-ci-auto-import;
+tags were made against the explicit SHA, not the local branch)
+$ git fetch origin --tags && git rev-parse origin/main
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea
+$ git ls-remote --tags origin
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+8d47cf9f86e9f79a42a57a2b4298d34b5dcda449	refs/tags/v2.0
+c6395e145643c21a724df9225f3a5210d5d98bde	refs/tags/v2.0^{}
+$ gh release list -R OttawaCloudConsulting/security-platform
+v1.0.0 - reusable security scanning workflow	Latest	v1.0.0	2026-09-14T17:45:24Z
+RESULT: origin/main = merge SHA; v1 still cdf2c21; v1.1.0 absent; no release exists for v2.0 (so
+semver-based Latest selection would not be taken by v2.0). MATCH: yes, proceed.
+
+v1 blast radius (everything the move publishes), measured:
+$ git rev-list --count cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef..0f7e4e141d2a300d4be9a54efc137eb4510bb7ea
+62
+(54 non-merge + 8 merges: PR #14 Phase 23, #15 Phase 24, #16 Phase 25, #19 Phase 26, #17 and #18
+Dependabot action bumps, #20 DefectDojo helm repo fix, #21 Phase 27)
+$ git diff --stat cdf2c21 0f7e4e1 -- .github/workflows/ | tail -1
+ 4 files changed, 943 insertions(+), 15 deletions(-)
+
+5d. Write 1: annotated v1.1.0
+DOING: git tag -a v1.1.0 0f7e4e1... -m "v1.1.0: opt-in DefectDojo import (DDOJO-02)"; git push origin refs/tags/v1.1.0
+EXPECT: new tag pushed; git/ref/tags/v1.1.0 object.type tag; dereferences to 0f7e4e1
+IF MATCH: move v1. IF MISMATCH: stop and report, no further writes.
+$ git cat-file -t v1.1.0 && git rev-parse v1.1.0^{commit}
+tag
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea
+$ git push origin refs/tags/v1.1.0
+To https://github.com/OttawaCloudConsulting/security-platform.git
+ * [new tag]         v1.1.0 -> v1.1.0
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v1.1.0 --jq '[.object.type,.object.sha]|@tsv'
+tag	414fd3beb5a6d79d52316150a192803a4b0ece78
+$ gh api repos/OttawaCloudConsulting/security-platform/git/tags/414fd3beb5a6d79d52316150a192803a4b0ece78 --jq '[.tag,.object.type,.object.sha,.message]|@tsv'
+v1.1.0	commit	0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	v1.1.0: opt-in DefectDojo import (DDOJO-02)\n
+RESULT: annotated tag object 414fd3b dereferences to 0f7e4e1. MATCH: yes.
+
+5e. Write 2: lightweight v1 moved
+DOING: git tag -f v1 0f7e4e1... (no -a); push with a lease pinned to the pre-checked remote value,
+strictly narrower than the approved plain --force (refuses if the remote moved since 5c)
+EXPECT: forced update cdf2c21 -> 0f7e4e1; git/ref/tags/v1 object.type commit, sha 0f7e4e1
+IF MISMATCH or lease rejected: stop and report; no retry with plain --force.
+$ git tag -f v1 0f7e4e141d2a300d4be9a54efc137eb4510bb7ea && git cat-file -t v1
+Updated tag 'v1' (was cdf2c21)
+commit
+$ git push --force-with-lease=refs/tags/v1:cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef origin refs/tags/v1
+(the host repository's pre-push hook ran: shellcheck, yamllint, markdownlint, secret detection Passed;
+the rest Skipped with no files to check)
+To https://github.com/OttawaCloudConsulting/security-platform.git
+ + cdf2c21...0f7e4e1 v1 -> v1 (forced update)
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v1 --jq '[.object.type,.object.sha]|@tsv'
+commit	0f7e4e141d2a300d4be9a54efc137eb4510bb7ea
+RESULT: v1 is lightweight at 0f7e4e1. MATCH: yes.
+
+5f. Write 3: GitHub release (notes inline via --notes, not --notes-file; checked for local paths first: 0 hits)
+$ gh release create v1.1.0 -R OttawaCloudConsulting/security-platform --verify-tag --title "v1.1.0" --notes "<inline notes>"
+https://github.com/OttawaCloudConsulting/security-platform/releases/tag/v1.1.0
+(The follow-up 'gh release view --json isLatest' failed with 'Unknown JSON field: "isLatest"': that field
+does not exist in this gh version. It was a readback error only; the release had already been created.
+Latest was checked with the REST endpoint below instead.)
+Notes cover: opt-in import, DEFECTDOJO_URL / DEFECTDOJO_API_TOKEN (secret) / DEFECTDOJO_PRODUCT /
+DEFECTDOJO_PRODUCT_TYPE / DEFECTDOJO_CA_CERT / DEFECTDOJO_INSECURE, closed-event skip and exact-name cleanup,
+scheduled-security.yml (job id security), is_staff token, required contexts unchanged, Mode B callers must
+add 'closed' and the secrets: pass, v1.0.0 as the immutable pin, ADR-024 known gaps; ends with the attribution lines.
+
+5g. Readbacks (2026-09-25T16:46:04Z)
+$ gh api repos/OttawaCloudConsulting/security-platform/releases/latest --jq '[.tag_name,.name,.draft,.prerelease,.html_url,.published_at]|@tsv'
+v1.1.0	v1.1.0	false	false	https://github.com/OttawaCloudConsulting/security-platform/releases/tag/v1.1.0	2026-09-25T16:45:54Z
+$ gh release view v1.1.0 -R OttawaCloudConsulting/security-platform --json tagName,name,isDraft,isPrerelease,url,publishedAt,targetCommitish
+v1.1.0	v1.1.0	false	false	https://github.com/OttawaCloudConsulting/security-platform/releases/tag/v1.1.0	2026-09-25T16:45:54Z	main
+$ gh release view v1.1.0 --json body --jq .body | grep -cE '/Users/|/private/'
+0
+$ gh release list -R OttawaCloudConsulting/security-platform
+v1.1.0	Latest	v1.1.0	2026-09-25T16:45:54Z
+v1.0.0 - reusable security scanning workflow		v1.0.0	2026-09-14T17:45:24Z
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/<t> --jq '[.object.type,.object.sha]|@tsv'
+v1:     commit	0f7e4e141d2a300d4be9a54efc137eb4510bb7ea
+v1.1.0: tag	414fd3beb5a6d79d52316150a192803a4b0ece78
+v1.0.0: tag	fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4
+v2.0:   tag	8d47cf9f86e9f79a42a57a2b4298d34b5dcda449
+$ gh api repos/OttawaCloudConsulting/security-platform/git/tags/<tag object> --jq '[.object.type,.object.sha]|@tsv'
+v1.1.0 (414fd3b): commit	0f7e4e141d2a300d4be9a54efc137eb4510bb7ea
+v1.0.0 (fabc3e3): commit	cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef
+v2.0   (8d47cf9): commit	c6395e145643c21a724df9225f3a5210d5d98bde
+$ git ls-remote --tags origin
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+8d47cf9f86e9f79a42a57a2b4298d34b5dcda449	refs/tags/v2.0
+c6395e145643c21a724df9225f3a5210d5d98bde	refs/tags/v2.0^{}
+$ git fetch origin && git rev-parse origin/main
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea
+Plan <verify> command (v1 commit, v1.1.0 tag deref == v1 sha, == origin/main): PLAN VERIFY: PASS (M=0f7e4e141d2a300d4be9a54efc137eb4510bb7ea)
+
+Raw Mode A URL, attempt 1 of at most 3 (2026-09-25T16:45:12Z):
+$ curl -sSL -w 'http_code=%{http_code} size=%{size_download}\n' https://raw.githubusercontent.com/OttawaCloudConsulting/security-platform/v1/.github/workflows/scheduled-security.yml
+http_code=200 size=3459
+(first lines: '---', '# Repo-local trigger policy: invokes the callable security workflow once a')
+Attempts 2 and 3 not needed.
+$ gh api 'repos/OttawaCloudConsulting/security-platform/contents/.github/workflows/scheduled-security.yml?ref=v1' --jq '[.path,.sha,.size]|@tsv'
+.github/workflows/scheduled-security.yml	d2e1dbac61dc573f37d7450a465fa32c39d91871	3459
+$ git rev-parse origin/main:.github/workflows/scheduled-security.yml
+d2e1dbac61dc573f37d7450a465fa32c39d91871
+
+RESULT: v1 lightweight (commit) at 0f7e4e1; v1.1.0 annotated (tag 414fd3b) dereferencing to 0f7e4e1;
+v1.0.0 unchanged (tag fabc3e3 -> cdf2c21); v2.0 unchanged (tag 8d47cf9 -> c6395e1); release v1.1.0 is
+published and Latest; raw /v1/ scheduled-security.yml served HTTP 200, and its blob matches main.
+MATCH: yes, all readbacks. No corrective push was needed or made.
