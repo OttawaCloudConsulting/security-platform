@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 26-02-PLAN.md
-last_updated: "2026-09-25T00:36:52.614Z"
+stopped_at: Completed 26-03-PLAN.md
+last_updated: "2026-09-25T00:43:24.422Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 32
-  completed_plans: 27
+  completed_plans: 28
   percent: 43
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 26 (defectdojo-generic-chart) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-09-25
 
@@ -253,6 +253,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 26]: 26-01: DDOJO-01 stays Pending until the phase's final plan (23-08/24-10/25-07 precedent)
 - [Phase 26]: 26-02: smoke subchart vendoring is preflight (exit 2), not a counted live check, so vendoring alone can never produce ALL PASS
 - [Phase 26]: 26-02: KIND-CELERY-PING log-grep fallback only when the ping command is unusable; broker-side ping failure is a FAIL
+- [Phase 26]: 26-03: values.yaml restates ingress enabled/activateTLS/secretName so D-09/D-10 survive an upstream bump; ingressClassName stays absent (D-12)
+- [Phase 26]: 26-03: issuer kind selected by the annotation key itself (cluster-issuer vs issuer); no issuerKind value; guard is a fail, not required
 
 ### Pending Todos
 
@@ -355,11 +357,12 @@ Carried forward from v1.1 close:
 | Phase 25 P07 | 15 min | 2 tasks | 3 files |
 | Phase 26 P01 | 30 min | 2 tasks | 1 files |
 | Phase 26 P02 | ~25 min | 2 tasks | 1 files |
+| Phase 26 P03 | ~10 min | 2 tasks | 5 files |
 
 ## Session Continuity
 
 Last session: 2026-09-25T00:12:02.447Z
-Stopped at: Completed 26-02-PLAN.md
+Stopped at: Completed 26-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
