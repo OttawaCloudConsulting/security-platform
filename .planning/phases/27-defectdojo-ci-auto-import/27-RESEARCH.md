@@ -194,6 +194,9 @@ The `.json` and `.sarif` extensions are both in the default `DD_FILE_IMPORT_TYPE
 - **First run:** no Test exists and `auto_create_context=true`, so `get_or_create_engagement` runs, then the DefaultImporter with `close_old_findings=False` (serializers.py:866-878). A new engagement gets `engagement_type="CI/CD"`, status "In Progress" and `target_end` = today + 365 days (auto_create_context.py:331).
 - **Response:** HTTP **201**, with `test_id`, `engagement_id`, `product_id`, `product_type_id` and `statistics`. The first run returns `statistics.after` only. Later runs return `before`, `delta` and `after`. `delta` has `created`, `closed`, `reactivated` and `untouched`, each `{severity: {active, verified, duplicate, false_p, out_of_scope, is_mitigated, risk_accepted, total}, total: {...}}`. `delta` needs `DD_TRACK_IMPORT_HISTORY`, which defaults to True (settings.dist.py:226). The vendored chart configmap does not override it.
 - **Engagement DELETE** `DELETE /api/v2/engagements/{id}/`: when `ASYNC_OBJECT_DELETE` is on it runs `async_delete`, otherwise `instance.delete()`. It **returns 204** in both cases (dojo/engagement/api/views.py:86-93). `DD_ASYNC_OBJECT_DELETE` defaults to **False**, so the delete is synchronous (settings.dist.py:256), and the vendored chart does not override it. Test to Engagement and Finding to Test are both `on_delete=CASCADE` (dojo/test/models.py:51, dojo/finding/models.py:215), so the findings go with the engagement. The object is fetched through `get_authorized_engagements("view")`, so an engagement the token cannot see returns **404**.
+- **In-place matching does not depend on the global dedup switch.** `System_Settings.enable_deduplication` defaults to **False** (dojo/system_settings/models.py). The reimporter never reads it: it computes `hash_code` for every parsed finding and matches candidates using `DEDUPLICATION_ALGORITHM_PER_PARSER` (dojo/importers/default_reimporter.py:218-270, 942-990). D-07 in-place update and close work on a fresh instance with no settings change. Hand-forward to Phase 28: cross-test and cross-engagement dedup is what `enable_deduplication` controls.
+- **Transport:** `ReImportScanView.parser_classes = [MultiPartParser]` (dojo/api_v2/views.py:~492), so the body must be multipart (`curl -F` / `--form-string`), not JSON.
+- **Field length limits:** `Engagement.name` max 300 (dojo/engagement/models.py:45), so `ci/` plus a git branch fits. **`Test.branch_tag` max 150** (dojo/test/models.py:79), so a branch name over 150 chars sent as `branch_tag` returns a **400**. Truncate `branch_tag` to 150 chars (it is metadata only) or omit it for long names. `Test.title` max 255.
 - **Lookup filters:** `GET /api/v2/products/?name_exact=` is `iexact` (the plain `name` filter is `icontains`, so never use it). `GET /api/v2/engagements/?product=<id>&name=` is exact, because `name` is in `Meta.fields`. Test filters include `engagement`, `title` and `scan_type`. Finding filters include `test` and `active`.
 
 ### Authorization (research item 3)
@@ -206,7 +209,7 @@ In 3.x open-source the RBAC roles are **inert stubs**. The rewritten OS model is
 
 **Minimum token identity for D-11 (one token: import, auto-create and delete):** a dedicated user `ci-importer` (name is illustrative) with **`is_staff=true`, `is_superuser=false`**. A non-staff user can import into products it is a member of, and can create a Product Type only if granted `dojo.add_product_type`. It **cannot** delete engagements. Staff is a **global** bypass: that user can view, edit, import into and delete any engagement in the instance, not only CI ones. The adoption guide must state this, and it must recommend a dedicated instance or user. **dojo-pro** replaces this model with RBAC. Under Pro, check the Pro role matrix before relying on it; that was not researched here.
 
-**Token minting:** `POST /api/v2/api-token-auth/` with `{"username","password"}` returns `{"token": "..."}` (dojo/urls.py:219-228). It is enabled by default and rate-limited per IP. It refuses accounts that still owe a forced password reset. The initializer creates admin via `create_superuser` without that flag. `POST /api/v2/users/{id}/reset_api_token/` returns **204 with no body**, so it cannot be used to read a token. The header is `Authorization: Token <key>`.
+**Token minting:** `POST /api/v2/api-token-auth/` with `{"username","password"}` returns `{"token": "..."}` (dojo/urls.py:219-228). It is enabled by default. The `dojo_ratelimit` decorator is keyed per IP, but `DD_RATE_LIMITER_ENABLED` defaults to **False** (settings.dist.py:245; rate `5/m` when enabled), so the harness's two token calls per run are unaffected. It refuses accounts that still owe a forced password reset. The initializer creates admin via `create_superuser` without that flag. `POST /api/v2/users/{id}/reset_api_token/` returns **204 with no body**, so it cannot be used to read a token. The header is `Authorization: Token <key>`.
 
 **Password policy for creating the staff user in the harness** (`POST /api/v2/users/`): 9 to 48 characters, with at least one digit, one uppercase letter, one lowercase letter and one symbol, and not a common password (dojo/system_settings/models.py:302-335). The smoke's `gen_secret` is alphanumeric only and would get a **400**.
 
@@ -397,7 +400,7 @@ curl -sS --fail-with-body -o resp.json -w '%{http_code}' \
   -F "source_code_management_uri=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
   "${DD_URL%/}/api/v2/reimport-scan/"
 ```
-`-H @file` reads headers from a file and is supported in curl ≥ 7.55 [ASSUMED]. When the step is written in Python, pass the header through `subprocess` with `-H @file` as well. Watch `-F` value escaping: curl's `-F name=value` treats a leading `@` or `<` in *value* as a file reference. A branch name such as `@evil` would make curl read a file. Use `--form-string` for every non-file field.
+`-H @file` reads headers from a file [VERIFIED: `curl --help all` shows `-H, --header <header/@file>`; available since curl 7.55; ubuntu-24.04 ships curl 8.5]. When the step is written in Python, pass the header through `subprocess` with `-H @file` as well. Watch `-F` value escaping: curl's `-F name=value` treats a leading `@` or `<` in *value* as a file reference. A branch name such as `@evil` would make curl read a file. Use `--form-string` for every non-file field.
 
 Branch resolution: `BRANCH = GITHUB_HEAD_REF if GITHUB_EVENT_NAME == 'pull_request' else GITHUB_REF_NAME`. On schedule, `GITHUB_REF` is the default branch [CITED: events-that-trigger-workflows]. Use the runner-provided `GITHUB_*` env vars. They are not `${{ }}` interpolation, so there is no injection surface.
 
@@ -543,6 +546,9 @@ The runner ships Helm 3.22.0. The smoke's `--wait` semantics were measured only 
 ### Pitfall 12: Scheduled workflows auto-disable
 "In a public repository, scheduled workflows are automatically disabled when no repository activity has occurred in 60 days" [CITED: events-that-trigger-workflows]. Put this in the adoption guide.
 
+### Pitfall 13a: Mode B consumers must edit their own caller file
+In Mode B, `pr-security.yml` lives in the **consumer** repository. Moving `v1` gives them the new `security.yml`, but the `closed` type and the `secrets:` pass-through are caller-side edits the consumer must make. Without them, import is skipped because the token is empty, and cleanup never fires. That is safe, because old callers keep working per D-16, but it is not automatic. The adoption-guide section must show the updated caller block for both modes, plus the optional `scheduled-security.yml`.
+
 ### Pitfall 13: Dependabot and the new action
 Adding `actions/download-artifact` to `security.yml` means Dependabot will bump it. The existing `dependabot.yml` covers github-actions, so no change is needed. The `check-workflow-uploads.sh` SHA-PIN check covers job-level and step-level `uses:` in the two files it parses. **Extend it to also parse `scheduled-security.yml` and `defectdojo-import-proof.yml`**, or glob `.github/workflows/*.yml`.
 
@@ -602,7 +608,6 @@ Illustrative only. The planner owns the final shape, including writing the heade
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | `curl -H @file` (headers from file) is supported by the runner's curl | Pattern 5 | Token would need another non-argv path (for example `--config` file); trivial swap |
 | A2 | Check runs from a `pull_request: closed` run attach to the PR head SHA | Pitfall 8 | If they attach to the merge commit, the reopen window does not exist (risk goes down) |
 | A3 | Job-level `concurrency` in a called workflow serializes across separate caller runs as documented for normal workflows | Pitfall 9 | Rare race re-creates a deleted PR engagement; cosmetic |
 | A4 | A kind cluster with DefectDojo, cert-manager and ingress-nginx fits on ubuntu-latest (4 vCPU / 16 GB public) within about 20 min | Pattern 7 | Proof job slow or OOM; smoke measured 10-20 min cold locally, not yet on a hosted runner |
@@ -620,8 +625,10 @@ Illustrative only. The planner owns the final shape, including writing the heade
    - Known: numbering follows `git ls-files` order, and the mapping file `npm-lockfiles.txt` is not in the artifact.
    - Effect: adding a lockfile shifts titles, so `npm-audit-2` then holds a different lockfile's findings. `close_old_findings` keeps each Test self-consistent, but history is attributed to the wrong lockfile.
    - Recommendation: accept this and document it. Fixing it means adding the list file to the `sca-results` artifact (a scan-job change, deferred).
-4. **Product Type default string.** Recommend `CI`. It is short, and a Product Type is a grouping; the engagement type is already `CI/CD`.
-5. **Scheduled caller job id.** Recommend `security`, which keeps the adoption-guide single-caller logic simple. `scheduled` is also fine; either way the gate only reads `pr-security.yml`.
+4. **`deduplication_on_engagement` is fixed when the engagement is created.** It is read only in `get_or_create_engagement` (auto_create_context.py). Sending it on later reimports has no effect. Hand-forward to Phase 28: changing it on existing `ci/*` engagements needs `PATCH /api/v2/engagements/{id}/`, or deleting and re-creating them. Recommendation for this phase: omit it, so the server default False applies, and let Phase 28 decide.
+5. **Phase 29 side effect.** Once security-platform itself sets `DEFECTDOJO_URL` and the secret, the proof workflow's `scans` job, which calls `security.yml`, will also import into the real instance under `ci/<branch>`. This is harmless but may surprise; note it in ADR-024 or the Phase 29 context.
+6. **Product Type default string.** Recommend `CI`. It is short, and a Product Type is a grouping; the engagement type is already `CI/CD`.
+7. **Scheduled caller job id.** Recommend `security`, which keeps the adoption-guide single-caller logic simple. `scheduled` is also fine; either way the gate only reads `pr-security.yml`.
 
 ## Environment Availability
 
