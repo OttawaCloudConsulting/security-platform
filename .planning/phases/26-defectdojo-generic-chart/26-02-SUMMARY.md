@@ -32,14 +32,14 @@ metrics:
 
 # Phase 26 Plan 02: DefectDojo live kind smoke Summary
 
-`scripts/defectdojo-live-smoke.sh` (720 lines, mode 100644) is the live half of D-14. It creates kind cluster `dd-smoke` and installs cert-manager v1.21.2 and ingress-nginx controller-v1.15.1, with IngressClass `nginx` annotated as the cluster default. It then builds a SelfSigned -> CA ClusterIssuer `smoke-ca`, pre-creates three Secrets from stdin, and runs one `helm install defectdojo`. Seven live assertions follow; the key ones are a verified-TLS `/login` 200, a real admin login and a Celery broker ping. The chart does not exist yet, so today the script prints `SKIPPED` / `NOTHING RAN` and exits 0 before any kind or kube call.
+`scripts/defectdojo-live-smoke.sh` (733 lines, mode 100644) is the live half of D-14. It creates kind cluster `dd-smoke` and installs cert-manager v1.21.2 and ingress-nginx controller-v1.15.1, with IngressClass `nginx` annotated as the cluster default. It then builds a SelfSigned -> CA ClusterIssuer `smoke-ca`, pre-creates three Secrets from stdin, and runs one `helm install defectdojo`. Seven live assertions follow; the key ones are a verified-TLS `/login` 200, a real admin login and a Celery broker ping. The chart does not exist yet, so today the script prints `SKIPPED` / `NOTHING RAN` and exits 0 before any kind or kube call.
 
 ## Tasks
 
 | # | Task | Commit (security-platform) | Files |
 |---|------|--------|-------|
 | 1 | Harness, preflight, cluster and TLS infrastructure | `f46a292` | `scripts/defectdojo-live-smoke.sh` |
-| 2 | Live assertions: readiness, Certificate, D-12 class, verified TLS, login, Celery | `0471da1` | `scripts/defectdojo-live-smoke.sh` |
+| 2 | Live assertions: readiness, Certificate, D-12 class, verified TLS, login, Celery | `0471da1`, fix `962202b` | `scripts/defectdojo-live-smoke.sh` |
 
 ## Check IDs
 
@@ -95,6 +95,11 @@ KIND-LOGIN and KIND-CELERY-PING go beyond D-14's literal text ("login page retur
 - Celery log lines are masked (`//***@`) before they are printed.
 - `gen_secret` matches the upstream `randAlphaNum` lengths (22/128/128/32), which I read from `defectdojo/templates/secret.yaml` in `defectdojo-1.9.53.tgz` while writing the script. It is not parsed at runtime.
 
+**6. [Rule 1 - Bug] Three `set -e` abort points in Task 2 (found in post-task review)**
+- **Issue:** `pvc_json=$(kubectl ...)` and `ing_json=$(kubectl ...)` would abort the script on a kubectl error before `print_summary` ran. The CSRF-token `sed` ran before the GET's exit code was checked, so if curl never wrote `login-form.html`, sed exited 2 and killed the run. All three failed loudly, never falsely green, but they lost the summary.
+- **Fix:** the two list captures now record their exit code and continue with an empty item list, so the assertion FAILs inside the summary. The sed is skipped when the form file does not exist.
+- **Commit:** `962202b`. shellcheck, the SKIP run, the context check and all acceptance greps were re-run and passed.
+
 ## Known Stubs
 
 None. The Deployment names come from `<interfaces>` and were confirmed by rendering the scratchpad prototype chart (`defectdojo-django`, `defectdojo-celery-worker`, `defectdojo-celery-beat`, celery container `celery`, Ingress `defectdojo`). 26-05 must re-confirm them against the real chart. The Celery fallback log line (`Connected to (redis|valkey)://`) is unmeasured (RESEARCH A7), and 26-05 must confirm it from a live log.
@@ -105,10 +110,12 @@ None beyond the plan's register. T-26-05, 06, 07, 03 and 15 are mitigated as spe
 
 ## Notes for later plans
 
+- 26-05: this Mac's `/usr/bin/curl` is a SecureTransport/LibreSSL build, where `%{ssl_verify_result}` may read 0 regardless of the outcome. The load-bearing TLS signal is curl's exit status (60 means verification failed), which the smoke asserts first, together with the issuer and SAN checks. Don't read too much into the `0`.
+
 - 26-03: the smoke keys on `kubernetes/defectdojo/templates/validate-tls.yaml`. The scratchpad prototype's guard file is `templates/validate.yaml`, but the plan's name is authoritative, so name the real template `validate-tls.yaml` or the smoke stays SKIPPED.
 - 26-05: expect a cold-cache runtime of 10-20 min (install measured 101 s warm). Run it with `run_in_background`, because a Bash call is capped at 600 s.
 
 ## Self-Check: PASSED
 
 - FOUND: repos/security-platform/scripts/defectdojo-live-smoke.sh (mode 100644)
-- FOUND: f46a292, 0471da1 on feature/phase-26-defectdojo-generic-chart
+- FOUND: f46a292, 0471da1, 962202b on feature/phase-26-defectdojo-generic-chart
