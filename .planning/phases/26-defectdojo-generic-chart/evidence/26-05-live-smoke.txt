@@ -1,0 +1,45 @@
+HEAD=60205bd15a0cd6154831ce28619a0e7f044352a3
+command: bash scripts/defectdojo-live-smoke.sh > "$SCRATCH/dd-smoke.log" 2>&1; echo "rc=$?" >> "$SCRATCH/dd-smoke.log"   (cwd repos/security-platform, branch feature/phase-26-defectdojo-generic-chart, run via run_in_background)
+started: 2026-09-25T00:54:59Z
+wall_seconds=196 (whole script: cluster create -> teardown)
+helm version --short: v4.3.0+gbec5b06
+kind version: kind v0.33.0 go1.27.0 darwin/arm64
+docker info: CPUs: 12  Total Memory: 7.653GiB
+kube context before run: admin@occ-new
+kube context after run:  admin@occ-new
+kind get clusters after run: No kind clusters found.
+----- verbatim log -----
+helm client: v4.3.0+gbec5b06
+--- 1. kind cluster ---
+    creating cluster dd-smoke (cold image pulls follow; this is the slow part)
+==> KIND-CLUSTER: PASS - cluster dd-smoke is up (context kind-dd-smoke)
+--- 2. cert-manager v1.21.2 ---
+==> KIND-CERT-MANAGER: PASS - cert-manager v1.21.2 applied; cert-manager, cert-manager-webhook and cert-manager-cainjector rolled out
+--- 3. ingress-nginx controller-v1.15.1 (smoke-only; archived upstream) ---
+==> KIND-INGRESS-NGINX: PASS - ingress-nginx controller-v1.15.1 rolled out; IngressClass nginx annotated is-default-class=true
+--- 4. CA ClusterIssuer ---
+==> KIND-CA-ISSUER: PASS - ClusterIssuer selfsigned -> Certificate smoke-ca (isCA, Ready) -> ClusterIssuer smoke-ca
+--- 5. namespace and pre-created Secrets ---
+    Secrets defectdojo, defectdojo-postgresql-specific, defectdojo-valkey-specific applied from stdin
+--- 6. install (D-15: first install only) ---
+NAME: defectdojo
+LAST DEPLOYED: Thu Sep 24 20:55:59 2026
+NAMESPACE: defectdojo
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+==> KIND-INSTALL: exit=0 (PASS - completed successfully)
+--- 7. workloads ---
+==> KIND-DEPLOYMENTS-READY: PASS - every Deployment in defectdojo is Available, including defectdojo-django defectdojo-celery-worker defectdojo-celery-beat
+==> KIND-PG-PVC-BOUND: PASS - Postgres PVC(s) Bound: data-defectdojo-postgresql-0=Bound
+--- 8. ingress and certificate ---
+==> KIND-CERT-READY: PASS - Certificate defectdojo-tls (created by ingress-shim from the annotation) is Ready
+==> KIND-INGRESSCLASS-DEFAULTED: PASS - the live Ingress has ingressClassName nginx, set by DefaultIngressClass admission
+--- 9. verified TLS, login and broker ---
+==> KIND-TLS-LOGIN-200: PASS - GET https://defectdojo.smoke.test:18443/login -> 200 with ssl_verify_result 0 against the issued ca.crt; served cert issuer CN=smoke-ca, SAN DNS:defectdojo.smoke.test
+==> KIND-LOGIN: PASS - admin login POST (CSRF token + Referer) -> 302 to https://defectdojo.smoke.test:18443/; /dashboard with the session -> 200, all over verified TLS
+==> KIND-CELERY-PING: PASS - celery -A dojo inspect ping in defectdojo-celery-worker/celery exited 0 with pong (broker round-trip)
+
+=== Summary ===
+ALL PASS - 12 live check(s) executed and passed; 0 sub-check(s) skipped (not passed).
+rc=0

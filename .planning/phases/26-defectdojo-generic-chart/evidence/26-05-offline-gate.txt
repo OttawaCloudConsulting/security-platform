@@ -1,0 +1,7 @@
+HEAD=60205bd15a0cd6154831ce28619a0e7f044352a3
+command: bash scripts/check-defectdojo-chart.sh (cwd repos/security-platform, branch feature/phase-26-defectdojo-generic-chart)
+date: 2026-09-25T00:54:51Z
+
+check-defectdojo-chart: asserting 20 offline invariants against kubernetes/defectdojo
+PASS - 20 checks, 0 failures
+rc=0
