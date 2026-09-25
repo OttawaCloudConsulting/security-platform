@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 27-11-PLAN.md
-last_updated: "2026-09-25T20:19:07.598Z"
+stopped_at: Completed 27-12-PLAN.md
+last_updated: "2026-09-25T20:53:55.702Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 46
-  completed_plans: 43
+  completed_plans: 44
   percent: 57
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 27 (defectdojo-ci-auto-import) — EXECUTING
-Plan: 12 of 14
+Plan: 13 of 14
 Status: Ready to execute
 Last activity: 2026-09-25
 
@@ -274,6 +274,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 27]: 27-09: adoption guide section 12 'Enable DefectDojo Import' gated by DEFECTDOJO-SECTION; 'one substitution point' reworded as the one gating setting
 - [Phase 27]: 27-10: ADR-024 narrows ADR-018's single substitution point: gate_mode stays the only gating setting; DEFECTDOJO_* are opt-in side channels
 - [Phase 27]: 27-11: dd-delete checks the DEFECTDOJO_URL scheme before its default-branch refusals, so a misconfigured URL is loud even on refusal-path runs
+- [Phase 27]: 27-12: CR-01 fix merged to security-platform main as 917352c (PR #22); proof run 36186258881 attempt 2 PROOF PASS - 88 assertions; v1 and v1.1.0 still at 0f7e4e1 pending 27-13
 
 ### Pending Todos
 
@@ -392,11 +393,12 @@ Carried forward from v1.1 close:
 | Phase 27 P09 | 20min | 2 tasks | 2 files |
 | Phase 27 P10 | 25min | 2 tasks | 5 files |
 | Phase 27 P11 | ~35min | 3 tasks | 3 files |
+| Phase 27 P12 | multi-session | 4 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-25T20:18:51.265Z
-Stopped at: Completed 27-11-PLAN.md
+Last session: 2026-09-25T20:53:55.694Z
+Stopped at: Completed 27-12-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
