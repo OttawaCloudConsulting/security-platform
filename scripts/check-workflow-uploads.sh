@@ -12,8 +12,23 @@ set -euo pipefail
 # for every invariant that can be decided from the workflow source alone,
 # without a CI run and without network access.
 #
-# It parses BOTH workflow files with PyYAML and reports EVERY failure rather
-# than stopping at the first, so one run tells you the whole story.
+# It parses EVERY workflow file (*.yml and *.yaml under .github/workflows)
+# with PyYAML and reports EVERY failure rather than stopping at the first, so
+# one run tells you the whole story. The caller/callee-specific checks still
+# read pr-security.yml and security.yml by name; PERMISSIONS-FORBIDDEN, SHA-PIN
+# and the step-level checks walk every file (Phase 27 D-22), so a new workflow
+# file cannot slip in an unpinned action.
+#
+# SCAN JOBS vs SIDE-CHANNEL JOBS (Phase 27, D-01/D-03). security.yml carries the
+# five frozen scan jobs (SCAN_JOB_IDS) and MAY carry the two allow-listed
+# DefectDojo side-channel jobs (SIDE_CHANNEL_JOB_IDS). Any other job id fails
+# JOB-SHAPE. The side-channel jobs must never become required checks, and when
+# they exist their shape is enforced by the SIDE-CHANNEL-* checks below. Those
+# checks pass vacuously (printing a NOTE line) while the jobs are absent.
+#
+# Self-test overrides (optional, used only to point the gate at scratch copies):
+#   WORKFLOWS_DIR           default .github/workflows
+#   REQUIRED_CHECKS_SCRIPT  default scripts/set-required-checks.sh
 #
 # Exit codes — deliberately three, not two:
 #   0  every check passed
@@ -41,20 +56,25 @@ if ! python3 -c 'import yaml' >/dev/null 2>&1; then
   exit 2
 fi
 
-echo "check-workflow-uploads: parsing .github/workflows/pr-security.yml and .github/workflows/security.yml"
+echo "check-workflow-uploads: parsing every workflow file in ${WORKFLOWS_DIR:-.github/workflows} (*.yml, *.yaml)"
 
 # The heredoc delimiter is QUOTED ('PY') on purpose: the python source below
 # contains $, * and GitHub ${{ }} expression fragments that an unquoted
 # delimiter would let the shell expand before python ever saw them.
 rc=0
 python3 - <<'PY' || rc=$?
+import glob
+import os
 import re
 import sys
 
 import yaml
 
-CALLER = ".github/workflows/pr-security.yml"
-CALLEE = ".github/workflows/security.yml"
+WORKFLOWS_DIR = os.environ.get("WORKFLOWS_DIR") or ".github/workflows"
+REQUIRED_CHECKS_SCRIPT = os.environ.get("REQUIRED_CHECKS_SCRIPT") or "scripts/set-required-checks.sh"
+
+CALLER = os.path.join(WORKFLOWS_DIR, "pr-security.yml")
+CALLEE = os.path.join(WORKFLOWS_DIR, "security.yml")
 
 # The five check-run names Phase 14-02 captured and Phase 18 hard-codes into
 # the branch-protection required-check list. Byte-identical, em dash U+2014.
@@ -67,6 +87,16 @@ FROZEN_JOB_NAMES = [
     "Container — Trivy Image",
     "Secrets — Gitleaks",
 ]
+
+# The five scan-job ids, in the SAME order as FROZEN_JOB_NAMES: the name of
+# jobs[SCAN_JOB_IDS[i]] must equal FROZEN_JOB_NAMES[i].
+SCAN_JOB_IDS = ["sast", "iac", "sca", "container", "secrets"]
+
+# The only jobs allowed beside the scan jobs (Phase 27 D-01/D-03). They are a
+# tolerated side channel into DefectDojo: never required checks, never able to
+# block a merge. Any other job id fails JOB-SHAPE.
+SIDE_CHANNEL_JOB_IDS = ["defectdojo-import", "defectdojo-cleanup"]
+SIDE_CHANNEL_JOB_NAMES = ["DefectDojo Import", "DefectDojo Cleanup"]
 
 # Scopes that must never appear anywhere in either file (ASVS V4, T-17-01).
 FORBIDDEN_SCOPES = (
@@ -94,10 +124,11 @@ ARTIFACT_PATH_RE = re.compile(r"^[A-Za-z0-9_.*-]+\.(json|sarif)$")
 GITLEAKS_INVOCATION_RE = re.compile(r"^[ \t]*gitleaks[ \t]", re.MULTILINE)
 
 # NOTE: PyYAML parses the bare workflow key `on:` as the boolean True, not the
-# string "on". Nothing below reads the trigger key; if you ever need it, index
-# it as doc[True] or doc.get("on") defensively.
+# string "on". OPTIONAL-SECRET reads the trigger key, so it indexes doc[True]
+# first and falls back to doc.get("on").
 
 failures = []
+notes = []
 
 
 def fail(label, message):
@@ -111,7 +142,16 @@ def load(path):
 
 caller = load(CALLER)
 callee = load(CALLEE)
-DOCS = ((CALLER, caller), (CALLEE, callee))
+
+# Every workflow file, loaded once, in sorted order. The caller and callee are
+# reused rather than parsed twice.
+_loaded = {os.path.normpath(CALLER): caller, os.path.normpath(CALLEE): callee}
+DOCS = []
+for _path in sorted(glob.glob(os.path.join(WORKFLOWS_DIR, "*.yml"))
+                    + glob.glob(os.path.join(WORKFLOWS_DIR, "*.yaml"))):
+    _key = os.path.normpath(_path)
+    _doc = _loaded[_key] if _key in _loaded else load(_path)
+    DOCS.append((_path, _doc if isinstance(_doc, dict) else {}))
 
 
 def jobs_of(doc):
@@ -296,22 +336,181 @@ for check, kind, bucket in (("SARIF-CATEGORY", "category", categories),
         if len(labels) > 1:
             fail(check, "duplicate {} {!r} used by: {}".format(kind, value, ", ".join(labels)))
 
-# ── 10. JOB-SHAPE (regression guard inherited from 16-04) ────────────────────
+# ── 10. JOB-SHAPE (regression guard inherited from 16-04, split in Phase 27) ─
+# The five scan jobs must exist, stay fully parallel (no needs:) and keep their
+# frozen names in SCAN_JOB_IDS order. Every other job id must be one of the
+# allow-listed side-channel jobs, which MAY carry needs:.
 callee_jobs = callee.get("jobs") or {}
-if len(callee_jobs) != 5:
-    fail("JOB-SHAPE",
-         "{} declares {} job(s); the parallel scan set is exactly 5".format(CALLEE, len(callee_jobs)))
-for jid, body in callee_jobs.items():
+for jid in SCAN_JOB_IDS:
+    if not isinstance(callee_jobs.get(jid), dict):
+        fail("JOB-SHAPE", "{} has no scan job {!r}".format(CALLEE, jid))
+for jid in SCAN_JOB_IDS:
+    body = callee_jobs.get(jid)
     if isinstance(body, dict) and "needs" in body:
         fail("JOB-SHAPE",
              "jobs.{} declares needs: — the scan jobs must stay fully parallel".format(jid))
-observed_names = [(body or {}).get("name") for body in callee_jobs.values()]
+observed_names = [(callee_jobs.get(jid) or {}).get("name") if isinstance(callee_jobs.get(jid), dict)
+                  else None for jid in SCAN_JOB_IDS]
 if observed_names != FROZEN_JOB_NAMES:
     fail("JOB-SHAPE",
          "check-run names drifted from the frozen set Phase 18 hard-codes: "
          "{!r} != {!r}".format(observed_names, FROZEN_JOB_NAMES))
+for jid in callee_jobs:
+    if jid not in SCAN_JOB_IDS and jid not in SIDE_CHANNEL_JOB_IDS:
+        fail("JOB-SHAPE",
+             "{} declares job {!r}, which is neither a scan job {!r} nor an allow-listed "
+             "side-channel job {!r}".format(CALLEE, jid, SCAN_JOB_IDS, SIDE_CHANNEL_JOB_IDS))
 
-CHECK_COUNT = 10
+# ── 11. SIDE-CHANNEL-NOT-REQUIRED (always active, D-03) ──────────────────────
+# DefectDojo availability must never block a merge, so neither side-channel
+# job may ever enter the branch-ruleset required-check list.
+with open(REQUIRED_CHECKS_SCRIPT, encoding="utf-8") as handle:
+    required_text = handle.read()
+for needle in SIDE_CHANNEL_JOB_NAMES + SIDE_CHANNEL_JOB_IDS:
+    if needle in required_text:
+        fail("SIDE-CHANNEL-NOT-REQUIRED",
+             "{} mentions {!r} — a side-channel job must never be a required check "
+             "(Phase 27 D-03)".format(REQUIRED_CHECKS_SCRIPT, needle))
+
+
+# ── 12-16. Side-channel contract (vacuous per absent job) ────────────────────
+def note_vacuous(label, jid):
+    notes.append("NOTE: {} vacuous — {} not present".format(label, jid))
+
+
+def job_if(body):
+    return str(body.get("if") or "")
+
+
+side_jobs = {jid: callee_jobs.get(jid) for jid in SIDE_CHANNEL_JOB_IDS}
+present = {jid: body for jid, body in side_jobs.items() if isinstance(body, dict)}
+
+# 12. SIDE-CHANNEL-SHAPE
+SHAPE_IF = {
+    "defectdojo-import": ("always()", "github.event.action != 'closed'", "vars.DEFECTDOJO_URL != ''"),
+    "defectdojo-cleanup": ("github.event.action == 'closed'", "vars.DEFECTDOJO_URL != ''"),
+}
+for jid in SIDE_CHANNEL_JOB_IDS:
+    body = present.get(jid)
+    if body is None:
+        note_vacuous("SIDE-CHANNEL-SHAPE", jid)
+        continue
+    needs = body.get("needs")
+    if jid == "defectdojo-import":
+        needs_list = [needs] if isinstance(needs, str) else list(needs or [])
+        if set(needs_list) != set(SCAN_JOB_IDS) or len(needs_list) != len(SCAN_JOB_IDS):
+            fail("SIDE-CHANNEL-SHAPE",
+                 "jobs.{}.needs must be exactly the five scan jobs {!r}, got {!r}".format(
+                     jid, SCAN_JOB_IDS, needs))
+    elif "needs" in body:
+        fail("SIDE-CHANNEL-SHAPE",
+             "jobs.{} declares needs: — cleanup runs alone on the closed event".format(jid))
+    for fragment in SHAPE_IF[jid]:
+        if fragment not in job_if(body):
+            fail("SIDE-CHANNEL-SHAPE",
+                 "jobs.{}.if does not contain {!r} (got {!r})".format(jid, fragment, job_if(body)))
+    job_env = body.get("env")
+    if isinstance(job_env, dict):
+        for key, value in job_env.items():
+            if "secrets." in str(value):
+                fail("SIDE-CHANNEL-SHAPE",
+                     "jobs.{}.env.{} reads a secret at job level — keep it in step env:".format(jid, key))
+    elif job_env is not None:
+        fail("SIDE-CHANNEL-SHAPE", "jobs.{}.env is not a mapping: {!r}".format(jid, job_env))
+    for idx, step in enumerate(steps_of(body)):
+        if "shell" in step:
+            fail("SIDE-CHANNEL-SHAPE",
+                 "jobs.{}.steps[{}] declares shell: — keep the default bash -eo pipefail".format(jid, idx))
+
+# 13. OPTIONAL-SECRET
+if not present:
+    notes.append("NOTE: OPTIONAL-SECRET vacuous — {} not present".format(
+        " and ".join(SIDE_CHANNEL_JOB_IDS)))
+else:
+    trigger = callee.get(True, callee.get("on"))
+    trigger = trigger if isinstance(trigger, dict) else {}
+    wc = trigger.get("workflow_call")
+    wc = wc if isinstance(wc, dict) else {}
+    secrets_decl = wc.get("secrets")
+    secrets_decl = secrets_decl if isinstance(secrets_decl, dict) else {}
+    token = secrets_decl.get("DEFECTDOJO_API_TOKEN")
+    if not isinstance(token, dict):
+        fail("OPTIONAL-SECRET",
+             "{} on.workflow_call.secrets.DEFECTDOJO_API_TOKEN is not declared".format(CALLEE))
+    elif token.get("required") is not False:
+        fail("OPTIONAL-SECRET",
+             "on.workflow_call.secrets.DEFECTDOJO_API_TOKEN.required must be false, got {!r} — "
+             "a required secret breaks every caller that has not opted in".format(token.get("required")))
+
+# 14. NO-INTERPOLATION
+for jid in SIDE_CHANNEL_JOB_IDS:
+    body = present.get(jid)
+    if body is None:
+        note_vacuous("NO-INTERPOLATION", jid)
+        continue
+    for idx, step in enumerate(steps_of(body)):
+        if "${{" in str(step.get("run") or ""):
+            fail("NO-INTERPOLATION",
+                 "jobs.{}.steps[{}] ({}) run: contains ${{{{ }}}} — pass values through step env: "
+                 "only".format(jid, idx, step.get("id") or step.get("name") or "unnamed"))
+
+# 15. IMPORT-VERIFY-PAIRING
+# Like UPLOAD-VERIFY-PAIRING, but the later step reads the outcome through its
+# env: (the run: body may not interpolate — see NO-INTERPOLATION).
+for jid in SIDE_CHANNEL_JOB_IDS:
+    body = present.get(jid)
+    if body is None:
+        note_vacuous("IMPORT-VERIFY-PAIRING", jid)
+        continue
+    steps = steps_of(body)
+    for idx, step in enumerate(steps):
+        if step.get("continue-on-error") is not True:
+            continue
+        step_id = step.get("id")
+        if not step_id:
+            fail("IMPORT-VERIFY-PAIRING",
+                 "jobs.{}.steps[{}] has continue-on-error: true but no id: — nothing can "
+                 "read its outcome".format(jid, idx))
+            continue
+        needle = "steps.{}.outcome".format(step_id)
+        paired = False
+        for later in steps[idx + 1:]:
+            if later.get("continue-on-error") is True:
+                continue
+            env = later.get("env")
+            if isinstance(env, dict) and any(needle in str(v) for v in env.values()):
+                paired = True
+                break
+        if not paired:
+            fail("IMPORT-VERIFY-PAIRING",
+                 "jobs.{}: step id={} has continue-on-error: true and no later red step "
+                 "whose env: reads {}".format(jid, step_id, needle))
+
+# 16. INSECURE-WARNING (D-18)
+for jid, step_id in (("defectdojo-import", "dd-import"), ("defectdojo-cleanup", "dd-delete")):
+    body = present.get(jid)
+    if body is None:
+        note_vacuous("INSECURE-WARNING", jid)
+        continue
+    matches = [s for s in steps_of(body) if s.get("id") == step_id]
+    if not matches:
+        fail("INSECURE-WARNING", "jobs.{} has no step id={}".format(jid, step_id))
+        continue
+    run = str(matches[0].get("run") or "")
+    for fragment in ("DD_INSECURE", "::warning::"):
+        if fragment not in run:
+            fail("INSECURE-WARNING",
+                 "jobs.{} step {} run: does not contain {!r} — the insecure-TLS path must be "
+                 "loud".format(jid, step_id, fragment))
+
+# PERMISSIONS-CALLER, PERMISSIONS-CALLEE, PERMISSIONS-FORBIDDEN, SHA-PIN,
+# SARIF-CATEGORY, ARTIFACT-RETENTION, ARTIFACT-PATH-SAFETY, UPLOAD-VERIFY-PAIRING,
+# REDACT-RETAINED, JOB-SHAPE, SIDE-CHANNEL-NOT-REQUIRED, SIDE-CHANNEL-SHAPE,
+# OPTIONAL-SECRET, NO-INTERPOLATION, IMPORT-VERIFY-PAIRING, INSECURE-WARNING.
+CHECK_COUNT = 16
+
+for line in notes:
+    print(line)
 
 if failures:
     for line in failures:
