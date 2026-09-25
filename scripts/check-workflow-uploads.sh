@@ -40,6 +40,9 @@ set -euo pipefail
 #                                    scheduled-security.yml runs daily at
 #                                    06:00 America/Toronto plus workflow_dispatch
 #   D-18  INSECURE-WARNING           the insecure-TLS path prints ::warning::
+#         SCHEME                     DEFECTDOJO_URL must be https:// (refused before
+#                                    the token header is written) and every curl is
+#                                    pinned with --proto/--proto-redir =https (CR-01)
 #
 # Self-test overrides (optional, used only to point the gate at scratch copies):
 #   WORKFLOWS_DIR           default .github/workflows
@@ -603,12 +606,44 @@ if scheduled is not None:
     if "workflow_dispatch" not in sched_trigger:
         fail("CALLER-WIRING", "{} on has no workflow_dispatch key".format(SCHEDULED))
 
+# ── 19. SCHEME (D-18, CR-01) ─────────────────────────────────────────────────
+# A plain-http DEFECTDOJO_URL would send the instance-wide staff token in
+# cleartext. Both bodies must refuse any non-https URL, and must do so BEFORE
+# the token header file is written; every curl must be pinned to https. A
+# presence-only substring check is the WR-05 weakness, so the refusal's
+# position relative to the header write is asserted too.
+SCHEME_REFUSAL = 'startswith("https://")'
+SCHEME_FRAGMENTS = (SCHEME_REFUSAL, '"--proto", "=https"', '"--proto-redir", "=https"')
+HEADER_WRITE = "write_private(hdr_path"
+for jid, step_id in (("defectdojo-import", "dd-import"), ("defectdojo-cleanup", "dd-delete")):
+    body = present.get(jid)
+    if body is None:
+        fail_absent("SCHEME", jid)
+        continue
+    matches = [s for s in steps_of(body) if s.get("id") == step_id]
+    if not matches:
+        fail("SCHEME", "jobs.{} has no step id={}".format(jid, step_id))
+        continue
+    run = str(matches[0].get("run") or "")
+    for fragment in SCHEME_FRAGMENTS:
+        if fragment not in run:
+            fail("SCHEME",
+                 "jobs.{} step {} run: does not contain {!r} — DEFECTDOJO_URL must be refused "
+                 "unless https:// and every curl pinned to https (CR-01)".format(jid, step_id, fragment))
+    refusal_at = run.find(SCHEME_REFUSAL)
+    header_at = run.find(HEADER_WRITE)
+    if refusal_at < 0 or header_at < 0 or refusal_at >= header_at:
+        fail("SCHEME",
+             "jobs.{} step {} run: the https refusal ({!r}) must precede the header write ({!r}) "
+             "— the token must never be staged for a non-https URL (CR-01)".format(
+                 jid, step_id, SCHEME_REFUSAL, HEADER_WRITE))
+
 # PERMISSIONS-CALLER, PERMISSIONS-CALLEE, PERMISSIONS-FORBIDDEN, SHA-PIN,
 # SARIF-CATEGORY, ARTIFACT-RETENTION, ARTIFACT-PATH-SAFETY, UPLOAD-VERIFY-PAIRING,
 # REDACT-RETAINED, JOB-SHAPE, SIDE-CHANNEL-NOT-REQUIRED, SIDE-CHANNEL-SHAPE,
 # OPTIONAL-SECRET, NO-INTERPOLATION, IMPORT-VERIFY-PAIRING, INSECURE-WARNING,
-# SCAN-JOB-CLOSED-SKIP, CALLER-WIRING.
-CHECK_COUNT = 18
+# SCAN-JOB-CLOSED-SKIP, CALLER-WIRING, SCHEME.
+CHECK_COUNT = 19
 
 if failures:
     for line in failures:
