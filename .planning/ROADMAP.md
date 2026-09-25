@@ -145,7 +145,7 @@ Plans:
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 27-08-PLAN.md — Post-merge closed-event and dispatch evidence; operator-approved v1.1.0 tag and v1 move
+- [x] 27-08-PLAN.md — Post-merge closed-event and dispatch evidence; operator-approved v1.1.0 tag and v1 move
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
@@ -248,7 +248,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 24. Nexus Anonymous Access and Workstation Script | v3.0 | 10/10 | Complete   | 2026-09-20 |
 | 25. Nexus Live Validation | v3.0 | 7/7 | Complete    | 2026-09-24 |
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
-| 27. DefectDojo CI Auto-Import | v3.0 | 7/10 | In Progress|  |
+| 27. DefectDojo CI Auto-Import | v3.0 | 8/10 | In Progress|  |
 | 28. DefectDojo Dedup and Triage | v3.0 | 0/? | Not started | — |
 | 29. DefectDojo Live Validation | v3.0 | 0/? | Not started | — |
 

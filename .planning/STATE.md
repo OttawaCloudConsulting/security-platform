@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 27-07-PLAN.md
-last_updated: "2026-09-25T16:10:09.216Z"
+stopped_at: Completed 27-08-PLAN.md
+last_updated: "2026-09-25T16:48:52.339Z"
 last_activity: 2026-09-25
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 42
-  completed_plans: 39
+  completed_plans: 40
   percent: 57
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 27 (defectdojo-ci-auto-import) — EXECUTING
-Plan: 8 of 10
+Plan: 9 of 10
 Status: Ready to execute
 Last activity: 2026-09-25
 
@@ -269,6 +269,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 27]: 27-05: live proof harness added (smoke DD_SMOKE_POST_HOOK + defectdojo-import-proof.sh executing committed bodies as staff non-superuser ci-importer over verified TLS via CURL_HOME curlrc); run-1 assertions static-proven, ends PROOF INCOMPLETE until 27-06
 - [Phase 27]: 27-06: local kind proof PASS (85 assertions) incl. in-place reimport (delta.created 0 for all 8 files), product-scoped cleanup of a hostile branch name, refusals, no-match no-op, and insecure-warning with no request
 - [Phase 27]: 27-07: PR #21 merged into security-platform main with --merge as 0f7e4e1 after operator approval; decisions a-g accepted; no tag, v1 unmoved (27-08)
+- [Phase 27]: 27-08: v1.1.0 (annotated, 414fd3b) and lightweight v1 both at 0f7e4e1; v1.0.0 and v2.0 untouched; release v1.1.0 Latest. Operator: "Approved — tag v1.1.0 and move v1"
+- [Phase 27]: 27-08: stray public v2.0 tag left as-is (operator: "Leave for now, note it"); recommend Phase 26 harness follow-up to retry the single-shot KIND-CELERY-PING
 
 ### Pending Todos
 
@@ -383,11 +385,12 @@ Carried forward from v1.1 close:
 | Phase 27 P05 | 25min | 2 tasks | 2 files |
 | Phase 27 P06 | 20min | 3 tasks | 3 files |
 | Phase 27 P07 | 25min | 4 tasks | 3 files |
+| Phase 27 P08 | 40min | 3 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-25T16:10:09.206Z
-Stopped at: Completed 27-07-PLAN.md
+Last session: 2026-09-25T16:48:52.330Z
+Stopped at: Completed 27-08-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
