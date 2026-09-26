@@ -65,6 +65,13 @@ NOT in this phase:
 - **D-18:** Write **ADR-026** (dedup scope, the cross-tool decision and its measured outcome, config homes, triage system of record, dispositions, and SLA excluded) and add its row to `docs/adr/README.md`. ADRs are append-only, so do not edit ADR-023/024/025.
 - **D-19:** In `kubernetes/defectdojo/README.md`, change the rows for DDOJO-03 and DDOJO-04 (currently "Planned (Phase 28)", lines 52-53) to their delivered status. Mark DDOJO-03/04 Complete in `.planning/REQUIREMENTS.md`.
 
+### Post-research operator decisions (2026-09-25, after 28-RESEARCH.md)
+Research resolved D-02 (the engagement DELETE re-parents duplicates at once, so the D-03 fallback is not needed), D-05 (measured: no hash-field set collapses the SCA overlap in 3.3.200, so D-07 applies) and D-15 (FP, Out of Scope and Risk Accepted are never reactivated by reimport, so no reimport flag and no `security.yml` change). The operator then decided:
+- **D-20:** Chart defaults in `kubernetes/defectdojo/values.yaml` (narrowing D-09): ship exactly two guards through `defectdojo.extraConfigs`. They are `DD_DUPLICATE_CLUSTER_CASCADE_DELETE: "False"` and `DD_DEDUPLICATION_ALGORITHM_PER_PARSER`, which restates the 3.3.200 algorithm for the 7 imported scan types as drift defence. Do **not** ship `DD_HASHCODE_FIELDS_PER_SCANNER` overrides. `scripts/check-defectdojo-chart.sh` asserts both.
+- **D-21:** SLA: the bootstrap script does **not** touch `enable_finding_sla`. It stays at the upstream default. The runbook states that SLA is not part of triage and is not configured (D-16).
+- **D-22:** Risk acceptance expiry: the bootstrap script sets `risk_acceptance_form_default_days` to **90**. DefectDojo cannot enforce the expiry or the reason, so the runbook makes both mandatory by procedure.
+- **D-23:** "Under Review" is the **implicit untriaged queue**: active, not verified, no disposition, not a duplicate. The runbook gives the filter. Do not use the native `under_review` flag.
+
 ### Claude's Discretion
 - The bootstrap script name, the runbook file name and location inside `security-platform`, and the exact assertion structure in the proof script.
 - The exact hash-field set per scanner, within the limits of D-05 and D-07.
