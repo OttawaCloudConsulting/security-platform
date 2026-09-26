@@ -803,6 +803,29 @@ For example: `SKIP: trivy-image.json not in artifacts — no Dockerfile in this 
   that Test's history can mix two files.
 - **tflint imports as SARIF**, not through DefectDojo's native TFLint parser, which reads JSON only.
 
+### Deduplication and Triage
+
+- **Turn deduplication on once per install.** Deduplication is off on a fresh DefectDojo 3.3.200
+  install, so every branch reimport would pile up findings. After the chart is installed, whoever
+  operates the DefectDojo instance runs `bash scripts/defectdojo-configure.sh` once, from a
+  `security-platform` checkout. The script needs a superuser token, because the System Settings API
+  is superuser-only. That token is held by the operator for this run: it is never the CI
+  `DEFECTDOJO_API_TOKEN`, and it is never stored as a GitHub secret. A second run changes nothing.
+- **A PR shows only what it introduces.** Deduplication is product-wide. A finding on a PR engagement
+  that already exists on the default-branch engagement is an inactive duplicate, so the PR
+  engagement's active findings are the ones the PR introduces. Two tools reporting the same
+  vulnerability still produce two findings.
+- **Triage only on the default branch.** Disposition findings on the `ci/<default>` engagement, for
+  example `ci/main`, never on a `ci/<pr-branch>` engagement: that engagement is deleted when the PR
+  closes, and a disposition set there is lost.
+- **DefectDojo is the system of record.** The GitHub Security tab is per-PR developer feedback. It is
+  not synced with DefectDojo, and dismissing an alert there is not a disposition.
+
+The full procedure, including the dispositions, risk acceptance and the untriaged-queue filter, is
+in the runbook
+[TRIAGE.md](https://github.com/OttawaCloudConsulting/security-platform/blob/main/kubernetes/defectdojo/TRIAGE.md).
+The decisions are recorded in ADR-026.
+
 ### Measured
 
 The import and cleanup were measured by this project's own proof harness, not on a consumer pilot.
@@ -911,6 +934,8 @@ elevate.` Add the missing permission to the caller's job-level `permissions:` bl
   known gaps that section 12 summarises.
 - [ADR-025](adr/adr025-defectdojo-import-https-only.md) — the DefectDojo import refuses non-https
   URLs (CR-01), the SCHEME gate and the P-HTTP proof.
+- [ADR-026](adr/adr026-defectdojo-dedup-product-wide-and-triage-on-default-branch.md) — product-wide
+  dedup, the settings bootstrap, and triage on the default-branch engagement.
 
 **Validation checklist**, adapted from the canonical repository's own:
 
