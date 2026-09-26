@@ -1,9 +1,9 @@
 ---
 phase: 28
 slug: defectdojo-dedup-and-triage
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-09-25
 ---
 
@@ -41,26 +41,26 @@ Task IDs filled in by the planner (28-01..28-09). The local kind run of every li
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 28-01-T1, 28-01-T2 | 28-01 | 1 | DDOJO-03 | cascade delete | extraConfigs renders `DD_DUPLICATE_CLUSTER_CASCADE_DELETE=False` and a JSON-valid `DD_DEDUPLICATION_ALGORITHM_PER_PARSER` for the 7 scan types; no `DD_HASHCODE_FIELDS_PER_SCANNER` (D-20) | offline | `bash scripts/check-defectdojo-chart.sh` | ✅ extend | ⬜ pending |
-| 28-02-T1, 28-02-T2, 28-03-T1 | 28-02, 28-03 | 2, 3 | DDOJO-03/04 | token leak / http | The bootstrap turns dedup on, turns both FP-history flags off and sets `risk_acceptance_form_default_days=90`; it leaves `enable_finding_sla` untouched; a second run reports NO CHANGE; https only; token in a 0600 file | kind | proof `P-CONFIGURE` / `P-IDEMPOTENT` | ❌ W0 | ⬜ pending |
-| 28-03-T2 | 28-03 | 3 | DDOJO-03 | — | After a main import, a PR import with a delta leaves the PR's active set equal to the delta; the other PR findings are `duplicate=true, active=false` | kind | `P-DEDUP-BRANCH` | ❌ W0 | ⬜ pending |
-| 28-03-T2 | 28-03 | 3 | DDOJO-03 | — | The measured cross-tool SCA gap (no Trivy↔pip-audit or Trivy↔npm links) is recorded as the D-07 evidence | kind | `P-CROSSTOOL` | ❌ W0 | ⬜ pending |
-| 28-04-T2 | 28-04 | 4 | DDOJO-03 | cascade delete | PR imported first, then main, then the PR engagement DELETE: the main copies are `duplicate=false, active=true` immediately | kind | `P-REPARENT` | ❌ W0 | ⬜ pending |
-| 28-04-T1 | 28-04 | 4 | DDOJO-04 | disposition lost | After 2 reimports, the exact tuples hold: FP `false_p=T, active=F, is_mitigated=T`; OOS `out_of_scope=T, active=F, is_mitigated=T`; RA `risk_accepted=T, active=F, is_mitigated=F` | kind | `P-DISPOSITION` | ❌ W0 | ⬜ pending |
-| 28-04-T1 | 28-04 | 4 | DDOJO-04 | PR hides finding | A new PR import after the dispositions makes the matching PR copies inactive duplicates | kind | `P-SUPPRESS` | ❌ W0 | ⬜ pending |
-| 28-06-T1, 28-09-T2 | 28-06, 28-09 | 6, 9 | DDOJO-04 | — | The triage runbook is linked from `docs/adoption-guide.md` | offline | `bash scripts/check-adoption-guide.sh` | ✅ extend | ⬜ pending |
-| 28-02-T2, 28-07-T2 | 28-02, 28-07 | 2, 7 | both | — | The real GitHub `DefectDojo Import Proof` run is green | CI | the workflow run (path-filtered and dispatch) | ✅ extend `paths:` | ⬜ pending |
+| 28-01-T1, 28-01-T2 | 28-01 | 1 | DDOJO-03 | cascade delete | extraConfigs renders `DD_DUPLICATE_CLUSTER_CASCADE_DELETE=False` and a JSON-valid `DD_DEDUPLICATION_ALGORITHM_PER_PARSER` for the 7 scan types; no `DD_HASHCODE_FIELDS_PER_SCANNER` (D-20) | offline | `bash scripts/check-defectdojo-chart.sh` | ✅ extend | ✅ green (chart gate `PASS - 22 checks, 0 failures` at 28-07 approval; `CHECK_COUNT=22` on origin/main c8027e6, 28-08) |
+| 28-02-T1, 28-02-T2, 28-03-T1 | 28-02, 28-03 | 2, 3 | DDOJO-03/04 | token leak / http | The bootstrap turns dedup on, turns both FP-history flags off and sets `risk_acceptance_form_default_days=90`; it leaves `enable_finding_sla` untouched; a second run reports NO CHANGE; https only; token in a 0600 file | kind | proof `P-CONFIGURE` / `P-IDEMPOTENT` | ✅ created | ✅ green (evidence/28-05-local-proof.log; GitHub run 36261602015 attempt 1) |
+| 28-03-T2 | 28-03 | 3 | DDOJO-03 | — | After a main import, a PR import with a delta leaves the PR's active set equal to the delta; the other PR findings are `duplicate=true, active=false` | kind | `P-DEDUP-BRANCH` | ✅ created | ✅ green (evidence/28-05-local-proof.log: 155 PR findings, 154 duplicates, 1 delta; GitHub run 36261602015) |
+| 28-03-T2 | 28-03 | 3 | DDOJO-03 | — | The measured cross-tool SCA gap (no Trivy↔pip-audit or Trivy↔npm links) is recorded as the D-07 evidence | kind | `P-CROSSTOOL` | ✅ created | ✅ green (evidence/28-05-local-proof.log: 0 cross scan types; GitHub run 36261602015) |
+| 28-04-T2 | 28-04 | 4 | DDOJO-03 | cascade delete | PR imported first, then main, then the PR engagement DELETE: the main copies are `duplicate=false, active=true` immediately | kind | `P-REPARENT` | ✅ created | ✅ green (evidence/28-05-local-proof.log: K=6 re-parented 1 s after DELETE; GitHub run 36261602015) |
+| 28-04-T1 | 28-04 | 4 | DDOJO-04 | disposition lost | After 2 reimports, the exact tuples hold: FP `false_p=T, active=F, is_mitigated=T`; OOS `out_of_scope=T, active=F, is_mitigated=T`; RA `risk_accepted=T, active=F, is_mitigated=F` | kind | `P-DISPOSITION` | ✅ created | ✅ green (evidence/28-05-local-proof.log: tuples held after 2 reimports, reactivated 0; GitHub run 36261602015) |
+| 28-04-T1 | 28-04 | 4 | DDOJO-04 | PR hides finding | A new PR import after the dispositions makes the matching PR copies inactive duplicates | kind | `P-SUPPRESS` | ✅ created | ✅ green (evidence/28-05-local-proof.log: #540-#542 dup of #231-#233, 0 active; GitHub run 36261602015) |
+| 28-06-T1, 28-09-T2 | 28-06, 28-09 | 6, 9 | DDOJO-04 | — | The triage runbook is linked from `docs/adoption-guide.md` | offline | `bash scripts/check-adoption-guide.sh` | ✅ extend | ✅ green (28-09: RED observed, then `PASSED 16 / FAILED 0`) |
+| 28-02-T2, 28-07-T2 | 28-02, 28-07 | 2, 7 | both | — | The real GitHub `DefectDojo Import Proof` run is green | CI | the workflow run (path-filtered and dispatch) | ✅ extend `paths:` | ✅ green (run 36261602015 attempt 1, `PROOF PASS - 127 assertions`, evidence/28-07-proof-run.log) |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: ✅ green · ❌ red · ⚠️ flaky*
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `scripts/defectdojo-configure.sh` (or the chosen name) exists before the proof calls it
-- [ ] A delta fixture or report strategy for `P-DEDUP-BRANCH` (research Pitfall 7)
-- [ ] A `paths:` entry for the bootstrap script in `defectdojo-import-proof.yml`
-- [ ] A plan to bump the gate count literals (research Pitfall 5)
+- [x] `scripts/defectdojo-configure.sh` (or the chosen name) exists before the proof calls it
+- [x] A delta fixture or report strategy for `P-DEDUP-BRANCH` (research Pitfall 7): a trimmed trivy-fs copy on main
+- [x] A `paths:` entry for the bootstrap script in `defectdojo-import-proof.yml`
+- [x] A plan to bump the gate count literals (research Pitfall 5): 22 in all three places
 
 ---
 
@@ -75,11 +75,11 @@ Task IDs filled in by the planner (28-01..28-09). The local kind run of every li
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-09-26. GitHub proof run 36261602015 attempt 1 (`PROOF PASS - 127 assertions`), local kind proof evidence/28-05-local-proof.log, merged to security-platform main as c8027e6 (PR #23).
