@@ -1126,12 +1126,20 @@ def reactivated_check():
     print("    reimport {} trivy-fs statistics.delta: {}".format(stage, json.dumps(delta, sort_keys=True)[:800]))
     react = delta.get("reactivated") if isinstance(delta, dict) else None
     total = react.get("total") if isinstance(react, dict) else None
+    # Each statistics bucket's "total" is itself a severity bucket
+    # ({"active", ..., "total": n}); the committed dd-import body reads
+    # after.total the same way (security.yml, the IMPORTED: line). Accept a
+    # bare integer too.
+    bucket = total
+    if isinstance(bucket, dict):
+        total = bucket.get("total")
     if not isinstance(total, int) or isinstance(total, bool):
-        say(PID, False, "reimport {}: statistics.delta.reactivated.total is absent or not an integer ({!r}); "
-            "statistics keys: {}; delta keys: {}; reactivated keys: {}".format(
+        say(PID, False, "reimport {}: statistics.delta.reactivated.total(.total) is absent or not an integer ({!r}); "
+            "statistics keys: {}; delta keys: {}; reactivated keys: {}; reactivated.total keys: {}".format(
                 stage, total, sorted(stats),
                 sorted(delta) if isinstance(delta, dict) else type(delta).__name__,
-                sorted(react) if isinstance(react, dict) else type(react).__name__))
+                sorted(react) if isinstance(react, dict) else type(react).__name__,
+                sorted(bucket) if isinstance(bucket, dict) else type(bucket).__name__))
         return
     say(PID, total == 0, "reimport {}: trivy-fs statistics.delta.reactivated.total = {} (expected 0)".format(
         stage, total))
