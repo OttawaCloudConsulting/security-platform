@@ -267,11 +267,13 @@ else:
 # NUMBERED headings only (`## <n>. `), so a column-0 `## ` comment line inside
 # a fence can never truncate it, and a renumbering never breaks the check.
 # CR-01 / ADR-025 — the https requirement must stay documented.
+# Phase 28 D-17 / D-24 — the triage runbook link and the dedup bootstrap must stay documented.
 DD_REQUIRED = [
     "DEFECTDOJO_URL", "DEFECTDOJO_API_TOKEN", "DEFECTDOJO_PRODUCT_TYPE",
     "DEFECTDOJO_INSECURE", "DEFECTDOJO_CA_CERT",
     "is_staff", "reachable", "closed", "scheduled-security.yml", "secrets:",
     "must be https://",
+    "blob/main/kubernetes/defectdojo/TRIAGE.md", "defectdojo-configure.sh",
 ]
 dd_start = None
 for i, line in enumerate(lines):
