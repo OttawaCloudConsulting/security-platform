@@ -417,14 +417,21 @@ Note: the command excludes `duplicate=True` findings from reprocessing (`dedupe.
 | A4 | `P-COUNTS` (`statistics.after.total` vs the findings count) is unaffected by dedup | Validation | Medium. It is avoided entirely by running the Phase 28 block after the Phase 27 block, in a fresh product |
 | A5 | The PATCH id is 1 on every install (fixture pk=1) | Code Examples | None if the script uses the id returned by GET |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **What does D-09 ship, now that cross-tool dedup is impossible?**
    - Known: no hash-field set achieves SCA collapse (measured). D-07 says ship within-tool plus product-wide.
    - Recommendation: `DD_DUPLICATE_CLUSTER_CASCADE_DELETE: "False"` (a real safety guard for the 27 D-10 delete) plus `DD_DEDUPLICATION_ALGORITHM_PER_PARSER` restating the 7 scan types (drift defence). **No** `DD_HASHCODE_FIELDS_PER_SCANNER`. The gate asserts both. The planner should present this to the operator as the D-07 outcome in ADR-026.
+   - RESOLVED: D-20 (two guards, no hash-field overrides).
+
 2. **SLA is already enabled upstream (`enable_finding_sla=True`).** D-16 says "do not enable". Options: (a) leave the upstream default, since dispositions work regardless and the runbook ignores SLA columns; (b) have the bootstrap set it False. Recommendation: (a), because it makes no change beyond the phase's scope. Needs operator confirmation either way.
+   - RESOLVED: D-21 (bootstrap leaves `enable_finding_sla` untouched).
+
 3. **Should the bootstrap set `risk_acceptance_form_default_days`?** The upstream default is 180, which pre-fills the expiry. Recommend leaving it (the runbook makes expiry mandatory) unless the operator wants a shorter default.
+   - RESOLVED: D-22 (bootstrap sets 90 days).
+
 4. **Engagement name vs default branch in the proof.** The existing harness uses `main` (`PROOF_DEFAULT_BRANCH`). A fresh Phase 28 product (for example `proof/dedup`) avoids interference with the Phase 27 P-CLEANUP / P-REFUSE assertions on `proof/security-platform`.
+   - RESOLVED: 28-03 uses fresh products `proof/dedup` and `proof/dedup-reparent`.
 
 ## Environment Availability
 
