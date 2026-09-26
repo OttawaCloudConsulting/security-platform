@@ -43,10 +43,13 @@ set -euo pipefail
 #                   bodies, refuse `${{`, `bash -n` each, cross-check every
 #                   contract env name against the committed step env, and
 #                   assert the two dd-gate bodies are identical.
-#   --scheme-only   offline, no cluster, no network: P-HTTP only. Extracts and
-#                   runs the committed dd-import and dd-delete bodies with a
-#                   non-https DEFECTDOJO_URL and asserts they refuse before
-#                   any request (27-11, CR-01).
+#   --scheme-only   offline, no cluster, no network: P-HTTP and
+#                   P-CONFIGURE-GUARD only. Extracts and runs the committed
+#                   dd-import and dd-delete bodies with a non-https
+#                   DEFECTDOJO_URL and asserts they refuse before any request
+#                   (27-11, CR-01). Also runs scripts/defectdojo-configure.sh
+#                   with a dummy token offline: its non-https refusal (P-HTTP)
+#                   and its preflight guards (P-CONFIGURE-GUARD, 28-02).
 #   --hook          live, called by the smoke: mint tokens, run the committed
 #                   bodies, assert run 1, the in-place reimport (run 2), the
 #                   schedule path, a hostile head ref, product-scoped cleanup,
@@ -62,7 +65,9 @@ set -euo pipefail
 # Assertion groups (D-20): P-EXTRACT P-TLS P-ADMIN-TOKEN P-USER
 # P-IMPORTER-TOKEN P-GATE P-RUN1 P-CONTEXT P-TESTS P-COUNTS (run 1, 27-05);
 # P-RUN2 P-SCHEDULE P-HOSTILE P-SCOPE P-CLEANUP P-REFUSE P-NOMATCH P-INSECURE
-# (27-06); P-HTTP (27-11, CR-01). Every body run uses the ci-importer token.
+# (27-06); P-HTTP (27-11, CR-01); P-CONFIGURE-GUARD (28-02). Every body run
+# uses the ci-importer token; the configure-script cases use a gen_secret
+# dummy token and never reach the network.
 #
 # Credentials are generated or read at runtime, written only to 0600 files,
 # sent with `--data-binary @file` or `-H @file`, never placed on any argv and
@@ -539,6 +544,13 @@ read_engagement_total() {
 # make "no request" vacuous. Nothing listens on port 9. The token is a
 # gen_secret dummy, never a real credential. Emits one P-HTTP line per
 # sub-case through proof_pass/proof_fail and never aborts.
+#
+# It also covers scripts/defectdojo-configure.sh (28-02), the System Settings
+# bootstrap, run the same way (run_body, exported env, the same dummy token
+# written to a 0600 file under $PROOF_DIR, never on argv): P-HTTP for an
+# http:// and a scheme-less DEFECTDOJO_URL (exit 1, "must be https://"), and
+# P-CONFIGURE-GUARD for an empty DEFECTDOJO_ADMIN_TOKEN_FILE and a
+# group-readable (0644) token file (exit 2, a FATAL line, no request).
 prove_http_refusal() {
   local bodies="$1" reports="$2"
   local b_import="${bodies}/defectdojo-import__dd-import.sh"
@@ -599,6 +611,89 @@ prove_http_refusal() {
       proof_fail "P-HTTP" "${label}: DD_URL=${case_url}:${why}"
     fi
   done
+
+  # scripts/defectdojo-configure.sh (28-02): the same dummy token, in a 0600
+  # file (printf into the file, never on argv), plus a 0644 copy for the
+  # loose-permissions guard. DEFECTDOJO_CA_FILE is exported empty so nothing
+  # from the caller's environment leaks in.
+  local b_configure="${REPO_ROOT}/scripts/defectdojo-configure.sh"
+  local tokfile="${PROOF_DIR}/configure-dummy.token"
+  local loosefile="${PROOF_DIR}/configure-dummy-loose.token"
+  rm -f "$tokfile" "$loosefile"
+  printf '%s' "$tok" > "$tokfile"
+  chmod 600 "$tokfile"
+  cp "$tokfile" "$loosefile"
+  chmod 644 "$loosefile"
+
+  echo
+  echo "=== defectdojo-configure.sh refuses a non-https URL and fails its preflight guards offline (P-HTTP, P-CONFIGURE-GUARD) ==="
+  for label in configure-http configure-noscheme configure-no-env configure-loose-perms; do
+    case "$label" in
+      configure-http)
+        case_url="http://127.0.0.1:9"
+        run_body "$label" "$b_configure" \
+          "DEFECTDOJO_URL=${case_url}" \
+          "DEFECTDOJO_ADMIN_TOKEN_FILE=${tokfile}" \
+          "DEFECTDOJO_CA_FILE="
+        ;;
+      configure-noscheme)
+        case_url="127.0.0.1:9"
+        run_body "$label" "$b_configure" \
+          "DEFECTDOJO_URL=${case_url}" \
+          "DEFECTDOJO_ADMIN_TOKEN_FILE=${tokfile}" \
+          "DEFECTDOJO_CA_FILE="
+        ;;
+      configure-no-env)
+        case_url="https://127.0.0.1:9"
+        run_body "$label" "$b_configure" \
+          "DEFECTDOJO_URL=${case_url}" \
+          "DEFECTDOJO_ADMIN_TOKEN_FILE=" \
+          "DEFECTDOJO_CA_FILE="
+        ;;
+      configure-loose-perms)
+        case_url="https://127.0.0.1:9"
+        run_body "$label" "$b_configure" \
+          "DEFECTDOJO_URL=${case_url}" \
+          "DEFECTDOJO_ADMIN_TOKEN_FILE=${loosefile}" \
+          "DEFECTDOJO_CA_FILE="
+        ;;
+    esac
+    sed -e "s/${tok}/<dummy-token>/g" -e 's/^/    | /' "$BODY_LOG"
+    why=""
+    if grep -q 'http=' "$BODY_LOG"; then why="${why} an 'http=' request line was printed;"; fi
+    if grep -qF -- "$tok" "$BODY_LOG"; then why="${why} the dummy token appears in the log;"; fi
+    case "$label" in
+      configure-http|configure-noscheme)
+        [ "$BODY_RC" -eq 1 ] || why="${why} exit ${BODY_RC} (expected 1);"
+        grep -q 'must be https://' "$BODY_LOG" || why="${why} no 'must be https://' refusal line;"
+        if grep -qE '^(NO CHANGE|CHANGED:)' "$BODY_LOG"; then why="${why} a NO CHANGE/CHANGED: line was printed;"; fi
+        if [ -z "$why" ]; then
+          proof_pass "P-HTTP" "${label}: DEFECTDOJO_URL=${case_url} -> exit 1, refused before the token file is read, no request, token absent"
+        else
+          proof_fail "P-HTTP" "${label}: DEFECTDOJO_URL=${case_url}:${why}"
+        fi
+        ;;
+      configure-no-env)
+        [ "$BODY_RC" -eq 2 ] || why="${why} exit ${BODY_RC} (expected 2);"
+        grep -q '^FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE' "$BODY_LOG" || why="${why} no FATAL line naming DEFECTDOJO_ADMIN_TOKEN_FILE;"
+        if [ -z "$why" ]; then
+          proof_pass "P-CONFIGURE-GUARD" "${label}: empty DEFECTDOJO_ADMIN_TOKEN_FILE -> exit 2, FATAL names the variable, no request"
+        else
+          proof_fail "P-CONFIGURE-GUARD" "${label}:${why}"
+        fi
+        ;;
+      configure-loose-perms)
+        [ "$BODY_RC" -eq 2 ] || why="${why} exit ${BODY_RC} (expected 2);"
+        grep -F -- "$loosefile" "$BODY_LOG" | grep -q '^FATAL:' || why="${why} no FATAL line naming the token file path;"
+        if [ -z "$why" ]; then
+          proof_pass "P-CONFIGURE-GUARD" "${label}: 0644 token file -> exit 2, FATAL names the path, no request, token absent"
+        else
+          proof_fail "P-CONFIGURE-GUARD" "${label}:${why}"
+        fi
+        ;;
+    esac
+  done
+  rm -f "$tokfile" "$loosefile"
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
