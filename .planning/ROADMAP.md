@@ -193,7 +193,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 28-04-PLAN.md — Proof block part 2: disposition survival across reimports, PR suppression, delete-time re-parent
+- [x] 28-04-PLAN.md — Proof block part 2: disposition survival across reimports, PR suppression, delete-time re-parent
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -303,7 +303,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 25. Nexus Live Validation | v3.0 | 7/7 | Complete    | 2026-09-24 |
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
-| 28. DefectDojo Dedup and Triage | v3.0 | 3/9 | In Progress|  |
+| 28. DefectDojo Dedup and Triage | v3.0 | 4/9 | In Progress|  |
 | 29. DefectDojo Live Validation | v3.0 | 0/? | Not started | — |
 
 ## Next Milestone
