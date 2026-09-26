@@ -890,7 +890,6 @@ read_settings() {
 
 # snapshot_engagement PRODUCT ENGAGEMENT OUTFILE: the `snapshot` mode into
 # OUTFILE (stderr into OUTFILE.err). Returns the script's exit status.
-# shellcheck disable=SC2329  # first caller lands in 28-03 Task 2
 snapshot_engagement() {
   SNAP_PRODUCT="$1" SNAP_ENGAGEMENT="$2" python3 "$PROOF_DEDUP_PY" snapshot > "$3" 2> "${3}.err"
 }
@@ -917,7 +916,6 @@ print_masked() {
 #   DEDUP_IMPORTER_TOK  path of the ci-importer token file
 #   DEDUP_CA_PEM        the kind CA as PEM text (DD_CA_CERT)
 # Prints the body log indented and leaves BODY_RC / BODY_LOG to the caller.
-# shellcheck disable=SC2329  # first caller lands in 28-03 Task 2
 import_as_branch() {
   local label="$1" product="$2" branch="$3" reports="$4" results="$5"
   local event head ref
@@ -956,7 +954,6 @@ import_as_branch() {
 # until its duplicate/total finding counts are unchanged across two
 # consecutive snapshots 5 s apart, or 120 s have passed. Prints the elapsed
 # seconds and the final counts; never fails by itself (the assertions do).
-# shellcheck disable=SC2329  # first caller lands in 28-03 Task 2
 wait_dedup_settled() {
   local product="$1" engagement="$2" snap="${PROOF_DIR}/settle.json"
   local start now prev="" cur rc
@@ -1188,6 +1185,311 @@ prove_dedup_triage() {
         fi
       fi
     fi
+  fi
+
+  # ── P-DEDUP-BRANCH (D-01, D-11, RESEARCH Pitfall 7) ───────────────────────
+  # A real delta, built here from the CI reports (never a committed fixture):
+  # ci/main is imported from a copy with exactly one trivy-fs vulnerability
+  # removed, then the PR from the full reports. The removed entry must be
+  # unique in trivy-fs.json and absent from trivy-image.json (Trivy fs and
+  # image share the "Trivy Scan" type, so a copy there would dedup it).
+  echo
+  echo "=== branch-engagement dedup with a unique delta (P-DEDUP-BRANCH) ==="
+  local trimmed="${PROOF_DIR}/reports-main-trimmed" trivy_only="${PROOF_DIR}/reports-trivy-only"
+  local delta="${PROOF_DIR}/delta.json" delta_rc=0
+  rm -rf "$trimmed" "$trivy_only"
+  mkdir -p "$trimmed" "$trivy_only"
+  find "$DD_PROOF_REPORTS" -maxdepth 1 -type f -exec cp {} "${trimmed}/" \;
+  # Untrimmed trivy-fs.json alone, for the 28-04 P-REPARENT scenario.
+  cp "${DD_PROOF_REPORTS}/trivy-fs.json" "${trivy_only}/trivy-fs.json"
+  PROOF_TRIMMED="$trimmed" PROOF_FULL_REPORTS="$DD_PROOF_REPORTS" PROOF_DELTA="$delta" \
+    python3 - > "${delta}.log" 2>&1 <<'PY' || delta_rc=$?
+import json
+import os
+import sys
+
+env = os.environ
+fs_path = os.path.join(env["PROOF_TRIMMED"], "trivy-fs.json")
+img_path = os.path.join(env["PROOF_FULL_REPORTS"], "trivy-image.json")
+
+
+def entries(doc):
+    for result in (doc.get("Results") or []):
+        if not isinstance(result, dict):
+            continue
+        for vuln in (result.get("Vulnerabilities") or []):
+            if isinstance(vuln, dict):
+                key = (vuln.get("VulnerabilityID"), vuln.get("PkgName"), vuln.get("InstalledVersion"))
+                yield key, result, vuln
+
+
+with open(fs_path, encoding="utf-8") as handle:
+    fs = json.load(handle)
+counts = {}
+for key, _, _ in entries(fs):
+    counts[key] = counts.get(key, 0) + 1
+image = set()
+if os.path.isfile(img_path):
+    with open(img_path, encoding="utf-8") as handle:
+        image = {key for key, _, _ in entries(json.load(handle))}
+
+chosen = None
+for key, result, vuln in entries(fs):
+    if None not in key and counts[key] == 1 and key not in image:
+        chosen = (key, result, vuln)
+        break
+if chosen is None:
+    print("NO-DELTA: {} trivy-fs vulnerabilities ({} distinct triples), trivy-image {}: none occurs exactly once "
+          "in trivy-fs.json and not in trivy-image.json".format(
+              sum(counts.values()), len(counts), "present" if os.path.isfile(img_path) else "absent"))
+    sys.exit(3)
+key, result, vuln = chosen
+index = next(i for i, v in enumerate(result["Vulnerabilities"]) if v is vuln)
+del result["Vulnerabilities"][index]
+with open(fs_path, "w", encoding="utf-8") as handle:
+    json.dump(fs, handle)
+record = {"VulnerabilityID": key[0], "PkgName": key[1], "InstalledVersion": key[2],
+          "Title": vuln.get("Title"), "Severity": vuln.get("Severity"), "Target": result.get("Target")}
+with open(env["PROOF_DELTA"], "w", encoding="utf-8") as handle:
+    json.dump(record, handle, indent=2)
+print("delta: removed {} {} {} ({}, {!r}) from the ci/main copy of trivy-fs.json".format(
+    key[0], key[1], key[2], record["Severity"], record["Target"]))
+PY
+  sed -e 's/^/    /' "${delta}.log"
+  if [ "$delta_rc" -eq 3 ]; then
+    proof_abort "P-DEDUP-BRANCH" "no unique trivy-fs vulnerability available as a delta ($(snippet "${delta}.log"))"
+  elif [ "$delta_rc" -ne 0 ]; then
+    proof_abort "P-DEDUP-BRANCH" "building the delta reports failed (exit ${delta_rc}): $(snippet "${delta}.log")"
+  fi
+
+  # Default branch FIRST: its findings get the lower ids and stay the
+  # originals (D-01); the PR copies are then marked duplicate.
+  import_as_branch dedup-main "$PROOF_DEDUP_PRODUCT" "$PROOF_DEFAULT_BRANCH" "$trimmed" \
+    "${PROOF_DIR}/results-dedup-main.json"
+  if [ "$BODY_RC" -ne 0 ]; then
+    proof_abort "P-DEDUP-BRANCH" "committed dd-import body (ci/${PROOF_DEFAULT_BRANCH}, trimmed reports) exited ${BODY_RC} (log ${BODY_LOG})"
+  fi
+  import_as_branch dedup-pr "$PROOF_DEDUP_PRODUCT" "$PROOF_DEDUP_PR" "$DD_PROOF_REPORTS" \
+    "${PROOF_DIR}/results-dedup-pr.json"
+  if [ "$BODY_RC" -ne 0 ]; then
+    proof_abort "P-DEDUP-BRANCH" "committed dd-import body (ci/${PROOF_DEDUP_PR}, full reports) exited ${BODY_RC} (log ${BODY_LOG})"
+  fi
+  wait_dedup_settled "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_DEDUP_PR}"
+
+  local main_snap="${PROOF_DIR}/dedup-main.json" pr_snap="${PROOF_DIR}/dedup-pr.json"
+  rc=0
+  snapshot_engagement "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_DEFAULT_BRANCH}" "$main_snap" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_abort "P-DEDUP-BRANCH" "snapshot of ${PROOF_DEDUP_PRODUCT} / ci/${PROOF_DEFAULT_BRANCH} failed: $(snippet "${main_snap}.err")"
+  fi
+  snapshot_engagement "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_DEDUP_PR}" "$pr_snap" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_abort "P-DEDUP-BRANCH" "snapshot of ${PROOF_DEDUP_PRODUCT} / ci/${PROOF_DEDUP_PR} failed: $(snippet "${pr_snap}.err")"
+  fi
+
+  local branch_log="${PROOF_DIR}/assert-dedup-branch.log" branch_rc=0
+  PROOF_MAIN_SNAP="$main_snap" PROOF_PR_SNAP="$pr_snap" PROOF_DELTA="$delta" \
+    python3 - > "$branch_log" 2>&1 <<'PY' || branch_rc=$?
+import json
+import os
+import subprocess
+import sys
+
+env = os.environ
+PID = "P-DEDUP-BRANCH"
+
+
+def load(path):
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+main, pr, delta = load(env["PROOF_MAIN_SNAP"]), load(env["PROOF_PR_SNAP"]), load(env["PROOF_DELTA"])
+failures = 0
+
+
+def say(pid, ok, detail):
+    global failures
+    print("PROOF: {} {} {}".format(pid, "PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+def by_id(ids):
+    if not ids:
+        return {}
+    proc = subprocess.run([sys.executable, env["PROOF_DEDUP_PY"], "findings-by-id"],
+                          env=dict(env, SNAP_IDS=",".join(str(i) for i in sorted(ids))),
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    if proc.returncode != 0:
+        raise RuntimeError("findings-by-id {} failed: {}".format(sorted(ids), (proc.stderr or proc.stdout).strip()[:300]))
+    return json.loads(proc.stdout)
+
+
+def scan_type(snap, f):
+    return (snap["tests"].get(str(f["test"])) or {}).get("scan_type")
+
+
+def brief(snap, f):
+    return "#{} {} {!r} dup={} active={} dup_of={}".format(
+        f["id"], scan_type(snap, f), f["title"][:60], f["duplicate"], f["active"], f["duplicate_finding"])
+
+
+try:
+    main_f, pr_f = main["findings"], pr["findings"]
+    main_ids = {f["id"] for f in main_f}
+    pr_ids = {f["id"] for f in pr_f}
+    print("    counts: PR total {}, PR duplicates {}, main total {}, main duplicates {}".format(
+        len(pr_f), sum(1 for f in pr_f if f["duplicate"] is True),
+        len(main_f), sum(1 for f in main_f if f["duplicate"] is True)))
+
+    say(PID, len(pr_f) >= 10, "ci/{} holds {} findings (at least 10, non-vacuous)".format(
+        env["PROOF_DEDUP_PR"], len(pr_f)))
+
+    def is_delta(f):
+        return (scan_type(pr, f) == "Trivy Scan" and delta["VulnerabilityID"] in f["vulnerability_ids"]
+                and f["component_name"] == delta["PkgName"] and f["component_version"] == delta["InstalledVersion"])
+
+    nondup = [f for f in pr_f if f["duplicate"] is not True]
+    say(PID, len(nondup) == 1 and is_delta(nondup[0]) and nondup[0]["active"] is True,
+        "exactly one PR finding is non-duplicate and it is the active delta {} {} {}: {} non-duplicate{}".format(
+            delta["VulnerabilityID"], delta["PkgName"], delta["InstalledVersion"], len(nondup),
+            "" if not nondup else " ({})".format("; ".join(brief(pr, f) for f in nondup[:5]))))
+
+    others = [f for f in pr_f if not is_delta(f)]
+    bad = [f for f in others
+           if not (f["duplicate"] is True and f["active"] is False and f["duplicate_finding"] in main_ids)]
+    elsewhere = {f["duplicate_finding"] for f in bad
+                 if f["duplicate_finding"] is not None and f["duplicate_finding"] not in main_ids}
+    resolved = by_id(elsewhere)
+    notes = []
+    for f in bad[:5]:
+        target = resolved.get(str(f["duplicate_finding"]))
+        where = "" if target is None else " (original #{} is in engagement {}, {})".format(
+            target["id"], target["engagement"], target["scan_type"])
+        notes.append(brief(pr, f) + where)
+    say(PID, bool(others) and not bad,
+        "every other PR finding ({}) is duplicate=true, active=false, with its original in ci/{}{}".format(
+            len(others), env["PROOF_DEFAULT_BRANCH"],
+            "" if not bad else "; {} do not: {}".format(len(bad), "; ".join(notes))))
+
+    crossing = [f for f in main_f if f["duplicate_finding"] in pr_ids]
+    say(PID, not crossing,
+        "no ci/{} finding has its original in the PR engagement (the older default-branch finding stays the "
+        "original){}".format(env["PROOF_DEFAULT_BRANCH"],
+                             "" if not crossing else ": {}".format("; ".join(brief(main, f) for f in crossing[:5]))))
+except (RuntimeError, KeyError, TypeError, ValueError) as exc:
+    say(PID, False, "branch-dedup assertions aborted: {}".format(exc))
+sys.exit(1 if failures else 0)
+PY
+  tally_assert_log "$branch_log"
+  if [ "$branch_rc" -ne 0 ] && ! grep -q '^PROOF: P-DEDUP-BRANCH FAIL' "$branch_log"; then
+    proof_fail "P-DEDUP-BRANCH" "the branch-dedup assertion script exited ${branch_rc} without reporting a failed assertion (see ${branch_log})"
+  fi
+
+  # ── P-CROSSTOOL (D-05, D-07 evidence) ─────────────────────────────────────
+  # The measured cross-tool SCA gap in ci/main: RESEARCH says no duplicate
+  # link can cross Trivy / pip-audit / NPM Audit v7+ (different id
+  # namespaces and fields), so ADR-026 ships within-tool dedup only. The
+  # CROSSTOOL: lines are the evidence 28-05 and ADR-026 quote.
+  echo
+  echo "=== cross-tool SCA gap in ci/${PROOF_DEFAULT_BRANCH} (P-CROSSTOOL) ==="
+  local cross_log="${PROOF_DIR}/assert-crosstool.log" cross_rc=0
+  PROOF_MAIN_SNAP="$main_snap" python3 - > "$cross_log" 2>&1 <<'PY' || cross_rc=$?
+import json
+import os
+import subprocess
+import sys
+
+env = os.environ
+PID = "P-CROSSTOOL"
+SCA = ["Trivy Scan", "pip-audit Scan", "NPM Audit v7+ Scan"]
+with open(env["PROOF_MAIN_SNAP"], encoding="utf-8") as handle:
+    main = json.load(handle)
+failures = 0
+
+
+def say(pid, ok, detail):
+    global failures
+    print("PROOF: {} {} {}".format(pid, "PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+def by_id(ids):
+    if not ids:
+        return {}
+    proc = subprocess.run([sys.executable, env["PROOF_DEDUP_PY"], "findings-by-id"],
+                          env=dict(env, SNAP_IDS=",".join(str(i) for i in sorted(ids))),
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    if proc.returncode != 0:
+        raise RuntimeError("findings-by-id {} failed: {}".format(sorted(ids), (proc.stderr or proc.stdout).strip()[:300]))
+    return json.loads(proc.stdout)
+
+
+def norm(name):
+    # pip-audit reports normalised lower-case names; Trivy keeps the
+    # distribution's spelling. Compare case-insensitively.
+    return (name or "").strip().lower()
+
+
+try:
+    findings = main["findings"]
+    types = {f["id"]: (main["tests"].get(str(f["test"])) or {}).get("scan_type") for f in findings}
+    by_type = {t: [f for f in findings if types[f["id"]] == t] for t in SCA}
+
+    missing = [t for t in SCA if not by_type[t]]
+    say(PID, not missing, "ci/{} holds findings of every SCA parser ({}){}".format(
+        env["PROOF_DEFAULT_BRANCH"], ", ".join("{}={}".format(t, len(by_type[t])) for t in SCA),
+        "" if not missing else "; missing: {} (the SCA overlap cannot be measured, the D-07 evidence would be "
+                               "vacuous)".format(", ".join(missing))))
+
+    trivy_names = {norm(f["component_name"]) for f in by_type["Trivy Scan"] if norm(f["component_name"])}
+    pip_names = {norm(f["component_name"]) for f in by_type["pip-audit Scan"] if norm(f["component_name"])}
+    overlap = sorted(trivy_names & pip_names)
+    say(PID, bool(overlap), "packages reported by both Trivy and pip-audit (non-vacuous gap): {}".format(
+        overlap or "none"))
+
+    # Every duplicate link that touches an SCA finding, with both ends typed;
+    # originals outside ci/main are resolved through findings-by-id.
+    outside = {f["duplicate_finding"] for f in findings
+               if f["duplicate_finding"] is not None and f["duplicate_finding"] not in types}
+    for key, target in by_id(outside).items():
+        types[int(key)] = target["scan_type"]
+    links, cross = 0, []
+    for f in findings:
+        orig = f["duplicate_finding"]
+        if orig is None:
+            continue
+        mine, theirs = types[f["id"]], types.get(orig)
+        if mine in SCA or theirs in SCA:
+            links += 1
+            if mine != theirs:
+                cross.append("#{} ({}) -> #{} ({})".format(f["id"], mine, orig, theirs))
+    say(PID, not cross, "{} duplicate link(s) touch an SCA finding in ci/{}; {} cross scan types{}".format(
+        links, env["PROOF_DEFAULT_BRANCH"], len(cross),
+        "" if not cross else " (contradicts RESEARCH and the ADR-026 D-07 basis): {}".format("; ".join(cross[:10]))))
+
+    for t in SCA:
+        fs = by_type[t]
+        samples = sorted({f["component_name"] for f in fs if f["component_name"]})[:3]
+        print("CROSSTOOL: scan_type={!r} findings={} with_vulnerability_ids={} with_component_version={} "
+              "sample_components={}".format(t, len(fs), sum(1 for f in fs if f["vulnerability_ids"]),
+                                            sum(1 for f in fs if f["component_version"]), samples))
+    for name in overlap:
+        tv = sorted({v for f in by_type["Trivy Scan"] if norm(f["component_name"]) == name
+                     for v in f["vulnerability_ids"]})
+        pv = sorted({v for f in by_type["pip-audit Scan"] if norm(f["component_name"]) == name
+                     for v in f["vulnerability_ids"]})
+        print("CROSSTOOL: package={} trivy_ids={} pip_audit_ids={} shared={}".format(
+            name, tv, pv, sorted(set(tv) & set(pv))))
+except (RuntimeError, KeyError, TypeError, ValueError) as exc:
+    say(PID, False, "cross-tool measurement aborted: {}".format(exc))
+sys.exit(1 if failures else 0)
+PY
+  tally_assert_log "$cross_log"
+  if [ "$cross_rc" -ne 0 ] && ! grep -q '^PROOF: P-CROSSTOOL FAIL' "$cross_log"; then
+    proof_fail "P-CROSSTOOL" "the cross-tool script exited ${cross_rc} without reporting a failed assertion (see ${cross_log})"
   fi
 }
 
