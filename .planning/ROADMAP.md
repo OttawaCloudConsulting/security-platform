@@ -181,7 +181,7 @@ Plans:
 
 **Wave 1**
 
-- [ ] 28-01-PLAN.md — Branch from origin/main; chart dedup guards in extraConfigs (D-20) with gate checks 21-22 (RED then GREEN), chart 0.2.0
+- [x] 28-01-PLAN.md — Branch from origin/main; chart dedup guards in extraConfigs (D-20) with gate checks 21-22 (RED then GREEN), chart 0.2.0
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -303,7 +303,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 25. Nexus Live Validation | v3.0 | 7/7 | Complete    | 2026-09-24 |
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
-| 28. DefectDojo Dedup and Triage | v3.0 | 0/? | Not started | — |
+| 28. DefectDojo Dedup and Triage | v3.0 | 1/9 | In Progress|  |
 | 29. DefectDojo Live Validation | v3.0 | 0/? | Not started | — |
 
 ## Next Milestone
