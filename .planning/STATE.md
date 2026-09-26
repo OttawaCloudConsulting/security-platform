@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: executing
-stopped_at: Completed 28-08-PLAN.md
-last_updated: "2026-09-26T18:56:44.977Z"
+status: verifying
+stopped_at: Completed 28-09-PLAN.md
+last_updated: "2026-09-26T19:02:31.037Z"
 last_activity: 2026-09-26
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 55
-  completed_plans: 54
-  percent: 71
+  completed_plans: 55
+  percent: 86
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 Phase: 28 (defectdojo-dedup-and-triage) — EXECUTING
 Plan: 9 of 9
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-26
 
 ## Performance Metrics
@@ -285,6 +285,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 28]: 28-06: TRIAGE.md keeps the D-23 verified=false Under Review query but states the measured fact that Trivy findings arrive verified=true, so the Trivy untriaged queue drops verified=false; FP/OOS are Mitigated from the moment of disposition (measured before any reimport) — Runbook must match 28-05 evidence, not predicted behaviour
 - [Phase 28]: 28-07: PR #23 opened for approved HEAD c77e4f4; GitHub proof run 36261602015 attempt 1 prove-import success, PROOF PASS - 127 assertions (35 in the Phase 28 block), not merged
 - [Phase 28]: 28-08: PR #23 merged (gh pr merge --merge) on operator approval 'Approved — merge'; merge c8027e6 parents 917352c + c77e4f4; verified from origin/main; workflows/callers/set-required-checks unchanged vs 917352c; v1 stays 917352c; chart 0.2.0
+- [Phase 28]: ADR-026 records FP/OOS as Mitigated from disposition (measured), and closes ADR-024's Phase 28 hand-forward in prose
 
 ### Pending Todos
 
@@ -414,11 +415,12 @@ Carried forward from v1.1 close:
 | Phase 28 P06 | 15 min | 2 tasks | 2 files |
 | Phase 28 P07 | 15 min | 2 tasks | 2 files |
 | Phase 28 P08 | 5 min | 2 tasks | 1 files |
+| Phase 28 P09 | 20 min | 3 tasks | 6 files |
 
 ## Session Continuity
 
-Last session: 2026-09-26T18:56:44.967Z
-Stopped at: Completed 28-08-PLAN.md
+Last session: 2026-09-26T19:02:31.028Z
+Stopped at: Completed 28-09-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
