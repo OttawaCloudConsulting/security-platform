@@ -1890,6 +1890,13 @@ eligible = sorted((f for f in in_test
 print("    trivy-fs Test {}: {} findings, {} eligible (active, non-duplicate, unverified, unique title, "
       "no ci/{} duplicate of it)".format(tid, len(in_test), len(eligible), env["PROOF_DEFAULT_BRANCH"]))
 if len(eligible) < 3:
+    # Per-finding breakdown, so a failed selection names the criterion that
+    # excluded each candidate instead of only a total.
+    for f in sorted(in_test, key=lambda f: f["id"]):
+        print("    candidate #{} {!r}: active={} duplicate={} verified={} false_p={} out_of_scope={} "
+              "risk_accepted={} title_count={} pointed_at={}".format(
+                  f["id"], f["title"][:60], f["active"], f["duplicate"], f["verified"], f["false_p"],
+                  f["out_of_scope"], f["risk_accepted"], titles[f["title"]], f["id"] in pointed))
     print("SELECT-FAIL: only {} eligible trivy-fs findings, 3 needed".format(len(eligible)))
     sys.exit(3)
 chosen = dict(zip(["fp", "oos", "ra"], eligible[:3]))
