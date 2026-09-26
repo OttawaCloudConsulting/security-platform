@@ -16,7 +16,7 @@ set -euo pipefail
 # and without network access. It reports EVERY failure rather than stopping at
 # the first, so one run tells you the whole story.
 #
-# It asserts 20 offline invariants. That count is a literal in three places
+# It asserts 22 offline invariants. That count is a literal in three places
 # which must move together in one commit: this line, the `check-defectdojo-chart:
 # asserting ...` echo below, and CHECK_COUNT at the foot of the file.
 #
@@ -93,7 +93,7 @@ if [ ! -f "$DEP_TGZ" ]; then
   exit 2
 fi
 
-echo "check-defectdojo-chart: asserting 20 offline invariants against ${CHART_DIR}"
+echo "check-defectdojo-chart: asserting 22 offline invariants against ${CHART_DIR}"
 
 # templates/validate-tls.yaml aborts the render when ingress + TLS are on and no
 # cert-manager issuer annotation is set, so a BARE render fails by design. Every
@@ -470,8 +470,87 @@ elif [ "$placeholder_rc" -ne 1 ]; then
   fail "PLACEHOLDER-ONLY" "grep exited ${placeholder_rc} while scanning ${VALUES} and ${CHART_DIR}/Chart.yaml"
 fi
 
+# ── 21. CASCADE-DELETE-OFF ───────────────────────────────────────────────────
+# D-20 (ADR-026): DD_DUPLICATE_CLUSTER_CASCADE_DELETE must render as exactly
+# "False". With True, the PR-cleanup DELETE of a ci/<branch> engagement also
+# deletes the default-branch findings that are duplicates of that PR's
+# findings instead of re-parenting them (3.3.200 dojo/finding/helper.py
+# prepare_duplicates_for_delete), destroying the triage record. The key ships
+# through the subchart's top-level `extraConfigs`, which renders into the main
+# ConfigMap; that ConfigMap is selected by the key it carries, as in check 18.
+# The toggle half proves a consumer overlay that adds another extraConfigs key
+# map-merges with the defaults rather than replacing them. Problems are
+# collected and reported as ONE failure line per check.
+cascade_cm='select(.kind=="ConfigMap" and ((.data // {}) | has("DD_DUPLICATE_CLUSTER_CASCADE_DELETE")))'
+cascade_problems=()
+if ! cascade_value=$(render | yq "${cascade_cm} | .data.DD_DUPLICATE_CLUSTER_CASCADE_DELETE"); then
+  cascade_problems+=("render or yq failed reading DD_DUPLICATE_CLUSTER_CASCADE_DELETE from the ConfigMap")
+elif [ "$(unquote "$cascade_value")" != "False" ]; then
+  cascade_problems+=("expected DD_DUPLICATE_CLUSTER_CASCADE_DELETE == \"False\" in the rendered ConfigMap, got '${cascade_value}' (empty means no ConfigMap carries the key)")
+fi
+overlay_cm='select(.kind=="ConfigMap" and ((.data // {}) | has("DD_CSRF_TRUSTED_ORIGINS"))) | .data'
+overlay_filter='length == 1 and (.[0] | has("DD_CSRF_TRUSTED_ORIGINS") and has("DD_DUPLICATE_CLUSTER_CASCADE_DELETE") and has("DD_DEDUPLICATION_ALGORITHM_PER_PARSER"))'
+if ! overlay_data=$(render --set 'defectdojo.extraConfigs.DD_CSRF_TRUSTED_ORIGINS=https://defectdojo.example.com' \
+    | yq -o=json -I=0 "${overlay_cm}"); then
+  cascade_problems+=("render or yq failed with defectdojo.extraConfigs.DD_CSRF_TRUSTED_ORIGINS set")
+elif ! printf '%s\n' "$overlay_data" | jq -e -s "$overlay_filter" >/dev/null 2>&1; then
+  cascade_problems+=("with defectdojo.extraConfigs.DD_CSRF_TRUSTED_ORIGINS set, expected exactly ONE ConfigMap carrying DD_CSRF_TRUSTED_ORIGINS, DD_DUPLICATE_CLUSTER_CASCADE_DELETE and DD_DEDUPLICATION_ALGORITHM_PER_PARSER (an overlay must map-merge with the defaults), got '$(printf '%s' "$overlay_data" | tr '\n' ' ' | cut -c1-300)'")
+fi
+if [ "${#cascade_problems[@]}" -gt 0 ]; then
+  fail "CASCADE-DELETE-OFF" "$(printf '%s; ' "${cascade_problems[@]}")"
+fi
+
+# ── 22. DEDUP-ALGORITHM-MAP ──────────────────────────────────────────────────
+# D-20 (ADR-026): DD_DEDUPLICATION_ALGORITHM_PER_PARSER restates the 3.3.200
+# algorithm for exactly the 7 scan types security.yml imports, so a DefectDojo
+# version bump cannot silently change dedup behaviour. DefectDojo json.loads()
+# this value at settings import (settings.dist.py), so a malformed value
+# crash-loops every pod: the rendered value is parsed with `jq -e` and its keys
+# and values are pinned exactly. D-20 also forbids hash-field overrides:
+# adding a DD_HASHCODE_FIELDS_PER_SCANNER entry changes the hash of every
+# stored finding of that scanner, and cross-tool collapse is not achievable in
+# 3.3.200 anyway (D-07). grep exit 1 means "no match" (the pass); exit 2 is a
+# real error.
+dedup_want='{"Semgrep JSON Report":"unique_id_from_tool_or_hash_code","Checkov Scan":"hash_code","Trivy Scan":"hash_code","Gitleaks Scan":"hash_code","NPM Audit v7+ Scan":"hash_code","pip-audit Scan":"hash_code","SARIF":"unique_id_from_tool_or_hash_code"}'
+# shellcheck disable=SC2016  # $want is a jq variable, not a shell expansion
+dedup_filter='type == "object"
+  and (keys == ($want | keys))
+  and all(to_entries[]; .value == $want[.key])
+  and all(.[]; IN("legacy", "unique_id_from_tool", "hash_code", "unique_id_from_tool_or_hash_code"))'
+dedup_cm='select(.kind=="ConfigMap" and ((.data // {}) | has("DD_DEDUPLICATION_ALGORITHM_PER_PARSER")))'
+dedup_problems=()
+if ! dedup_render=$(render); then
+  dedup_problems+=("default render failed")
+else
+  if ! dedup_value=$(printf '%s\n' "$dedup_render" | yq "${dedup_cm} | .data.DD_DEDUPLICATION_ALGORITHM_PER_PARSER"); then
+    dedup_problems+=("yq failed reading DD_DEDUPLICATION_ALGORITHM_PER_PARSER from the ConfigMap")
+  else
+    dedup_value="$(unquote "$dedup_value")"
+    if ! printf '%s' "$dedup_value" | jq -e --argjson want "$dedup_want" "$dedup_filter" >/dev/null 2>&1; then
+      dedup_problems+=("DD_DEDUPLICATION_ALGORITHM_PER_PARSER must be a JSON object with exactly the 7 security.yml scan types and their 3.3.200 algorithms, got '${dedup_value:0:300}' (empty means no ConfigMap carries the key)")
+    fi
+  fi
+  hashcode_rc=0
+  grep -q 'DD_HASHCODE_FIELDS_PER_SCANNER' <<<"$dedup_render" || hashcode_rc=$?
+  if [ "$hashcode_rc" -eq 0 ]; then
+    dedup_problems+=("the rendered chart contains DD_HASHCODE_FIELDS_PER_SCANNER (D-20 forbids hash-field overrides)")
+  elif [ "$hashcode_rc" -ne 1 ]; then
+    dedup_problems+=("grep exited ${hashcode_rc} while scanning the rendered chart for DD_HASHCODE_FIELDS_PER_SCANNER")
+  fi
+fi
+hashvals_rc=0
+hashvals_hits=$(grep -nE '^[[:space:]]*[^#[:space:]].*DD_HASHCODE_FIELDS_PER_SCANNER' "$VALUES") || hashvals_rc=$?
+if [ "$hashvals_rc" -eq 0 ]; then
+  dedup_problems+=("${VALUES} sets DD_HASHCODE_FIELDS_PER_SCANNER (D-20 forbids hash-field overrides): $(printf '%s' "$hashvals_hits" | tr '\n' ' ')")
+elif [ "$hashvals_rc" -ne 1 ]; then
+  dedup_problems+=("grep exited ${hashvals_rc} while scanning ${VALUES} for DD_HASHCODE_FIELDS_PER_SCANNER")
+fi
+if [ "${#dedup_problems[@]}" -gt 0 ]; then
+  fail "DEDUP-ALGORITHM-MAP" "$(printf '%s; ' "${dedup_problems[@]}")"
+fi
+
 # ── Terminal summary ─────────────────────────────────────────────────────────
-CHECK_COUNT=20
+CHECK_COUNT=22
 
 if [ "${#FAILURES[@]}" -gt 0 ]; then
   for line in "${FAILURES[@]}"; do
