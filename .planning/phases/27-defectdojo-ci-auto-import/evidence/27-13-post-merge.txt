@@ -1,0 +1,115 @@
+# 27-13 post-merge evidence: CR-01 dispatch proof on main and v1.1.1 release
+# Repo: OttawaCloudConsulting/security-platform
+# CR-01 merge SHA (27-12, PR #22): 917352c00987023fa5ff1e6cdabc16987eb114dd
+# Recorded: 2026-09-25
+
+## Pre-tag refs
+
+$ git -C repos/security-platform fetch origin --tags
+(no output)
+$ git -C repos/security-platform rev-parse origin/main
+917352c00987023fa5ff1e6cdabc16987eb114dd
+
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v1
+{"ref":"refs/tags/v1","node_id":"REF_kwDORn-4tKxyZWZzL3RhZ3MvdjE","url":"https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/refs/tags/v1","object":{"sha":"0f7e4e141d2a300d4be9a54efc137eb4510bb7ea","type":"commit","url":"https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/commits/0f7e4e141d2a300d4be9a54efc137eb4510bb7ea"}}
+
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v1.1.0
+{"ref":"refs/tags/v1.1.0","node_id":"REF_kwDORn-4tLByZWZzL3RhZ3MvdjEuMS4w","url":"https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/refs/tags/v1.1.0","object":{"sha":"414fd3beb5a6d79d52316150a192803a4b0ece78","type":"tag","url":"https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/tags/414fd3beb5a6d79d52316150a192803a4b0ece78"}}
+$ gh api repos/OttawaCloudConsulting/security-platform/git/tags/414fd3beb5a6d79d52316150a192803a4b0ece78 --jq .object.sha
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea
+
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v1.0.0
+{"ref":"refs/tags/v1.0.0","node_id":"REF_kwDORn-4tLByZWZzL3RhZ3MvdjEuMC4w","url":"https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/refs/tags/v1.0.0","object":{"sha":"fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4","type":"tag","url":"https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/tags/fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4"}}
+$ gh api repos/OttawaCloudConsulting/security-platform/git/tags/fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4 --jq .object.sha
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef
+
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v2.0
+{"ref":"refs/tags/v2.0","node_id":"REF_kwDORn-4tK5yZWZzL3RhZ3MvdjIuMA","url":"https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/refs/tags/v2.0","object":{"sha":"8d47cf9f86e9f79a42a57a2b4298d34b5dcda449","type":"tag","url":"https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/tags/8d47cf9f86e9f79a42a57a2b4298d34b5dcda449"}}
+$ gh api repos/OttawaCloudConsulting/security-platform/git/tags/8d47cf9f86e9f79a42a57a2b4298d34b5dcda449 --jq .object.sha
+c6395e145643c21a724df9225f3a5210d5d98bde
+
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v1.1.1
+{"message":"Not Found","documentation_url":"https://docs.github.com/rest/git/refs#get-a-reference","status":"404"}gh: Not Found (HTTP 404)
+(rc=1: v1.1.1 absent)
+
+Summary: v1 lightweight -> 0f7e4e1; v1.1.0 -> 414fd3b -> 0f7e4e1; v1.0.0 -> fabc3e3 -> cdf2c21;
+v2.0 -> 8d47cf9 -> c6395e1 (stray, leave untouched); v1.1.1 absent.
+
+## Dispatch proof
+
+$ gh workflow run defectdojo-import-proof.yml -R OttawaCloudConsulting/security-platform --ref main
+https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36188604648
+
+Run id: 36188604648 (attempt 1; no rerun)
+Event: workflow_dispatch
+Head SHA: 917352c00987023fa5ff1e6cdabc16987eb114dd (= CR-01 merge SHA)
+Run conclusion: success
+prove-import job: 108248236695
+prove-import conclusion: success
+Other jobs: scans / Container — Trivy Image success; scans / SCA — Trivy Filesystem success;
+scans / SAST — Semgrep CE success; scans / IaC — Checkov success; scans / Secrets — Gitleaks success;
+scans / DefectDojo Import skipped; scans / DefectDojo Cleanup skipped
+
+Key lines from `gh run view 36188604648 --job 108248236695 --log` (timestamps stripped):
+==> KIND-CELERY-PING: PASS - celery -A dojo inspect ping in defectdojo-celery-worker/celery exited 0 with pong (broker round-trip)
+ALL PASS - 13 live check(s) executed and passed; 0 sub-check(s) skipped (not passed).
+PROOF: P-HTTP PASS import-http: DD_URL=http://127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+PROOF: P-HTTP PASS import-noscheme: DD_URL=127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+PROOF: P-HTTP PASS delete-http: DD_URL=http://127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+PROOF PASS - 88 assertions
+
+Scrub: grep -ciE 'authorization: token|admin_password' on the job log -> 0
+
+## Tags
+
+Operator approval (Task 2, relayed verbatim by the orchestrator): "Approved — tag v1.1.1 and move v1"
+
+Re-confirm before writes:
+$ git fetch origin --tags
+origin/main=917352c00987023fa5ff1e6cdabc16987eb114dd
+remote v1=0f7e4e141d2a300d4be9a54efc137eb4510bb7ea
+$ git ls-remote origin refs/tags/v1 refs/tags/v1.1.1
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1
+(no refs/tags/v1.1.1)
+
+Write 1 - annotated v1.1.1:
+$ git tag -a v1.1.1 917352c00987023fa5ff1e6cdabc16987eb114dd -m "v1.1.1: refuse non-https DEFECTDOJO_URL, pin curl to https (CR-01)"
+$ git push origin refs/tags/v1.1.1
+To https://github.com/OttawaCloudConsulting/security-platform.git
+ * [new tag]         v1.1.1 -> v1.1.1
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v1.1.1
+{"ref":"refs/tags/v1.1.1","node_id":"REF_kwDORn-4tLByZWZzL3RhZ3MvdjEuMS4x","url":"https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/refs/tags/v1.1.1","object":{"sha":"c1565b35e88de4e70e61d79292943c15b3fe67f6","type":"tag","url":"https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/tags/c1565b35e88de4e70e61d79292943c15b3fe67f6"}}
+$ gh api repos/OttawaCloudConsulting/security-platform/git/tags/c1565b35e88de4e70e61d79292943c15b3fe67f6 --jq '.object.sha,.object.type,.message'
+917352c00987023fa5ff1e6cdabc16987eb114dd
+commit
+v1.1.1: refuse non-https DEFECTDOJO_URL, pin curl to https (CR-01)
+
+Write 2 - move lightweight v1:
+$ git tag -f v1 917352c00987023fa5ff1e6cdabc16987eb114dd
+Updated tag 'v1' (was 0f7e4e1)
+$ git cat-file -t v1
+commit
+$ git push --force-with-lease=refs/tags/v1:0f7e4e141d2a300d4be9a54efc137eb4510bb7ea origin refs/tags/v1
+(pre-push hooks: shellcheck Passed, yamllint Passed, Detect hardcoded secrets Passed, others Skipped)
+To https://github.com/OttawaCloudConsulting/security-platform.git
+ + 0f7e4e1...917352c v1 -> v1 (forced update)
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v1
+{"ref":"refs/tags/v1","node_id":"REF_kwDORn-4tKxyZWZzL3RhZ3MvdjE","url":"https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/refs/tags/v1","object":{"sha":"917352c00987023fa5ff1e6cdabc16987eb114dd","type":"commit","url":"https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/commits/917352c00987023fa5ff1e6cdabc16987eb114dd"}}
+
+Write 3 - release: NOT CREATED.
+`gh release create v1.1.1 --verify-tag ...` was denied by the Claude Code permission system
+(auto mode classifier, reason "Create Public Surface") before it ran. It was not retried.
+$ gh release view v1.1.1 -R OttawaCloudConsulting/security-platform
+release not found (rc=1)
+PENDING: the operator creates the release, or grants permission for it.
+
+Older tags after the writes (unchanged):
+v1.1.0 ref-> 414fd3beb5a6d79d52316150a192803a4b0ece78 (tag) -> 0f7e4e141d2a300d4be9a54efc137eb4510bb7ea
+v1.0.0 ref-> fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4 (tag) -> cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef
+v2.0 ref-> 8d47cf9f86e9f79a42a57a2b4298d34b5dcda449 (tag) -> c6395e145643c21a724df9225f3a5210d5d98bde
+
+Raw /v1/ check:
+$ curl -sSfL https://raw.githubusercontent.com/OttawaCloudConsulting/security-platform/v1/.github/workflows/security.yml | grep -c 'url.lower().startswith("https://")'
+raw /v1/ attempt 1 (01:35:10Z): 2
+
+Task 3 <verify> block (tag readbacks, origin/main, v1.1.0 deref): TASK3_VERIFY_OK
