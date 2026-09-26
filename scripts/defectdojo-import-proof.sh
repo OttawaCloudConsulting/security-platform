@@ -26,7 +26,8 @@ set -euo pipefail
 # Least privilege (D-10): imports run as a dedicated user `ci-importer` that
 # the harness creates with is_staff=true and is_superuser=false, which is the
 # documented minimum for import + auto-create + delete. The admin token is used
-# only to create that user and for read-side assertions.
+# only to create that user, for read-side assertions, and for the Phase 28
+# admin writes listed under "Assertion groups" below.
 #
 # TLS (D-18): every call is verified against the kind CA (DEFECTDOJO_CA_CERT /
 # --cacert). TLS verification is never switched off, DD_INSECURE is empty on
@@ -55,7 +56,16 @@ set -euo pipefail
 #                   schedule path, a hostile head ref, product-scoped cleanup,
 #                   the cleanup refusals and no-match no-op, and the
 #                   insecure-TLS warning and the non-https refusal
-#                   (P-HTTP). Prints one
+#                   (P-HTTP). Then, after every Phase 27 assertion and in
+#                   fresh products (proof/dedup, proof/dedup-reparent), the
+#                   Phase 28 scenarios: the System Settings bootstrap and
+#                   its idempotency, branch-engagement dedup with a unique
+#                   delta, the measured cross-tool SCA gap, disposition
+#                   survival (FP, Out of Scope, Risk Accepted) across two
+#                   default-branch reimports, suppression of new PR copies
+#                   by default-branch dispositions, and the delete-time
+#                   re-parent of default-branch findings when a PR
+#                   engagement is deleted. Prints one
 #                   "PROOF: <ID> PASS|FAIL <detail>" line per assertion and
 #                   ends with "PROOF PASS - <n> assertions" or
 #                   "PROOF FAIL - <k> of <n>".
@@ -65,12 +75,20 @@ set -euo pipefail
 # Assertion groups (D-20): P-EXTRACT P-TLS P-ADMIN-TOKEN P-USER
 # P-IMPORTER-TOKEN P-GATE P-RUN1 P-CONTEXT P-TESTS P-COUNTS (run 1, 27-05);
 # P-RUN2 P-SCHEDULE P-HOSTILE P-SCOPE P-CLEANUP P-REFUSE P-NOMATCH P-INSECURE
-# (27-06); P-HTTP (27-11, CR-01); P-CONFIGURE-GUARD (28-02); P-CONFIGURE
-# P-IDEMPOTENT P-DEDUP-MODE P-DEDUP-BRANCH P-CROSSTOOL (28-03, --hook only,
-# after every Phase 27 assertion). Every body run uses the ci-importer token;
-# the offline configure-script cases use a gen_secret dummy token and never
-# reach the network; the live configure runs (P-CONFIGURE, P-IDEMPOTENT) use
-# the admin (superuser) token from a 0600 file, as the script requires.
+# (27-06); P-HTTP (27-11, CR-01); P-CONFIGURE-GUARD (28-02);
+# P-CONFIGURE P-IDEMPOTENT P-DEDUP-MODE P-DEDUP-BRANCH P-CROSSTOOL
+# P-DISPOSITION P-SUPPRESS P-REPARENT (28-03/28-04, --hook only, after every
+# Phase 27 assertion, in fresh products).
+#
+# Every committed-body run (dd-gate, dd-import, dd-verify, dd-delete,
+# dd-cleanup-verify) uses the ci-importer token. The one exception is
+# scripts/defectdojo-configure.sh: its live runs (P-CONFIGURE, P-IDEMPOTENT)
+# are made with the admin (superuser) token from a 0600 file, because
+# /api/v2/system_settings/ is superuser-only (RESEARCH Pitfall 2); its
+# offline cases use a gen_secret dummy token and never reach the network.
+# The admin token is otherwise used only for harness setup and reads, and for
+# the P-DEDUP-MODE contact-info write and the P-DISPOSITION finding and
+# risk-acceptance writes, which stand in for a human triager.
 #
 # Credentials are generated or read at runtime, written only to 0600 files,
 # sent with `--data-binary @file` or `-H @file`, never placed on any argv and
@@ -1168,15 +1186,180 @@ PY
   fi
 }
 
+# prove_reparent: P-REPARENT (D-02, D-03, D-20; RESEARCH Pattern 3). In the
+# second fresh product PROOF_REPARENT_PRODUCT (so no other open PR engagement
+# can become the re-parent target, Caveat B) the PR branch is imported FIRST
+# and main second, both from reports-trivy-only, so every ci/main finding is
+# a duplicate of a PR original. The committed dd-delete body then deletes the
+# PR engagement, and ci/main is read IMMEDIATELY (no reimport, no sleep, no
+# settle poll): DefectDojo's delete-time re-parent must already have made K
+# ci/main findings active originals again, K being the PR's pre-delete
+# original count. With the D-20 cascade guard in effect the ci/main copies
+# are re-parented, not deleted, so the D-03 fallback is not needed.
+# A failed import or precondition is reported and the rest is skipped (the
+# delete assertions would be meaningless); it never aborts.
+prove_reparent() {
+  local product="$PROOF_REPARENT_PRODUCT" trivy_only="${PROOF_DIR}/reports-trivy-only"
+  echo
+  echo "=== PR engagement delete re-parents ci/${PROOF_DEFAULT_BRANCH} findings (P-REPARENT) ==="
+  import_as_branch reparent-pr "$product" "$PROOF_REPARENT_PR" "$trivy_only" \
+    "${PROOF_DIR}/results-reparent-pr.json"
+  if [ "$BODY_RC" -ne 0 ]; then
+    proof_fail "P-REPARENT" "committed dd-import body (ci/${PROOF_REPARENT_PR} in ${product}) exited ${BODY_RC} (log ${BODY_LOG}); P-REPARENT skipped"
+    return 0
+  fi
+  import_as_branch reparent-main "$product" "$PROOF_DEFAULT_BRANCH" "$trivy_only" \
+    "${PROOF_DIR}/results-reparent-main.json"
+  if [ "$BODY_RC" -ne 0 ]; then
+    proof_fail "P-REPARENT" "committed dd-import body (ci/${PROOF_DEFAULT_BRANCH} in ${product}) exited ${BODY_RC} (log ${BODY_LOG}); P-REPARENT skipped"
+    return 0
+  fi
+  wait_dedup_settled "$product" "ci/${PROOF_DEFAULT_BRANCH}"
+
+  local pr_snap="${PROOF_DIR}/reparent-pr.json" main_snap="${PROOF_DIR}/reparent-main.json"
+  local after_snap="${PROOF_DIR}/reparent-main-after.json" kfile="${PROOF_DIR}/reparent-k.txt"
+  local pre_log="${PROOF_DIR}/assert-reparent-pre.log" post_log="${PROOF_DIR}/assert-reparent-post.log"
+  local rc=0 pre_rc=0 post_rc=0
+  snapshot_engagement "$product" "ci/${PROOF_REPARENT_PR}" "$pr_snap" || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    snapshot_engagement "$product" "ci/${PROOF_DEFAULT_BRANCH}" "$main_snap" || rc=$?
+  fi
+  if [ "$rc" -ne 0 ]; then
+    proof_fail "P-REPARENT" "precondition snapshot in ${product} failed: $(snippet "${pr_snap}.err" "${main_snap}.err"); P-REPARENT skipped"
+    return 0
+  fi
+  rm -f "$kfile"
+  PROOF_RP_PR_SNAP="$pr_snap" PROOF_RP_MAIN_SNAP="$main_snap" PROOF_RP_K="$kfile" \
+    python3 - > "$pre_log" 2>&1 <<'PY' || pre_rc=$?
+import json
+import os
+import sys
+
+env = os.environ
+PID = "P-REPARENT"
+try:
+    with open(env["PROOF_RP_PR_SNAP"], encoding="utf-8") as handle:
+        pr_f = json.load(handle)["findings"]
+    with open(env["PROOF_RP_MAIN_SNAP"], encoding="utf-8") as handle:
+        main_f = json.load(handle)["findings"]
+    pr_ids = {f["id"] for f in pr_f}
+    originals = [f for f in pr_f if f["duplicate"] is False]
+    inactive = [f["id"] for f in originals if f["active"] is not True]
+    bad = [f for f in main_f if not (f["duplicate"] is True and f["duplicate_finding"] in pr_ids)]
+    ok = len(originals) >= 1 and not inactive and bool(main_f) and not bad
+    print("PROOF: {} {} precondition: ci/{} holds {} findings, K={} non-duplicate ({} of them not active{}); "
+          "ci/{} holds {} findings, {} not a duplicate of a PR finding{}".format(
+              PID, "PASS" if ok else "FAIL", env["PROOF_REPARENT_PR"], len(pr_f), len(originals),
+              len(inactive), "" if not inactive else ": {}".format(inactive[:10]),
+              env["PROOF_DEFAULT_BRANCH"], len(main_f), len(bad),
+              "" if not bad else ": " + "; ".join("#{} dup={} dup_of={}".format(
+                  f["id"], f["duplicate"], f["duplicate_finding"]) for f in bad[:5])))
+    if ok:
+        with open(env["PROOF_RP_K"], "w", encoding="utf-8") as handle:
+            handle.write(str(len(originals)))
+    sys.exit(0 if ok else 1)
+except (OSError, KeyError, TypeError, ValueError) as exc:
+    print("PROOF: {} FAIL precondition check aborted: {}".format(PID, exc))
+    sys.exit(1)
+PY
+  tally_assert_log "$pre_log"
+  if [ "$pre_rc" -ne 0 ] || [ ! -s "$kfile" ]; then
+    if ! grep -q '^PROOF: P-REPARENT FAIL' "$pre_log"; then
+      proof_fail "P-REPARENT" "the precondition script exited ${pre_rc} without reporting a failed assertion (see ${pre_log})"
+    fi
+    echo "    precondition not met: the delete and its assertions are skipped"
+    return 0
+  fi
+  local k
+  k="$(cat "$kfile")"
+
+  # The delete, then the ci/main read with nothing in between.
+  local cleanup_res="${PROOF_DIR}/cleanup-reparent.json" t_done t_read outcome
+  run_body reparent-delete "$DEDUP_B_DELETE" \
+    "DD_URL=${BASE_URL}" \
+    "DD_TOKEN=$(cat "$DEDUP_IMPORTER_TOK")" \
+    "DD_PRODUCT=${product}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=${DEDUP_CA_PEM}" \
+    "DD_DEFAULT_BRANCH=${PROOF_DEFAULT_BRANCH}" \
+    "DD_CLEANUP_RESULT_FILE=${cleanup_res}" \
+    "GITHUB_ACTOR=proof-actor" \
+    "GITHUB_EVENT_NAME=pull_request" \
+    "GITHUB_HEAD_REF=${PROOF_REPARENT_PR}"
+  t_done="$(date +%s)"
+  rc=0
+  snapshot_engagement "$product" "ci/${PROOF_DEFAULT_BRANCH}" "$after_snap" || rc=$?
+  t_read="$(date +%s)"
+  sed -e 's/^/    | /' "$BODY_LOG"
+  echo "    P-REPARENT timing: read $((t_read - t_done)) s after the DELETE returned"
+  outcome="$(jq -r '.outcome // "none"' "$cleanup_res" 2>/dev/null || echo "no-result-file")"
+  read_engagements "$product" "ci/${PROOF_REPARENT_PR}"
+  if [ "$BODY_RC" -eq 0 ] && [ "$outcome" = "deleted" ] && [ "$READ_N" = "0" ]; then
+    proof_pass "P-REPARENT" "committed dd-delete body exited 0 with outcome deleted, as ${PROOF_USER}; ci/${PROOF_REPARENT_PR} is gone from ${product}"
+  else
+    proof_fail "P-REPARENT" "dd-delete exited ${BODY_RC} with outcome '${outcome}' (log ${BODY_LOG}); ci/${PROOF_REPARENT_PR} matches in ${product}: ${READ_N} ${READ_ERR}; expected exit 0, deleted, 0 matches"
+  fi
+  if [ "$rc" -ne 0 ]; then
+    proof_fail "P-REPARENT" "snapshot of ci/${PROOF_DEFAULT_BRANCH} right after the delete failed: $(snippet "${after_snap}.err")"
+    return 0
+  fi
+  PROOF_RP_AFTER_SNAP="$after_snap" PROOF_RP_K_VALUE="$k" \
+    python3 - > "$post_log" 2>&1 <<'PY' || post_rc=$?
+import json
+import os
+import sys
+
+env = os.environ
+PID = "P-REPARENT"
+failures = 0
+
+
+def say(pid, ok, detail):
+    global failures
+    print("PROOF: {} {} {}".format(pid, "PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+try:
+    k = int(env["PROOF_RP_K_VALUE"])
+    with open(env["PROOF_RP_AFTER_SNAP"], encoding="utf-8") as handle:
+        main_f = json.load(handle)["findings"]
+    ids = {f["id"] for f in main_f}
+    live = [f for f in main_f if f["duplicate"] is False and f["active"] is True]
+    nondup = [f for f in main_f if f["duplicate"] is False]
+    dups = [f for f in main_f if f["duplicate"] is True]
+    say(PID, len(live) == k,
+        "immediately after the delete (no reimport): ci/{} has {} findings with duplicate=false and active=true "
+        "(expected K={}); {} total, {} non-duplicate, {} duplicate".format(
+            env["PROOF_DEFAULT_BRANCH"], len(live), k, len(main_f), len(nondup), len(dups)))
+    outside = [f for f in dups if f["duplicate_finding"] not in ids]
+    say(PID, not outside,
+        "every remaining ci/{} duplicate ({}) has its original inside ci/{}{}".format(
+            env["PROOF_DEFAULT_BRANCH"], len(dups), env["PROOF_DEFAULT_BRANCH"],
+            "" if not outside else "; {} do not: {}".format(len(outside), "; ".join(
+                "#{} dup_of={}".format(f["id"], f["duplicate_finding"]) for f in outside[:5]))))
+except (OSError, KeyError, TypeError, ValueError) as exc:
+    say(PID, False, "re-parent assertions aborted: {}".format(exc))
+sys.exit(1 if failures else 0)
+PY
+  tally_assert_log "$post_log"
+  if [ "$post_rc" -ne 0 ] && ! grep -q '^PROOF: P-REPARENT FAIL' "$post_log"; then
+    proof_fail "P-REPARENT" "the re-parent script exited ${post_rc} without reporting a failed assertion (see ${post_log})"
+  fi
+}
+
 # prove_dedup_triage BODIES_DIR ADMIN_HDR IMPORTER_TOK CA_PEM: the Phase 28
-# live block (28-03; 28-04 adds the second half). Runs after every Phase 27
-# assertion, in fresh products. Every import and delete goes through the
-# COMMITTED security.yml bodies (run_body, ci-importer token, T-27-01). The
-# admin (superuser) token is used only for scripts/defectdojo-configure.sh
-# (which requires a superuser), the user_contact_infos write and reads.
+# live block (28-03 and 28-04). Runs after every Phase 27 assertion, in fresh
+# products. Every import and delete goes through the COMMITTED security.yml
+# bodies (run_body, ci-importer token, T-27-01). The admin (superuser) token
+# is used only for scripts/defectdojo-configure.sh (which requires a
+# superuser), the user_contact_infos write, the P-DISPOSITION finding and
+# risk-acceptance writes, and reads.
 prove_dedup_triage() {
   local bodies="$1" admin_hdr="$2"
   DEDUP_B_IMPORT="${bodies}/defectdojo-import__dd-import.sh"
+  DEDUP_B_DELETE="${bodies}/defectdojo-cleanup__dd-delete.sh"
   DEDUP_IMPORTER_TOK="$3"
   DEDUP_CA_PEM="$4"
   PROOF_ADMIN_HDR="$admin_hdr"
@@ -1853,6 +2036,9 @@ PY
       fi
     fi
   fi
+
+  # ── P-REPARENT (D-02, D-03, D-20) ─────────────────────────────────────────
+  prove_reparent
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
