@@ -13,6 +13,7 @@ kubernetes/defectdojo/
 ├── Chart.yaml             # this wrapper; depends on defectdojo 1.9.53, appVersion 3.3.200
 ├── Chart.lock             # the pin of record for the subchart version
 ├── values.yaml            # the consumer value surface, all under the `defectdojo` key
+├── TRIAGE.md              # triage runbook: dispositions, default-branch-only rule
 └── templates/
     └── validate-tls.yaml  # render-time guard; renders nothing on success
 ```
@@ -48,9 +49,9 @@ The wrapper ships no `_helpers.tpl`, and that is deliberate. Helm's template nam
 | ID | Requirement | Status |
 |---|---|---|
 | DDOJO-01 | Public Helm chart deploys DefectDojo with external ingress and cert-manager-issued TLS | Complete (Phase 26) |
-| DDOJO-02 | CI scan jobs import SARIF/JSON findings into DefectDojo after each run | Planned (Phase 27) |
-| DDOJO-03 | Deduplication rules collapse repeated findings across scans and tools | Planned (Phase 28) |
-| DDOJO-04 | Triage workflow for reviewing and dispositioning findings | Planned (Phase 28) |
+| DDOJO-02 | CI scan jobs import SARIF/JSON findings into DefectDojo after each run | Complete (Phase 27) |
+| DDOJO-03 | Deduplication rules collapse repeated findings across scans and tools | Complete (Phase 28) |
+| DDOJO-04 | Triage workflow for reviewing and dispositioning findings | Complete (Phase 28) |
 | DDOJO-05 | Chart validated live via a private ArgoCD overlay | Planned (Phase 29) |
 
 ## Before You Install
@@ -219,6 +220,53 @@ kubectl -n defectdojo wait --for=condition=Ready certificate/defectdojo-tls --ti
 
 DefectDojo is then served at `https://<your host>/`. Log in as `admin` with the password you put in `DD_ADMIN_PASSWORD`.
 
+## Dedup and triage
+
+### Run the bootstrap after every fresh install
+
+Deduplication is **off** on a fresh DefectDojo 3.3.200 install. Until it is switched on, the chart's dedup guards below do nothing and every branch reimport piles up findings. After every fresh install, run the bootstrap once from the repository root:
+
+```bash
+DEFECTDOJO_URL=https://defectdojo.example.com DEFECTDOJO_ADMIN_TOKEN_FILE=/path/to/superuser-token bash scripts/defectdojo-configure.sh
+```
+
+Set `DEFECTDOJO_CA_FILE=/path/to/ca.pem` as well if the certificate is issued by a private CA. The URL must be `https://`, and TLS is always verified.
+
+- **It needs a superuser token.** `/api/v2/system_settings/` is superuser-only. The token is held by the operator. It is **not** the CI `DEFECTDOJO_API_TOKEN`, which stays a staff, non-superuser importer, and it must **never** be stored as a GitHub secret. Put the bare token in a file with mode `0600`; the script refuses a file that group or other can read, and it never puts the token on a command line.
+- **It is idempotent.** It reads the settings and PATCHes only the keys that drifted. A rerun prints a line starting `NO CHANGE`. Measured on a fresh install: the first run changed `enable_deduplication` and `risk_acceptance_form_default_days`, and the rerun printed `NO CHANGE`.
+- **It enforces exactly five settings:** `enable_deduplication` = true, `delete_duplicates` = false (duplicates are kept and marked, never deleted), `false_positive_history` = false, `retroactive_false_positive_history` = false, and `risk_acceptance_form_default_days` = 90.
+- **It leaves SLA alone.** `enable_finding_sla` is neither read for change nor sent, so it keeps its upstream value. SLA is not part of triage.
+
+### Dedup scope
+
+Dedup is **product-wide**, the DefectDojo default. A finding on a PR engagement (`ci/<pr-branch>`) that already exists on the default-branch engagement (`ci/<default>`) becomes an inactive duplicate of the default-branch finding, so a PR engagement's active findings are what the PR introduces. Dedup is **within one tool** only. Collapsing the same vulnerability across Trivy, npm audit and pip-audit is not configured, because the three 3.3.200 parsers report no shared identifier for it and no hash-field choice makes them match (ADR-026).
+
+### The two chart guards
+
+`values.yaml` ships two keys under `defectdojo.extraConfigs`, and the offline gate asserts both:
+
+- **`DD_DUPLICATE_CLUSTER_CASCADE_DELETE: "False"`.** When a PR closes, the CI cleanup deletes its engagement. With this key `"False"`, DefectDojo re-parents the default-branch duplicates of that PR's findings; with `"True"` it would delete them, and their triage record with them.
+- **`DD_DEDUPLICATION_ALGORITHM_PER_PARSER`.** This restates the 3.3.200 deduplication algorithm for the seven scan types `security.yml` imports, so a DefectDojo version bump cannot change dedup behaviour without a reviewed edit. No hash-field override ships.
+
+### Recomputing hashes after a settings change
+
+Changing `DD_HASHCODE_FIELDS_PER_SCANNER` or `DD_DEDUPLICATION_ALGORITHM_PER_PARSER` on an install that already holds findings does not update the hashes of those findings. Recompute them with the upstream `dedupe` management command. For a release named `defectdojo`:
+
+```bash
+kubectl -n defectdojo exec deploy/defectdojo-django -c uwsgi -- \
+  python manage.py dedupe --parser "Trivy Scan" --dedupe_sync
+```
+
+- `--parser "<scan type>"` limits the run to one scan type; omit it to recompute every finding.
+- `--hash_code_only` recomputes the hash codes only; `--dedupe_only` re-runs deduplication only.
+- `--dedupe_sync` runs deduplication in the foreground instead of queueing it to Celery.
+
+The command skips findings that are already `duplicate=true`, so existing duplicate links are not re-evaluated. This step is not automated; run it by hand after such a change.
+
+### Triage
+
+How to review and disposition findings, including the rule that triage happens on the default-branch engagement only, is in [TRIAGE.md](TRIAGE.md).
+
 ## Storage
 
 The bundled PostgreSQL keeps its data in a `PersistentVolumeClaim`, the upstream default, left in place so findings survive a pod restart. `defectdojo.postgresql.primary.persistence.storageClass` is **absent** from this chart's values, not empty. The rendered claim therefore carries no `storageClassName` field, and Kubernetes substitutes the cluster's **default StorageClass**. To use a different class, set it explicitly:
@@ -327,6 +375,8 @@ Everything the `defectdojo` subchart exposes can be overridden under the `defect
 | `defectdojo.django.uwsgi.appSettings.maxFd` | `102400` | uwsgi file-descriptor ceiling. Upstream `0` was measured OOMKilled at startup (§4). |
 | `defectdojo.django.uwsgi.resources` | requests 100m / 384Mi, limits 2000m / 1Gi | uwsgi container resources. Do not lower the limit below 512Mi with two processes. |
 | `defectdojo.valkey.persistence.enabled` | `false` | Valkey is only the Celery broker. Upstream valkey 0.25.8 defaults to an 8Gi PVC. |
+| `defectdojo.extraConfigs.DD_DUPLICATE_CLUSTER_CASCADE_DELETE` | `"False"` | Must stay `"False"`, so that deleting a PR engagement re-parents the default-branch duplicates of its findings instead of deleting them (ADR-026). |
+| `defectdojo.extraConfigs.DD_DEDUPLICATION_ALGORITHM_PER_PARSER` | JSON for the 7 imported scan types | Restates the 3.3.200 deduplication algorithm for every scan type `security.yml` imports, so a version bump cannot change dedup silently. It is parsed as JSON, and a malformed value crash-loops every pod. |
 
 The following are deliberately **not** in `values.yaml`, because the upstream defaults already give the behaviour this chart wants:
 
@@ -340,12 +390,13 @@ The following are deliberately **not** in `values.yaml`, because the upstream de
 - **Uploaded files and attachments are lost on pod restart.** Upstream mounts DefectDojo's media directory as an `emptyDir` (`defectdojo.django.mediaPersistentVolume.type: emptyDir`). This chart keeps that default: it is a thin wrapper, and no decision to change it has been made. Findings live in PostgreSQL and survive a restart; files uploaded alongside them do not. To persist media, override `defectdojo.django.mediaPersistentVolume.*`: set `type: pvc` and either point `persistentVolumeClaim.name` at an existing claim or set `persistentVolumeClaim.create: true`. The upstream PVC option defaults to `accessModes: [ReadWriteMany]`, which many StorageClasses cannot provide. Check that yours can, or override `accessModes`, before switching.
 - **CI Checkov does not cover this chart.** The pinned CI Checkov container renders charts without values. The issuer guard fails that bare render, so the chart is scanned zero times in CI. This is the same situation as the Nexus chart, and the guard is not weakened to change it. Checkov was measured locally against a render with values supplied, and the result is recorded in the phase record in the documentation repository. Every finding there is on upstream-rendered objects; the wrapper contributes no resources.
 - **ingress-nginx is used only by the live smoke, and is not recommended.** The ingress-nginx project was archived in March 2026. Put this chart behind any maintained Ingress controller; it relies only on standard Ingress behaviour and the cluster's default IngressClass.
-- **CSRF was measured behind one proxy only.** During research, the admin login `POST` succeeded behind ingress-nginx 1.15.1 on kind, with neither `DD_CSRF_TRUSTED_ORIGINS` nor `DD_SECURE_PROXY_SSL_HEADER` set. Why Django accepted the proxied request there was not established. If a login `POST` returns 403 behind a different controller or proxy, set `defectdojo.extraConfigs.DD_CSRF_TRUSTED_ORIGINS: https://<your host>` in your overlay, and if needed `DD_SECURE_PROXY_SSL_HEADER: "True"` as well. Neither requires a chart change.
+- **CSRF was measured behind one proxy only.** During research, the admin login `POST` succeeded behind ingress-nginx 1.15.1 on kind, with neither `DD_CSRF_TRUSTED_ORIGINS` nor `DD_SECURE_PROXY_SSL_HEADER` set. Why Django accepted the proxied request there was not established. If a login `POST` returns 403 behind a different controller or proxy, set `defectdojo.extraConfigs.DD_CSRF_TRUSTED_ORIGINS: https://<your host>` in your overlay, and if needed `DD_SECURE_PROXY_SSL_HEADER: "True"` as well. Neither requires a chart change. Adding either key under `defectdojo.extraConfigs` in an overlay keeps the two dedup guards, because Helm merges maps rather than replacing them; the offline gate's check 21 (CASCADE-DELETE-OFF) proves that.
 - **Version bumps are manual.** There is no automated dependency update for this chart. To move DefectDojo to a new release:
   1. update the dependency `version` and the `appVersion` in `Chart.yaml`, and both image tags in `values.yaml`;
   2. run `helm dependency update kubernetes/defectdojo` to refresh `Chart.lock` and the vendored tarball;
-  3. run `bash scripts/check-defectdojo-chart.sh`. IMAGE-PIN fails if the four pins disagree.
+  3. read the new release's `DEDUPLICATION_ALGORITHM_PER_PARSER` in `dojo/settings/settings.dist.py`, and if the algorithm for any imported scan type changed, update the restatement in `defectdojo.extraConfigs.DD_DEDUPLICATION_ALGORITHM_PER_PARSER` and the gate's expected map deliberately;
+  4. run `bash scripts/check-defectdojo-chart.sh`. IMAGE-PIN fails if the four pins disagree.
 
   Read the DefectDojo release notes before upgrading, because the upgrade runs Django migrations against your findings database.
 - **Resync and upgrade behaviour are not yet validated.** The smoke covers a first install only. A second `helm upgrade` or ArgoCD sync against an instance that already holds state is validated in a later phase (DDOJO-05). That phase also covers the initializer Job's interaction with ArgoCD, since the Job name changes on every render and the Job is deleted 60 seconds after completion.
-- **The decisions behind this chart** are recorded in ADR-023 in the `security_solution` documentation repository: the wrapper shape, the version pin, the issuer guard, the Secret contract and the storage defaults.
+- **The decisions behind this chart** are recorded in the `security_solution` documentation repository. ADR-023 covers the wrapper shape, the version pin, the issuer guard, the Secret contract and the storage defaults. ADR-026 covers deduplication and triage: the dedup scope, the two chart guards, the bootstrap script and the triage workflow.
