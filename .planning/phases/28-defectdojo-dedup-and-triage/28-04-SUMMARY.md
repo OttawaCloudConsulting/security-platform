@@ -45,8 +45,9 @@ The live proof now asserts the triage guarantees and the delete-time re-parent. 
 | ---- | ---- | ------ | ----- |
 | 1 | P-DISPOSITION (two reimports, exact tuples) and P-SUPPRESS | 3a18625 | scripts/defectdojo-import-proof.sh |
 | 2 | P-REPARENT and the header docstring | cf0f6c7 | scripts/defectdojo-import-proof.sh |
+| - | Fix: read the nested statistics total (post-review) | 65c0332 | scripts/defectdojo-import-proof.sh |
 
-Both commits are local on `feature/phase-28-defectdojo-dedup-and-triage`. Nothing was pushed.
+All three commits are local on `feature/phase-28-defectdojo-dedup-and-triage`. Nothing was pushed.
 
 ## What the block asserts
 
@@ -60,7 +61,7 @@ Both commits are local on `feature/phase-28-defectdojo-dedup-and-triage`. Nothin
 - **Two reimports.** Each goes to `ci/main` from `reports-main-trimmed`, with results in `results-disp-1.json` and `results-disp-2.json`. After each one the proof emits:
   - 1 line: exit 0 and the Test count unchanged.
   - 3 lines: the exact five-flag tuple for each id. FP is `false_p=T oos=F ra=F active=F is_mitigated=T`, OOS is `oos=T` with the rest the same pattern and `is_mitigated=T`, and RA is `ra=T active=F is_mitigated=F`.
-  - 1 line: trivy-fs `statistics.delta.reactivated.total == 0`. The delta object is printed for 28-05. If the path is missing, the line fails and prints the statistics, delta and reactivated keys.
+  - 1 line: the trivy-fs reactivated count is 0. It is read from `statistics.delta.reactivated.total.total`; a bare integer at `.total` is also accepted. The delta object is printed for 28-05. If neither shape is present, the line fails and prints the statistics, delta, reactivated and reactivated.total keys.
 
   After reimport 2, one more line asserts that the tuples and the FP/OOS `mitigated` timestamps equal those after reimport 1.
 - **P-SUPPRESS.** PR `ci/proof/pr-suppress` is imported from the trimmed reports, followed by `wait_dedup_settled` and a snapshot. It emits:
@@ -92,6 +93,7 @@ The P-REPARENT timing line is evidence output, not a PROOF line.
   - P-SUPPRESS passed on the expected shape.
   - The P-REPARENT precondition computed K=2. The post-delete check passed on a correct re-parent and failed, with both lines, on an un-re-parented set.
 - **Not yet run live.** The tuples, the statistics path and the re-parent are source-derived. 28-05 is the live kind run.
+- **Checked for 28-05:** `reports-trivy-only` holds only trivy-fs.json. The dd-import body records a missing semgrep, checkov or gitleaks report under `skipped` and only fails on a non-201 attempt, so the P-REPARENT imports are not blocked.
 
 ## Deviations from Plan
 
@@ -106,6 +108,12 @@ The P-REPARENT timing line is evidence output, not a PROOF line.
 - **Issue:** The plan says to append P-REPARENT to `prove_dedup_triage` and to skip its remainder on an import or precondition failure.
 - **Fix:** It lives in `prove_reparent`, called at the end of `prove_dedup_triage`, so `return 0` does the skip cleanly. The behaviour is the one the plan specifies.
 - **Commit:** cf0f6c7
+
+**3. [Rule 1 - Bug] The reactivated count is nested.**
+- **Found during:** post-task review
+- **Issue:** The plan named `statistics.delta.reactivated.total`. In DefectDojo's reimport statistics, each bucket's `total` is itself a severity bucket (`{active, verified, ..., total: n}`). The committed dd-import body already reads `after.total` that way (security.yml, the `IMPORTED:` line, around L1533-1535). The first version compared the dict itself against an integer, so it would have failed on every live run.
+- **Fix:** When `.total` is a dict, its `.total` is used; a bare integer is still accepted. The failure message now also lists the `reactivated.total` keys. A synthetic run passed for both shapes and failed on a reactivated count of 1.
+- **Commit:** 65c0332
 
 Additions within spec that are not deviations:
 - `findings_by_ids`, `disposition_write` and `assert_disposition` are small helpers.
@@ -128,4 +136,4 @@ None. No new network surface: the block writes only to the throwaway kind Defect
 ## Self-Check: PASSED
 
 - `repos/security-platform/scripts/defectdojo-import-proof.sh` contains P-DISPOSITION, P-SUPPRESS, P-REPARENT, `/api/v2/risk_acceptance/`, `results-disp-2.json` and `PROOF_REPARENT_PRODUCT`.
-- Commits 3a18625 and cf0f6c7 are present in the security-platform `git log`.
+- Commits 3a18625, cf0f6c7 and 65c0332 are present in the security-platform `git log`.
