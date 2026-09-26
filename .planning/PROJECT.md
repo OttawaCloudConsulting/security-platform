@@ -32,6 +32,7 @@ Every code change is automatically scanned for security issues, secrets, and sup
 - [x] VAL-02: Required-check enforcement exercised live on external repo (`terraform-pipelines`) — GitHub observably refused a merge with a red required check, then window closed and ruleset restored byte-identical — v2.0
 - [x] NEXUS-05: Nexus chart validated live via private ArgoCD overlay on the homelab cluster — anonymous npm/PyPI/Docker/Helm pulls and anonymous write refusal measured, second sync idempotent (ADR-022). Validated in Phase 25: Nexus Live Validation
 - [x] DDOJO-01: Public DefectDojo Helm chart (`kubernetes/defectdojo/`, wraps upstream `defectdojo` 1.9.53 / app 3.3.200) with ingress and cert-manager TLS, generic for any cluster: host, issuer and Secrets are consumer-supplied; offline gate 20/20 and live kind smoke (verified TLS, admin login, Celery ping) pass (ADR-023, PRs #19/#20). Validated in Phase 26: DefectDojo Generic Chart
+- [x] DDOJO-02: `security-platform` scan jobs import their SARIF/JSON findings into a consumer's DefectDojo after each run (opt-in via `DEFECTDOJO_URL`/`DEFECTDOJO_API_TOKEN`, reimport per branch, ADR-024); `DEFECTDOJO_URL` must be https:// and curl is pinned to https (CR-01 fix, ADR-025, released as `v1.1.1`, `v1` moved). Live proof 88 assertions on kind. Validated in Phase 27: DefectDojo CI Auto-Import
 
 ## Current Milestone: v3.0 K8s Infra & Dashboards
 
@@ -87,7 +88,7 @@ Every code change is automatically scanned for security issues, secrets, and sup
 
 ## Current State
 
-**In progress: v3.0 K8s Infra & Dashboards** — Phase 26 complete (2026-09-24): public DefectDojo chart merged to `security-platform` main (PR #19, install fix PR #20), proven on kind with verified TLS, admin login and a Celery broker ping. Five code-review warnings (issuer guard ignores `extraAnnotations`, README Secret-name rule, zsh password recipe, stale gate hint, gate SKIP on a deleted guard) are open follow-ups in `26-REVIEW.md`. Next: Phase 27 (DefectDojo CI Auto-Import).
+**In progress: v3.0 K8s Infra & Dashboards** — Phase 27 complete (2026-09-26): scan jobs auto-import findings into DefectDojo (DDOJO-02, ADR-024). The CR-01 gap (token sendable over a non-https `DEFECTDOJO_URL`) was closed by an https-only refusal plus curl `--proto =https` pinning (ADR-025, PR #22, released `v1.1.1`, `v1` moved to 917352c). Three human-verification items remain open in `27-HUMAN-UAT.md` (first scheduled run, a real consumer, the closed-PR reopen race); seven code-review warnings are open follow-ups in `27-REVIEW.md`. Next: Phase 28 (DefectDojo Dedup and Triage).
 
 **Shipped: v2.0 CI/CD Security Pipeline** (2026-09-17) — Phases 14-22 (10 phases incl. inserted 20.1), 63 plans, 15/15 requirements.
 
@@ -171,4 +172,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-24 after Phase 26 (DefectDojo Generic Chart)*
+*Last updated: 2026-09-26 after Phase 27 (DefectDojo CI Auto-Import)*
