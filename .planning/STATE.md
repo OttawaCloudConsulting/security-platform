@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 28-04-PLAN.md
-last_updated: "2026-09-26T14:07:03.479Z"
+stopped_at: Completed 28-05-PLAN.md
+last_updated: "2026-09-26T14:31:50.542Z"
 last_activity: 2026-09-26
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 55
-  completed_plans: 50
+  completed_plans: 51
   percent: 71
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 28 (defectdojo-dedup-and-triage) — EXECUTING
-Plan: 5 of 9
+Plan: 6 of 9
 Status: Ready to execute
 Last activity: 2026-09-26
 
@@ -281,6 +281,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 28]: 28-02: configure script takes a bare superuser token file (0600) and a CA file path, no insecure mode; drift compares type as well as value
 - [Phase 28]: 28-03: proof never trusts API filters (client-side selection, test-membership check) and masks the admin token with bash builtins only (no argv)
 - [Phase 28]: 28-04: disposition selection excludes findings any ci/main finding points at (trivy-image overlap); P-REPARENT reads ci/main before any other check after the DELETE
+- [Phase 28]: 28-05: P-DISPOSITION selection does not require verified=false; 3.3.200 lands imports through the committed dd-import body verified=true (measured). Local kind proof PASS 127 assertions
 
 ### Pending Todos
 
@@ -406,11 +407,12 @@ Carried forward from v1.1 close:
 | Phase 28 P02 | 15 min | 2 tasks | 3 files |
 | Phase 28 P03 | 35 min | 2 tasks | 1 files |
 | Phase 28 P04 | 20 min | 2 tasks | 1 files |
+| Phase 28 P05 | 20 min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-26T14:07:03.469Z
-Stopped at: Completed 28-04-PLAN.md
+Last session: 2026-09-26T14:31:50.533Z
+Stopped at: Completed 28-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
