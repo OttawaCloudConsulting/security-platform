@@ -1,0 +1,101 @@
+# Phase 28 plan 08 - post-merge verification from origin/main
+# Captured: 2026-09-26T18:55:36Z
+# Repo: OttawaCloudConsulting/security-platform ; PR #23 ; pre-merge head c77e4f4d47e820c76914ca798a88be9b610fb130
+# Pre-merge: gh pr view 23 -> state OPEN, mergeStateStatus CLEAN, mergeable MERGEABLE; origin main was 917352c00987023fa5ff1e6cdabc16987eb114dd
+# Merge command run: gh pr merge 23 --merge  (exit 0; no --delete-branch, --admin or --auto)
+
+$ gh pr view 23 --json state,mergeCommit,mergedAt,headRefOid,baseRefName
+{"baseRefName":"main","headRefOid":"c77e4f4d47e820c76914ca798a88be9b610fb130","mergeCommit":{"oid":"c8027e6784ec631db128f45444c9a8092db9d0a1"},"mergedAt":"2026-09-26T18:55:24Z","state":"MERGED"}
+[exit=0]
+
+$ git fetch origin --tags
+From https://github.com/OttawaCloudConsulting/security-platform
+   917352c..c8027e6  main       -> origin/main
+[exit=0]
+
+$ git rev-parse origin/main
+c8027e6784ec631db128f45444c9a8092db9d0a1
+[exit=0]
+
+$ git rev-list --parents -n1 origin/main
+c8027e6784ec631db128f45444c9a8092db9d0a1 917352c00987023fa5ff1e6cdabc16987eb114dd c77e4f4d47e820c76914ca798a88be9b610fb130
+[exit=0]
+
+$ git log -1 --format='%H %s' origin/main
+c8027e6784ec631db128f45444c9a8092db9d0a1 Merge pull request #23 from OttawaCloudConsulting/feature/phase-28-defectdojo-dedup-and-triage
+[exit=0]
+
+$ git show origin/main:kubernetes/defectdojo/values.yaml | grep -n -E 'DD_DUPLICATE_CLUSTER_CASCADE_DELETE|DD_DEDUPLICATION_ALGORITHM_PER_PARSER'
+119:    DD_DUPLICATE_CLUSTER_CASCADE_DELETE: "False"
+125:    DD_DEDUPLICATION_ALGORITHM_PER_PARSER: '{"Semgrep JSON Report": "unique_id_from_tool_or_hash_code", "Checkov Scan": "hash_code", "Trivy Scan": "hash_code", "Gitleaks Scan": "hash_code", "NPM Audit v7+ Scan": "hash_code", "pip-audit Scan": "hash_code", "SARIF": "unique_id_from_tool_or_hash_code"}'
+[exit=0]
+
+$ git show origin/main:kubernetes/defectdojo/values.yaml | grep -c 'DD_DUPLICATE_CLUSTER_CASCADE_DELETE: "False"'
+1
+[exit=0]
+
+$ git show origin/main:scripts/check-defectdojo-chart.sh | grep -n 'CHECK_COUNT=22'
+553:CHECK_COUNT=22
+[exit=0]
+
+$ git show origin/main:scripts/defectdojo-configure.sh | grep -n 'risk_acceptance_form_default_days'
+28:#   risk_acceptance_form_default_days  = 90     (D-22)
+107:    "risk_acceptance_form_default_days": 90,
+210:              "false_positive_history, retroactive_false_positive_history, risk_acceptance_form_default_days)")
+[exit=0]
+
+$ git show origin/main:scripts/defectdojo-import-proof.sh | grep -n -E 'P-REPARENT|P-DISPOSITION' | head -20
+80:# P-DISPOSITION P-SUPPRESS P-REPARENT (28-03/28-04, --hook only, after every
+90:# the P-DEDUP-MODE contact-info write and the P-DISPOSITION finding and
+146:# (28-04 P-REPARENT). The PR branch names contain a slash on purpose.
+1039:# P-DISPOSITION. The admin header goes by path (-H @file), the JSON body comes
+1041:# later P-DISPOSITION and P-SUPPRESS assertion depends on the three
+1051:    proof_abort "P-DISPOSITION" "${label}: ${method} ${path}: curl exit ${rc}, http ${code:-none} (expected ${expect}): $(head -c 400 "$resp" 2>/dev/null | tr '\n' ' ' || true)$(tr '\n' ' ' < "${resp}.err" 2>/dev/null || true)"
+1056:# assert_disposition STAGE: the P-DISPOSITION read-side assertions on the
+1075:PID = "P-DISPOSITION"
+1192:  if [ "$arc" -ne 0 ] && ! grep -q '^PROOF: P-DISPOSITION FAIL' "$log"; then
+1193:    proof_fail "P-DISPOSITION" "the stage-${stage} assertion script exited ${arc} without reporting a failed assertion (see ${log})"
+1197:# prove_reparent: P-REPARENT (D-02, D-03, D-20; RESEARCH Pattern 3). In the
+1212:  echo "=== PR engagement delete re-parents ci/${PROOF_DEFAULT_BRANCH} findings (P-REPARENT) ==="
+1216:    proof_fail "P-REPARENT" "committed dd-import body (ci/${PROOF_REPARENT_PR} in ${product}) exited ${BODY_RC} (log ${BODY_LOG}); P-REPARENT skipped"
+1222:    proof_fail "P-REPARENT" "committed dd-import body (ci/${PROOF_DEFAULT_BRANCH} in ${product}) exited ${BODY_RC} (log ${BODY_LOG}); P-REPARENT skipped"
+1236:    proof_fail "P-REPARENT" "precondition snapshot in ${product} failed: $(snippet "${pr_snap}.err" "${main_snap}.err"); P-REPARENT skipped"
+1247:PID = "P-REPARENT"
+1275:    if ! grep -q '^PROOF: P-REPARENT FAIL' "$pre_log"; then
+1276:      proof_fail "P-REPARENT" "the precondition script exited ${pre_rc} without reporting a failed assertion (see ${pre_log})"
+1302:  echo "    P-REPARENT timing: read $((t_read - t_done)) s after the DELETE returned"
+1306:    proof_pass "P-REPARENT" "committed dd-delete body exited 0 with outcome deleted, as ${PROOF_USER}; ci/${PROOF_REPARENT_PR} is gone from ${product}"
+[exit=0]
+
+$ git show origin/main:kubernetes/defectdojo/TRIAGE.md | head -3
+# DefectDojo Triage Runbook
+
+This runbook covers how to review and disposition the findings that the DefectDojo import in `.github/workflows/security.yml` loads into DefectDojo. It applies to the DefectDojo 3.3.200 install deployed by the chart in this directory. The decisions behind it are recorded in ADR-026 in the `security_solution` documentation repository. Every behaviour marked "measured" below was observed in the kind proof (`bash scripts/defectdojo-import-proof.sh`) against 3.3.200.
+[exit=0]
+
+$ git show origin/main:kubernetes/defectdojo/Chart.yaml | grep -n '^version:'
+3:version: 0.2.0
+[exit=0]
+
+$ git diff --quiet 917352c origin/main -- .github/workflows/security.yml .github/workflows/pr-security.yml .github/workflows/scheduled-security.yml scripts/set-required-checks.sh
+[exit=0]
+
+$ git diff --stat 917352c origin/main
+ .github/workflows/defectdojo-import-proof.yml |    8 +-
+ kubernetes/defectdojo/Chart.yaml              |    2 +-
+ kubernetes/defectdojo/README.md               |   68 +-
+ kubernetes/defectdojo/TRIAGE.md               |  127 +++
+ kubernetes/defectdojo/values.yaml             |   22 +
+ scripts/check-defectdojo-chart.sh             |   85 +-
+ scripts/defectdojo-configure.sh               |  241 ++++
+ scripts/defectdojo-import-proof.sh            | 1476 ++++++++++++++++++++++++-
+ 8 files changed, 2007 insertions(+), 22 deletions(-)
+[exit=0]
+
+$ git ls-remote --tags origin v1 'v1^{}'
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1
+[exit=0]
+
+$ git ls-remote origin refs/heads/feature/phase-28-defectdojo-dedup-and-triage
+c77e4f4d47e820c76914ca798a88be9b610fb130	refs/heads/feature/phase-28-defectdojo-dedup-and-triage
+[exit=0]
