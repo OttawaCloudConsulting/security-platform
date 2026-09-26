@@ -1010,6 +1010,164 @@ read_contact_info() {
   read -r CONTACT_N CONTACT_ROW_ID CONTACT_MODE <<< "$sel"
 }
 
+# findings_by_ids IDS OUTFILE: the `findings-by-id` mode for the
+# comma-separated IDS into OUTFILE (stderr into OUTFILE.err). Returns the
+# script's exit status.
+findings_by_ids() {
+  SNAP_IDS="$1" python3 "$PROOF_DEDUP_PY" findings-by-id > "$2" 2> "${2}.err"
+}
+
+# disposition_write LABEL METHOD PATH EXPECT BODYFILE: one admin write for
+# P-DISPOSITION. The admin header goes by path (-H @file), the JSON body comes
+# from a 0600 file that is removed after use. A wrong HTTP code aborts: every
+# later P-DISPOSITION and P-SUPPRESS assertion depends on the three
+# dispositions.
+disposition_write() {
+  local label="$1" method="$2" path="$3" expect="$4" body="$5"
+  local resp="${PROOF_DIR}/disp-${label}-resp.json" res code rc=0
+  res="$(api_call "$resp" -X "$method" -H "@${PROOF_ADMIN_HDR}" -H 'Content-Type: application/json' \
+    --data-binary "@${body}" "${BASE_URL}${path}" 2>"${resp}.err")" || rc=$?
+  rm -f "$body"
+  code="${res%% *}"
+  if [ "$rc" -ne 0 ] || [ "$code" != "$expect" ]; then
+    proof_abort "P-DISPOSITION" "${label}: ${method} ${path}: curl exit ${rc}, http ${code:-none} (expected ${expect}): $(head -c 400 "$resp" 2>/dev/null | tr '\n' ' ' || true)$(tr '\n' ' ' < "${resp}.err" 2>/dev/null || true)"
+  fi
+  echo "    ${label}: ${method} ${path} -> ${code}"
+}
+
+# assert_disposition STAGE: the P-DISPOSITION read-side assertions on the
+# three dispositioned ids. Inputs (environment only): PROOF_DISP_IDS (the
+# {"fp","oos","ra"} id file), PROOF_DISP_NOW (findings-by-id output of this
+# stage), and for STAGE 1 and 2 PROOF_DISP_RESULTS (the dd-import results
+# file of that reimport); STAGE 2 also reads PROOF_DISP_PREV (the stage-1
+# findings-by-id output).
+#   STAGE 0  before any reimport: each id shows its flag true and active=false
+#   STAGE 1  after reimport 1: the exact tuple per id (RESEARCH Pattern 4) and
+#            the trivy-fs statistics.delta.reactivated.total is 0
+#   STAGE 2  as stage 1, plus the tuples and the FP/OOS mitigated timestamps
+#            equal those after reimport 1 (never reactivated, no re-stamp)
+assert_disposition() {
+  local stage="$1" log="${PROOF_DIR}/assert-disposition-${1}.log" arc=0
+  PROOF_DISP_STAGE="$stage" python3 - > "$log" 2>&1 <<'PY' || arc=$?
+import json
+import os
+import sys
+
+env = os.environ
+PID = "P-DISPOSITION"
+stage = int(env["PROOF_DISP_STAGE"])
+ROLES = ["fp", "oos", "ra"]
+FLAG = {"fp": "false_p", "oos": "out_of_scope", "ra": "risk_accepted"}
+KEYS = ["false_p", "out_of_scope", "risk_accepted", "active", "is_mitigated"]
+# Source-derived (RESEARCH Pattern 4), not yet measured: asserted exactly so a
+# behaviour change cannot pass silently.
+EXPECT = {
+    "fp": {"false_p": True, "out_of_scope": False, "risk_accepted": False, "active": False, "is_mitigated": True},
+    "oos": {"false_p": False, "out_of_scope": True, "risk_accepted": False, "active": False, "is_mitigated": True},
+    "ra": {"false_p": False, "out_of_scope": False, "risk_accepted": True, "active": False, "is_mitigated": False},
+}
+failures = 0
+
+
+def say(pid, ok, detail):
+    global failures
+    print("PROOF: {} {} {}".format(pid, "PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+def load(path):
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def tup(f):
+    return {k: f[k] for k in KEYS}
+
+
+def fmt(t):
+    return " ".join("{}={}".format(k, t[k]) for k in KEYS)
+
+
+def reactivated_check():
+    try:
+        results = load(env["PROOF_DISP_RESULTS"])
+    except (OSError, ValueError) as exc:
+        say(PID, False, "reimport {}: results file unreadable: {}".format(stage, exc))
+        return
+    recs = [r for r in (results.get("attempted") or []) if isinstance(r, dict) and r.get("test_title") == "trivy-fs"]
+    if len(recs) != 1:
+        say(PID, False, "reimport {}: {} trivy-fs records in the results file, expected 1".format(stage, len(recs)))
+        return
+    stats = recs[0].get("statistics")
+    if not isinstance(stats, dict):
+        say(PID, False, "reimport {}: trivy-fs statistics is {!r} (http {})".format(
+            stage, stats, recs[0].get("http_code")))
+        return
+    delta = stats.get("delta")
+    print("    reimport {} trivy-fs statistics.delta: {}".format(stage, json.dumps(delta, sort_keys=True)[:800]))
+    react = delta.get("reactivated") if isinstance(delta, dict) else None
+    total = react.get("total") if isinstance(react, dict) else None
+    if not isinstance(total, int) or isinstance(total, bool):
+        say(PID, False, "reimport {}: statistics.delta.reactivated.total is absent or not an integer ({!r}); "
+            "statistics keys: {}; delta keys: {}; reactivated keys: {}".format(
+                stage, total, sorted(stats),
+                sorted(delta) if isinstance(delta, dict) else type(delta).__name__,
+                sorted(react) if isinstance(react, dict) else type(react).__name__))
+        return
+    say(PID, total == 0, "reimport {}: trivy-fs statistics.delta.reactivated.total = {} (expected 0)".format(
+        stage, total))
+
+
+try:
+    ids = load(env["PROOF_DISP_IDS"])
+    now = load(env["PROOF_DISP_NOW"])
+    rows = {}
+    for role in ROLES:
+        f = now.get(str(ids[role]))
+        if f is None:
+            raise KeyError("finding #{} ({}) is missing from the read-back".format(ids[role], role.upper()))
+        rows[role] = f
+    if stage == 0:
+        for role in ROLES:
+            f = rows[role]
+            say(PID, f[FLAG[role]] is True and f["active"] is False,
+                "before any reimport: {} #{} reads {}=True active=False ({})".format(
+                    role.upper(), f["id"], FLAG[role], fmt(tup(f))))
+    else:
+        for role in ROLES:
+            f = rows[role]
+            got = tup(f)
+            say(PID, got == EXPECT[role], "after reimport {}: {} #{} is {} (expected {}), mitigated={}".format(
+                stage, role.upper(), f["id"], fmt(got), fmt(EXPECT[role]), f["mitigated"]))
+        reactivated_check()
+        if stage == 2:
+            prev = load(env["PROOF_DISP_PREV"])
+            diffs, stamps = [], []
+            for role in ROLES:
+                p, n = prev.get(str(ids[role])), rows[role]
+                if p is None:
+                    diffs.append("{} #{} missing from the reimport-1 read-back".format(role.upper(), ids[role]))
+                    continue
+                if tup(p) != tup(n):
+                    diffs.append("{} #{} tuple {} -> {}".format(role.upper(), n["id"], fmt(tup(p)), fmt(tup(n))))
+                if role in ("fp", "oos"):
+                    stamps.append("{}={}".format(role.upper(), n["mitigated"]))
+                    if p["mitigated"] != n["mitigated"]:
+                        diffs.append("{} #{} mitigated {} -> {}".format(role.upper(), n["id"], p["mitigated"],
+                                                                         n["mitigated"]))
+            say(PID, not diffs, "reimport 2 vs reimport 1: the three tuples and the FP/OOS mitigated timestamps "
+                "({}) are unchanged{}".format(", ".join(stamps), "" if not diffs else "; changed: " + "; ".join(diffs)))
+except (OSError, KeyError, TypeError, ValueError) as exc:
+    say(PID, False, "disposition assertions (stage {}) aborted: {}".format(stage, exc))
+sys.exit(1 if failures else 0)
+PY
+  tally_assert_log "$log"
+  if [ "$arc" -ne 0 ] && ! grep -q '^PROOF: P-DISPOSITION FAIL' "$log"; then
+    proof_fail "P-DISPOSITION" "the stage-${stage} assertion script exited ${arc} without reporting a failed assertion (see ${log})"
+  fi
+}
+
 # prove_dedup_triage BODIES_DIR ADMIN_HDR IMPORTER_TOK CA_PEM: the Phase 28
 # live block (28-03; 28-04 adds the second half). Runs after every Phase 27
 # assertion, in fresh products. Every import and delete goes through the
@@ -1490,6 +1648,210 @@ PY
   tally_assert_log "$cross_log"
   if [ "$cross_rc" -ne 0 ] && ! grep -q '^PROOF: P-CROSSTOOL FAIL' "$cross_log"; then
     proof_fail "P-CROSSTOOL" "the cross-tool script exited ${cross_rc} without reporting a failed assertion (see ${cross_log})"
+  fi
+
+  # ── P-DISPOSITION (D-11, D-15, RESEARCH Patterns 4 and 7) ─────────────────
+  # Three unique findings of the ci/main trivy-fs Test are set False
+  # Positive, Out of Scope and Risk Accepted (a full Risk_Acceptance with a
+  # 90-day expiry and a reason), then ci/main is reimported twice from the
+  # SAME trimmed reports (the delta never lands on main). None may be
+  # reactivated, and each must hold its exact source-derived tuple.
+  echo
+  echo "=== dispositions survive two default-branch reimports (P-DISPOSITION) ==="
+  local disp_snap="${PROOF_DIR}/disp-main.json" disp_ids="${PROOF_DIR}/disp-ids.json" sel_rc=0
+  rc=0
+  snapshot_engagement "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_DEFAULT_BRANCH}" "$disp_snap" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_abort "P-DISPOSITION" "snapshot of ${PROOF_DEDUP_PRODUCT} / ci/${PROOF_DEFAULT_BRANCH} failed: $(snippet "${disp_snap}.err")"
+  fi
+  # Selection: active, non-duplicate, unverified, undispositioned, a title
+  # that occurs exactly once in the trivy-fs Test, and no ci/main finding
+  # pointing at it as its original. The last rule keeps a vulnerability that
+  # trivy-image also reports (same "Trivy Scan" type, so a duplicate of it)
+  # out of the set: its PR import would give two copies of one original and
+  # P-SUPPRESS's "exactly one" would fail for a reason that is not a
+  # suppression defect.
+  PROOF_DISP_SNAP="$disp_snap" PROOF_DISP_IDS="$disp_ids" \
+    python3 - > "${disp_ids}.log" 2>&1 <<'PY' || sel_rc=$?
+import json
+import os
+import sys
+
+env = os.environ
+with open(env["PROOF_DISP_SNAP"], encoding="utf-8") as handle:
+    snap = json.load(handle)
+fs_tests = [tid for tid, t in snap["tests"].items() if t.get("title") == "trivy-fs"]
+if len(fs_tests) != 1:
+    print("SELECT-FAIL: {} Tests titled 'trivy-fs' in ci/{} (Test titles: {})".format(
+        len(fs_tests), env["PROOF_DEFAULT_BRANCH"], sorted(str(t.get("title")) for t in snap["tests"].values())))
+    sys.exit(3)
+tid = int(fs_tests[0])
+findings = snap["findings"]
+in_test = [f for f in findings if f["test"] == tid]
+titles = {}
+for f in in_test:
+    titles[f["title"]] = titles.get(f["title"], 0) + 1
+pointed = {f["duplicate_finding"] for f in findings if f["duplicate_finding"] is not None}
+eligible = sorted((f for f in in_test
+                   if f["active"] is True and f["duplicate"] is False and f["verified"] is False
+                   and f["false_p"] is False and f["out_of_scope"] is False and f["risk_accepted"] is False
+                   and titles[f["title"]] == 1 and f["id"] not in pointed), key=lambda f: f["id"])
+print("    trivy-fs Test {}: {} findings, {} eligible (active, non-duplicate, unverified, unique title, "
+      "no ci/{} duplicate of it)".format(tid, len(in_test), len(eligible), env["PROOF_DEFAULT_BRANCH"]))
+if len(eligible) < 3:
+    print("SELECT-FAIL: only {} eligible trivy-fs findings, 3 needed".format(len(eligible)))
+    sys.exit(3)
+chosen = dict(zip(["fp", "oos", "ra"], eligible[:3]))
+with open(env["PROOF_DISP_IDS"], "w", encoding="utf-8") as handle:
+    json.dump({role: f["id"] for role, f in chosen.items()}, handle)
+for role, f in chosen.items():
+    print("    {}: #{} {!r}".format(role.upper(), f["id"], f["title"][:100]))
+PY
+  sed -e 's/^/    /' "${disp_ids}.log"
+  if [ "$sel_rc" -ne 0 ]; then
+    proof_abort "P-DISPOSITION" "selecting three unique trivy-fs findings on ci/${PROOF_DEFAULT_BRANCH} failed (exit ${sel_rc}): $(snippet "${disp_ids}.log")"
+  fi
+  local fp_id oos_id ra_id disp_idlist
+  fp_id="$(jq -r '.fp' "$disp_ids")"
+  oos_id="$(jq -r '.oos' "$disp_ids")"
+  ra_id="$(jq -r '.ra' "$disp_ids")"
+  if ! [[ "$fp_id" =~ ^[0-9]+$ && "$oos_id" =~ ^[0-9]+$ && "$ra_id" =~ ^[0-9]+$ ]]; then
+    proof_abort "P-DISPOSITION" "the selection wrote non-integer ids: $(snippet "$disp_ids")"
+  fi
+  disp_idlist="${fp_id},${oos_id},${ra_id}"
+  echo "    selected: FP_ID=${fp_id} OOS_ID=${oos_id} RA_ID=${ra_id}"
+
+  # The RA owner is the admin user, read by username and selected
+  # client-side (an ignored filter would return every user).
+  local admin_id ra_expiry res code dbody="${PROOF_DIR}/disp-body.json" ures="${PROOF_DIR}/admin-user-get.json"
+  rc=0
+  res="$(api_call "$ures" -G -H "@${admin_hdr}" --data-urlencode "username=${ADMIN_USER}" \
+    --data-urlencode "limit=100" "${BASE_URL}/api/v2/users/" 2>"${ures}.err")" || rc=$?
+  code="${res%% *}"
+  admin_id="$(jq -r --arg u "$ADMIN_USER" \
+    '[.results[]? | select(.username == $u) | .id] | if length == 1 then .[0] else "none" end' \
+    "$ures" 2>/dev/null)" || admin_id="none"
+  if [ "$rc" -ne 0 ] || [ "$code" != "200" ] || ! [[ "$admin_id" =~ ^[0-9]+$ ]]; then
+    proof_abort "P-DISPOSITION" "admin user id for the RA owner: GET /api/v2/users/?username=${ADMIN_USER}: curl exit ${rc}, http ${code:-none}, id '${admin_id}'"
+  fi
+  # UTC today + 90 days, the D-22 risk_acceptance_form_default_days value.
+  ra_expiry="$(python3 -c 'import datetime; print((datetime.datetime.now(datetime.timezone.utc).date() + datetime.timedelta(days=90)).strftime("%Y-%m-%dT00:00:00Z"))')"
+  echo "    RA owner: ${ADMIN_USER} (id ${admin_id}); expiration_date ${ra_expiry}"
+
+  jq -n '{false_p: true, active: false, verified: false}' > "$dbody"
+  disposition_write fp PATCH "/api/v2/findings/${fp_id}/" 200 "$dbody"
+  jq -n '{out_of_scope: true, active: false}' > "$dbody"
+  disposition_write oos PATCH "/api/v2/findings/${oos_id}/" 200 "$dbody"
+  jq -n --argjson owner "$admin_id" --argjson f "$ra_id" --arg exp "$ra_expiry" \
+    '{name: "P-DISPOSITION proof risk acceptance", owner: $owner, accepted_findings: [$f],
+      expiration_date: $exp, decision: "A",
+      decision_details: "P-DISPOSITION proof: reason recorded per TRIAGE.md"}' > "$dbody"
+  disposition_write ra POST "/api/v2/risk_acceptance/" 201 "$dbody"
+
+  export PROOF_DISP_IDS="$disp_ids"
+  rc=0
+  findings_by_ids "$disp_idlist" "${PROOF_DIR}/disp-0.json" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_abort "P-DISPOSITION" "read-back of the three dispositioned findings failed: $(snippet "${PROOF_DIR}/disp-0.json.err")"
+  fi
+  PROOF_DISP_NOW="${PROOF_DIR}/disp-0.json" assert_disposition 0
+
+  local disp_tests n
+  read_engagements "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_DEFAULT_BRANCH}"
+  if [ "$READ_N" != "1" ] || ! [[ "$READ_TESTS" =~ ^[0-9]+$ ]]; then
+    proof_abort "P-DISPOSITION" "ci/${PROOF_DEFAULT_BRANCH} in ${PROOF_DEDUP_PRODUCT}: ${READ_N} match(es), Test count ${READ_TESTS} ${READ_ERR}"
+  fi
+  disp_tests="$READ_TESTS"
+  # Reimport 1 and 2 write results-disp-1.json and results-disp-2.json; the
+  # stage-2 assertions compare against the reimport-1 read-back disp-1.json.
+  for n in 1 2; do
+    import_as_branch "disp-reimport-${n}" "$PROOF_DEDUP_PRODUCT" "$PROOF_DEFAULT_BRANCH" "$trimmed" \
+      "${PROOF_DIR}/results-disp-${n}.json"
+    read_engagements "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_DEFAULT_BRANCH}"
+    if [ "$BODY_RC" -eq 0 ] && [ "$READ_N" = "1" ] && [ "$READ_TESTS" = "$disp_tests" ]; then
+      proof_pass "P-DISPOSITION" "reimport ${n} of ci/${PROOF_DEFAULT_BRANCH} from the trimmed reports -> exit 0, Test count unchanged at ${disp_tests} (in-place reimport)"
+    else
+      proof_fail "P-DISPOSITION" "reimport ${n}: dd-import exited ${BODY_RC} (log ${BODY_LOG}); ci/${PROOF_DEFAULT_BRANCH} ${READ_N} match(es), Test count ${READ_TESTS} (expected ${disp_tests}) ${READ_ERR}"
+    fi
+    rc=0
+    findings_by_ids "$disp_idlist" "${PROOF_DIR}/disp-${n}.json" || rc=$?
+    if [ "$rc" -ne 0 ]; then
+      proof_fail "P-DISPOSITION" "read-back after reimport ${n} failed: $(snippet "${PROOF_DIR}/disp-${n}.json.err")"
+      continue
+    fi
+    PROOF_DISP_NOW="${PROOF_DIR}/disp-${n}.json" \
+      PROOF_DISP_RESULTS="${PROOF_DIR}/results-disp-${n}.json" \
+      PROOF_DISP_PREV="${PROOF_DIR}/disp-1.json" \
+      assert_disposition "$n"
+  done
+
+  # ── P-SUPPRESS (D-14, RESEARCH Pattern 5) ─────────────────────────────────
+  # A new PR import of the same trimmed reports: every finding already exists
+  # on ci/main, so each dispositioned original gets exactly one inactive PR
+  # duplicate and the PR engagement shows nothing active.
+  echo
+  echo "=== dispositions on ci/${PROOF_DEFAULT_BRANCH} suppress new PR copies (P-SUPPRESS) ==="
+  import_as_branch suppress-pr "$PROOF_DEDUP_PRODUCT" "$PROOF_SUPPRESS_PR" "$trimmed" \
+    "${PROOF_DIR}/results-suppress-pr.json"
+  if [ "$BODY_RC" -ne 0 ]; then
+    proof_fail "P-SUPPRESS" "committed dd-import body (ci/${PROOF_SUPPRESS_PR}, trimmed reports) exited ${BODY_RC} (log ${BODY_LOG})"
+  else
+    wait_dedup_settled "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_SUPPRESS_PR}"
+    local sup_snap="${PROOF_DIR}/suppress-pr.json" sup_log="${PROOF_DIR}/assert-suppress.log" sup_rc=0
+    rc=0
+    snapshot_engagement "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_SUPPRESS_PR}" "$sup_snap" || rc=$?
+    if [ "$rc" -ne 0 ]; then
+      proof_fail "P-SUPPRESS" "snapshot of ${PROOF_DEDUP_PRODUCT} / ci/${PROOF_SUPPRESS_PR} failed: $(snippet "${sup_snap}.err")"
+    else
+      PROOF_SUPPRESS_SNAP="$sup_snap" python3 - > "$sup_log" 2>&1 <<'PY' || sup_rc=$?
+import json
+import os
+import sys
+
+env = os.environ
+PID = "P-SUPPRESS"
+failures = 0
+
+
+def say(pid, ok, detail):
+    global failures
+    print("PROOF: {} {} {}".format(pid, "PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+def brief(f):
+    return "#{} {!r} dup={} active={} dup_of={}".format(
+        f["id"], f["title"][:60], f["duplicate"], f["active"], f["duplicate_finding"])
+
+
+try:
+    with open(env["PROOF_DISP_IDS"], encoding="utf-8") as handle:
+        ids = json.load(handle)
+    with open(env["PROOF_SUPPRESS_SNAP"], encoding="utf-8") as handle:
+        pr_f = json.load(handle)["findings"]
+    pr = env["PROOF_SUPPRESS_PR"]
+    for role in ["fp", "oos", "ra"]:
+        oid = ids[role]
+        copies = [f for f in pr_f if f["duplicate_finding"] == oid]
+        ok = len(copies) == 1 and copies[0]["duplicate"] is True and copies[0]["active"] is False
+        say(PID, ok, "{} #{}: {} ci/{} finding(s) have it as duplicate_finding (expected exactly 1, duplicate=true, "
+            "active=false){}".format(role.upper(), oid, len(copies), pr,
+                                     "" if not copies else ": " + "; ".join(brief(f) for f in copies[:5])))
+    active = [f for f in pr_f if f["active"] is True]
+    say(PID, bool(pr_f) and not active,
+        "ci/{} holds {} findings, {} active (expected 0: every finding in the trimmed set already exists on ci/{}){}".format(
+            pr, len(pr_f), len(active), env["PROOF_DEFAULT_BRANCH"],
+            "" if not active else ": " + "; ".join(brief(f) for f in active[:5])))
+except (OSError, KeyError, TypeError, ValueError) as exc:
+    say(PID, False, "suppression assertions aborted: {}".format(exc))
+sys.exit(1 if failures else 0)
+PY
+      tally_assert_log "$sup_log"
+      if [ "$sup_rc" -ne 0 ] && ! grep -q '^PROOF: P-SUPPRESS FAIL' "$sup_log"; then
+        proof_fail "P-SUPPRESS" "the suppression script exited ${sup_rc} without reporting a failed assertion (see ${sup_log})"
+      fi
+    fi
   fi
 }
 
