@@ -65,9 +65,12 @@ set -euo pipefail
 # Assertion groups (D-20): P-EXTRACT P-TLS P-ADMIN-TOKEN P-USER
 # P-IMPORTER-TOKEN P-GATE P-RUN1 P-CONTEXT P-TESTS P-COUNTS (run 1, 27-05);
 # P-RUN2 P-SCHEDULE P-HOSTILE P-SCOPE P-CLEANUP P-REFUSE P-NOMATCH P-INSECURE
-# (27-06); P-HTTP (27-11, CR-01); P-CONFIGURE-GUARD (28-02). Every body run
-# uses the ci-importer token; the configure-script cases use a gen_secret
-# dummy token and never reach the network.
+# (27-06); P-HTTP (27-11, CR-01); P-CONFIGURE-GUARD (28-02); P-CONFIGURE
+# P-IDEMPOTENT P-DEDUP-MODE P-DEDUP-BRANCH P-CROSSTOOL (28-03, --hook only,
+# after every Phase 27 assertion). Every body run uses the ci-importer token;
+# the offline configure-script cases use a gen_secret dummy token and never
+# reach the network; the live configure runs (P-CONFIGURE, P-IDEMPOTENT) use
+# the admin (superuser) token from a 0600 file, as the script requires.
 #
 # Credentials are generated or read at runtime, written only to 0600 files,
 # sent with `--data-binary @file` or `-H @file`, never placed on any argv and
@@ -116,6 +119,18 @@ readonly PROOF_OTHER_PRODUCT="proof/other-product"
 # shellcheck disable=SC2016  # the $( ) is the point: it must stay literal
 readonly PROOF_HOSTILE_REF='@dd-proof/$(touch pwned)'
 readonly PROOF_NOMATCH_REF="never/existed"
+
+# Phase 28 identities (28-03, D-11). Every dedup and triage scenario runs in a
+# FRESH product (RESEARCH OQ4), after all Phase 27 assertions, so turning
+# deduplication on cannot disturb P-COUNTS and the scenarios cannot disturb
+# each other: proof/dedup holds main-first (P-DEDUP-BRANCH, P-CROSSTOOL and the
+# 28-04 dispositions), proof/dedup-reparent the reverse PR-first order
+# (28-04 P-REPARENT). The PR branch names contain a slash on purpose.
+readonly PROOF_DEDUP_PRODUCT="proof/dedup"
+readonly PROOF_REPARENT_PRODUCT="proof/dedup-reparent"
+readonly PROOF_DEDUP_PR="proof/pr-delta"
+readonly PROOF_SUPPRESS_PR="proof/pr-suppress"
+readonly PROOF_REPARENT_PR="proof/pr-first"
 
 usage() {
   echo "usage: bash scripts/defectdojo-import-proof.sh <reports-dir> | --extract-only | --scheme-only | --hook" >&2
@@ -694,6 +709,486 @@ prove_http_refusal() {
     esac
   done
   rm -f "$tokfile" "$loosefile"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 28 (28-03): dedup and triage helpers, --hook only
+# ─────────────────────────────────────────────────────────────────────────────
+
+# write_dedup_py PATH: the Phase 28 read-side script (admin token, --cacert,
+# the CURL_HOME resolve entry; the same transport as write_read_py). Inputs
+# come from the environment only. Unlike write_read_py it pages list reads
+# with an explicit limit=250&offset=N until it holds `count` rows, and never
+# follows the returned `next` URL. It never defaults a missing field: a
+# finding without one of the keys below is a contradiction of RESEARCH and
+# exits non-zero naming the missing and the present keys. Modes:
+#   settings        -> GET /api/v2/system_settings/ results[0] as JSON
+#                      (exactly one row, else exit non-zero)
+#   snapshot        SNAP_PRODUCT, SNAP_ENGAGEMENT -> JSON {"engagement_id",
+#                      "tests": {"<id>": {"title", "scan_type"}},
+#                      "findings": [...]} for the exact-name engagement in the
+#                      exact-name product. Findings are read with
+#                      test__engagement=<id>, and every one must belong to a
+#                      Test of that engagement (an ignored filter would
+#                      otherwise return the whole instance silently).
+#   findings-by-id  SNAP_IDS (comma-separated) -> JSON {"<id>": finding + the
+#                      finding's test "engagement", "scan_type", "test_title"},
+#                      to resolve duplicate_finding targets.
+write_dedup_py() {
+  cat > "$1" <<'PY'
+import json
+import os
+import subprocess
+import sys
+import urllib.parse
+
+env = os.environ
+base = env["BASE_URL"].rstrip("/")
+ca = env["DD_CA_FILE"]
+hdr = env["PROOF_ADMIN_HDR"]
+resp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "dedup-response-{}.json".format(os.getpid()))
+PAGE = 250
+FIELDS = ["id", "test", "title", "active", "verified", "duplicate", "duplicate_finding", "false_p",
+          "out_of_scope", "risk_accepted", "is_mitigated", "mitigated", "component_name",
+          "component_version", "vulnerability_ids"]
+
+
+def get(path, params=None):
+    url = base + path
+    if params:
+        url += "?" + urllib.parse.urlencode(params)
+    cmd = ["curl", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
+           "-w", "%{http_code} %{ssl_verify_result}", url]
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    code, _, verify = (proc.stdout or "000 -").strip().partition(" ")
+    body = ""
+    if os.path.isfile(resp_path):
+        with open(resp_path, encoding="utf-8", errors="replace") as handle:
+            body = handle.read()
+        os.remove(resp_path)
+    if proc.returncode != 0 or code != "200" or verify != "0":
+        sys.exit("GET {} -> curl exit {}, http {}, ssl_verify_result {}: {}".format(
+            path, proc.returncode, code, verify, (body or proc.stderr)[:300]))
+    try:
+        return json.loads(body)
+    except ValueError:
+        sys.exit("GET {} -> http 200 but the body is not JSON: {}".format(path, body[:300]))
+
+
+def get_all(path, params):
+    rows, offset, count = [], 0, None
+    while True:
+        data = get(path, dict(params, limit=PAGE, offset=offset))
+        if (not isinstance(data, dict) or not isinstance(data.get("results"), list)
+                or not isinstance(data.get("count"), int)):
+            sys.exit("GET {} offset {}: expected a paged object with count and results".format(path, offset))
+        if count is None:
+            count = data["count"]
+        elif data["count"] != count:
+            sys.exit("GET {}: count changed from {} to {} while paging".format(path, count, data["count"]))
+        page = data["results"]
+        rows.extend(page)
+        if len(rows) >= count:
+            break
+        if not page:
+            sys.exit("GET {}: empty page at offset {} with {} of {} rows read".format(path, offset, len(rows), count))
+        offset += len(page)
+    if len(rows) != count:
+        sys.exit("GET {}: read {} rows, count says {}".format(path, len(rows), count))
+    return rows
+
+
+def is_int(value):
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def slim(f):
+    if not isinstance(f, dict):
+        sys.exit("a finding is not an object: {!r}".format(f)[:300])
+    missing = [k for k in FIELDS if k not in f]
+    if missing:
+        sys.exit("finding {} lacks {}; keys present: {}".format(f.get("id"), missing, sorted(f)))
+    if not is_int(f["test"]):
+        sys.exit("finding {}: test is {!r}, expected an integer id".format(f["id"], f["test"]))
+    raw = f["vulnerability_ids"]
+    if not isinstance(raw, list):
+        sys.exit("finding {}: vulnerability_ids is {!r}, expected a list".format(f["id"], raw))
+    vids = []
+    for item in raw:
+        if isinstance(item, dict) and isinstance(item.get("vulnerability_id"), str):
+            vids.append(item["vulnerability_id"])
+        elif isinstance(item, str):
+            vids.append(item)
+        else:
+            sys.exit("finding {}: unexpected vulnerability_ids entry {!r}".format(f["id"], item))
+    out = {k: f[k] for k in FIELDS}
+    out["vulnerability_ids"] = vids
+    return out
+
+
+mode = sys.argv[1] if len(sys.argv) > 1 else ""
+if mode == "settings":
+    data = get("/api/v2/system_settings/")
+    rows = data.get("results") if isinstance(data, dict) else None
+    if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict):
+        sys.exit("GET /api/v2/system_settings/: expected exactly one results row: {}".format(json.dumps(data)[:300]))
+    print(json.dumps(rows[0]))
+elif mode == "snapshot":
+    product, name = env["SNAP_PRODUCT"], env["SNAP_ENGAGEMENT"]
+    products = [p for p in get_all("/api/v2/products/", {"name_exact": product}) if p.get("name") == product]
+    if len(products) != 1:
+        sys.exit("{} products exactly named {!r}, expected 1".format(len(products), product))
+    pid = products[0]["id"]
+    engs = [e for e in get_all("/api/v2/engagements/", {"product": pid, "name": name})
+            if e.get("name") == name and e.get("product") == pid]
+    if len(engs) != 1:
+        sys.exit("{} engagements exactly named {!r} in product {}, expected 1".format(len(engs), name, pid))
+    eid = engs[0]["id"]
+    tests = {}
+    for t in get_all("/api/v2/tests/", {"engagement": eid}):
+        if t.get("engagement") != eid:
+            sys.exit("GET /api/v2/tests/?engagement={} returned test {} of engagement {}".format(
+                eid, t.get("id"), t.get("engagement")))
+        tests[str(t["id"])] = {"title": t.get("title"), "scan_type": t.get("scan_type")}
+    findings = []
+    for f in get_all("/api/v2/findings/", {"test__engagement": eid}):
+        s = slim(f)
+        if str(s["test"]) not in tests:
+            sys.exit("GET /api/v2/findings/?test__engagement={} returned finding {} of test {}, which is not "
+                     "a Test of that engagement (tests {}); the filter was not applied".format(
+                         eid, s["id"], s["test"], sorted(tests)))
+        findings.append(s)
+    print(json.dumps({"product_id": pid, "engagement_id": eid, "tests": tests, "findings": findings}))
+elif mode == "findings-by-id":
+    out = {}
+    for raw_id in [x.strip() for x in env.get("SNAP_IDS", "").split(",") if x.strip()]:
+        s = slim(get("/api/v2/findings/{}/".format(int(raw_id))))
+        t = get("/api/v2/tests/{}/".format(s["test"]))
+        if not isinstance(t, dict) or not is_int(t.get("engagement")):
+            sys.exit("test {} of finding {} has no integer engagement: {}".format(s["test"], s["id"], json.dumps(t)[:300]))
+        s.update({"engagement": t["engagement"], "scan_type": t.get("scan_type"), "test_title": t.get("title")})
+        out[str(s["id"])] = s
+    print(json.dumps(out))
+else:
+    sys.exit("unknown dedup read mode {!r}".format(mode))
+PY
+}
+
+# snippet FILE...: up to 300 bytes of the FILEs, newlines flattened. Never
+# fails (a missing file is skipped), so it is safe inside an assignment under
+# set -e.
+snippet() {
+  cat "$@" 2>/dev/null | head -c 300 | tr '\n' ' ' || true
+}
+
+# read_settings OUTFILE: System Settings row into OUTFILE (stderr into
+# OUTFILE.err). Returns the script's exit status.
+read_settings() {
+  python3 "$PROOF_DEDUP_PY" settings > "$1" 2> "${1}.err"
+}
+
+# snapshot_engagement PRODUCT ENGAGEMENT OUTFILE: the `snapshot` mode into
+# OUTFILE (stderr into OUTFILE.err). Returns the script's exit status.
+# shellcheck disable=SC2329  # first caller lands in 28-03 Task 2
+snapshot_engagement() {
+  SNAP_PRODUCT="$1" SNAP_ENGAGEMENT="$2" python3 "$PROOF_DEDUP_PY" snapshot > "$3" 2> "${3}.err"
+}
+
+# print_masked FILE SECRET: print FILE indented, with every occurrence of
+# SECRET replaced by <admin-token>. Bash builtins only (read, printf and
+# parameter expansion), so the secret never reaches any process argv (the
+# sed idiom used for the dummy token would put it on sed's argv).
+print_masked() {
+  local line
+  while IFS= read -r line || [ -n "$line" ]; do
+    printf '    | %s\n' "${line//"$2"/<admin-token>}"
+  done < "$1"
+}
+
+# import_as_branch LABEL PRODUCT BRANCH REPORTS_DIR RESULTS_FILE: run the
+# COMMITTED dd-import body (T-27-01) with the P-RUN1 env list and the
+# ci-importer token. BRANCH equal to PROOF_DEFAULT_BRANCH takes the schedule
+# form (empty GITHUB_HEAD_REF, GITHUB_REF_NAME=main -> ci/main); any other
+# BRANCH takes the pull_request form (GITHUB_HEAD_REF=BRANCH,
+# GITHUB_REF_NAME=28/merge -> ci/BRANCH). Reads three variables that
+# prove_dedup_triage sets and never re-extracts anything:
+#   DEDUP_B_IMPORT      path of the extracted, checked dd-import body
+#   DEDUP_IMPORTER_TOK  path of the ci-importer token file
+#   DEDUP_CA_PEM        the kind CA as PEM text (DD_CA_CERT)
+# Prints the body log indented and leaves BODY_RC / BODY_LOG to the caller.
+# shellcheck disable=SC2329  # first caller lands in 28-03 Task 2
+import_as_branch() {
+  local label="$1" product="$2" branch="$3" reports="$4" results="$5"
+  local event head ref
+  if [ "$branch" = "$PROOF_DEFAULT_BRANCH" ]; then
+    event="schedule"
+    head=""
+    ref="$PROOF_DEFAULT_BRANCH"
+  else
+    event="pull_request"
+    head="$branch"
+    ref="28/merge"
+  fi
+  echo "    import ${label}: ${product} / ci/${branch} (${event}) from ${reports##*/}"
+  run_body "$label" "$DEDUP_B_IMPORT" \
+    "DD_URL=${BASE_URL}" \
+    "DD_TOKEN=$(cat "$DEDUP_IMPORTER_TOK")" \
+    "DD_PRODUCT=${product}" \
+    "DD_PRODUCT_TYPE=${PROOF_PRODUCT_TYPE}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=${DEDUP_CA_PEM}" \
+    "DD_REPORTS_DIR=${reports}" \
+    "DD_RESULTS_FILE=${results}" \
+    "GITHUB_ACTOR=proof-actor" \
+    "GITHUB_EVENT_NAME=${event}" \
+    "GITHUB_HEAD_REF=${head}" \
+    "GITHUB_REF_NAME=${ref}" \
+    "GITHUB_SHA=${PROOF_SHA}" \
+    "GITHUB_RUN_ID=${PROOF_RUN_ID}" \
+    "GITHUB_SERVER_URL=${PROOF_SERVER_URL}" \
+    "GITHUB_REPOSITORY=${PROOF_REPOSITORY}"
+  sed -e 's/^/    | /' "$BODY_LOG"
+}
+
+# wait_dedup_settled PRODUCT ENGAGEMENT: belt-and-braces for RESEARCH
+# Pitfall 3 (async_wait is the primary measure). Snapshots the engagement
+# until its duplicate/total finding counts are unchanged across two
+# consecutive snapshots 5 s apart, or 120 s have passed. Prints the elapsed
+# seconds and the final counts; never fails by itself (the assertions do).
+# shellcheck disable=SC2329  # first caller lands in 28-03 Task 2
+wait_dedup_settled() {
+  local product="$1" engagement="$2" snap="${PROOF_DIR}/settle.json"
+  local start now prev="" cur rc
+  start="$(date +%s)"
+  while :; do
+    rc=0
+    snapshot_engagement "$product" "$engagement" "$snap" || rc=$?
+    if [ "$rc" -eq 0 ]; then
+      cur="$(jq -r '"\([.findings[] | select(.duplicate == true)] | length) duplicate of \(.findings | length)"' "$snap")" || cur="error"
+    else
+      cur="error"
+    fi
+    now="$(date +%s)"
+    if [ "$cur" != "error" ] && [ "$cur" = "$prev" ]; then
+      echo "    dedup settled after $((now - start)) s: ${cur} findings in ${product} / ${engagement} (unchanged across two snapshots 5 s apart)"
+      return 0
+    fi
+    if [ $((now - start)) -ge 120 ]; then
+      echo "    dedup settle poll stopped at $((now - start)) s: last ${cur} findings in ${product} / ${engagement}$([ "$cur" = "error" ] && printf ' (%s)' "$(head -c 300 "${snap}.err" | tr '\n' ' ')")"
+      return 0
+    fi
+    prev="$cur"
+    sleep 5
+  done
+}
+
+# read_contact_info USER_ID ADMIN_HDR: the user_contact_infos row(s) of
+# USER_ID, selected CLIENT-SIDE by .user (an ignored ?user= filter would
+# otherwise return every row). Sets CONTACT_N (row count, or "error"),
+# CONTACT_ROW_ID, CONTACT_MODE (deduplication_execution_mode of the first
+# row) and CONTACT_ERR.
+read_contact_info() {
+  local uid="$1" hdr="$2" out="${PROOF_DIR}/contact-get.json" rc=0 res code sel
+  CONTACT_N="error"
+  CONTACT_ROW_ID=""
+  CONTACT_MODE=""
+  CONTACT_ERR=""
+  res="$(api_call "$out" -G -H "@${hdr}" --data-urlencode "user=${uid}" --data-urlencode "limit=100" \
+    "${BASE_URL}/api/v2/user_contact_infos/" 2>"${out}.err")" || rc=$?
+  code="${res%% *}"
+  if [ "$rc" -ne 0 ] || [ "$code" != "200" ]; then
+    CONTACT_ERR="GET /api/v2/user_contact_infos/?user=${uid}: curl exit ${rc}, http ${code:-none}: $(snippet "$out" "${out}.err")"
+    return 0
+  fi
+  sel="$(jq -r --argjson id "$uid" \
+    'if .next != null then "paged" else ([.results[] | select(.user == $id)] | "\(length) \(.[0].id // "-") \(.[0].deduplication_execution_mode // "-")") end' \
+    "$out" 2>/dev/null)" || sel="unparseable"
+  case "$sel" in
+    paged | unparseable)
+      CONTACT_ERR="GET /api/v2/user_contact_infos/?user=${uid}: response ${sel}: $(snippet "$out")"
+      return 0
+      ;;
+  esac
+  read -r CONTACT_N CONTACT_ROW_ID CONTACT_MODE <<< "$sel"
+}
+
+# prove_dedup_triage BODIES_DIR ADMIN_HDR IMPORTER_TOK CA_PEM: the Phase 28
+# live block (28-03; 28-04 adds the second half). Runs after every Phase 27
+# assertion, in fresh products. Every import and delete goes through the
+# COMMITTED security.yml bodies (run_body, ci-importer token, T-27-01). The
+# admin (superuser) token is used only for scripts/defectdojo-configure.sh
+# (which requires a superuser), the user_contact_infos write and reads.
+prove_dedup_triage() {
+  local bodies="$1" admin_hdr="$2"
+  DEDUP_B_IMPORT="${bodies}/defectdojo-import__dd-import.sh"
+  DEDUP_IMPORTER_TOK="$3"
+  DEDUP_CA_PEM="$4"
+  PROOF_ADMIN_HDR="$admin_hdr"
+  PROOF_DEDUP_PY="${PROOF_DIR}/dedup.py"
+  # Readonly names cannot be passed as command-prefix assignments (see the
+  # P-CONTEXT comment), so the ones the Python heredocs read are exported.
+  export PROOF_ADMIN_HDR PROOF_DEDUP_PY PROOF_DEFAULT_BRANCH
+  export PROOF_DEDUP_PRODUCT PROOF_REPARENT_PRODUCT PROOF_DEDUP_PR PROOF_SUPPRESS_PR PROOF_REPARENT_PR
+  write_dedup_py "$PROOF_DEDUP_PY"
+
+  echo
+  echo "=== Phase 28: dedup and triage (fresh products) ==="
+
+  # ── P-CONFIGURE (D-10, D-21, D-22) ────────────────────────────────────────
+  # The committed bootstrap, from the repository path, with the admin token.
+  # The script wants the BARE token in a 0600 file: derive it from admin.hdr
+  # with sed (the file content never reaches an argv), and remove it after
+  # P-IDEMPOTENT or on any abort.
+  echo
+  echo "=== bootstrap: scripts/defectdojo-configure.sh with the admin token (P-CONFIGURE) ==="
+  local pre="${PROOF_DIR}/settings-pre.json" post="${PROOF_DIR}/settings-post.json" rc=0 why
+  read_settings "$pre" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_abort "P-CONFIGURE" "System Settings read before the bootstrap failed: $(head -c 300 "${pre}.err" | tr '\n' ' ')"
+  fi
+  echo "    before: $(jq -c '{enable_deduplication, delete_duplicates, false_positive_history, retroactive_false_positive_history, risk_acceptance_form_default_days, enable_finding_sla}' "$pre")"
+  local bare="${PROOF_DIR}/admin-bare.token" admin_token
+  rm -f "$bare"
+  sed -n 's/^Authorization: Token //p' "$admin_hdr" > "$bare"
+  chmod 600 "$bare"
+  if [ ! -s "$bare" ] || [ "$(wc -l < "$bare" | tr -d ' ')" != "1" ] || grep -q '^$' "$bare"; then
+    rm -f "$bare"
+    proof_abort "P-CONFIGURE" "could not derive exactly one non-empty bare token line from admin.hdr"
+  fi
+  admin_token="$(cat "$bare")"
+  local b_configure="${REPO_ROOT}/scripts/defectdojo-configure.sh"
+  run_body configure-1 "$b_configure" \
+    "DEFECTDOJO_URL=${BASE_URL}" \
+    "DEFECTDOJO_ADMIN_TOKEN_FILE=${bare}" \
+    "DEFECTDOJO_CA_FILE=${DD_CA_FILE}"
+  print_masked "$BODY_LOG" "$admin_token"
+  if [ "$BODY_RC" -ne 0 ]; then
+    rm -f "$bare"
+    proof_abort "P-CONFIGURE" "defectdojo-configure.sh (run 1) exited ${BODY_RC}; every Phase 28 scenario needs deduplication on (log ${BODY_LOG})"
+  fi
+  why=""
+  grep -q '^CHANGED: .*enable_deduplication' "$BODY_LOG" || why="${why} no 'CHANGED:' line naming enable_deduplication;"
+  grep -q '^VERIFIED:' "$BODY_LOG" || why="${why} no 'VERIFIED:' line;"
+  if [ -z "$why" ]; then
+    proof_pass "P-CONFIGURE" "run 1 on the fresh install -> exit 0, CHANGED: names enable_deduplication, VERIFIED: printed"
+  else
+    proof_fail "P-CONFIGURE" "run 1 exited 0 but:${why}"
+  fi
+  rc=0
+  read_settings "$post" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_fail "P-CONFIGURE" "System Settings read-back after run 1 failed: $(head -c 300 "${post}.err" | tr '\n' ' ')"
+  else
+    echo "    after:  $(jq -c '{enable_deduplication, delete_duplicates, false_positive_history, retroactive_false_positive_history, risk_acceptance_form_default_days, enable_finding_sla}' "$post")"
+    # jq == is type-strict: 1 is not true and "90" is not 90.
+    if jq -e '.enable_deduplication == true and .delete_duplicates == false
+        and .false_positive_history == false and .retroactive_false_positive_history == false
+        and .risk_acceptance_form_default_days == 90' "$post" > /dev/null; then
+      proof_pass "P-CONFIGURE" "read-back: enable_deduplication=true, delete_duplicates=false, both false-positive-history flags false, risk_acceptance_form_default_days=90"
+    else
+      proof_fail "P-CONFIGURE" "read-back does not hold the desired values: $(jq -c '{enable_deduplication, delete_duplicates, false_positive_history, retroactive_false_positive_history, risk_acceptance_form_default_days}' "$post")"
+    fi
+    local sla_pre sla_post
+    sla_pre="$(jq -c 'if has("enable_finding_sla") then .enable_finding_sla else "absent" end' "$pre")" || sla_pre="unparseable"
+    sla_post="$(jq -c 'if has("enable_finding_sla") then .enable_finding_sla else "absent" end' "$post")" || sla_post="unparseable"
+    if [ "$sla_pre" = "$sla_post" ] && [ "$sla_pre" != '"absent"' ] && [ "$sla_pre" != "unparseable" ]; then
+      proof_pass "P-CONFIGURE" "enable_finding_sla unchanged by the bootstrap (${sla_pre} -> ${sla_post}, D-21)"
+    else
+      proof_fail "P-CONFIGURE" "enable_finding_sla ${sla_pre} -> ${sla_post}; expected present and unchanged (D-21)"
+    fi
+  fi
+  # The pattern comes from the file (-f), so the token is not on grep's argv.
+  if grep -qF -f "$bare" "$BODY_LOG"; then
+    proof_fail "P-CONFIGURE" "the admin token string appears in the run-1 log"
+  else
+    proof_pass "P-CONFIGURE" "the admin token string does not appear in the run-1 log"
+  fi
+
+  # ── P-IDEMPOTENT (D-10, D-11) ─────────────────────────────────────────────
+  echo
+  echo "=== bootstrap rerun changes nothing (P-IDEMPOTENT) ==="
+  local before2="${PROOF_DIR}/settings-before2.json" after2="${PROOF_DIR}/settings-after2.json" rc2=0
+  rc=0
+  read_settings "$before2" || rc=$?
+  run_body configure-2 "$b_configure" \
+    "DEFECTDOJO_URL=${BASE_URL}" \
+    "DEFECTDOJO_ADMIN_TOKEN_FILE=${bare}" \
+    "DEFECTDOJO_CA_FILE=${DD_CA_FILE}"
+  print_masked "$BODY_LOG" "$admin_token"
+  read_settings "$after2" || rc2=$?
+  why=""
+  [ "$BODY_RC" -eq 0 ] || why="${why} exit ${BODY_RC} (expected 0);"
+  grep -q '^NO CHANGE' "$BODY_LOG" || why="${why} no line starting 'NO CHANGE';"
+  if grep -q '^CHANGED:' "$BODY_LOG"; then why="${why} a 'CHANGED:' line was printed;"; fi
+  if grep -qF -f "$bare" "$BODY_LOG"; then why="${why} the admin token string appears in the log;"; fi
+  if [ "$rc" -ne 0 ] || [ "$rc2" -ne 0 ]; then
+    why="${why} a System Settings read failed: $(snippet "${before2}.err" "${after2}.err");"
+  elif ! jq -S . "$before2" > "${before2}.sorted" || ! jq -S . "$after2" > "${after2}.sorted"; then
+    why="${why} a System Settings snapshot is not JSON;"
+  elif ! cmp -s "${before2}.sorted" "${after2}.sorted"; then
+    why="${why} the System Settings object changed: $(diff "${before2}.sorted" "${after2}.sorted" | head -c 300 | tr '\n' ' ' || true);"
+  fi
+  if [ -z "$why" ]; then
+    proof_pass "P-IDEMPOTENT" "run 2 -> exit 0, NO CHANGE, no CHANGED: line, System Settings byte-identical (jq -S) before and after"
+  else
+    proof_fail "P-IDEMPOTENT" "run 2:${why}"
+  fi
+  rm -f "$bare"
+  admin_token=""
+
+  # ── P-DEDUP-MODE (RESEARCH Pitfall 3) ─────────────────────────────────────
+  # Harness only: ci-importer's contact-info row gets
+  # deduplication_execution_mode=async_wait, so an import's 201 waits for
+  # dedup. security.yml is not changed (T-28-14).
+  echo
+  echo "=== ci-importer dedup execution mode: async_wait (P-DEDUP-MODE) ==="
+  local importer_id
+  importer_id="$(jq -r --arg u "$PROOF_USER" \
+    '[.results[]? | select(.username == $u) | .id] | if length == 1 then .[0] else "none" end' \
+    "${PROOF_DIR}/user-get.json")" || importer_id="none"
+  if ! [[ "$importer_id" =~ ^[0-9]+$ ]]; then
+    proof_fail "P-DEDUP-MODE" "no single ${PROOF_USER} id in user-get.json (got '${importer_id}')"
+  else
+    read_contact_info "$importer_id" "$admin_hdr"
+    local cbody="${PROOF_DIR}/contact-body.json" cresp="${PROOF_DIR}/contact-write.json"
+    local method="" expect="" curl_url="" res code
+    case "$CONTACT_N" in
+      0)
+        jq -n --argjson u "$importer_id" '{user: $u, deduplication_execution_mode: "async_wait"}' > "$cbody"
+        method="POST"
+        expect="201"
+        curl_url="${BASE_URL}/api/v2/user_contact_infos/"
+        ;;
+      1)
+        jq -n '{deduplication_execution_mode: "async_wait"}' > "$cbody"
+        method="PATCH"
+        expect="200"
+        curl_url="${BASE_URL}/api/v2/user_contact_infos/${CONTACT_ROW_ID}/"
+        ;;
+      *)
+        proof_fail "P-DEDUP-MODE" "user_contact_infos rows for ${PROOF_USER} (id ${importer_id}): ${CONTACT_N} ${CONTACT_ERR}"
+        ;;
+    esac
+    if [ -n "$method" ]; then
+      echo "    ${PROOF_USER} (id ${importer_id}) has ${CONTACT_N} contact-info row(s): ${method} deduplication_execution_mode=async_wait"
+      rc=0
+      res="$(api_call "$cresp" -X "$method" -H "@${admin_hdr}" -H 'Content-Type: application/json' \
+        --data-binary "@${cbody}" "$curl_url" 2>"${cresp}.err")" || rc=$?
+      rm -f "$cbody"
+      code="${res%% *}"
+      if [ "$rc" -ne 0 ] || [ "$code" != "$expect" ]; then
+        proof_fail "P-DEDUP-MODE" "${method} ${curl_url#"${BASE_URL}"}: curl exit ${rc}, http ${code:-none} (expected ${expect}): $(head -c 400 "$cresp" 2>/dev/null | tr '\n' ' ')$(tr '\n' ' ' < "${cresp}.err")"
+      else
+        read_contact_info "$importer_id" "$admin_hdr"
+        if [ "$CONTACT_N" = "1" ] && [ "$CONTACT_MODE" = "async_wait" ]; then
+          proof_pass "P-DEDUP-MODE" "${method} -> ${code}; read-back: ${PROOF_USER}'s contact-info row ${CONTACT_ROW_ID} has deduplication_execution_mode=async_wait (harness only; security.yml unchanged)"
+        else
+          proof_fail "P-DEDUP-MODE" "read-back after ${method}: ${CONTACT_N} row(s), mode '${CONTACT_MODE}'; expected 1 row with async_wait ${CONTACT_ERR}"
+        fi
+      fi
+    fi
+  fi
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1535,6 +2030,10 @@ PY
 
   # ── P-HTTP (27-11, CR-01) ─────────────────────────────────────────────────
   prove_http_refusal "$bodies" "$DD_PROOF_REPORTS"
+
+  # ── Phase 28: dedup and triage (28-03) ────────────────────────────────────
+  # After every Phase 27 assertion, which all ran with dedup still off.
+  prove_dedup_triage "$bodies" "$admin_hdr" "$importer_tok" "$ca_pem"
 
   proof_finish
 }
