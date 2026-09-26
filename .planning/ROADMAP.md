@@ -175,7 +175,45 @@ Plans:
 
 **Goal:** Deduplication rules collapse repeated findings across scans and tools, and a triage workflow for reviewing and dispositioning findings is documented and configured.
 **Requirements**: DDOJO-03, DDOJO-04
-**Plans:** TBD
+**Plans:** 9 plans
+
+Plans:
+
+**Wave 1**
+
+- [ ] 28-01-PLAN.md — Branch from origin/main; chart dedup guards in extraConfigs (D-20) with gate checks 21-22 (RED then GREEN), chart 0.2.0
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 28-02-PLAN.md — Idempotent System Settings bootstrap `scripts/defectdojo-configure.sh`, offline refusal proofs, proof path filter
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 28-03-PLAN.md — Proof block part 1: bootstrap and idempotency, async_wait, branch dedup with a delta, measured cross-tool gap
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 28-04-PLAN.md — Proof block part 2: disposition survival across reimports, PR suppression, delete-time re-parent
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 28-05-PLAN.md — Full local kind proof with real reports; evidence and measured facts
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 28-06-PLAN.md — TRIAGE.md runbook and chart README (bootstrap step, recompute note, requirement rows)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 28-07-PLAN.md — Push approval, PR, real GitHub proof run and checks captured
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 28-08-PLAN.md — Merge approval, merge, verification from origin/main (no workflow change, no tag)
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 28-09-PLAN.md — ADR-026 and index row, adoption-guide runbook link plus gate needle, DDOJO-03/04 complete, validation sign-off
 
 ### Phase 29: DefectDojo Live Validation
 
