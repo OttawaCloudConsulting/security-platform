@@ -71,6 +71,7 @@ Research resolved D-02 (the engagement DELETE re-parents duplicates at once, so 
 - **D-21:** SLA: the bootstrap script does **not** touch `enable_finding_sla`. It stays at the upstream default. The runbook states that SLA is not part of triage and is not configured (D-16).
 - **D-22:** Risk acceptance expiry: the bootstrap script sets `risk_acceptance_form_default_days` to **90**. DefectDojo cannot enforce the expiry or the reason, so the runbook makes both mandatory by procedure.
 - **D-23:** "Under Review" is the **implicit untriaged queue**: active, not verified, no disposition, not a duplicate. The runbook gives the filter. Do not use the native `under_review` flag.
+- **D-24:** Runbook link (D-17): `docs/adoption-guide.md` section 12 links the runbook with a `github.com/OttawaCloudConsulting/security-platform/blob/main/...` URL. The `/v1/` raw pin rule does not apply, because this phase moves no tag and the runbook is read by people, not fetched by code. `check-adoption-guide.sh` gains the runbook needle in `DD_REQUIRED`.
 
 ### Claude's Discretion
 - The bootstrap script name, the runbook file name and location inside `security-platform`, and the exact assertion structure in the proof script.
