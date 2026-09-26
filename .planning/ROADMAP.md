@@ -303,7 +303,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 25. Nexus Live Validation | v3.0 | 7/7 | Complete    | 2026-09-24 |
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
-| 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete   | 2026-09-26 |
+| 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
 | 29. DefectDojo Live Validation | v3.0 | 0/? | Not started | — |
 
 ## Next Milestone
