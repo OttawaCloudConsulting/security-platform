@@ -5,8 +5,8 @@
 # steps in security.yml land real scanner output in a real DefectDojo
 # 3.3.200, as a least-privilege (staff, non-superuser) user, over verified
 # TLS: run-1 import, in-place reimport, schedule branch resolution, a hostile
-# branch name, product-scoped cleanup with its refusals, and the
-# insecure-TLS warning. The assertions live in
+# branch name, product-scoped cleanup with its refusals, the
+# insecure-TLS warning, and dedup and triage behaviour (Phase 28). The assertions live in
 # scripts/defectdojo-import-proof.sh; this file only feeds it real reports.
 #
 # WHY TWO JOBS. The ephemeral DefectDojo is a kind cluster, reachable only
@@ -29,7 +29,8 @@
 # WHY THE PATHS FILTER (D-21). The proof takes 15-30 minutes, so it runs on
 # pull requests only when something it proves changes: the callable
 # workflow, either caller, this file, the harness, the kind smoke it builds
-# on, or the DefectDojo chart. workflow_dispatch runs it on demand.
+# on, the System Settings bootstrap (scripts/defectdojo-configure.sh, Phase
+# 28), or the DefectDojo chart. workflow_dispatch runs it on demand.
 #
 # Security: `pull_request`, never `pull_request_target`; no secrets are
 # passed to `scans` (the import is skipped anyway, and the harness mints its
@@ -48,6 +49,7 @@ on:
       - .github/workflows/defectdojo-import-proof.yml
       - scripts/defectdojo-import-proof.sh
       - scripts/defectdojo-live-smoke.sh
+      - scripts/defectdojo-configure.sh
       - kubernetes/defectdojo/**
 
 # Workflow-level floor; each job restates what it needs.

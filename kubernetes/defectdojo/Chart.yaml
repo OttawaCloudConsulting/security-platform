@@ -1,6 +1,6 @@
 apiVersion: v2
 name: defectdojo
-version: 0.1.0
+version: 0.2.0
 appVersion: "3.3.200"
 description: DefectDojo with an external Ingress and cert-manager-issued TLS, wrapping the official chart.
 dependencies:

@@ -26,7 +26,8 @@ set -euo pipefail
 # Least privilege (D-10): imports run as a dedicated user `ci-importer` that
 # the harness creates with is_staff=true and is_superuser=false, which is the
 # documented minimum for import + auto-create + delete. The admin token is used
-# only to create that user and for read-side assertions.
+# only to create that user, for read-side assertions, and for the Phase 28
+# admin writes listed under "Assertion groups" below.
 #
 # TLS (D-18): every call is verified against the kind CA (DEFECTDOJO_CA_CERT /
 # --cacert). TLS verification is never switched off, DD_INSECURE is empty on
@@ -43,16 +44,28 @@ set -euo pipefail
 #                   bodies, refuse `${{`, `bash -n` each, cross-check every
 #                   contract env name against the committed step env, and
 #                   assert the two dd-gate bodies are identical.
-#   --scheme-only   offline, no cluster, no network: P-HTTP only. Extracts and
-#                   runs the committed dd-import and dd-delete bodies with a
-#                   non-https DEFECTDOJO_URL and asserts they refuse before
-#                   any request (27-11, CR-01).
+#   --scheme-only   offline, no cluster, no network: P-HTTP and
+#                   P-CONFIGURE-GUARD only. Extracts and runs the committed
+#                   dd-import and dd-delete bodies with a non-https
+#                   DEFECTDOJO_URL and asserts they refuse before any request
+#                   (27-11, CR-01). Also runs scripts/defectdojo-configure.sh
+#                   with a dummy token offline: its non-https refusal (P-HTTP)
+#                   and its preflight guards (P-CONFIGURE-GUARD, 28-02).
 #   --hook          live, called by the smoke: mint tokens, run the committed
 #                   bodies, assert run 1, the in-place reimport (run 2), the
 #                   schedule path, a hostile head ref, product-scoped cleanup,
 #                   the cleanup refusals and no-match no-op, and the
 #                   insecure-TLS warning and the non-https refusal
-#                   (P-HTTP). Prints one
+#                   (P-HTTP). Then, after every Phase 27 assertion and in
+#                   fresh products (proof/dedup, proof/dedup-reparent), the
+#                   Phase 28 scenarios: the System Settings bootstrap and
+#                   its idempotency, branch-engagement dedup with a unique
+#                   delta, the measured cross-tool SCA gap, disposition
+#                   survival (FP, Out of Scope, Risk Accepted) across two
+#                   default-branch reimports, suppression of new PR copies
+#                   by default-branch dispositions, and the delete-time
+#                   re-parent of default-branch findings when a PR
+#                   engagement is deleted. Prints one
 #                   "PROOF: <ID> PASS|FAIL <detail>" line per assertion and
 #                   ends with "PROOF PASS - <n> assertions" or
 #                   "PROOF FAIL - <k> of <n>".
@@ -62,7 +75,20 @@ set -euo pipefail
 # Assertion groups (D-20): P-EXTRACT P-TLS P-ADMIN-TOKEN P-USER
 # P-IMPORTER-TOKEN P-GATE P-RUN1 P-CONTEXT P-TESTS P-COUNTS (run 1, 27-05);
 # P-RUN2 P-SCHEDULE P-HOSTILE P-SCOPE P-CLEANUP P-REFUSE P-NOMATCH P-INSECURE
-# (27-06); P-HTTP (27-11, CR-01). Every body run uses the ci-importer token.
+# (27-06); P-HTTP (27-11, CR-01); P-CONFIGURE-GUARD (28-02);
+# P-CONFIGURE P-IDEMPOTENT P-DEDUP-MODE P-DEDUP-BRANCH P-CROSSTOOL
+# P-DISPOSITION P-SUPPRESS P-REPARENT (28-03/28-04, --hook only, after every
+# Phase 27 assertion, in fresh products).
+#
+# Every committed-body run (dd-gate, dd-import, dd-verify, dd-delete,
+# dd-cleanup-verify) uses the ci-importer token. The one exception is
+# scripts/defectdojo-configure.sh: its live runs (P-CONFIGURE, P-IDEMPOTENT)
+# are made with the admin (superuser) token from a 0600 file, because
+# /api/v2/system_settings/ is superuser-only (RESEARCH Pitfall 2); its
+# offline cases use a gen_secret dummy token and never reach the network.
+# The admin token is otherwise used only for harness setup and reads, and for
+# the P-DEDUP-MODE contact-info write and the P-DISPOSITION finding and
+# risk-acceptance writes, which stand in for a human triager.
 #
 # Credentials are generated or read at runtime, written only to 0600 files,
 # sent with `--data-binary @file` or `-H @file`, never placed on any argv and
@@ -111,6 +137,18 @@ readonly PROOF_OTHER_PRODUCT="proof/other-product"
 # shellcheck disable=SC2016  # the $( ) is the point: it must stay literal
 readonly PROOF_HOSTILE_REF='@dd-proof/$(touch pwned)'
 readonly PROOF_NOMATCH_REF="never/existed"
+
+# Phase 28 identities (28-03, D-11). Every dedup and triage scenario runs in a
+# FRESH product (RESEARCH OQ4), after all Phase 27 assertions, so turning
+# deduplication on cannot disturb P-COUNTS and the scenarios cannot disturb
+# each other: proof/dedup holds main-first (P-DEDUP-BRANCH, P-CROSSTOOL and the
+# 28-04 dispositions), proof/dedup-reparent the reverse PR-first order
+# (28-04 P-REPARENT). The PR branch names contain a slash on purpose.
+readonly PROOF_DEDUP_PRODUCT="proof/dedup"
+readonly PROOF_REPARENT_PRODUCT="proof/dedup-reparent"
+readonly PROOF_DEDUP_PR="proof/pr-delta"
+readonly PROOF_SUPPRESS_PR="proof/pr-suppress"
+readonly PROOF_REPARENT_PR="proof/pr-first"
 
 usage() {
   echo "usage: bash scripts/defectdojo-import-proof.sh <reports-dir> | --extract-only | --scheme-only | --hook" >&2
@@ -539,6 +577,13 @@ read_engagement_total() {
 # make "no request" vacuous. Nothing listens on port 9. The token is a
 # gen_secret dummy, never a real credential. Emits one P-HTTP line per
 # sub-case through proof_pass/proof_fail and never aborts.
+#
+# It also covers scripts/defectdojo-configure.sh (28-02), the System Settings
+# bootstrap, run the same way (run_body, exported env, the same dummy token
+# written to a 0600 file under $PROOF_DIR, never on argv): P-HTTP for an
+# http:// and a scheme-less DEFECTDOJO_URL (exit 1, "must be https://"), and
+# P-CONFIGURE-GUARD for an empty DEFECTDOJO_ADMIN_TOKEN_FILE and a
+# group-readable (0644) token file (exit 2, a FATAL line, no request).
 prove_http_refusal() {
   local bodies="$1" reports="$2"
   local b_import="${bodies}/defectdojo-import__dd-import.sh"
@@ -599,6 +644,1419 @@ prove_http_refusal() {
       proof_fail "P-HTTP" "${label}: DD_URL=${case_url}:${why}"
     fi
   done
+
+  # scripts/defectdojo-configure.sh (28-02): the same dummy token, in a 0600
+  # file (printf into the file, never on argv), plus a 0644 copy for the
+  # loose-permissions guard. DEFECTDOJO_CA_FILE is exported empty so nothing
+  # from the caller's environment leaks in.
+  local b_configure="${REPO_ROOT}/scripts/defectdojo-configure.sh"
+  local tokfile="${PROOF_DIR}/configure-dummy.token"
+  local loosefile="${PROOF_DIR}/configure-dummy-loose.token"
+  rm -f "$tokfile" "$loosefile"
+  printf '%s' "$tok" > "$tokfile"
+  chmod 600 "$tokfile"
+  cp "$tokfile" "$loosefile"
+  chmod 644 "$loosefile"
+
+  echo
+  echo "=== defectdojo-configure.sh refuses a non-https URL and fails its preflight guards offline (P-HTTP, P-CONFIGURE-GUARD) ==="
+  for label in configure-http configure-noscheme configure-no-env configure-loose-perms; do
+    case "$label" in
+      configure-http)
+        case_url="http://127.0.0.1:9"
+        run_body "$label" "$b_configure" \
+          "DEFECTDOJO_URL=${case_url}" \
+          "DEFECTDOJO_ADMIN_TOKEN_FILE=${tokfile}" \
+          "DEFECTDOJO_CA_FILE="
+        ;;
+      configure-noscheme)
+        case_url="127.0.0.1:9"
+        run_body "$label" "$b_configure" \
+          "DEFECTDOJO_URL=${case_url}" \
+          "DEFECTDOJO_ADMIN_TOKEN_FILE=${tokfile}" \
+          "DEFECTDOJO_CA_FILE="
+        ;;
+      configure-no-env)
+        case_url="https://127.0.0.1:9"
+        run_body "$label" "$b_configure" \
+          "DEFECTDOJO_URL=${case_url}" \
+          "DEFECTDOJO_ADMIN_TOKEN_FILE=" \
+          "DEFECTDOJO_CA_FILE="
+        ;;
+      configure-loose-perms)
+        case_url="https://127.0.0.1:9"
+        run_body "$label" "$b_configure" \
+          "DEFECTDOJO_URL=${case_url}" \
+          "DEFECTDOJO_ADMIN_TOKEN_FILE=${loosefile}" \
+          "DEFECTDOJO_CA_FILE="
+        ;;
+    esac
+    sed -e "s/${tok}/<dummy-token>/g" -e 's/^/    | /' "$BODY_LOG"
+    why=""
+    if grep -q 'http=' "$BODY_LOG"; then why="${why} an 'http=' request line was printed;"; fi
+    if grep -qF -- "$tok" "$BODY_LOG"; then why="${why} the dummy token appears in the log;"; fi
+    case "$label" in
+      configure-http|configure-noscheme)
+        [ "$BODY_RC" -eq 1 ] || why="${why} exit ${BODY_RC} (expected 1);"
+        grep -q 'must be https://' "$BODY_LOG" || why="${why} no 'must be https://' refusal line;"
+        if grep -qE '^(NO CHANGE|CHANGED:)' "$BODY_LOG"; then why="${why} a NO CHANGE/CHANGED: line was printed;"; fi
+        if [ -z "$why" ]; then
+          proof_pass "P-HTTP" "${label}: DEFECTDOJO_URL=${case_url} -> exit 1, refused before the token file is read, no request, token absent"
+        else
+          proof_fail "P-HTTP" "${label}: DEFECTDOJO_URL=${case_url}:${why}"
+        fi
+        ;;
+      configure-no-env)
+        [ "$BODY_RC" -eq 2 ] || why="${why} exit ${BODY_RC} (expected 2);"
+        grep -q '^FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE' "$BODY_LOG" || why="${why} no FATAL line naming DEFECTDOJO_ADMIN_TOKEN_FILE;"
+        if [ -z "$why" ]; then
+          proof_pass "P-CONFIGURE-GUARD" "${label}: empty DEFECTDOJO_ADMIN_TOKEN_FILE -> exit 2, FATAL names the variable, no request"
+        else
+          proof_fail "P-CONFIGURE-GUARD" "${label}:${why}"
+        fi
+        ;;
+      configure-loose-perms)
+        [ "$BODY_RC" -eq 2 ] || why="${why} exit ${BODY_RC} (expected 2);"
+        grep -F -- "$loosefile" "$BODY_LOG" | grep -q '^FATAL:' || why="${why} no FATAL line naming the token file path;"
+        if [ -z "$why" ]; then
+          proof_pass "P-CONFIGURE-GUARD" "${label}: 0644 token file -> exit 2, FATAL names the path, no request, token absent"
+        else
+          proof_fail "P-CONFIGURE-GUARD" "${label}:${why}"
+        fi
+        ;;
+    esac
+  done
+  rm -f "$tokfile" "$loosefile"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 28 (28-03): dedup and triage helpers, --hook only
+# ─────────────────────────────────────────────────────────────────────────────
+
+# write_dedup_py PATH: the Phase 28 read-side script (admin token, --cacert,
+# the CURL_HOME resolve entry; the same transport as write_read_py). Inputs
+# come from the environment only. Unlike write_read_py it pages list reads
+# with an explicit limit=250&offset=N until it holds `count` rows, and never
+# follows the returned `next` URL. It never defaults a missing field: a
+# finding without one of the keys below is a contradiction of RESEARCH and
+# exits non-zero naming the missing and the present keys. Modes:
+#   settings        -> GET /api/v2/system_settings/ results[0] as JSON
+#                      (exactly one row, else exit non-zero)
+#   snapshot        SNAP_PRODUCT, SNAP_ENGAGEMENT -> JSON {"engagement_id",
+#                      "tests": {"<id>": {"title", "scan_type"}},
+#                      "findings": [...]} for the exact-name engagement in the
+#                      exact-name product. Findings are read with
+#                      test__engagement=<id>, and every one must belong to a
+#                      Test of that engagement (an ignored filter would
+#                      otherwise return the whole instance silently).
+#   findings-by-id  SNAP_IDS (comma-separated) -> JSON {"<id>": finding + the
+#                      finding's test "engagement", "scan_type", "test_title"},
+#                      to resolve duplicate_finding targets.
+write_dedup_py() {
+  cat > "$1" <<'PY'
+import json
+import os
+import subprocess
+import sys
+import urllib.parse
+
+env = os.environ
+base = env["BASE_URL"].rstrip("/")
+ca = env["DD_CA_FILE"]
+hdr = env["PROOF_ADMIN_HDR"]
+resp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "dedup-response-{}.json".format(os.getpid()))
+PAGE = 250
+FIELDS = ["id", "test", "title", "active", "verified", "duplicate", "duplicate_finding", "false_p",
+          "out_of_scope", "risk_accepted", "is_mitigated", "mitigated", "component_name",
+          "component_version", "vulnerability_ids"]
+
+
+def get(path, params=None):
+    url = base + path
+    if params:
+        url += "?" + urllib.parse.urlencode(params)
+    cmd = ["curl", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
+           "-w", "%{http_code} %{ssl_verify_result}", url]
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    code, _, verify = (proc.stdout or "000 -").strip().partition(" ")
+    body = ""
+    if os.path.isfile(resp_path):
+        with open(resp_path, encoding="utf-8", errors="replace") as handle:
+            body = handle.read()
+        os.remove(resp_path)
+    if proc.returncode != 0 or code != "200" or verify != "0":
+        sys.exit("GET {} -> curl exit {}, http {}, ssl_verify_result {}: {}".format(
+            path, proc.returncode, code, verify, (body or proc.stderr)[:300]))
+    try:
+        return json.loads(body)
+    except ValueError:
+        sys.exit("GET {} -> http 200 but the body is not JSON: {}".format(path, body[:300]))
+
+
+def get_all(path, params):
+    rows, offset, count = [], 0, None
+    while True:
+        data = get(path, dict(params, limit=PAGE, offset=offset))
+        if (not isinstance(data, dict) or not isinstance(data.get("results"), list)
+                or not isinstance(data.get("count"), int)):
+            sys.exit("GET {} offset {}: expected a paged object with count and results".format(path, offset))
+        if count is None:
+            count = data["count"]
+        elif data["count"] != count:
+            sys.exit("GET {}: count changed from {} to {} while paging".format(path, count, data["count"]))
+        page = data["results"]
+        rows.extend(page)
+        if len(rows) >= count:
+            break
+        if not page:
+            sys.exit("GET {}: empty page at offset {} with {} of {} rows read".format(path, offset, len(rows), count))
+        offset += len(page)
+    if len(rows) != count:
+        sys.exit("GET {}: read {} rows, count says {}".format(path, len(rows), count))
+    return rows
+
+
+def is_int(value):
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def slim(f):
+    if not isinstance(f, dict):
+        sys.exit("a finding is not an object: {!r}".format(f)[:300])
+    missing = [k for k in FIELDS if k not in f]
+    if missing:
+        sys.exit("finding {} lacks {}; keys present: {}".format(f.get("id"), missing, sorted(f)))
+    if not is_int(f["test"]):
+        sys.exit("finding {}: test is {!r}, expected an integer id".format(f["id"], f["test"]))
+    raw = f["vulnerability_ids"]
+    if not isinstance(raw, list):
+        sys.exit("finding {}: vulnerability_ids is {!r}, expected a list".format(f["id"], raw))
+    vids = []
+    for item in raw:
+        if isinstance(item, dict) and isinstance(item.get("vulnerability_id"), str):
+            vids.append(item["vulnerability_id"])
+        elif isinstance(item, str):
+            vids.append(item)
+        else:
+            sys.exit("finding {}: unexpected vulnerability_ids entry {!r}".format(f["id"], item))
+    out = {k: f[k] for k in FIELDS}
+    out["vulnerability_ids"] = vids
+    return out
+
+
+mode = sys.argv[1] if len(sys.argv) > 1 else ""
+if mode == "settings":
+    data = get("/api/v2/system_settings/")
+    rows = data.get("results") if isinstance(data, dict) else None
+    if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict):
+        sys.exit("GET /api/v2/system_settings/: expected exactly one results row: {}".format(json.dumps(data)[:300]))
+    print(json.dumps(rows[0]))
+elif mode == "snapshot":
+    product, name = env["SNAP_PRODUCT"], env["SNAP_ENGAGEMENT"]
+    products = [p for p in get_all("/api/v2/products/", {"name_exact": product}) if p.get("name") == product]
+    if len(products) != 1:
+        sys.exit("{} products exactly named {!r}, expected 1".format(len(products), product))
+    pid = products[0]["id"]
+    engs = [e for e in get_all("/api/v2/engagements/", {"product": pid, "name": name})
+            if e.get("name") == name and e.get("product") == pid]
+    if len(engs) != 1:
+        sys.exit("{} engagements exactly named {!r} in product {}, expected 1".format(len(engs), name, pid))
+    eid = engs[0]["id"]
+    tests = {}
+    for t in get_all("/api/v2/tests/", {"engagement": eid}):
+        if t.get("engagement") != eid:
+            sys.exit("GET /api/v2/tests/?engagement={} returned test {} of engagement {}".format(
+                eid, t.get("id"), t.get("engagement")))
+        tests[str(t["id"])] = {"title": t.get("title"), "scan_type": t.get("scan_type")}
+    findings = []
+    for f in get_all("/api/v2/findings/", {"test__engagement": eid}):
+        s = slim(f)
+        if str(s["test"]) not in tests:
+            sys.exit("GET /api/v2/findings/?test__engagement={} returned finding {} of test {}, which is not "
+                     "a Test of that engagement (tests {}); the filter was not applied".format(
+                         eid, s["id"], s["test"], sorted(tests)))
+        findings.append(s)
+    print(json.dumps({"product_id": pid, "engagement_id": eid, "tests": tests, "findings": findings}))
+elif mode == "findings-by-id":
+    out = {}
+    for raw_id in [x.strip() for x in env.get("SNAP_IDS", "").split(",") if x.strip()]:
+        s = slim(get("/api/v2/findings/{}/".format(int(raw_id))))
+        t = get("/api/v2/tests/{}/".format(s["test"]))
+        if not isinstance(t, dict) or not is_int(t.get("engagement")):
+            sys.exit("test {} of finding {} has no integer engagement: {}".format(s["test"], s["id"], json.dumps(t)[:300]))
+        s.update({"engagement": t["engagement"], "scan_type": t.get("scan_type"), "test_title": t.get("title")})
+        out[str(s["id"])] = s
+    print(json.dumps(out))
+else:
+    sys.exit("unknown dedup read mode {!r}".format(mode))
+PY
+}
+
+# snippet FILE...: up to 300 bytes of the FILEs, newlines flattened. Never
+# fails (a missing file is skipped), so it is safe inside an assignment under
+# set -e.
+snippet() {
+  cat "$@" 2>/dev/null | head -c 300 | tr '\n' ' ' || true
+}
+
+# read_settings OUTFILE: System Settings row into OUTFILE (stderr into
+# OUTFILE.err). Returns the script's exit status.
+read_settings() {
+  python3 "$PROOF_DEDUP_PY" settings > "$1" 2> "${1}.err"
+}
+
+# snapshot_engagement PRODUCT ENGAGEMENT OUTFILE: the `snapshot` mode into
+# OUTFILE (stderr into OUTFILE.err). Returns the script's exit status.
+snapshot_engagement() {
+  SNAP_PRODUCT="$1" SNAP_ENGAGEMENT="$2" python3 "$PROOF_DEDUP_PY" snapshot > "$3" 2> "${3}.err"
+}
+
+# print_masked FILE SECRET: print FILE indented, with every occurrence of
+# SECRET replaced by <admin-token>. Bash builtins only (read, printf and
+# parameter expansion), so the secret never reaches any process argv (the
+# sed idiom used for the dummy token would put it on sed's argv).
+print_masked() {
+  local line
+  while IFS= read -r line || [ -n "$line" ]; do
+    printf '    | %s\n' "${line//"$2"/<admin-token>}"
+  done < "$1"
+}
+
+# import_as_branch LABEL PRODUCT BRANCH REPORTS_DIR RESULTS_FILE: run the
+# COMMITTED dd-import body (T-27-01) with the P-RUN1 env list and the
+# ci-importer token. BRANCH equal to PROOF_DEFAULT_BRANCH takes the schedule
+# form (empty GITHUB_HEAD_REF, GITHUB_REF_NAME=main -> ci/main); any other
+# BRANCH takes the pull_request form (GITHUB_HEAD_REF=BRANCH,
+# GITHUB_REF_NAME=28/merge -> ci/BRANCH). Reads three variables that
+# prove_dedup_triage sets and never re-extracts anything:
+#   DEDUP_B_IMPORT      path of the extracted, checked dd-import body
+#   DEDUP_IMPORTER_TOK  path of the ci-importer token file
+#   DEDUP_CA_PEM        the kind CA as PEM text (DD_CA_CERT)
+# Prints the body log indented and leaves BODY_RC / BODY_LOG to the caller.
+import_as_branch() {
+  local label="$1" product="$2" branch="$3" reports="$4" results="$5"
+  local event head ref
+  if [ "$branch" = "$PROOF_DEFAULT_BRANCH" ]; then
+    event="schedule"
+    head=""
+    ref="$PROOF_DEFAULT_BRANCH"
+  else
+    event="pull_request"
+    head="$branch"
+    ref="28/merge"
+  fi
+  echo "    import ${label}: ${product} / ci/${branch} (${event}) from ${reports##*/}"
+  run_body "$label" "$DEDUP_B_IMPORT" \
+    "DD_URL=${BASE_URL}" \
+    "DD_TOKEN=$(cat "$DEDUP_IMPORTER_TOK")" \
+    "DD_PRODUCT=${product}" \
+    "DD_PRODUCT_TYPE=${PROOF_PRODUCT_TYPE}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=${DEDUP_CA_PEM}" \
+    "DD_REPORTS_DIR=${reports}" \
+    "DD_RESULTS_FILE=${results}" \
+    "GITHUB_ACTOR=proof-actor" \
+    "GITHUB_EVENT_NAME=${event}" \
+    "GITHUB_HEAD_REF=${head}" \
+    "GITHUB_REF_NAME=${ref}" \
+    "GITHUB_SHA=${PROOF_SHA}" \
+    "GITHUB_RUN_ID=${PROOF_RUN_ID}" \
+    "GITHUB_SERVER_URL=${PROOF_SERVER_URL}" \
+    "GITHUB_REPOSITORY=${PROOF_REPOSITORY}"
+  sed -e 's/^/    | /' "$BODY_LOG"
+}
+
+# wait_dedup_settled PRODUCT ENGAGEMENT: belt-and-braces for RESEARCH
+# Pitfall 3 (async_wait is the primary measure). Snapshots the engagement
+# until its duplicate/total finding counts are unchanged across two
+# consecutive snapshots 5 s apart, or 120 s have passed. Prints the elapsed
+# seconds and the final counts; never fails by itself (the assertions do).
+wait_dedup_settled() {
+  local product="$1" engagement="$2" snap="${PROOF_DIR}/settle.json"
+  local start now prev="" cur rc
+  start="$(date +%s)"
+  while :; do
+    rc=0
+    snapshot_engagement "$product" "$engagement" "$snap" || rc=$?
+    if [ "$rc" -eq 0 ]; then
+      cur="$(jq -r '"\([.findings[] | select(.duplicate == true)] | length) duplicate of \(.findings | length)"' "$snap")" || cur="error"
+    else
+      cur="error"
+    fi
+    now="$(date +%s)"
+    if [ "$cur" != "error" ] && [ "$cur" = "$prev" ]; then
+      echo "    dedup settled after $((now - start)) s: ${cur} findings in ${product} / ${engagement} (unchanged across two snapshots 5 s apart)"
+      return 0
+    fi
+    if [ $((now - start)) -ge 120 ]; then
+      echo "    dedup settle poll stopped at $((now - start)) s: last ${cur} findings in ${product} / ${engagement}$([ "$cur" = "error" ] && printf ' (%s)' "$(head -c 300 "${snap}.err" | tr '\n' ' ')")"
+      return 0
+    fi
+    prev="$cur"
+    sleep 5
+  done
+}
+
+# read_contact_info USER_ID ADMIN_HDR: the user_contact_infos row(s) of
+# USER_ID, selected CLIENT-SIDE by .user (an ignored ?user= filter would
+# otherwise return every row). Sets CONTACT_N (row count, or "error"),
+# CONTACT_ROW_ID, CONTACT_MODE (deduplication_execution_mode of the first
+# row) and CONTACT_ERR.
+read_contact_info() {
+  local uid="$1" hdr="$2" out="${PROOF_DIR}/contact-get.json" rc=0 res code sel
+  CONTACT_N="error"
+  CONTACT_ROW_ID=""
+  CONTACT_MODE=""
+  CONTACT_ERR=""
+  res="$(api_call "$out" -G -H "@${hdr}" --data-urlencode "user=${uid}" --data-urlencode "limit=100" \
+    "${BASE_URL}/api/v2/user_contact_infos/" 2>"${out}.err")" || rc=$?
+  code="${res%% *}"
+  if [ "$rc" -ne 0 ] || [ "$code" != "200" ]; then
+    CONTACT_ERR="GET /api/v2/user_contact_infos/?user=${uid}: curl exit ${rc}, http ${code:-none}: $(snippet "$out" "${out}.err")"
+    return 0
+  fi
+  sel="$(jq -r --argjson id "$uid" \
+    'if .next != null then "paged" else ([.results[] | select(.user == $id)] | "\(length) \(.[0].id // "-") \(.[0].deduplication_execution_mode // "-")") end' \
+    "$out" 2>/dev/null)" || sel="unparseable"
+  case "$sel" in
+    paged | unparseable)
+      CONTACT_ERR="GET /api/v2/user_contact_infos/?user=${uid}: response ${sel}: $(snippet "$out")"
+      return 0
+      ;;
+  esac
+  read -r CONTACT_N CONTACT_ROW_ID CONTACT_MODE <<< "$sel"
+}
+
+# findings_by_ids IDS OUTFILE: the `findings-by-id` mode for the
+# comma-separated IDS into OUTFILE (stderr into OUTFILE.err). Returns the
+# script's exit status.
+findings_by_ids() {
+  SNAP_IDS="$1" python3 "$PROOF_DEDUP_PY" findings-by-id > "$2" 2> "${2}.err"
+}
+
+# disposition_write LABEL METHOD PATH EXPECT BODYFILE: one admin write for
+# P-DISPOSITION. The admin header goes by path (-H @file), the JSON body comes
+# from a 0600 file that is removed after use. A wrong HTTP code aborts: every
+# later P-DISPOSITION and P-SUPPRESS assertion depends on the three
+# dispositions.
+disposition_write() {
+  local label="$1" method="$2" path="$3" expect="$4" body="$5"
+  local resp="${PROOF_DIR}/disp-${label}-resp.json" res code rc=0
+  res="$(api_call "$resp" -X "$method" -H "@${PROOF_ADMIN_HDR}" -H 'Content-Type: application/json' \
+    --data-binary "@${body}" "${BASE_URL}${path}" 2>"${resp}.err")" || rc=$?
+  rm -f "$body"
+  code="${res%% *}"
+  if [ "$rc" -ne 0 ] || [ "$code" != "$expect" ]; then
+    proof_abort "P-DISPOSITION" "${label}: ${method} ${path}: curl exit ${rc}, http ${code:-none} (expected ${expect}): $(head -c 400 "$resp" 2>/dev/null | tr '\n' ' ' || true)$(tr '\n' ' ' < "${resp}.err" 2>/dev/null || true)"
+  fi
+  echo "    ${label}: ${method} ${path} -> ${code}"
+}
+
+# assert_disposition STAGE: the P-DISPOSITION read-side assertions on the
+# three dispositioned ids. Inputs (environment only): PROOF_DISP_IDS (the
+# {"fp","oos","ra"} id file), PROOF_DISP_NOW (findings-by-id output of this
+# stage), and for STAGE 1 and 2 PROOF_DISP_RESULTS (the dd-import results
+# file of that reimport); STAGE 2 also reads PROOF_DISP_PREV (the stage-1
+# findings-by-id output).
+#   STAGE 0  before any reimport: each id shows its flag true and active=false
+#   STAGE 1  after reimport 1: the exact tuple per id (RESEARCH Pattern 4) and
+#            the trivy-fs statistics.delta.reactivated.total is 0
+#   STAGE 2  as stage 1, plus the tuples and the FP/OOS mitigated timestamps
+#            equal those after reimport 1 (never reactivated, no re-stamp)
+assert_disposition() {
+  local stage="$1" log="${PROOF_DIR}/assert-disposition-${1}.log" arc=0
+  PROOF_DISP_STAGE="$stage" python3 - > "$log" 2>&1 <<'PY' || arc=$?
+import json
+import os
+import sys
+
+env = os.environ
+PID = "P-DISPOSITION"
+stage = int(env["PROOF_DISP_STAGE"])
+ROLES = ["fp", "oos", "ra"]
+FLAG = {"fp": "false_p", "oos": "out_of_scope", "ra": "risk_accepted"}
+KEYS = ["false_p", "out_of_scope", "risk_accepted", "active", "is_mitigated"]
+# Source-derived (RESEARCH Pattern 4), not yet measured: asserted exactly so a
+# behaviour change cannot pass silently.
+EXPECT = {
+    "fp": {"false_p": True, "out_of_scope": False, "risk_accepted": False, "active": False, "is_mitigated": True},
+    "oos": {"false_p": False, "out_of_scope": True, "risk_accepted": False, "active": False, "is_mitigated": True},
+    "ra": {"false_p": False, "out_of_scope": False, "risk_accepted": True, "active": False, "is_mitigated": False},
+}
+failures = 0
+
+
+def say(pid, ok, detail):
+    global failures
+    print("PROOF: {} {} {}".format(pid, "PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+def load(path):
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def tup(f):
+    return {k: f[k] for k in KEYS}
+
+
+def fmt(t):
+    return " ".join("{}={}".format(k, t[k]) for k in KEYS)
+
+
+def reactivated_check():
+    try:
+        results = load(env["PROOF_DISP_RESULTS"])
+    except (OSError, ValueError) as exc:
+        say(PID, False, "reimport {}: results file unreadable: {}".format(stage, exc))
+        return
+    recs = [r for r in (results.get("attempted") or []) if isinstance(r, dict) and r.get("test_title") == "trivy-fs"]
+    if len(recs) != 1:
+        say(PID, False, "reimport {}: {} trivy-fs records in the results file, expected 1".format(stage, len(recs)))
+        return
+    stats = recs[0].get("statistics")
+    if not isinstance(stats, dict):
+        say(PID, False, "reimport {}: trivy-fs statistics is {!r} (http {})".format(
+            stage, stats, recs[0].get("http_code")))
+        return
+    delta = stats.get("delta")
+    print("    reimport {} trivy-fs statistics.delta: {}".format(stage, json.dumps(delta, sort_keys=True)[:800]))
+    react = delta.get("reactivated") if isinstance(delta, dict) else None
+    total = react.get("total") if isinstance(react, dict) else None
+    # Each statistics bucket's "total" is itself a severity bucket
+    # ({"active", ..., "total": n}); the committed dd-import body reads
+    # after.total the same way (security.yml, the IMPORTED: line). Accept a
+    # bare integer too.
+    bucket = total
+    if isinstance(bucket, dict):
+        total = bucket.get("total")
+    if not isinstance(total, int) or isinstance(total, bool):
+        say(PID, False, "reimport {}: statistics.delta.reactivated.total(.total) is absent or not an integer ({!r}); "
+            "statistics keys: {}; delta keys: {}; reactivated keys: {}; reactivated.total keys: {}".format(
+                stage, total, sorted(stats),
+                sorted(delta) if isinstance(delta, dict) else type(delta).__name__,
+                sorted(react) if isinstance(react, dict) else type(react).__name__,
+                sorted(bucket) if isinstance(bucket, dict) else type(bucket).__name__))
+        return
+    say(PID, total == 0, "reimport {}: trivy-fs statistics.delta.reactivated.total = {} (expected 0)".format(
+        stage, total))
+
+
+try:
+    ids = load(env["PROOF_DISP_IDS"])
+    now = load(env["PROOF_DISP_NOW"])
+    rows = {}
+    for role in ROLES:
+        f = now.get(str(ids[role]))
+        if f is None:
+            raise KeyError("finding #{} ({}) is missing from the read-back".format(ids[role], role.upper()))
+        rows[role] = f
+    if stage == 0:
+        for role in ROLES:
+            f = rows[role]
+            say(PID, f[FLAG[role]] is True and f["active"] is False,
+                "before any reimport: {} #{} reads {}=True active=False ({})".format(
+                    role.upper(), f["id"], FLAG[role], fmt(tup(f))))
+    else:
+        for role in ROLES:
+            f = rows[role]
+            got = tup(f)
+            say(PID, got == EXPECT[role], "after reimport {}: {} #{} is {} (expected {}), mitigated={}".format(
+                stage, role.upper(), f["id"], fmt(got), fmt(EXPECT[role]), f["mitigated"]))
+        reactivated_check()
+        if stage == 2:
+            prev = load(env["PROOF_DISP_PREV"])
+            diffs, stamps = [], []
+            for role in ROLES:
+                p, n = prev.get(str(ids[role])), rows[role]
+                if p is None:
+                    diffs.append("{} #{} missing from the reimport-1 read-back".format(role.upper(), ids[role]))
+                    continue
+                if tup(p) != tup(n):
+                    diffs.append("{} #{} tuple {} -> {}".format(role.upper(), n["id"], fmt(tup(p)), fmt(tup(n))))
+                if role in ("fp", "oos"):
+                    stamps.append("{}={}".format(role.upper(), n["mitigated"]))
+                    if p["mitigated"] != n["mitigated"]:
+                        diffs.append("{} #{} mitigated {} -> {}".format(role.upper(), n["id"], p["mitigated"],
+                                                                         n["mitigated"]))
+            say(PID, not diffs, "reimport 2 vs reimport 1: the three tuples and the FP/OOS mitigated timestamps "
+                "({}) are unchanged{}".format(", ".join(stamps), "" if not diffs else "; changed: " + "; ".join(diffs)))
+except (OSError, KeyError, TypeError, ValueError) as exc:
+    say(PID, False, "disposition assertions (stage {}) aborted: {}".format(stage, exc))
+sys.exit(1 if failures else 0)
+PY
+  tally_assert_log "$log"
+  if [ "$arc" -ne 0 ] && ! grep -q '^PROOF: P-DISPOSITION FAIL' "$log"; then
+    proof_fail "P-DISPOSITION" "the stage-${stage} assertion script exited ${arc} without reporting a failed assertion (see ${log})"
+  fi
+}
+
+# prove_reparent: P-REPARENT (D-02, D-03, D-20; RESEARCH Pattern 3). In the
+# second fresh product PROOF_REPARENT_PRODUCT (so no other open PR engagement
+# can become the re-parent target, Caveat B) the PR branch is imported FIRST
+# and main second, both from reports-trivy-only, so every ci/main finding is
+# a duplicate of a PR original. The committed dd-delete body then deletes the
+# PR engagement, and ci/main is read IMMEDIATELY (no reimport, no sleep, no
+# settle poll): DefectDojo's delete-time re-parent must already have made K
+# ci/main findings active originals again, K being the PR's pre-delete
+# original count. With the D-20 cascade guard in effect the ci/main copies
+# are re-parented, not deleted, so the D-03 fallback is not needed.
+# A failed import or precondition is reported and the rest is skipped (the
+# delete assertions would be meaningless); it never aborts.
+prove_reparent() {
+  local product="$PROOF_REPARENT_PRODUCT" trivy_only="${PROOF_DIR}/reports-trivy-only"
+  echo
+  echo "=== PR engagement delete re-parents ci/${PROOF_DEFAULT_BRANCH} findings (P-REPARENT) ==="
+  import_as_branch reparent-pr "$product" "$PROOF_REPARENT_PR" "$trivy_only" \
+    "${PROOF_DIR}/results-reparent-pr.json"
+  if [ "$BODY_RC" -ne 0 ]; then
+    proof_fail "P-REPARENT" "committed dd-import body (ci/${PROOF_REPARENT_PR} in ${product}) exited ${BODY_RC} (log ${BODY_LOG}); P-REPARENT skipped"
+    return 0
+  fi
+  import_as_branch reparent-main "$product" "$PROOF_DEFAULT_BRANCH" "$trivy_only" \
+    "${PROOF_DIR}/results-reparent-main.json"
+  if [ "$BODY_RC" -ne 0 ]; then
+    proof_fail "P-REPARENT" "committed dd-import body (ci/${PROOF_DEFAULT_BRANCH} in ${product}) exited ${BODY_RC} (log ${BODY_LOG}); P-REPARENT skipped"
+    return 0
+  fi
+  wait_dedup_settled "$product" "ci/${PROOF_DEFAULT_BRANCH}"
+
+  local pr_snap="${PROOF_DIR}/reparent-pr.json" main_snap="${PROOF_DIR}/reparent-main.json"
+  local after_snap="${PROOF_DIR}/reparent-main-after.json" kfile="${PROOF_DIR}/reparent-k.txt"
+  local pre_log="${PROOF_DIR}/assert-reparent-pre.log" post_log="${PROOF_DIR}/assert-reparent-post.log"
+  local rc=0 pre_rc=0 post_rc=0
+  snapshot_engagement "$product" "ci/${PROOF_REPARENT_PR}" "$pr_snap" || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    snapshot_engagement "$product" "ci/${PROOF_DEFAULT_BRANCH}" "$main_snap" || rc=$?
+  fi
+  if [ "$rc" -ne 0 ]; then
+    proof_fail "P-REPARENT" "precondition snapshot in ${product} failed: $(snippet "${pr_snap}.err" "${main_snap}.err"); P-REPARENT skipped"
+    return 0
+  fi
+  rm -f "$kfile"
+  PROOF_RP_PR_SNAP="$pr_snap" PROOF_RP_MAIN_SNAP="$main_snap" PROOF_RP_K="$kfile" \
+    python3 - > "$pre_log" 2>&1 <<'PY' || pre_rc=$?
+import json
+import os
+import sys
+
+env = os.environ
+PID = "P-REPARENT"
+try:
+    with open(env["PROOF_RP_PR_SNAP"], encoding="utf-8") as handle:
+        pr_f = json.load(handle)["findings"]
+    with open(env["PROOF_RP_MAIN_SNAP"], encoding="utf-8") as handle:
+        main_f = json.load(handle)["findings"]
+    pr_ids = {f["id"] for f in pr_f}
+    originals = [f for f in pr_f if f["duplicate"] is False]
+    inactive = [f["id"] for f in originals if f["active"] is not True]
+    bad = [f for f in main_f if not (f["duplicate"] is True and f["duplicate_finding"] in pr_ids)]
+    ok = len(originals) >= 1 and not inactive and bool(main_f) and not bad
+    print("PROOF: {} {} precondition: ci/{} holds {} findings, K={} non-duplicate ({} of them not active{}); "
+          "ci/{} holds {} findings, {} not a duplicate of a PR finding{}".format(
+              PID, "PASS" if ok else "FAIL", env["PROOF_REPARENT_PR"], len(pr_f), len(originals),
+              len(inactive), "" if not inactive else ": {}".format(inactive[:10]),
+              env["PROOF_DEFAULT_BRANCH"], len(main_f), len(bad),
+              "" if not bad else ": " + "; ".join("#{} dup={} dup_of={}".format(
+                  f["id"], f["duplicate"], f["duplicate_finding"]) for f in bad[:5])))
+    if ok:
+        with open(env["PROOF_RP_K"], "w", encoding="utf-8") as handle:
+            handle.write(str(len(originals)))
+    sys.exit(0 if ok else 1)
+except (OSError, KeyError, TypeError, ValueError) as exc:
+    print("PROOF: {} FAIL precondition check aborted: {}".format(PID, exc))
+    sys.exit(1)
+PY
+  tally_assert_log "$pre_log"
+  if [ "$pre_rc" -ne 0 ] || [ ! -s "$kfile" ]; then
+    if ! grep -q '^PROOF: P-REPARENT FAIL' "$pre_log"; then
+      proof_fail "P-REPARENT" "the precondition script exited ${pre_rc} without reporting a failed assertion (see ${pre_log})"
+    fi
+    echo "    precondition not met: the delete and its assertions are skipped"
+    return 0
+  fi
+  local k
+  k="$(cat "$kfile")"
+
+  # The delete, then the ci/main read with nothing in between.
+  local cleanup_res="${PROOF_DIR}/cleanup-reparent.json" t_done t_read outcome
+  run_body reparent-delete "$DEDUP_B_DELETE" \
+    "DD_URL=${BASE_URL}" \
+    "DD_TOKEN=$(cat "$DEDUP_IMPORTER_TOK")" \
+    "DD_PRODUCT=${product}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=${DEDUP_CA_PEM}" \
+    "DD_DEFAULT_BRANCH=${PROOF_DEFAULT_BRANCH}" \
+    "DD_CLEANUP_RESULT_FILE=${cleanup_res}" \
+    "GITHUB_ACTOR=proof-actor" \
+    "GITHUB_EVENT_NAME=pull_request" \
+    "GITHUB_HEAD_REF=${PROOF_REPARENT_PR}"
+  t_done="$(date +%s)"
+  rc=0
+  snapshot_engagement "$product" "ci/${PROOF_DEFAULT_BRANCH}" "$after_snap" || rc=$?
+  t_read="$(date +%s)"
+  sed -e 's/^/    | /' "$BODY_LOG"
+  echo "    P-REPARENT timing: read $((t_read - t_done)) s after the DELETE returned"
+  outcome="$(jq -r '.outcome // "none"' "$cleanup_res" 2>/dev/null || echo "no-result-file")"
+  read_engagements "$product" "ci/${PROOF_REPARENT_PR}"
+  if [ "$BODY_RC" -eq 0 ] && [ "$outcome" = "deleted" ] && [ "$READ_N" = "0" ]; then
+    proof_pass "P-REPARENT" "committed dd-delete body exited 0 with outcome deleted, as ${PROOF_USER}; ci/${PROOF_REPARENT_PR} is gone from ${product}"
+  else
+    proof_fail "P-REPARENT" "dd-delete exited ${BODY_RC} with outcome '${outcome}' (log ${BODY_LOG}); ci/${PROOF_REPARENT_PR} matches in ${product}: ${READ_N} ${READ_ERR}; expected exit 0, deleted, 0 matches"
+  fi
+  if [ "$rc" -ne 0 ]; then
+    proof_fail "P-REPARENT" "snapshot of ci/${PROOF_DEFAULT_BRANCH} right after the delete failed: $(snippet "${after_snap}.err")"
+    return 0
+  fi
+  PROOF_RP_AFTER_SNAP="$after_snap" PROOF_RP_K_VALUE="$k" \
+    python3 - > "$post_log" 2>&1 <<'PY' || post_rc=$?
+import json
+import os
+import sys
+
+env = os.environ
+PID = "P-REPARENT"
+failures = 0
+
+
+def say(pid, ok, detail):
+    global failures
+    print("PROOF: {} {} {}".format(pid, "PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+try:
+    k = int(env["PROOF_RP_K_VALUE"])
+    with open(env["PROOF_RP_AFTER_SNAP"], encoding="utf-8") as handle:
+        main_f = json.load(handle)["findings"]
+    ids = {f["id"] for f in main_f}
+    live = [f for f in main_f if f["duplicate"] is False and f["active"] is True]
+    nondup = [f for f in main_f if f["duplicate"] is False]
+    dups = [f for f in main_f if f["duplicate"] is True]
+    say(PID, len(live) == k,
+        "immediately after the delete (no reimport): ci/{} has {} findings with duplicate=false and active=true "
+        "(expected K={}); {} total, {} non-duplicate, {} duplicate".format(
+            env["PROOF_DEFAULT_BRANCH"], len(live), k, len(main_f), len(nondup), len(dups)))
+    outside = [f for f in dups if f["duplicate_finding"] not in ids]
+    say(PID, not outside,
+        "every remaining ci/{} duplicate ({}) has its original inside ci/{}{}".format(
+            env["PROOF_DEFAULT_BRANCH"], len(dups), env["PROOF_DEFAULT_BRANCH"],
+            "" if not outside else "; {} do not: {}".format(len(outside), "; ".join(
+                "#{} dup_of={}".format(f["id"], f["duplicate_finding"]) for f in outside[:5]))))
+except (OSError, KeyError, TypeError, ValueError) as exc:
+    say(PID, False, "re-parent assertions aborted: {}".format(exc))
+sys.exit(1 if failures else 0)
+PY
+  tally_assert_log "$post_log"
+  if [ "$post_rc" -ne 0 ] && ! grep -q '^PROOF: P-REPARENT FAIL' "$post_log"; then
+    proof_fail "P-REPARENT" "the re-parent script exited ${post_rc} without reporting a failed assertion (see ${post_log})"
+  fi
+}
+
+# prove_dedup_triage BODIES_DIR ADMIN_HDR IMPORTER_TOK CA_PEM: the Phase 28
+# live block (28-03 and 28-04). Runs after every Phase 27 assertion, in fresh
+# products. Every import and delete goes through the COMMITTED security.yml
+# bodies (run_body, ci-importer token, T-27-01). The admin (superuser) token
+# is used only for scripts/defectdojo-configure.sh (which requires a
+# superuser), the user_contact_infos write, the P-DISPOSITION finding and
+# risk-acceptance writes, and reads.
+prove_dedup_triage() {
+  local bodies="$1" admin_hdr="$2"
+  DEDUP_B_IMPORT="${bodies}/defectdojo-import__dd-import.sh"
+  DEDUP_B_DELETE="${bodies}/defectdojo-cleanup__dd-delete.sh"
+  DEDUP_IMPORTER_TOK="$3"
+  DEDUP_CA_PEM="$4"
+  PROOF_ADMIN_HDR="$admin_hdr"
+  PROOF_DEDUP_PY="${PROOF_DIR}/dedup.py"
+  # Readonly names cannot be passed as command-prefix assignments (see the
+  # P-CONTEXT comment), so the ones the Python heredocs read are exported.
+  export PROOF_ADMIN_HDR PROOF_DEDUP_PY PROOF_DEFAULT_BRANCH
+  export PROOF_DEDUP_PRODUCT PROOF_REPARENT_PRODUCT PROOF_DEDUP_PR PROOF_SUPPRESS_PR PROOF_REPARENT_PR
+  write_dedup_py "$PROOF_DEDUP_PY"
+
+  echo
+  echo "=== Phase 28: dedup and triage (fresh products) ==="
+
+  # ── P-CONFIGURE (D-10, D-21, D-22) ────────────────────────────────────────
+  # The committed bootstrap, from the repository path, with the admin token.
+  # The script wants the BARE token in a 0600 file: derive it from admin.hdr
+  # with sed (the file content never reaches an argv), and remove it after
+  # P-IDEMPOTENT or on any abort.
+  echo
+  echo "=== bootstrap: scripts/defectdojo-configure.sh with the admin token (P-CONFIGURE) ==="
+  local pre="${PROOF_DIR}/settings-pre.json" post="${PROOF_DIR}/settings-post.json" rc=0 why
+  read_settings "$pre" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_abort "P-CONFIGURE" "System Settings read before the bootstrap failed: $(head -c 300 "${pre}.err" | tr '\n' ' ')"
+  fi
+  echo "    before: $(jq -c '{enable_deduplication, delete_duplicates, false_positive_history, retroactive_false_positive_history, risk_acceptance_form_default_days, enable_finding_sla}' "$pre")"
+  local bare="${PROOF_DIR}/admin-bare.token" admin_token
+  rm -f "$bare"
+  sed -n 's/^Authorization: Token //p' "$admin_hdr" > "$bare"
+  chmod 600 "$bare"
+  if [ ! -s "$bare" ] || [ "$(wc -l < "$bare" | tr -d ' ')" != "1" ] || grep -q '^$' "$bare"; then
+    rm -f "$bare"
+    proof_abort "P-CONFIGURE" "could not derive exactly one non-empty bare token line from admin.hdr"
+  fi
+  admin_token="$(cat "$bare")"
+  local b_configure="${REPO_ROOT}/scripts/defectdojo-configure.sh"
+  run_body configure-1 "$b_configure" \
+    "DEFECTDOJO_URL=${BASE_URL}" \
+    "DEFECTDOJO_ADMIN_TOKEN_FILE=${bare}" \
+    "DEFECTDOJO_CA_FILE=${DD_CA_FILE}"
+  print_masked "$BODY_LOG" "$admin_token"
+  if [ "$BODY_RC" -ne 0 ]; then
+    rm -f "$bare"
+    proof_abort "P-CONFIGURE" "defectdojo-configure.sh (run 1) exited ${BODY_RC}; every Phase 28 scenario needs deduplication on (log ${BODY_LOG})"
+  fi
+  why=""
+  grep -q '^CHANGED: .*enable_deduplication' "$BODY_LOG" || why="${why} no 'CHANGED:' line naming enable_deduplication;"
+  grep -q '^VERIFIED:' "$BODY_LOG" || why="${why} no 'VERIFIED:' line;"
+  if [ -z "$why" ]; then
+    proof_pass "P-CONFIGURE" "run 1 on the fresh install -> exit 0, CHANGED: names enable_deduplication, VERIFIED: printed"
+  else
+    proof_fail "P-CONFIGURE" "run 1 exited 0 but:${why}"
+  fi
+  rc=0
+  read_settings "$post" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_fail "P-CONFIGURE" "System Settings read-back after run 1 failed: $(head -c 300 "${post}.err" | tr '\n' ' ')"
+  else
+    echo "    after:  $(jq -c '{enable_deduplication, delete_duplicates, false_positive_history, retroactive_false_positive_history, risk_acceptance_form_default_days, enable_finding_sla}' "$post")"
+    # jq == is type-strict: 1 is not true and "90" is not 90.
+    if jq -e '.enable_deduplication == true and .delete_duplicates == false
+        and .false_positive_history == false and .retroactive_false_positive_history == false
+        and .risk_acceptance_form_default_days == 90' "$post" > /dev/null; then
+      proof_pass "P-CONFIGURE" "read-back: enable_deduplication=true, delete_duplicates=false, both false-positive-history flags false, risk_acceptance_form_default_days=90"
+    else
+      proof_fail "P-CONFIGURE" "read-back does not hold the desired values: $(jq -c '{enable_deduplication, delete_duplicates, false_positive_history, retroactive_false_positive_history, risk_acceptance_form_default_days}' "$post")"
+    fi
+    local sla_pre sla_post
+    sla_pre="$(jq -c 'if has("enable_finding_sla") then .enable_finding_sla else "absent" end' "$pre")" || sla_pre="unparseable"
+    sla_post="$(jq -c 'if has("enable_finding_sla") then .enable_finding_sla else "absent" end' "$post")" || sla_post="unparseable"
+    if [ "$sla_pre" = "$sla_post" ] && [ "$sla_pre" != '"absent"' ] && [ "$sla_pre" != "unparseable" ]; then
+      proof_pass "P-CONFIGURE" "enable_finding_sla unchanged by the bootstrap (${sla_pre} -> ${sla_post}, D-21)"
+    else
+      proof_fail "P-CONFIGURE" "enable_finding_sla ${sla_pre} -> ${sla_post}; expected present and unchanged (D-21)"
+    fi
+  fi
+  # The pattern comes from the file (-f), so the token is not on grep's argv.
+  if grep -qF -f "$bare" "$BODY_LOG"; then
+    proof_fail "P-CONFIGURE" "the admin token string appears in the run-1 log"
+  else
+    proof_pass "P-CONFIGURE" "the admin token string does not appear in the run-1 log"
+  fi
+
+  # ── P-IDEMPOTENT (D-10, D-11) ─────────────────────────────────────────────
+  echo
+  echo "=== bootstrap rerun changes nothing (P-IDEMPOTENT) ==="
+  local before2="${PROOF_DIR}/settings-before2.json" after2="${PROOF_DIR}/settings-after2.json" rc2=0
+  rc=0
+  read_settings "$before2" || rc=$?
+  run_body configure-2 "$b_configure" \
+    "DEFECTDOJO_URL=${BASE_URL}" \
+    "DEFECTDOJO_ADMIN_TOKEN_FILE=${bare}" \
+    "DEFECTDOJO_CA_FILE=${DD_CA_FILE}"
+  print_masked "$BODY_LOG" "$admin_token"
+  read_settings "$after2" || rc2=$?
+  why=""
+  [ "$BODY_RC" -eq 0 ] || why="${why} exit ${BODY_RC} (expected 0);"
+  grep -q '^NO CHANGE' "$BODY_LOG" || why="${why} no line starting 'NO CHANGE';"
+  if grep -q '^CHANGED:' "$BODY_LOG"; then why="${why} a 'CHANGED:' line was printed;"; fi
+  if grep -qF -f "$bare" "$BODY_LOG"; then why="${why} the admin token string appears in the log;"; fi
+  if [ "$rc" -ne 0 ] || [ "$rc2" -ne 0 ]; then
+    why="${why} a System Settings read failed: $(snippet "${before2}.err" "${after2}.err");"
+  elif ! jq -S . "$before2" > "${before2}.sorted" || ! jq -S . "$after2" > "${after2}.sorted"; then
+    why="${why} a System Settings snapshot is not JSON;"
+  elif ! cmp -s "${before2}.sorted" "${after2}.sorted"; then
+    why="${why} the System Settings object changed: $(diff "${before2}.sorted" "${after2}.sorted" | head -c 300 | tr '\n' ' ' || true);"
+  fi
+  if [ -z "$why" ]; then
+    proof_pass "P-IDEMPOTENT" "run 2 -> exit 0, NO CHANGE, no CHANGED: line, System Settings byte-identical (jq -S) before and after"
+  else
+    proof_fail "P-IDEMPOTENT" "run 2:${why}"
+  fi
+  rm -f "$bare"
+  admin_token=""
+
+  # ── P-DEDUP-MODE (RESEARCH Pitfall 3) ─────────────────────────────────────
+  # Harness only: ci-importer's contact-info row gets
+  # deduplication_execution_mode=async_wait, so an import's 201 waits for
+  # dedup. security.yml is not changed (T-28-14).
+  echo
+  echo "=== ci-importer dedup execution mode: async_wait (P-DEDUP-MODE) ==="
+  local importer_id
+  importer_id="$(jq -r --arg u "$PROOF_USER" \
+    '[.results[]? | select(.username == $u) | .id] | if length == 1 then .[0] else "none" end' \
+    "${PROOF_DIR}/user-get.json")" || importer_id="none"
+  if ! [[ "$importer_id" =~ ^[0-9]+$ ]]; then
+    proof_fail "P-DEDUP-MODE" "no single ${PROOF_USER} id in user-get.json (got '${importer_id}')"
+  else
+    read_contact_info "$importer_id" "$admin_hdr"
+    local cbody="${PROOF_DIR}/contact-body.json" cresp="${PROOF_DIR}/contact-write.json"
+    local method="" expect="" curl_url="" res code
+    case "$CONTACT_N" in
+      0)
+        jq -n --argjson u "$importer_id" '{user: $u, deduplication_execution_mode: "async_wait"}' > "$cbody"
+        method="POST"
+        expect="201"
+        curl_url="${BASE_URL}/api/v2/user_contact_infos/"
+        ;;
+      1)
+        jq -n '{deduplication_execution_mode: "async_wait"}' > "$cbody"
+        method="PATCH"
+        expect="200"
+        curl_url="${BASE_URL}/api/v2/user_contact_infos/${CONTACT_ROW_ID}/"
+        ;;
+      *)
+        proof_fail "P-DEDUP-MODE" "user_contact_infos rows for ${PROOF_USER} (id ${importer_id}): ${CONTACT_N} ${CONTACT_ERR}"
+        ;;
+    esac
+    if [ -n "$method" ]; then
+      echo "    ${PROOF_USER} (id ${importer_id}) has ${CONTACT_N} contact-info row(s): ${method} deduplication_execution_mode=async_wait"
+      rc=0
+      res="$(api_call "$cresp" -X "$method" -H "@${admin_hdr}" -H 'Content-Type: application/json' \
+        --data-binary "@${cbody}" "$curl_url" 2>"${cresp}.err")" || rc=$?
+      rm -f "$cbody"
+      code="${res%% *}"
+      if [ "$rc" -ne 0 ] || [ "$code" != "$expect" ]; then
+        proof_fail "P-DEDUP-MODE" "${method} ${curl_url#"${BASE_URL}"}: curl exit ${rc}, http ${code:-none} (expected ${expect}): $(head -c 400 "$cresp" 2>/dev/null | tr '\n' ' ')$(tr '\n' ' ' < "${cresp}.err")"
+      else
+        read_contact_info "$importer_id" "$admin_hdr"
+        if [ "$CONTACT_N" = "1" ] && [ "$CONTACT_MODE" = "async_wait" ]; then
+          proof_pass "P-DEDUP-MODE" "${method} -> ${code}; read-back: ${PROOF_USER}'s contact-info row ${CONTACT_ROW_ID} has deduplication_execution_mode=async_wait (harness only; security.yml unchanged)"
+        else
+          proof_fail "P-DEDUP-MODE" "read-back after ${method}: ${CONTACT_N} row(s), mode '${CONTACT_MODE}'; expected 1 row with async_wait ${CONTACT_ERR}"
+        fi
+      fi
+    fi
+  fi
+
+  # ── P-DEDUP-BRANCH (D-01, D-11, RESEARCH Pitfall 7) ───────────────────────
+  # A real delta, built here from the CI reports (never a committed fixture):
+  # ci/main is imported from a copy with exactly one trivy-fs vulnerability
+  # removed, then the PR from the full reports. The removed entry must be
+  # unique in trivy-fs.json and absent from trivy-image.json (Trivy fs and
+  # image share the "Trivy Scan" type, so a copy there would dedup it).
+  echo
+  echo "=== branch-engagement dedup with a unique delta (P-DEDUP-BRANCH) ==="
+  local trimmed="${PROOF_DIR}/reports-main-trimmed" trivy_only="${PROOF_DIR}/reports-trivy-only"
+  local delta="${PROOF_DIR}/delta.json" delta_rc=0
+  rm -rf "$trimmed" "$trivy_only"
+  mkdir -p "$trimmed" "$trivy_only"
+  find "$DD_PROOF_REPORTS" -maxdepth 1 -type f -exec cp {} "${trimmed}/" \;
+  # Untrimmed trivy-fs.json alone, for the 28-04 P-REPARENT scenario.
+  cp "${DD_PROOF_REPORTS}/trivy-fs.json" "${trivy_only}/trivy-fs.json"
+  PROOF_TRIMMED="$trimmed" PROOF_FULL_REPORTS="$DD_PROOF_REPORTS" PROOF_DELTA="$delta" \
+    python3 - > "${delta}.log" 2>&1 <<'PY' || delta_rc=$?
+import json
+import os
+import sys
+
+env = os.environ
+fs_path = os.path.join(env["PROOF_TRIMMED"], "trivy-fs.json")
+img_path = os.path.join(env["PROOF_FULL_REPORTS"], "trivy-image.json")
+
+
+def entries(doc):
+    for result in (doc.get("Results") or []):
+        if not isinstance(result, dict):
+            continue
+        for vuln in (result.get("Vulnerabilities") or []):
+            if isinstance(vuln, dict):
+                key = (vuln.get("VulnerabilityID"), vuln.get("PkgName"), vuln.get("InstalledVersion"))
+                yield key, result, vuln
+
+
+with open(fs_path, encoding="utf-8") as handle:
+    fs = json.load(handle)
+counts = {}
+for key, _, _ in entries(fs):
+    counts[key] = counts.get(key, 0) + 1
+image = set()
+if os.path.isfile(img_path):
+    with open(img_path, encoding="utf-8") as handle:
+        image = {key for key, _, _ in entries(json.load(handle))}
+
+chosen = None
+for key, result, vuln in entries(fs):
+    if None not in key and counts[key] == 1 and key not in image:
+        chosen = (key, result, vuln)
+        break
+if chosen is None:
+    print("NO-DELTA: {} trivy-fs vulnerabilities ({} distinct triples), trivy-image {}: none occurs exactly once "
+          "in trivy-fs.json and not in trivy-image.json".format(
+              sum(counts.values()), len(counts), "present" if os.path.isfile(img_path) else "absent"))
+    sys.exit(3)
+key, result, vuln = chosen
+index = next(i for i, v in enumerate(result["Vulnerabilities"]) if v is vuln)
+del result["Vulnerabilities"][index]
+with open(fs_path, "w", encoding="utf-8") as handle:
+    json.dump(fs, handle)
+record = {"VulnerabilityID": key[0], "PkgName": key[1], "InstalledVersion": key[2],
+          "Title": vuln.get("Title"), "Severity": vuln.get("Severity"), "Target": result.get("Target")}
+with open(env["PROOF_DELTA"], "w", encoding="utf-8") as handle:
+    json.dump(record, handle, indent=2)
+print("delta: removed {} {} {} ({}, {!r}) from the ci/main copy of trivy-fs.json".format(
+    key[0], key[1], key[2], record["Severity"], record["Target"]))
+PY
+  sed -e 's/^/    /' "${delta}.log"
+  if [ "$delta_rc" -eq 3 ]; then
+    proof_abort "P-DEDUP-BRANCH" "no unique trivy-fs vulnerability available as a delta ($(snippet "${delta}.log"))"
+  elif [ "$delta_rc" -ne 0 ]; then
+    proof_abort "P-DEDUP-BRANCH" "building the delta reports failed (exit ${delta_rc}): $(snippet "${delta}.log")"
+  fi
+
+  # Default branch FIRST: its findings get the lower ids and stay the
+  # originals (D-01); the PR copies are then marked duplicate.
+  import_as_branch dedup-main "$PROOF_DEDUP_PRODUCT" "$PROOF_DEFAULT_BRANCH" "$trimmed" \
+    "${PROOF_DIR}/results-dedup-main.json"
+  if [ "$BODY_RC" -ne 0 ]; then
+    proof_abort "P-DEDUP-BRANCH" "committed dd-import body (ci/${PROOF_DEFAULT_BRANCH}, trimmed reports) exited ${BODY_RC} (log ${BODY_LOG})"
+  fi
+  import_as_branch dedup-pr "$PROOF_DEDUP_PRODUCT" "$PROOF_DEDUP_PR" "$DD_PROOF_REPORTS" \
+    "${PROOF_DIR}/results-dedup-pr.json"
+  if [ "$BODY_RC" -ne 0 ]; then
+    proof_abort "P-DEDUP-BRANCH" "committed dd-import body (ci/${PROOF_DEDUP_PR}, full reports) exited ${BODY_RC} (log ${BODY_LOG})"
+  fi
+  wait_dedup_settled "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_DEDUP_PR}"
+
+  local main_snap="${PROOF_DIR}/dedup-main.json" pr_snap="${PROOF_DIR}/dedup-pr.json"
+  rc=0
+  snapshot_engagement "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_DEFAULT_BRANCH}" "$main_snap" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_abort "P-DEDUP-BRANCH" "snapshot of ${PROOF_DEDUP_PRODUCT} / ci/${PROOF_DEFAULT_BRANCH} failed: $(snippet "${main_snap}.err")"
+  fi
+  snapshot_engagement "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_DEDUP_PR}" "$pr_snap" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_abort "P-DEDUP-BRANCH" "snapshot of ${PROOF_DEDUP_PRODUCT} / ci/${PROOF_DEDUP_PR} failed: $(snippet "${pr_snap}.err")"
+  fi
+
+  local branch_log="${PROOF_DIR}/assert-dedup-branch.log" branch_rc=0
+  PROOF_MAIN_SNAP="$main_snap" PROOF_PR_SNAP="$pr_snap" PROOF_DELTA="$delta" \
+    python3 - > "$branch_log" 2>&1 <<'PY' || branch_rc=$?
+import json
+import os
+import subprocess
+import sys
+
+env = os.environ
+PID = "P-DEDUP-BRANCH"
+
+
+def load(path):
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+main, pr, delta = load(env["PROOF_MAIN_SNAP"]), load(env["PROOF_PR_SNAP"]), load(env["PROOF_DELTA"])
+failures = 0
+
+
+def say(pid, ok, detail):
+    global failures
+    print("PROOF: {} {} {}".format(pid, "PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+def by_id(ids):
+    if not ids:
+        return {}
+    proc = subprocess.run([sys.executable, env["PROOF_DEDUP_PY"], "findings-by-id"],
+                          env=dict(env, SNAP_IDS=",".join(str(i) for i in sorted(ids))),
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    if proc.returncode != 0:
+        raise RuntimeError("findings-by-id {} failed: {}".format(sorted(ids), (proc.stderr or proc.stdout).strip()[:300]))
+    return json.loads(proc.stdout)
+
+
+def scan_type(snap, f):
+    return (snap["tests"].get(str(f["test"])) or {}).get("scan_type")
+
+
+def brief(snap, f):
+    return "#{} {} {!r} dup={} active={} dup_of={}".format(
+        f["id"], scan_type(snap, f), f["title"][:60], f["duplicate"], f["active"], f["duplicate_finding"])
+
+
+try:
+    main_f, pr_f = main["findings"], pr["findings"]
+    main_ids = {f["id"] for f in main_f}
+    pr_ids = {f["id"] for f in pr_f}
+    print("    counts: PR total {}, PR duplicates {}, main total {}, main duplicates {}".format(
+        len(pr_f), sum(1 for f in pr_f if f["duplicate"] is True),
+        len(main_f), sum(1 for f in main_f if f["duplicate"] is True)))
+
+    say(PID, len(pr_f) >= 10, "ci/{} holds {} findings (at least 10, non-vacuous)".format(
+        env["PROOF_DEDUP_PR"], len(pr_f)))
+
+    def is_delta(f):
+        return (scan_type(pr, f) == "Trivy Scan" and delta["VulnerabilityID"] in f["vulnerability_ids"]
+                and f["component_name"] == delta["PkgName"] and f["component_version"] == delta["InstalledVersion"])
+
+    nondup = [f for f in pr_f if f["duplicate"] is not True]
+    say(PID, len(nondup) == 1 and is_delta(nondup[0]) and nondup[0]["active"] is True,
+        "exactly one PR finding is non-duplicate and it is the active delta {} {} {}: {} non-duplicate{}".format(
+            delta["VulnerabilityID"], delta["PkgName"], delta["InstalledVersion"], len(nondup),
+            "" if not nondup else " ({})".format("; ".join(brief(pr, f) for f in nondup[:5]))))
+
+    others = [f for f in pr_f if not is_delta(f)]
+    bad = [f for f in others
+           if not (f["duplicate"] is True and f["active"] is False and f["duplicate_finding"] in main_ids)]
+    elsewhere = {f["duplicate_finding"] for f in bad
+                 if f["duplicate_finding"] is not None and f["duplicate_finding"] not in main_ids}
+    resolved = by_id(elsewhere)
+    notes = []
+    for f in bad[:5]:
+        target = resolved.get(str(f["duplicate_finding"]))
+        where = "" if target is None else " (original #{} is in engagement {}, {})".format(
+            target["id"], target["engagement"], target["scan_type"])
+        notes.append(brief(pr, f) + where)
+    say(PID, bool(others) and not bad,
+        "every other PR finding ({}) is duplicate=true, active=false, with its original in ci/{}{}".format(
+            len(others), env["PROOF_DEFAULT_BRANCH"],
+            "" if not bad else "; {} do not: {}".format(len(bad), "; ".join(notes))))
+
+    crossing = [f for f in main_f if f["duplicate_finding"] in pr_ids]
+    say(PID, not crossing,
+        "no ci/{} finding has its original in the PR engagement (the older default-branch finding stays the "
+        "original){}".format(env["PROOF_DEFAULT_BRANCH"],
+                             "" if not crossing else ": {}".format("; ".join(brief(main, f) for f in crossing[:5]))))
+except (RuntimeError, KeyError, TypeError, ValueError) as exc:
+    say(PID, False, "branch-dedup assertions aborted: {}".format(exc))
+sys.exit(1 if failures else 0)
+PY
+  tally_assert_log "$branch_log"
+  if [ "$branch_rc" -ne 0 ] && ! grep -q '^PROOF: P-DEDUP-BRANCH FAIL' "$branch_log"; then
+    proof_fail "P-DEDUP-BRANCH" "the branch-dedup assertion script exited ${branch_rc} without reporting a failed assertion (see ${branch_log})"
+  fi
+
+  # ── P-CROSSTOOL (D-05, D-07 evidence) ─────────────────────────────────────
+  # The measured cross-tool SCA gap in ci/main: RESEARCH says no duplicate
+  # link can cross Trivy / pip-audit / NPM Audit v7+ (different id
+  # namespaces and fields), so ADR-026 ships within-tool dedup only. The
+  # CROSSTOOL: lines are the evidence 28-05 and ADR-026 quote.
+  echo
+  echo "=== cross-tool SCA gap in ci/${PROOF_DEFAULT_BRANCH} (P-CROSSTOOL) ==="
+  local cross_log="${PROOF_DIR}/assert-crosstool.log" cross_rc=0
+  PROOF_MAIN_SNAP="$main_snap" python3 - > "$cross_log" 2>&1 <<'PY' || cross_rc=$?
+import json
+import os
+import subprocess
+import sys
+
+env = os.environ
+PID = "P-CROSSTOOL"
+SCA = ["Trivy Scan", "pip-audit Scan", "NPM Audit v7+ Scan"]
+with open(env["PROOF_MAIN_SNAP"], encoding="utf-8") as handle:
+    main = json.load(handle)
+failures = 0
+
+
+def say(pid, ok, detail):
+    global failures
+    print("PROOF: {} {} {}".format(pid, "PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+def by_id(ids):
+    if not ids:
+        return {}
+    proc = subprocess.run([sys.executable, env["PROOF_DEDUP_PY"], "findings-by-id"],
+                          env=dict(env, SNAP_IDS=",".join(str(i) for i in sorted(ids))),
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    if proc.returncode != 0:
+        raise RuntimeError("findings-by-id {} failed: {}".format(sorted(ids), (proc.stderr or proc.stdout).strip()[:300]))
+    return json.loads(proc.stdout)
+
+
+def norm(name):
+    # pip-audit reports normalised lower-case names; Trivy keeps the
+    # distribution's spelling. Compare case-insensitively.
+    return (name or "").strip().lower()
+
+
+try:
+    findings = main["findings"]
+    types = {f["id"]: (main["tests"].get(str(f["test"])) or {}).get("scan_type") for f in findings}
+    by_type = {t: [f for f in findings if types[f["id"]] == t] for t in SCA}
+
+    missing = [t for t in SCA if not by_type[t]]
+    say(PID, not missing, "ci/{} holds findings of every SCA parser ({}){}".format(
+        env["PROOF_DEFAULT_BRANCH"], ", ".join("{}={}".format(t, len(by_type[t])) for t in SCA),
+        "" if not missing else "; missing: {} (the SCA overlap cannot be measured, the D-07 evidence would be "
+                               "vacuous)".format(", ".join(missing))))
+
+    trivy_names = {norm(f["component_name"]) for f in by_type["Trivy Scan"] if norm(f["component_name"])}
+    pip_names = {norm(f["component_name"]) for f in by_type["pip-audit Scan"] if norm(f["component_name"])}
+    overlap = sorted(trivy_names & pip_names)
+    say(PID, bool(overlap), "packages reported by both Trivy and pip-audit (non-vacuous gap): {}".format(
+        overlap or "none"))
+
+    # Every duplicate link that touches an SCA finding, with both ends typed;
+    # originals outside ci/main are resolved through findings-by-id.
+    outside = {f["duplicate_finding"] for f in findings
+               if f["duplicate_finding"] is not None and f["duplicate_finding"] not in types}
+    for key, target in by_id(outside).items():
+        types[int(key)] = target["scan_type"]
+    links, cross = 0, []
+    for f in findings:
+        orig = f["duplicate_finding"]
+        if orig is None:
+            continue
+        mine, theirs = types[f["id"]], types.get(orig)
+        if mine in SCA or theirs in SCA:
+            links += 1
+            if mine != theirs:
+                cross.append("#{} ({}) -> #{} ({})".format(f["id"], mine, orig, theirs))
+    say(PID, not cross, "{} duplicate link(s) touch an SCA finding in ci/{}; {} cross scan types{}".format(
+        links, env["PROOF_DEFAULT_BRANCH"], len(cross),
+        "" if not cross else " (contradicts RESEARCH and the ADR-026 D-07 basis): {}".format("; ".join(cross[:10]))))
+
+    for t in SCA:
+        fs = by_type[t]
+        samples = sorted({f["component_name"] for f in fs if f["component_name"]})[:3]
+        print("CROSSTOOL: scan_type={!r} findings={} with_vulnerability_ids={} with_component_version={} "
+              "sample_components={}".format(t, len(fs), sum(1 for f in fs if f["vulnerability_ids"]),
+                                            sum(1 for f in fs if f["component_version"]), samples))
+    for name in overlap:
+        tv = sorted({v for f in by_type["Trivy Scan"] if norm(f["component_name"]) == name
+                     for v in f["vulnerability_ids"]})
+        pv = sorted({v for f in by_type["pip-audit Scan"] if norm(f["component_name"]) == name
+                     for v in f["vulnerability_ids"]})
+        print("CROSSTOOL: package={} trivy_ids={} pip_audit_ids={} shared={}".format(
+            name, tv, pv, sorted(set(tv) & set(pv))))
+except (RuntimeError, KeyError, TypeError, ValueError) as exc:
+    say(PID, False, "cross-tool measurement aborted: {}".format(exc))
+sys.exit(1 if failures else 0)
+PY
+  tally_assert_log "$cross_log"
+  if [ "$cross_rc" -ne 0 ] && ! grep -q '^PROOF: P-CROSSTOOL FAIL' "$cross_log"; then
+    proof_fail "P-CROSSTOOL" "the cross-tool script exited ${cross_rc} without reporting a failed assertion (see ${cross_log})"
+  fi
+
+  # ── P-DISPOSITION (D-11, D-15, RESEARCH Patterns 4 and 7) ─────────────────
+  # Three unique findings of the ci/main trivy-fs Test are set False
+  # Positive, Out of Scope and Risk Accepted (a full Risk_Acceptance with a
+  # 90-day expiry and a reason), then ci/main is reimported twice from the
+  # SAME trimmed reports (the delta never lands on main). None may be
+  # reactivated, and each must hold its exact source-derived tuple.
+  echo
+  echo "=== dispositions survive two default-branch reimports (P-DISPOSITION) ==="
+  local disp_snap="${PROOF_DIR}/disp-main.json" disp_ids="${PROOF_DIR}/disp-ids.json" sel_rc=0
+  rc=0
+  snapshot_engagement "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_DEFAULT_BRANCH}" "$disp_snap" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_abort "P-DISPOSITION" "snapshot of ${PROOF_DEDUP_PRODUCT} / ci/${PROOF_DEFAULT_BRANCH} failed: $(snippet "${disp_snap}.err")"
+  fi
+  # Selection: active, non-duplicate, undispositioned, a title that occurs
+  # exactly once in the trivy-fs Test, and no ci/main finding
+  # pointing at it as its original. The last rule keeps a vulnerability that
+  # trivy-image also reports (same "Trivy Scan" type, so a duplicate of it)
+  # out of the set: its PR import would give two copies of one original and
+  # P-SUPPRESS's "exactly one" would fail for a reason that is not a
+  # suppression defect. Verified is not a criterion: the committed dd-import
+  # body sends no `verified` field and 3.3.200 lands these originals with
+  # verified=true (measured in 28-05). The FP PATCH clears it, because
+  # DefectDojo refuses a verified false positive.
+  PROOF_DISP_SNAP="$disp_snap" PROOF_DISP_IDS="$disp_ids" \
+    python3 - > "${disp_ids}.log" 2>&1 <<'PY' || sel_rc=$?
+import json
+import os
+import sys
+
+env = os.environ
+with open(env["PROOF_DISP_SNAP"], encoding="utf-8") as handle:
+    snap = json.load(handle)
+fs_tests = [tid for tid, t in snap["tests"].items() if t.get("title") == "trivy-fs"]
+if len(fs_tests) != 1:
+    print("SELECT-FAIL: {} Tests titled 'trivy-fs' in ci/{} (Test titles: {})".format(
+        len(fs_tests), env["PROOF_DEFAULT_BRANCH"], sorted(str(t.get("title")) for t in snap["tests"].values())))
+    sys.exit(3)
+tid = int(fs_tests[0])
+findings = snap["findings"]
+in_test = [f for f in findings if f["test"] == tid]
+titles = {}
+for f in in_test:
+    titles[f["title"]] = titles.get(f["title"], 0) + 1
+pointed = {f["duplicate_finding"] for f in findings if f["duplicate_finding"] is not None}
+eligible = sorted((f for f in in_test
+                   if f["active"] is True and f["duplicate"] is False
+                   and f["false_p"] is False and f["out_of_scope"] is False and f["risk_accepted"] is False
+                   and titles[f["title"]] == 1 and f["id"] not in pointed), key=lambda f: f["id"])
+print("    trivy-fs Test {}: {} findings, {} eligible (active, non-duplicate, undispositioned, unique title, "
+      "no ci/{} duplicate of it)".format(tid, len(in_test), len(eligible), env["PROOF_DEFAULT_BRANCH"]))
+if len(eligible) < 3:
+    # Per-finding breakdown, so a failed selection names the criterion that
+    # excluded each candidate instead of only a total.
+    for f in sorted(in_test, key=lambda f: f["id"]):
+        print("    candidate #{} {!r}: active={} duplicate={} verified={} false_p={} out_of_scope={} "
+              "risk_accepted={} title_count={} pointed_at={}".format(
+                  f["id"], f["title"][:60], f["active"], f["duplicate"], f["verified"], f["false_p"],
+                  f["out_of_scope"], f["risk_accepted"], titles[f["title"]], f["id"] in pointed))
+    print("SELECT-FAIL: only {} eligible trivy-fs findings, 3 needed".format(len(eligible)))
+    sys.exit(3)
+chosen = dict(zip(["fp", "oos", "ra"], eligible[:3]))
+with open(env["PROOF_DISP_IDS"], "w", encoding="utf-8") as handle:
+    json.dump({role: f["id"] for role, f in chosen.items()}, handle)
+for role, f in chosen.items():
+    print("    {}: #{} {!r}".format(role.upper(), f["id"], f["title"][:100]))
+PY
+  sed -e 's/^/    /' "${disp_ids}.log"
+  if [ "$sel_rc" -ne 0 ]; then
+    proof_abort "P-DISPOSITION" "selecting three unique trivy-fs findings on ci/${PROOF_DEFAULT_BRANCH} failed (exit ${sel_rc}): $(snippet "${disp_ids}.log")"
+  fi
+  local fp_id oos_id ra_id disp_idlist
+  fp_id="$(jq -r '.fp' "$disp_ids")"
+  oos_id="$(jq -r '.oos' "$disp_ids")"
+  ra_id="$(jq -r '.ra' "$disp_ids")"
+  if ! [[ "$fp_id" =~ ^[0-9]+$ && "$oos_id" =~ ^[0-9]+$ && "$ra_id" =~ ^[0-9]+$ ]]; then
+    proof_abort "P-DISPOSITION" "the selection wrote non-integer ids: $(snippet "$disp_ids")"
+  fi
+  disp_idlist="${fp_id},${oos_id},${ra_id}"
+  echo "    selected: FP_ID=${fp_id} OOS_ID=${oos_id} RA_ID=${ra_id}"
+
+  # The RA owner is the admin user, read by username and selected
+  # client-side (an ignored filter would return every user).
+  local admin_id ra_expiry res code dbody="${PROOF_DIR}/disp-body.json" ures="${PROOF_DIR}/admin-user-get.json"
+  rc=0
+  res="$(api_call "$ures" -G -H "@${admin_hdr}" --data-urlencode "username=${ADMIN_USER}" \
+    --data-urlencode "limit=100" "${BASE_URL}/api/v2/users/" 2>"${ures}.err")" || rc=$?
+  code="${res%% *}"
+  admin_id="$(jq -r --arg u "$ADMIN_USER" \
+    '[.results[]? | select(.username == $u) | .id] | if length == 1 then .[0] else "none" end' \
+    "$ures" 2>/dev/null)" || admin_id="none"
+  if [ "$rc" -ne 0 ] || [ "$code" != "200" ] || ! [[ "$admin_id" =~ ^[0-9]+$ ]]; then
+    proof_abort "P-DISPOSITION" "admin user id for the RA owner: GET /api/v2/users/?username=${ADMIN_USER}: curl exit ${rc}, http ${code:-none}, id '${admin_id}'"
+  fi
+  # UTC today + 90 days, the D-22 risk_acceptance_form_default_days value.
+  ra_expiry="$(python3 -c 'import datetime; print((datetime.datetime.now(datetime.timezone.utc).date() + datetime.timedelta(days=90)).strftime("%Y-%m-%dT00:00:00Z"))')"
+  echo "    RA owner: ${ADMIN_USER} (id ${admin_id}); expiration_date ${ra_expiry}"
+
+  jq -n '{false_p: true, active: false, verified: false}' > "$dbody"
+  disposition_write fp PATCH "/api/v2/findings/${fp_id}/" 200 "$dbody"
+  jq -n '{out_of_scope: true, active: false}' > "$dbody"
+  disposition_write oos PATCH "/api/v2/findings/${oos_id}/" 200 "$dbody"
+  jq -n --argjson owner "$admin_id" --argjson f "$ra_id" --arg exp "$ra_expiry" \
+    '{name: "P-DISPOSITION proof risk acceptance", owner: $owner, accepted_findings: [$f],
+      expiration_date: $exp, decision: "A",
+      decision_details: "P-DISPOSITION proof: reason recorded per TRIAGE.md"}' > "$dbody"
+  disposition_write ra POST "/api/v2/risk_acceptance/" 201 "$dbody"
+
+  export PROOF_DISP_IDS="$disp_ids"
+  rc=0
+  findings_by_ids "$disp_idlist" "${PROOF_DIR}/disp-0.json" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    proof_abort "P-DISPOSITION" "read-back of the three dispositioned findings failed: $(snippet "${PROOF_DIR}/disp-0.json.err")"
+  fi
+  PROOF_DISP_NOW="${PROOF_DIR}/disp-0.json" assert_disposition 0
+
+  local disp_tests n
+  read_engagements "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_DEFAULT_BRANCH}"
+  if [ "$READ_N" != "1" ] || ! [[ "$READ_TESTS" =~ ^[0-9]+$ ]]; then
+    proof_abort "P-DISPOSITION" "ci/${PROOF_DEFAULT_BRANCH} in ${PROOF_DEDUP_PRODUCT}: ${READ_N} match(es), Test count ${READ_TESTS} ${READ_ERR}"
+  fi
+  disp_tests="$READ_TESTS"
+  # Reimport 1 and 2 write results-disp-1.json and results-disp-2.json; the
+  # stage-2 assertions compare against the reimport-1 read-back disp-1.json.
+  for n in 1 2; do
+    import_as_branch "disp-reimport-${n}" "$PROOF_DEDUP_PRODUCT" "$PROOF_DEFAULT_BRANCH" "$trimmed" \
+      "${PROOF_DIR}/results-disp-${n}.json"
+    read_engagements "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_DEFAULT_BRANCH}"
+    if [ "$BODY_RC" -eq 0 ] && [ "$READ_N" = "1" ] && [ "$READ_TESTS" = "$disp_tests" ]; then
+      proof_pass "P-DISPOSITION" "reimport ${n} of ci/${PROOF_DEFAULT_BRANCH} from the trimmed reports -> exit 0, Test count unchanged at ${disp_tests} (in-place reimport)"
+    else
+      proof_fail "P-DISPOSITION" "reimport ${n}: dd-import exited ${BODY_RC} (log ${BODY_LOG}); ci/${PROOF_DEFAULT_BRANCH} ${READ_N} match(es), Test count ${READ_TESTS} (expected ${disp_tests}) ${READ_ERR}"
+    fi
+    rc=0
+    findings_by_ids "$disp_idlist" "${PROOF_DIR}/disp-${n}.json" || rc=$?
+    if [ "$rc" -ne 0 ]; then
+      proof_fail "P-DISPOSITION" "read-back after reimport ${n} failed: $(snippet "${PROOF_DIR}/disp-${n}.json.err")"
+      continue
+    fi
+    PROOF_DISP_NOW="${PROOF_DIR}/disp-${n}.json" \
+      PROOF_DISP_RESULTS="${PROOF_DIR}/results-disp-${n}.json" \
+      PROOF_DISP_PREV="${PROOF_DIR}/disp-1.json" \
+      assert_disposition "$n"
+  done
+
+  # ── P-SUPPRESS (D-14, RESEARCH Pattern 5) ─────────────────────────────────
+  # A new PR import of the same trimmed reports: every finding already exists
+  # on ci/main, so each dispositioned original gets exactly one inactive PR
+  # duplicate and the PR engagement shows nothing active.
+  echo
+  echo "=== dispositions on ci/${PROOF_DEFAULT_BRANCH} suppress new PR copies (P-SUPPRESS) ==="
+  import_as_branch suppress-pr "$PROOF_DEDUP_PRODUCT" "$PROOF_SUPPRESS_PR" "$trimmed" \
+    "${PROOF_DIR}/results-suppress-pr.json"
+  if [ "$BODY_RC" -ne 0 ]; then
+    proof_fail "P-SUPPRESS" "committed dd-import body (ci/${PROOF_SUPPRESS_PR}, trimmed reports) exited ${BODY_RC} (log ${BODY_LOG})"
+  else
+    wait_dedup_settled "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_SUPPRESS_PR}"
+    local sup_snap="${PROOF_DIR}/suppress-pr.json" sup_log="${PROOF_DIR}/assert-suppress.log" sup_rc=0
+    rc=0
+    snapshot_engagement "$PROOF_DEDUP_PRODUCT" "ci/${PROOF_SUPPRESS_PR}" "$sup_snap" || rc=$?
+    if [ "$rc" -ne 0 ]; then
+      proof_fail "P-SUPPRESS" "snapshot of ${PROOF_DEDUP_PRODUCT} / ci/${PROOF_SUPPRESS_PR} failed: $(snippet "${sup_snap}.err")"
+    else
+      PROOF_SUPPRESS_SNAP="$sup_snap" python3 - > "$sup_log" 2>&1 <<'PY' || sup_rc=$?
+import json
+import os
+import sys
+
+env = os.environ
+PID = "P-SUPPRESS"
+failures = 0
+
+
+def say(pid, ok, detail):
+    global failures
+    print("PROOF: {} {} {}".format(pid, "PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+def brief(f):
+    return "#{} {!r} dup={} active={} dup_of={}".format(
+        f["id"], f["title"][:60], f["duplicate"], f["active"], f["duplicate_finding"])
+
+
+try:
+    with open(env["PROOF_DISP_IDS"], encoding="utf-8") as handle:
+        ids = json.load(handle)
+    with open(env["PROOF_SUPPRESS_SNAP"], encoding="utf-8") as handle:
+        pr_f = json.load(handle)["findings"]
+    pr = env["PROOF_SUPPRESS_PR"]
+    for role in ["fp", "oos", "ra"]:
+        oid = ids[role]
+        copies = [f for f in pr_f if f["duplicate_finding"] == oid]
+        ok = len(copies) == 1 and copies[0]["duplicate"] is True and copies[0]["active"] is False
+        say(PID, ok, "{} #{}: {} ci/{} finding(s) have it as duplicate_finding (expected exactly 1, duplicate=true, "
+            "active=false){}".format(role.upper(), oid, len(copies), pr,
+                                     "" if not copies else ": " + "; ".join(brief(f) for f in copies[:5])))
+    active = [f for f in pr_f if f["active"] is True]
+    say(PID, bool(pr_f) and not active,
+        "ci/{} holds {} findings, {} active (expected 0: every finding in the trimmed set already exists on ci/{}){}".format(
+            pr, len(pr_f), len(active), env["PROOF_DEFAULT_BRANCH"],
+            "" if not active else ": " + "; ".join(brief(f) for f in active[:5])))
+except (OSError, KeyError, TypeError, ValueError) as exc:
+    say(PID, False, "suppression assertions aborted: {}".format(exc))
+sys.exit(1 if failures else 0)
+PY
+      tally_assert_log "$sup_log"
+      if [ "$sup_rc" -ne 0 ] && ! grep -q '^PROOF: P-SUPPRESS FAIL' "$sup_log"; then
+        proof_fail "P-SUPPRESS" "the suppression script exited ${sup_rc} without reporting a failed assertion (see ${sup_log})"
+      fi
+    fi
+  fi
+
+  # ── P-REPARENT (D-02, D-03, D-20) ─────────────────────────────────────────
+  prove_reparent
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1440,6 +2898,10 @@ PY
 
   # ── P-HTTP (27-11, CR-01) ─────────────────────────────────────────────────
   prove_http_refusal "$bodies" "$DD_PROOF_REPORTS"
+
+  # ── Phase 28: dedup and triage (28-03) ────────────────────────────────────
+  # After every Phase 27 assertion, which all ran with dedup still off.
+  prove_dedup_triage "$bodies" "$admin_hdr" "$importer_tok" "$ca_pem"
 
   proof_finish
 }
