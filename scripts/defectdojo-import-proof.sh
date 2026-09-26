@@ -1855,13 +1855,16 @@ PY
   if [ "$rc" -ne 0 ]; then
     proof_abort "P-DISPOSITION" "snapshot of ${PROOF_DEDUP_PRODUCT} / ci/${PROOF_DEFAULT_BRANCH} failed: $(snippet "${disp_snap}.err")"
   fi
-  # Selection: active, non-duplicate, unverified, undispositioned, a title
-  # that occurs exactly once in the trivy-fs Test, and no ci/main finding
+  # Selection: active, non-duplicate, undispositioned, a title that occurs
+  # exactly once in the trivy-fs Test, and no ci/main finding
   # pointing at it as its original. The last rule keeps a vulnerability that
   # trivy-image also reports (same "Trivy Scan" type, so a duplicate of it)
   # out of the set: its PR import would give two copies of one original and
   # P-SUPPRESS's "exactly one" would fail for a reason that is not a
-  # suppression defect.
+  # suppression defect. Verified is not a criterion: the committed dd-import
+  # body sends no `verified` field and 3.3.200 lands these originals with
+  # verified=true (measured in 28-05). The FP PATCH clears it, because
+  # DefectDojo refuses a verified false positive.
   PROOF_DISP_SNAP="$disp_snap" PROOF_DISP_IDS="$disp_ids" \
     python3 - > "${disp_ids}.log" 2>&1 <<'PY' || sel_rc=$?
 import json
@@ -1884,10 +1887,10 @@ for f in in_test:
     titles[f["title"]] = titles.get(f["title"], 0) + 1
 pointed = {f["duplicate_finding"] for f in findings if f["duplicate_finding"] is not None}
 eligible = sorted((f for f in in_test
-                   if f["active"] is True and f["duplicate"] is False and f["verified"] is False
+                   if f["active"] is True and f["duplicate"] is False
                    and f["false_p"] is False and f["out_of_scope"] is False and f["risk_accepted"] is False
                    and titles[f["title"]] == 1 and f["id"] not in pointed), key=lambda f: f["id"])
-print("    trivy-fs Test {}: {} findings, {} eligible (active, non-duplicate, unverified, unique title, "
+print("    trivy-fs Test {}: {} findings, {} eligible (active, non-duplicate, undispositioned, unique title, "
       "no ci/{} duplicate of it)".format(tid, len(in_test), len(eligible), env["PROOF_DEFAULT_BRANCH"]))
 if len(eligible) < 3:
     # Per-finding breakdown, so a failed selection names the criterion that
