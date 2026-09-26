@@ -266,10 +266,12 @@ else:
 # critical (staff is an instance-wide bypass). The section is located by
 # NUMBERED headings only (`## <n>. `), so a column-0 `## ` comment line inside
 # a fence can never truncate it, and a renumbering never breaks the check.
+# CR-01 / ADR-025 — the https requirement must stay documented.
 DD_REQUIRED = [
     "DEFECTDOJO_URL", "DEFECTDOJO_API_TOKEN", "DEFECTDOJO_PRODUCT_TYPE",
     "DEFECTDOJO_INSECURE", "DEFECTDOJO_CA_CERT",
     "is_staff", "reachable", "closed", "scheduled-security.yml", "secrets:",
+    "must be https://",
 ]
 dd_start = None
 for i, line in enumerate(lines):

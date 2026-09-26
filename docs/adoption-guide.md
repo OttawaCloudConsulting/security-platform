@@ -759,6 +759,12 @@ Required checks are evaluated on pull requests only, so these runs never affect 
 
 ### TLS
 
+`DEFECTDOJO_URL` must be an `https://` URL. Since `v1.1.1` the import and cleanup jobs refuse any
+other scheme (including `http://` and a URL with no scheme) before the token is written or any
+request is made, and fail red with `FAILED: DEFECTDOJO_URL must be https://`.
+`DEFECTDOJO_INSECURE=true` does not allow http; it only disables certificate verification on an
+https URL.
+
 TLS is **verified by default** against the runner's system trust store. A private CA is covered by
 `DEFECTDOJO_CA_CERT`, which the job writes to a private file and passes to `curl --cacert`.
 
@@ -903,6 +909,8 @@ elevate.` Add the missing permission to the caller's job-level `permissions:` bl
 - [ADR-024](adr/adr024-defectdojo-ci-import-reimport-per-branch-and-opt-in.md) — the opt-in
   DefectDojo import: `ci/<branch>` reimport, delete on close, the token and TLS stance, and the
   known gaps that section 12 summarises.
+- [ADR-025](adr/adr025-defectdojo-import-https-only.md) — the DefectDojo import refuses non-https
+  URLs (CR-01), the SCHEME gate and the P-HTTP proof.
 
 **Validation checklist**, adapted from the canonical repository's own:
 
