@@ -205,7 +205,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 28-07-PLAN.md — Push approval, PR, real GitHub proof run and checks captured
+- [x] 28-07-PLAN.md — Push approval, PR, real GitHub proof run and checks captured
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
@@ -303,7 +303,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 25. Nexus Live Validation | v3.0 | 7/7 | Complete    | 2026-09-24 |
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
-| 28. DefectDojo Dedup and Triage | v3.0 | 6/9 | In Progress|  |
+| 28. DefectDojo Dedup and Triage | v3.0 | 7/9 | In Progress|  |
 | 29. DefectDojo Live Validation | v3.0 | 0/? | Not started | — |
 
 ## Next Milestone
