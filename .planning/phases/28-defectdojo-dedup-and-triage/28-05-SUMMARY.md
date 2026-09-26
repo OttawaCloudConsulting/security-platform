@@ -8,7 +8,7 @@ requires:
 provides:
   - "evidence/28-05-local-proof.log: full local kind proof, PROOF PASS - 127 assertions, smoke ALL PASS, exit code 0"
   - "Measured values for the 3.3.200 claims that had only been derived from source: the disposition tuples, the statistics shape, the delete-time re-parent, the cross-tool table, and the timing"
-  - "Measured: imports through the committed dd-import body land Trivy originals verified=true"
+  - "Measured: Trivy Scan originals imported through the committed dd-import body land verified=true (other parsers not read)"
 affects: [28-06, 28-07, 28-09]
 tech-stack:
   added: []
@@ -102,7 +102,7 @@ PROOF: P-REPARENT PASS immediately after the delete (no reimport): ci/main has 6
 ```
 DefectDojo re-parented at DELETE time, as RESEARCH Pattern 3 predicted. The findings were already re-parented when they were read 1 s later, with no reimport.
 
-**Additional measured fact, not predicted by RESEARCH.** Findings imported through the committed dd-import body land with `verified=True`. The body sends no `verified` field. All five trivy-fs originals read `verified=True` (see attempt 2 under `# previous attempt`). 28-06's runbook should say that "Verified" is set on every original from the start, so an operator cannot treat it as a triage signal. The FP PATCH has to send `verified:false`, because DefectDojo 3.3.200 rejects a verified false positive (`dojo/finding/api/serializer.py`, "False positive findings cannot be verified.").
+**Additional measured fact, not predicted by RESEARCH.** The five trivy-fs originals (Trivy Scan parser) imported through the committed dd-import body all landed with `verified=True`. The body sends no `verified` field (see attempt 2 under `# previous attempt`). Originals from other parsers were not read. The 3.3.200 serializer says the field defaults to the original tool, so this may depend on the parser. 28-06's runbook should say that Trivy originals are already Verified on import, so an operator cannot treat Verified as a triage signal for them. The FP PATCH has to send `verified:false`, because DefectDojo 3.3.200 rejects a verified false positive (`dojo/finding/api/serializer.py`, "False positive findings cannot be verified.").
 
 **Timing**
 ```
@@ -135,7 +135,7 @@ The CI estimate against the 60-minute `timeout-minutes` cap of defectdojo-import
 
 **3. [Process] Evidence log inode swap during attempt 1**
 - **Issue:** I fixed a missing `helm` prefix in the header with `sed -i` while the proof was writing to the log through `tee -a`. The edit replaced the file's inode, and `tee` kept writing to the old one.
-- **Fix:** Attempt 1's log was rebuilt from the full timestamped copy (`ts.log`). Attempts 2 and 3 did not touch the file until the run had exited. For attempt 3, the committed log was diffed against its timestamped copy and was identical.
+- **Fix:** Attempt 1's log was rebuilt from the full timestamped copy (`ts.log`). Attempts 2 and 3 did not touch the file until the run had exited. Before the whitespace strip in deviation 4, attempt 3's log was diffed against its timestamped copy and was identical.
 
 **4. [Rule 3 - Blocking] Evidence log ignored by the user's global gitignore**
 - **Issue:** `~/.gitignore` has a line `*.log`, so `gsd-sdk query commit` refused the path.
