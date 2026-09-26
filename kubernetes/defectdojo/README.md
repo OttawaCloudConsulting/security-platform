@@ -282,7 +282,7 @@ In both cases the Secrets are still yours to create, exactly as in §1. The upst
 
 Two scripts in this repository check the chart. Run both from the repository root, with an explicit interpreter.
 
-**Offline gate.** `bash scripts/check-defectdojo-chart.sh` asserts 20 invariants against the chart source with no cluster and no network, and prints `PASS - 20 checks, 0 failures` when all hold. They include:
+**Offline gate.** `bash scripts/check-defectdojo-chart.sh` asserts 22 invariants against the chart source with no cluster and no network, and prints `PASS - 22 checks, 0 failures` when all hold. They include:
 
 - the issuer guard: a bare render fails, a render with either issuer key succeeds, and a render with both keys or an empty `secretName` fails;
 - Ingress and TLS are on, and neither `ingressClassName` nor the PostgreSQL `storageClassName` is emitted;
@@ -291,7 +291,8 @@ Two scripts in this repository check the chart. Run both from the repository roo
 - the four version pins agree (IMAGE-PIN);
 - the default `siteUrl` matches `host`;
 - the uwsgi footprint is set;
-- the wrapper has no `defectdojo.*` helper, and `values.yaml` names no real environment.
+- the wrapper has no `defectdojo.*` helper, and `values.yaml` names no real environment;
+- the D-20 dedup guards (CASCADE-DELETE-OFF and DEDUP-ALGORITHM-MAP): `DD_DUPLICATE_CLUSTER_CASCADE_DELETE` renders as `"False"`, the per-parser algorithm map parses as JSON with the expected scan types, and no hash-field override ships.
 
 Exit code 1 means a chart defect. Exit code 2 means the machine is missing a tool or the vendored subchart; resolve the dependency as described under [Install](#install) and retry.
 

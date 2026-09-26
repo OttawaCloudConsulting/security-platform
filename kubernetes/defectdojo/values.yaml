@@ -5,6 +5,8 @@
 #                  subchart. Anything the subchart exposes is overridable from
 #                  here; only the keys whose upstream default is wrong (or must
 #                  not silently drift) for this stack are restated below (D-04).
+#                  D-20 (ADR-026) deliberately adds the two dedup guards under
+#                  `extraConfigs` to the restated keys.
 #                  Read the full surface with:
 #                    tar -xOzf charts/defectdojo-1.9.53.tgz defectdojo/values.yaml
 #
@@ -101,6 +103,26 @@ defectdojo:
       # upstream valkey 0.25.8 subchart defaults this to `true` with an 8Gi PVC,
       # so it is turned off here (ephemeral Valkey, D-08).
       enabled: false
+
+  # Deduplication guards (D-20, ADR-026). These are the upstream chart 1.9.53
+  # top-level `extraConfigs`, rendered verbatim into the main DefectDojo
+  # ConfigMap and read at settings import by django, celery-worker, celery-beat
+  # and the initializer. ConfigMap data is string-only, so every value is a
+  # quoted string. A consumer overlay that adds another key here (for example
+  # DD_CSRF_TRUSTED_ORIGINS, see README) map-merges with these defaults rather
+  # than replacing them; scripts/check-defectdojo-chart.sh proves that.
+  extraConfigs:
+    # -- MUST stay "False" (ADR-026, D-20). With "True", deleting a PR's
+    # ci/<branch> engagement also DELETES the default-branch findings that are
+    # duplicates of that PR's findings, instead of re-parenting them
+    # (3.3.200 dojo/finding/helper.py prepare_duplicates_for_delete).
+    DD_DUPLICATE_CLUSTER_CASCADE_DELETE: "False"
+    # -- Restates the 3.3.200 deduplication algorithm for every scan type
+    # security.yml imports, so a DefectDojo version bump cannot silently change
+    # dedup behaviour (ADR-026, D-20). JSON: a malformed value crash-loops every
+    # pod (settings.dist.py json.loads). No hash-field overrides ship, because
+    # cross-tool collapse is not achievable in 3.3.200 (D-07, ADR-026).
+    DD_DEDUPLICATION_ALGORITHM_PER_PARSER: '{"Semgrep JSON Report": "unique_id_from_tool_or_hash_code", "Checkov Scan": "hash_code", "Trivy Scan": "hash_code", "Gitleaks Scan": "hash_code", "NPM Audit v7+ Scan": "hash_code", "pip-audit Scan": "hash_code", "SARIF": "unique_id_from_tool_or_hash_code"}'
 
   # NOTE: deliberately NOT restated (upstream defaults already match):
   #   - Secrets (D-13): `createSecret`, `createPostgresqlSecret` and
