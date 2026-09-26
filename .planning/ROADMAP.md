@@ -169,7 +169,7 @@ Plans:
 
 **Wave 14** *(blocked on Wave 13 completion)*
 
-- [ ] 27-14-PLAN.md — ADR-025 (supersedes ADR-024 decision 13 in prose), index row, adoption-guide https requirement plus gate needle
+- [x] 27-14-PLAN.md — ADR-025 (supersedes ADR-024 decision 13 in prose), index row, adoption-guide https requirement plus gate needle
 
 ### Phase 28: DefectDojo Dedup and Triage
 
@@ -264,7 +264,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 24. Nexus Anonymous Access and Workstation Script | v3.0 | 10/10 | Complete   | 2026-09-20 |
 | 25. Nexus Live Validation | v3.0 | 7/7 | Complete    | 2026-09-24 |
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
-| 27. DefectDojo CI Auto-Import | v3.0 | 13/14 | In Progress|  |
+| 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete   | 2026-09-26 |
 | 28. DefectDojo Dedup and Triage | v3.0 | 0/? | Not started | — |
 | 29. DefectDojo Live Validation | v3.0 | 0/? | Not started | — |
 

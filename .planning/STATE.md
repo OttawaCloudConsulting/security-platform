@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: executing
-stopped_at: Completed 27-13-PLAN.md
-last_updated: "2026-09-26T02:13:41.215Z"
+status: verifying
+stopped_at: Completed 27-14-PLAN.md
+last_updated: "2026-09-26T02:19:44.056Z"
 last_activity: 2026-09-26
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 46
-  completed_plans: 45
-  percent: 57
+  completed_plans: 46
+  percent: 71
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 Phase: 27 (defectdojo-ci-auto-import) — EXECUTING
 Plan: 14 of 14
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-26
 
 ## Performance Metrics
@@ -276,6 +276,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 27]: 27-11: dd-delete checks the DEFECTDOJO_URL scheme before its default-branch refusals, so a misconfigured URL is loud even on refusal-path runs
 - [Phase 27]: 27-12: CR-01 fix merged to security-platform main as 917352c (PR #22); proof run 36186258881 attempt 2 PROOF PASS - 88 assertions; v1 and v1.1.0 still at 0f7e4e1 pending 27-13
 - [Phase 27]: 27-13: dispatch proof 36188604648 on main PROOF PASS - 88 assertions; v1.1.1 (c1565b3) and v1 moved 0f7e4e1 -> 917352c with operator approval; release v1.1.1 published by orchestrator on operator authorization
+- [Phase 27]: Phase 27-14: CR-01 recorded as new ADR-025 superseding ADR-024 decision 13 in prose for non-https URLs; ADR-024 byte-unchanged
 
 ### Pending Todos
 
@@ -396,11 +397,12 @@ Carried forward from v1.1 close:
 | Phase 27 P11 | ~35min | 3 tasks | 3 files |
 | Phase 27 P12 | multi-session | 4 tasks | 2 files |
 | Phase 27 P13 | multi-session | 3 tasks | 1 files |
+| Phase 27 P14 | 15min | 2 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-09-26T02:12:15.313Z
-Stopped at: Completed 27-13-PLAN.md
+Last session: 2026-09-26T02:19:38.422Z
+Stopped at: Completed 27-14-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
