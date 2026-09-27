@@ -2,7 +2,7 @@
 phase: 29
 slug: defectdojo-live-validation
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-09-26
 ---
@@ -31,7 +31,7 @@ created: 2026-09-26
 - **After every task commit:** Run the quick run command relevant to the repo touched
 - **After every plan wave:** Render the overlay (`helm template` with overlay values against the pinned SHA) and run the overlay repo's conformance check; run the live gate once the Application exists
 - **Before `/gsd:verify-work`:** `--sync-pass first` (0 FAIL, expected SECOND-SYNC skip), then `--sync-pass second` (ALL PASS, 0 skipped), and D-11 evidence complete
-- **Max feedback latency:** 120 seconds
+- **Max feedback latency:** 120 seconds for offline gates. Live GitHub Actions runs in plans 29-15 and 29-16 take 45-60 minutes by nature and are sampled at wave boundaries only.
 
 ---
 

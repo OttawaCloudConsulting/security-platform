@@ -7,6 +7,8 @@
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
 
+> **Superseded in part:** D-07, D-08, D-11 step 5 and D-16 were amended in 29-CONTEXT.md on 2026-09-26/27, and D-18 to D-20 were added. CONTEXT.md is authoritative where this copy differs.
+
 ### Locked Decisions
 
 Carried forward, not re-decided:
@@ -575,7 +577,9 @@ ADR-027 then covers the DefectDojo live validation: exposure, the CSRF mechanism
 | A6 | Fine-grained PAT "Administration: Read and write" on a user-owned repo is sufficient for ARC repo-scope registration (docs list it for repository runners; not exercised on a user account here) | BLOCKING FINDING | ARC listener auth fails. Fall back to a classic PAT with `repo` scope (docs), which is broader |
 | A7 | The CoreDNS ConfigMap is not GitOps-managed (not found in either overlay repo by directory listing; not exhaustively grepped) | Alternatives | Only matters for the last-resort fallback |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Resolutions: OQ1 by the D-07/D-08 amendment (repo-scoped runner); OQ2 by the D-11 step 5 amendment; OQ3 deferred to the operator checkpoint in plan 29-07 Task 1; OQ4 by the D-16 amendment (operator admin token used workstation-side). See 29-CONTEXT.md.
 
 1. **Does the operator accept repository-scoped ARC (BLOCKING FINDING)?**
    - What we know: org-level registration, runner groups and the org PAT permission are impossible on a user account.

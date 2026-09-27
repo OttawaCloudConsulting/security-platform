@@ -90,7 +90,7 @@ Carried forward, not re-decided:
 
 ### Data layer and tokens
 - **D-15:** **Bundled Bitnami Postgres** (26 D-05 default), exactly as shipped, so the live run validates the defaults. The CloudNativePG operator in `platform/cloudnative-pg` is not used.
-- **D-16:** The CI token belongs to a **dedicated least-privilege user**. Per ADR-024, that is a `ci-importer` user with `is_staff=true` and `is_superuser=false`, the smallest identity proven able to import, auto-create a Product Type and delete an engagement at 3.3.200. The superuser token is used only for D-13 and is held by the operator.
+- **D-16:** The CI token belongs to a **dedicated least-privilege user**. Per ADR-024, that is a `ci-importer` user with `is_staff=true` and `is_superuser=false`, the smallest identity proven able to import, auto-create a Product Type and delete an engagement at 3.3.200. The superuser token is held by the operator and never stored in GitHub. (Amended 2026-09-27 by operator ruling, closing RESEARCH OQ4:) besides D-13, the operator-held admin token file is also used workstation-side for the D-11 dispositions and for the D-11/D-14 API read-back and state capture.
 
 ### Records
 - **D-17:** Write **ADR-027** for the homelab DefectDojo live validation: exposure via LB VIP + ghostunnel, ARC reachability, `DEFECTDOJO_RUNS_ON`, the proof results and the accepted risks. Add its row to `docs/adr/README.md`. Research decides whether ARC needs its own ADR (ADR-028). ADRs are append-only, so do not edit ADR-022 to ADR-026.

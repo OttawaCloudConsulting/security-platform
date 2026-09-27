@@ -223,24 +223,62 @@ Plans:
 
 Plans:
 
+**Wave 1**
+
 - [ ] 29-01-PLAN.md — Wave 0: DefectDojo homelab live-validation gate (TLS, Origin login both hosts, foreign-Origin 403, celery, hook phase, second sync)
 - [ ] 29-02-PLAN.md — Amend the `platform` AppProject for defectdojo, arc-systems, arc-runners (operator-approved merge, live read)
 - [ ] 29-03-PLAN.md — Adoption guide section 12: DEFECTDOJO_RUNS_ON, self-hosted reachability, fork approval, queue behaviour; gate extended
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 29-04-PLAN.md — Wave 0: D-11 PR-lifecycle API assertion helper (amended step 5)
 - [ ] 29-05-PLAN.md — Author the DefectDojo overlay directory (SealedSecrets, Certificate, ghostunnel, LB VIP Service, staticName hook values)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 29-06-PLAN.md — security.yml DEFECTDOJO_RUNS_ON routing + runs-on shape gate + proof comments; PR A merged to main
 - [ ] 29-07-PLAN.md — Operator UniFi/Pi-hole checks, overlay PR and approved merge (first sync)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 29-08-PLAN.md — First-sync evidence (images incl. GAR postgres, cert, initializer) and gate first pass
 - [ ] 29-09-PLAN.md — Refresh the VLAN43 VIP inventory in the cluster-config runbook from a live read
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 29-10-PLAN.md — Operator superuser token; defectdojo-configure.sh once (CHANGED) and again (NO CHANGE)
 - [ ] 29-11-PLAN.md — D-18 runner reachability probe, runner image tag, Postgres NetworkPolicy measurement
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 29-12-PLAN.md — Operator PAT + fork approval raise; author ARC arc-systems and repo-scoped arc-runners
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
 - [ ] 29-13-PLAN.md — Ordered ARC merges; controller and listener verified
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
 - [ ] 29-14-PLAN.md — Ordering precondition gate; operator creates ci-importer and sets secret/variables (URL last)
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
 - [ ] 29-15-PLAN.md — Baseline ci/main import via dispatch on ARC; proof-workflow side effect
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
 - [ ] 29-16-PLAN.md — D-11 real PR lifecycle: duplicates, dispositions survive reimport, close unmerged
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
 - [ ] 29-17-PLAN.md — Second-sync idempotency and gate second pass (ALL PASS)
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
 - [ ] 29-18-PLAN.md — Chart README DDOJO-05 row and measured notes; PR B; v1.2.0 tag and v1 move
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
 - [ ] 29-19-PLAN.md — ADR-027, ADR-028, ADR index rows, DDOJO-05 Complete
 
 </details>
