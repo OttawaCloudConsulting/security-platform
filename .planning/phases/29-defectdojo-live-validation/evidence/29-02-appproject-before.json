@@ -1,0 +1,138 @@
+{
+  "sourceRepos": [
+    "https://github.com/OttawaCloudConsulting/occ-k8s-app-config",
+    "ghcr.io/cloudnative-pg/charts",
+    "oci://ghcr.io/cloudnative-pg/charts",
+    "https://github.com/OttawaCloudConsulting/security-platform"
+  ],
+  "destinations": [
+    {
+      "name": "in-cluster",
+      "namespace": "admission-policies",
+      "server": "https://kubernetes.default.svc"
+    },
+    {
+      "name": "in-cluster",
+      "namespace": "kube-system",
+      "server": "https://kubernetes.default.svc"
+    },
+    {
+      "name": "in-cluster",
+      "namespace": "reloader",
+      "server": "https://kubernetes.default.svc"
+    },
+    {
+      "name": "in-cluster",
+      "namespace": "argo",
+      "server": "https://kubernetes.default.svc"
+    },
+    {
+      "name": "in-cluster",
+      "namespace": "authentik",
+      "server": "https://kubernetes.default.svc"
+    },
+    {
+      "name": "in-cluster",
+      "namespace": "homepage",
+      "server": "https://kubernetes.default.svc"
+    },
+    {
+      "name": "in-cluster",
+      "namespace": "cnpg-system",
+      "server": "https://kubernetes.default.svc"
+    },
+    {
+      "name": "in-cluster",
+      "namespace": "nexus",
+      "server": "https://kubernetes.default.svc"
+    }
+  ],
+  "clusterResourceWhitelist": [
+    {
+      "group": "",
+      "kind": "Namespace"
+    },
+    {
+      "group": "apiextensions.k8s.io",
+      "kind": "CustomResourceDefinition"
+    },
+    {
+      "group": "admissionregistration.k8s.io",
+      "kind": "ValidatingWebhookConfiguration"
+    },
+    {
+      "group": "admissionregistration.k8s.io",
+      "kind": "ValidatingAdmissionPolicy"
+    },
+    {
+      "group": "admissionregistration.k8s.io",
+      "kind": "ValidatingAdmissionPolicyBinding"
+    },
+    {
+      "group": "admissionregistration.k8s.io",
+      "kind": "MutatingWebhookConfiguration"
+    },
+    {
+      "group": "rbac.authorization.k8s.io",
+      "kind": "ClusterRole"
+    },
+    {
+      "group": "rbac.authorization.k8s.io",
+      "kind": "ClusterRoleBinding"
+    }
+  ],
+  "namespaceResourceWhitelist": [
+    {
+      "group": "apps",
+      "kind": "Deployment"
+    },
+    {
+      "group": "cert-manager.io",
+      "kind": "Certificate"
+    },
+    {
+      "group": "cert-manager.io",
+      "kind": "Issuer"
+    },
+    {
+      "group": "networking.k8s.io",
+      "kind": "NetworkPolicy"
+    },
+    {
+      "group": "rbac.authorization.k8s.io",
+      "kind": "Role"
+    },
+    {
+      "group": "rbac.authorization.k8s.io",
+      "kind": "RoleBinding"
+    },
+    {
+      "group": "",
+      "kind": "ConfigMap"
+    },
+    {
+      "group": "",
+      "kind": "Secret"
+    },
+    {
+      "group": "",
+      "kind": "Service"
+    },
+    {
+      "group": "",
+      "kind": "ServiceAccount"
+    },
+    {
+      "group": "apps",
+      "kind": "StatefulSet"
+    },
+    {
+      "group": "batch",
+      "kind": "Job"
+    },
+    {
+      "group": "bitnami.com",
+      "kind": "SealedSecret"
+    }
+  ]
+}

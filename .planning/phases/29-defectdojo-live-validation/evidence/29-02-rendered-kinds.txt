@@ -1,0 +1,53 @@
+# 29-02 rendered kinds — enumerated from fresh renders, 2026-09-27T13:09Z
+# Format: apiVersion<TAB>kind<TAB>metadata.namespace (deduped; <unset> = no metadata.namespace in the render)
+#
+# Commands (helm v4.3.0+gbec5b06):
+#  (a) helm template defectdojo repos/security-platform/kubernetes/defectdojo --namespace defectdojo -f dd-values.yaml --include-crds
+#      (dd-values.yaml = RESEARCH Pattern 1: defectdojo.host, alternativeHosts[0], siteUrl, django.ingress.enabled=false,
+#       extraConfigs.DD_CSRF_TRUSTED_ORIGINS, initializer.staticName=true, initializer.keepSeconds=0, the two jobAnnotations)
+#      security-platform at 9726b35; subchart charts/defectdojo-1.9.53.tgz (Chart.lock pin, gitignored)
+#  (b) helm template arc oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller --version 0.14.2 --namespace arc-systems --include-crds
+#      pulled digest sha256:3081ba15c41f0aa791058dedd2a7406fece24c9aeaa94956c268e5099427a452
+#  (c) helm template occ-homelab-defectdojo oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set --version 0.14.2 --namespace arc-runners --include-crds --set githubConfigUrl=https://github.com/OttawaCloudConsulting/security-platform --set githubConfigSecret=arc-github-pat --set controllerServiceAccount.namespace=arc-systems --set controllerServiceAccount.name=arc-gha-rs-controller
+#      pulled digest sha256:579e3a1bdf4032b3c3de3e9b0880a4a6d3c1989a67c06010f680c1cc49524d11
+#  (d) overlay source-2 kinds planned by 29-05 / 29-12 (not rendered; listed from the plan)
+#  --include-crds is used because Argo CD applies chart crds/ by default; plain helm template omits them.
+
+## (a) defectdojo  (Application namespace: defectdojo)
+apps/v1	Deployment	defectdojo
+apps/v1	StatefulSet	defectdojo
+batch/v1	Job	defectdojo
+networking.k8s.io/v1	NetworkPolicy	defectdojo
+policy/v1	PodDisruptionBudget	defectdojo
+v1	ConfigMap	defectdojo
+v1	Pod	<unset>
+v1	Service	defectdojo
+v1	ServiceAccount	defectdojo
+#   note: v1 Pod defectdojo-unit-tests carries helm.sh/hook: test-success (Argo CD skips helm test hooks) -> NOT added
+#   note: no Secret and no PersistentVolumeClaim objects are rendered (PVCs come from StatefulSet volumeClaimTemplates)
+
+## (b) arc controller  (Application namespace: arc-systems)
+apiextensions.k8s.io/v1	CustomResourceDefinition	<unset>
+apps/v1	Deployment	arc-systems
+rbac.authorization.k8s.io/v1	ClusterRole	<unset>
+rbac.authorization.k8s.io/v1	ClusterRoleBinding	<unset>
+rbac.authorization.k8s.io/v1	Role	arc-systems
+rbac.authorization.k8s.io/v1	RoleBinding	arc-systems
+v1	ServiceAccount	arc-systems
+
+## (c) arc scale set  (Application namespace: arc-runners)
+actions.github.com/v1alpha1	AutoscalingRunnerSet	arc-runners
+rbac.authorization.k8s.io/v1	Role	arc-runners
+rbac.authorization.k8s.io/v1	RoleBinding	arc-runners
+v1	ServiceAccount	arc-runners
+
+## (d) overlay source-2 kinds (plans 29-05, 29-12)
+bitnami.com/v1alpha1	SealedSecret	<app namespace>
+cert-manager.io/v1	Certificate	<app namespace>
+apps/v1	Deployment	<app namespace>
+v1	Service	<app namespace>
+
+## Namespace check: every namespaced object is in its Application namespace or <unset> (defaults to it). No foreign namespace.
+## Gap vs live platform AppProject (29-02-appproject-before.json):
+##   namespaced missing: policy/PodDisruptionBudget, actions.github.com/AutoscalingRunnerSet
+##   cluster-scoped missing: none (CustomResourceDefinition, ClusterRole, ClusterRoleBinding already allowed)
