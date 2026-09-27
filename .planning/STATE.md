@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-05-PLAN.md
-last_updated: "2026-09-27T20:29:39.712Z"
+stopped_at: Completed 29-06-PLAN.md
+last_updated: "2026-09-27T21:20:14.044Z"
 last_activity: 2026-09-27
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 74
-  completed_plans: 60
-  percent: 81
+  completed_plans: 61
+  percent: 82
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 6 of 19 (next: 29-06-PLAN.md; completed: 29-01, 29-02, 29-03, 29-04, 29-05 = 5/19)
+Plan: 7 of 19 (next: 29-07-PLAN.md; completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06 = 6/19)
 Status: Ready to execute
 Last activity: 2026-09-27
 
@@ -292,6 +292,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-02: Homelab kube context is admin@occ-new; platform AppProject amended via occ-k8s-app-config PR #246 (merge e965581) with enumerated kinds only (PDB, AutoscalingRunnerSet), clusterResourceWhitelist unchanged, ''/Pod excluded
 - [Phase 29]: 29-04: lifecycle-assert list reads page by offset and never follow DRF next (http:// behind the L4 proxy); ENGAGEMENT-GONE asserts the exact-name set empty; null duplicate_finding counts as dangling
 - [Phase 29]: 29-05: DefectDojo overlay directory committed locally as a783559 on feat/defectdojo-app-directory (not pushed); pinned security-platform c8027e6784ec631db128f45444c9a8092db9d0a1 (ls-remote 2026-09-27); DD_CREDENTIAL_AES_256_KEY sealed at 128 chars per chart README; hyphenated-key Secrets sealed via kubectl --from-file | kubeseal; no --target-status on ghostunnel; initializer staticName+Sync hook+BeforeHookCreation+keepSeconds 0 for 29-17 to measure — All gates green locally (c1, check_appconfig, source-1/source-2 renders, kubectl dry-run, gitleaks with 7 pinned ciphertext fingerprints); repo-wide yamllint . failure is pre-existing (51 errors on origin/main archive, same on HEAD archive)
+- [Phase 29]: 29-06: PR #24 (PR A) merged to security-platform main as 2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d (head e8387a8, --merge with --match-head-commit) after operator reply verbatim 'Rerun, then merge if green'; prove-import rerun (attempt 2, run 36350180923) green. Only defectdojo-import/cleanup route via runs-on vars.DEFECTDOJO_RUNS_ON || 'ubuntu-latest'; variables still unset; no tag moved (29-18 owns v1.2.0)
+- [Phase 29]: 29-06: live security-platform main has ZERO required status checks (ruleset 14243983 [deletion, non_fast_forward]) before and after the merge; the plan's five-required-contexts premise is not live; frozen job names enforced offline by FROZEN_JOB_NAMES. Count ${{ expressions with grep -F (ugrep 7.8.4)
 
 ### Pending Todos
 
@@ -428,11 +430,12 @@ Carried forward from v1.1 close:
 | Phase 29 P02 | 35min | 3 tasks | 4 files |
 | Phase 29 P04 | 389min | 2 tasks | 1 files |
 | Phase 29 P05 | 15min | 3 tasks | 10 files |
+| Phase 29 P06 | 45min | 3 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-09-27T20:28:46.266Z
-Stopped at: Completed 29-05-PLAN.md
+Last session: 2026-09-27T21:20:02.897Z
+Stopped at: Completed 29-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
