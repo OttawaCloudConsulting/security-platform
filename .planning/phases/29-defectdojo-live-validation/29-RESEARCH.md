@@ -94,6 +94,50 @@ Carried forward, not re-decided:
 - Tracking internal DNS records in git instead of manual Pi-hole entries.
 </user_constraints>
 
+<phase_requirements>
+## Phase Requirements
+
+| ID | Description | Research Support |
+|----|-------------|------------------|
+| DDOJO-05 | DefectDojo chart validated live via private ArgoCD overlay deploy to the operator's homelab cluster | BLOCKING FINDING (ARC registration scope), Patterns 1-5, Pitfalls 1-9, ADR Recommendation, Validation Architecture (every row) |
+</phase_requirements>
+
+## Project Constraints (from CLAUDE.md)
+
+**This repository (`security_solution/CLAUDE.md` and `.claude/rules/`):**
+- It is a documentation repository. Canonical workflows and K8s packages live in `OttawaCloudConsulting/security-platform`. Document them here; do not ship them from here.
+- ADRs in `docs/adr/` are **append-only**. ADR-027 (and ADR-028 if adopted) are new files plus rows in `docs/adr/README.md`. Never edit ADR-022 through ADR-026.
+- Preserve the ASCII diagrams, the four-phase structure and the tool matrices in `development-security-stack-option-1.md`, if it is touched.
+- Scripts run as `bash script.sh`. **Never `chmod +x`.** This applies in all three repositories.
+- Anti-slop: on any failure, STOP, then REPORT (raw error, theory, proposal), then WAIT. No silent retries and no silent fallbacks.
+- Verify every 3 actions on unfamiliar or risky work. Use the high-risk prediction format for destructive, irreversible or shared-environment actions: cluster syncs, secret sealing, tag moves, repo settings.
+- Operator confirmation is required before git history rewrites, tag moves, public repo setting changes and merges.
+
+**`occ-k8s-app-config/CLAUDE.md` (overlay repository; I read it this session):**
+- `appset-apps` discovers `application-sets/*/*/argocd-overrides.yaml` **by file presence**. Deleting the file deletes the Application, and editing it edits the live spec. Read `docs/reference/argocd-overrides-guide.md` and `docs/argocd/argocd-overrides-adoption.md` before changing an Application. The guide exists [VERIFIED: ls].
+- One override file per app directory, at its root (R32). No `spec.project` in overrides (F-10). `syncOptions` replaces rather than appends, so restate `CreateNamespace=true` and `ApplyOutOfSyncOnly=true` (F-12). `source: null` is needed with `sources:` (R8/F-11). `retry` goes under `syncPolicy` (R9). These come from the Nexus and CNPG override comments.
+- The namespace equals the directory name, created via `CreateNamespace=true`. Do not add `Namespace` resources.
+- AppProjects live in `application-sets/automation/argocd/templates/projects.yaml`. Enumerate kinds explicitly and never use wildcards.
+- `externalTrafficPolicy: Local` is **rejected at admission** on any `vlan` 41/43/44 LoadBalancer Service.
+- Secrets are SealedSecrets only. Never commit a raw `Secret`.
+- Validate before committing:
+  - `yamllint .`;
+  - `helm template <release> application-sets/<project>/<app> > /dev/null` for Helm apps (`helm dependency update` if `Chart.yaml` changes);
+  - `kubectl apply --dry-run=client` for raw manifests;
+  - inspect the rendered projects, destinations and sync options for AppProject changes;
+  - also run the conformance scripts `docs/argocd/conformance/c1.py` and `check_appconfig.py`, which exist [VERIFIED: ls] and are named by the homepage override comment.
+- Use Argo CD for reconciliation. Never run a workstation `kubectl apply` for deployments.
+- Argo CD CLI: `ARGOCD_AUTH_TOKEN=$(cat ~/.config/argocd/claude.token) argocd <cmd> --server argocd.infra.ottawacloudconsulting.com --grpc-web`. Never pass `--insecure`, and never log in with a username and password.
+- Git: integration branch `main`, changes by PR. Write commit messages **through a file** (`.claude/scripts/gcommit` when present, else `git commit -F`), never heredoc or multiline `-m`. Cut a fresh branch from `main` after each PR closes.
+- Have an explicit rollback plan for storage, PVCs, secrets and authentication changes, and for anything that can prune.
+
+**`occ-k8s-cluster-config/CLAUDE.md` (read-only in this phase except the VLAN43 runbook row):**
+- Commit via `bash .claude/scripts/gcommit`, since the heredoc commits hook is enforced.
+- On an expired `argocd`/`aws` credential, **STOP** and report BLOCKED. Never work around it.
+- Markdown must pass the repo's markdownlint config. This applies to the `cilium-l2-vantage-host-runbook.md` row addition.
+
+**`security-platform`:** it has no CLAUDE.md [VERIFIED: ls]. Existing conventions apply: mode `100644` scripts, SHA-pinned actions, frozen required-check contexts (`scripts/set-required-checks.sh`), ADR-001 side-channel carve-out.
+
 ## BLOCKING FINDING: D-07 and D-08 cannot be carried out on this GitHub account
 
 **This finding contradicts two locked decisions. The planner MUST put an operator decision checkpoint ahead of every ARC task. Do not quietly adapt around it.**
@@ -116,7 +160,7 @@ Even a newly created **Free** organisation would get no custom runner groups, be
 
 ### Minimal replacement (recommended; operator must confirm)
 - **Registration scope: repository.** Set `githubConfigUrl: https://github.com/OttawaCloudConsulting/security-platform` and **omit** `runnerGroup`, since ARC falls back to group ID 1 internally [VERIFIED: ARC controller source via Context7]. Only `security-platform` can target the runner. That preserves D-07's intent ("security-platform only") by the narrowest mechanism the account offers.
-- **PAT: fine-grained, resource owner `OttawaCloudConsulting`, "Only select repositories" = `security-platform`.** Repository permission **Administration: Read and write**. Metadata: Read is added automatically [CITED: ARC auth doc]. This replaces D-08's org permission.
+- **PAT: fine-grained, resource owner `OttawaCloudConsulting`, "Only select repositories" = `security-platform`.** Repository permission **Administration: Read and write**. Metadata: Read is added automatically [ASSUMED: general fine-grained PAT behaviour, not stated in the ARC doc]. This replaces D-08's org permission.
 - **Accepted-risk delta for ADR-027/028:** repository Administration read/write is **broader than runner management**. On that one repository it also covers settings, webhooks, deploy keys and branch protection. A leaked PAT is therefore a repository-takeover credential for `security-platform`, not just a runner-registration credential. Because the blast radius is one repository and the PAT is SealedSecret-only, that is tolerable, but it must be stated as accepted rather than left silent.
 - **Consequence for consumers (adoption guide):** with no runner group, each future consumer repo needs **its own** repository-scoped `AutoscalingRunnerSet`, with its own PAT or a PAT covering that repo too. The alternative is to move to an organisation on the Team plan. "Consumers are added to the group later" (D-07) becomes "consumers get their own scale set later".
 
@@ -471,7 +515,8 @@ kubectl --context "$ctx" -n defectdojo get sa defectdojo -o jsonpath='{.metadata
 # wait > 10 min, confirm no drift-triggered sync:
 kubectl --context "$ctx" -n argocd get applications.argoproj.io defectdojo -o json \
   | jq '{sync:.status.sync.status, health:.status.health.status, rev:.status.sync.revisions, hist:[.status.history[]?|{id,revisions,deployedAt}]}'
-argocd app sync defectdojo --timeout 900        # or annotate refresh=hard + sync; same revision
+ARGOCD_AUTH_TOKEN=$(cat ~/.config/argocd/claude.token) argocd app sync defectdojo --timeout 900 \
+  --server argocd.infra.ottawacloudconsulting.com --grpc-web   # app-config CLAUDE.md auth form; same revision
 kubectl --context "$ctx" -n argocd get applications.argoproj.io defectdojo -o json \
   | jq '.status.operationState.syncResult.resources[]|select(.hookType!=null)|{kind,name,hookType,hookPhase}'
 kubectl --context "$ctx" -n defectdojo logs job/defectdojo-initializer --all-containers | tail -50
