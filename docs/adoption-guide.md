@@ -627,11 +627,16 @@ unchanged. If an import does fail, only the import job itself turns red.
 ### Prerequisites
 
 You need a running DefectDojo instance, and its URL must be **reachable from the GitHub runner**,
-not merely from your workstation. With GitHub-hosted runners, that means reachable from the public
-internet. How a homelab or private-network instance is reached (a self-hosted runner, a tunnel or a
-public ingress) is not covered by this guide. That decision belongs to a later phase of this
-project (Phase 29). An unreachable URL does not break your pipeline; it turns only the import job
-red.
+not merely from your workstation. Two routes are supported:
+
+- **A public URL**, reached from GitHub-hosted runners. Nothing else is needed.
+- **A private-network instance**, reached through a self-hosted runner that you name in the
+  `DEFECTDOJO_RUNS_ON` variable (see Settings below). The runner is an actions-runner-controller
+  runner scale set whose pods can resolve and reach the instance. Only the DefectDojo Import and
+  DefectDojo Cleanup jobs move to it; the five scan jobs stay on `ubuntu-latest`. Before you set
+  the variable on a public repository, read the fork pull request caveat below.
+
+An unreachable URL does not break your pipeline; it turns only the import job red.
 
 ### The Token
 
@@ -670,6 +675,10 @@ gh secret set DEFECTDOJO_API_TOKEN -R OWNER/REPO
   ## Prompts for the value; skip it if you piped the token in above.
 gh variable set DEFECTDOJO_URL --body https://defectdojo.example.com -R OWNER/REPO
   ## The on/off switch. Unset, the import and cleanup jobs are skipped.
+gh variable set DEFECTDOJO_RUNS_ON --body <runner-scale-set-name> -R OWNER/REPO
+  ## Optional. Unset, both jobs keep ubuntu-latest. The value is the runner scale set name
+  ## (the runs-on label), read from your repository exactly like DEFECTDOJO_URL.
+  ## Available from workflow release v1.2.0, which the v1 tag follows.
 gh variable set DEFECTDOJO_PRODUCT --body "my-product" -R OWNER/REPO
   ## Optional. Default: owner/repo.
 gh variable set DEFECTDOJO_PRODUCT_TYPE --body "CI" -R OWNER/REPO
@@ -793,6 +802,12 @@ SKIP: <file> not in artifacts — <reason>
 
 For example: `SKIP: trivy-image.json not in artifacts — no Dockerfile in this repository`.
 
+With `DEFECTDOJO_RUNS_ON` set, the import and cleanup jobs wait for the named runner. If that
+runner is offline, or has gone 30 days without a runner software update, the job **queues** rather
+than fails, and GitHub cancels a job that has been queued for about 24 hours. Merge is unaffected,
+because the job is not a required check. Never make it one. A cancelled cleanup leaves the
+`ci/<branch>` engagement behind; re-run the cleanup job or delete the engagement by hand.
+
 ### Caveats
 
 - **Set `DEFECTDOJO_PRODUCT_TYPE` once.** If the product already exists under a different Product
@@ -802,6 +817,16 @@ For example: `SKIP: trivy-image.json not in artifacts — no Dockerfile in this 
   discovery order. Adding a lockfile can therefore change which lockfile a numbered Test holds, so
   that Test's history can mix two files.
 - **tflint imports as SARIF**, not through DefectDojo's native TFLint parser, which reads JSON only.
+- **Per-repository scale sets:** on a personal GitHub account there are no organisation runner
+  groups, so each consumer repository needs its own repository-scoped runner scale set. Its
+  credential is a fine-grained PAT limited to that repository, with Administration: Read and write,
+  which is broader than runner management alone.
+- **Fork pull requests on public repositories:** before setting `DEFECTDOJO_RUNS_ON`, raise the
+  repository's Actions setting to require approval for all external contributors
+  (`all_external_contributors`). A fork pull request runs its own copy of the workflow and could
+  otherwise target the self-hosted label.
+- **The runner image must be kept current:** runners that skip updates for 30 days stop receiving
+  jobs.
 
 ### Deduplication and Triage
 

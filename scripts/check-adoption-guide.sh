@@ -274,6 +274,8 @@ DD_REQUIRED = [
     "is_staff", "reachable", "closed", "scheduled-security.yml", "secrets:",
     "must be https://",
     "blob/main/kubernetes/defectdojo/TRIAGE.md", "defectdojo-configure.sh",
+    # Phase 29 D-09 / D-17: the runner routing variable, the fork-approval prerequisite and the queue-not-fail caveat must stay documented.
+    "DEFECTDOJO_RUNS_ON", "all_external_contributors", "queue",
 ]
 dd_start = None
 for i, line in enumerate(lines):
