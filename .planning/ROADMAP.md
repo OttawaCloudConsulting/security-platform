@@ -231,7 +231,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 29-04-PLAN.md — Wave 0: D-11 PR-lifecycle API assertion helper (amended step 5)
+- [x] 29-04-PLAN.md — Wave 0: D-11 PR-lifecycle API assertion helper (amended step 5)
 - [ ] 29-05-PLAN.md — Author the DefectDojo overlay directory (SealedSecrets, Certificate, ghostunnel, LB VIP Service, staticName hook values)
 
 **Wave 3** *(blocked on Wave 2 completion)*
@@ -364,7 +364,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
 | 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
-| 29. DefectDojo Live Validation | v3.0 | 3/19 | In Progress|  |
+| 29. DefectDojo Live Validation | v3.0 | 4/19 | In Progress|  |
 
 ## Next Milestone
 

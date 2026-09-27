@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-02-PLAN.md
-last_updated: "2026-09-27T13:40:05.249Z"
+stopped_at: Completed 29-04-PLAN.md
+last_updated: "2026-09-27T20:11:57.300Z"
 last_activity: 2026-09-27
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 74
-  completed_plans: 58
-  percent: 78
+  completed_plans: 59
+  percent: 80
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 4 of 19 (next: 29-04-PLAN.md; completed: 29-01, 29-02, 29-03 = 3/19)
+Plan: 5 of 19 (next: 29-05-PLAN.md; completed: 29-01, 29-02, 29-03, 29-04 = 4/19)
 Status: Ready to execute
 Last activity: 2026-09-27
 
@@ -290,6 +290,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: [29-01] Idempotent markers confirmed from source: 'Admin user already exists; skipping first-boot setup' (complete_initialization.py:39 @3.3.200) and 'No migrations to apply.' (Django 5.2.16 migrate.py:325)
 - [Phase 29]: 29-03: adoption guide section 12 documents DEFECTDOJO_RUNS_ON (optional, unset = ubuntu-latest, from v1.2.0); DD_REQUIRED now 16 strings incl. all_external_contributors and queue
 - [Phase 29]: 29-02: Homelab kube context is admin@occ-new; platform AppProject amended via occ-k8s-app-config PR #246 (merge e965581) with enumerated kinds only (PDB, AutoscalingRunnerSet), clusterResourceWhitelist unchanged, ''/Pod excluded
+- [Phase 29]: 29-04: lifecycle-assert list reads page by offset and never follow DRF next (http:// behind the L4 proxy); ENGAGEMENT-GONE asserts the exact-name set empty; null duplicate_finding counts as dangling
 
 ### Pending Todos
 
@@ -423,11 +424,12 @@ Carried forward from v1.1 close:
 | Phase 29 P01 | 25min | 2 tasks | 1 files |
 | Phase 29 P03 | 10min | 2 tasks | 2 files |
 | Phase 29 P02 | 35min | 3 tasks | 4 files |
+| Phase 29 P04 | 389min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-27T13:40:05.239Z
-Stopped at: Completed 29-02-PLAN.md
+Last session: 2026-09-27T20:11:57.292Z
+Stopped at: Completed 29-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
