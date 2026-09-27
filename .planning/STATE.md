@@ -315,7 +315,7 @@ None.
   `main` since Phase 14, and `security.yml` now carries Phase 15's five parallel scan jobs.
 
 - 18-08 must reconcile: PR #9 (OttawaCloudConsulting/security-platform) was found already merged (mergedAt 2026-09-12T12:48:34Z, merge commit 2e290042a775ff1c442bac75757ef8d0106d7dc3) when 18-07's live cross-check ran, before 18-08 had executed -- 18-05 recorded PR #9 as OPEN/MERGEABLE at that plan's end, so the merge happened outside any plan this executor could see
-- [Phase 29] 29-05: overlay commit a783559 ALSO sits on docs/authentik-7.1-closeout -- a concurrent session checked that branch out in the shared occ-k8s-app-config tree 49s before the commit (reflog 16:24:06 vs 16:24:55). feat/defectdojo-app-directory was moved to a783559; the other branch was NOT touched. Operator must drop a783559 from docs/authentik-7.1-closeout (git branch -f docs/authentik-7.1-closeout e965581 if nothing else was committed there) before 29-07 pushes.
+- [Phase 29] 29-05 (RESOLVED 2026-09-27): overlay commit a783559 had also landed on docs/authentik-7.1-closeout via a concurrent session in the shared occ-k8s-app-config tree. The authentik-fixes session removed it (branch now e965581 -> ad8742e). Rule from here: every overlay write uses its own `git worktree add <scratchpad>/<plan> origin/main` and never checks out in the shared tree.
 
 ## Deferred Items
 
