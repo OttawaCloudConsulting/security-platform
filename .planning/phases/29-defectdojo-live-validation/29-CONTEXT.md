@@ -100,7 +100,7 @@ Carried forward, not re-decided:
 ### Operator rulings after research (2026-09-26)
 - **D-18:** The pod-to-VIP reachability probe (runner image, with and without `hostAliases`) runs as a **one-off `kubectl run --rm` ephemeral pod** from the workstation. The operator waived the overlay repo's no-workstation-`kubectl apply` rule for this measurement only. Nothing persistent is created; the pod is deleted after, and output is captured to `evidence/`.
 - **D-19:** The VLAN43 allocation table in `occ-k8s-cluster-config/docs/upgrade/cilium-l2-vantage-host-runbook.md` is **refreshed from a live `kubectl get svc -A` read**, not only appended: add .65 / DefectDojo, correct the stale counts and the `.77`/`.60` ownership, and update the table date.
-- **D-20:** ADR-027 and ADR-028 follow the ADR-022 address rule: they describe the design and do not record homelab addresses, hostnames, node names or context names.
+- **D-20 (carried forward from ADR-022, not a new ruling):** ADR-027 and ADR-028 follow the ADR-022 address rule: they describe the design and do not record homelab addresses, hostnames, node names or context names.
 
 ### Claude's Discretion
 - The overlay directory name. `platform/defectdojo/` follows the Nexus precedent.
