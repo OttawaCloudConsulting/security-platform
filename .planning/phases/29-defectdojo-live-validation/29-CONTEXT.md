@@ -57,8 +57,8 @@ Carried forward, not re-decided:
 
 ### Runner reachability
 - **D-06:** CI reaches DefectDojo through a **self-hosted runner** from actions-runner-controller (ARC, runner scale set) running in the homelab cluster. **Only `defectdojo-import` and `defectdojo-cleanup`** use it. The five scan jobs stay on `ubuntu-latest`.
-- **D-07:** The runner is registered at **org level in a runner group restricted to selected repositories**, which today means `security-platform` only. "Allow public repositories" is enabled on that group only. Consumers are added to the group later.
-- **D-08:** ARC authenticates with a **fine-grained PAT** that has the org `Self-hosted runners: read/write` permission (research confirms the minimum). The PAT is stored as a SealedSecret. The operator chose this over a GitHub App, and PAT expiry means manual rotation (accepted, see Accepted Risks).
+- **D-07 (amended 2026-09-26, supersedes the org-level wording):** The runner is registered at **repository scope on `security-platform`** (`githubConfigUrl` = the repo URL, no `runnerGroup`). Research verified `OttawaCloudConsulting` is a personal `User` account (`orgs/OttawaCloudConsulting` returns 404), so org-level registration and runner groups do not exist. Each future consumer repo gets its own runner scale set. The operator ruled this on 2026-09-26.
+- **D-08 (amended 2026-09-26):** ARC authenticates with a **fine-grained PAT scoped to the `security-platform` repository only**, with repository permission **Administration: Read and write** (the minimum for repo-scoped runner registration). The PAT is stored as a SealedSecret. This permission is broader than runner management on that repo (settings, webhooks, branch protection); ADR-028 records it as an accepted risk. The operator chose a PAT over a GitHub App, and PAT expiry means manual rotation (accepted, see Accepted Risks).
 - **D-09:** Routing works through an **optional caller repo variable `DEFECTDOJO_RUNS_ON`**, read in the callee. This is the same mechanism as `DEFECTDOJO_URL` (27 D-11). When it is unset, the two jobs keep `ubuntu-latest`, and old callers work unchanged. This is a `security.yml` change, so it brings:
   - an additive v1.x tag and a `v1` move (ADR-018, 27 D-16);
   - an adoption-guide update, with `bash scripts/check-adoption-guide.sh` kept green;
@@ -78,7 +78,7 @@ Carried forward, not re-decided:
   2. Assert through the API that the pre-existing findings on `ci/<branch>` are duplicates of the `ci/main` originals, and that only the new finding is active.
   3. Set False Positive, Risk Accepted (90-day expiry and a reason, per D-22 of Phase 28) and Out of Scope on `ci/main` originals.
   4. Reimport by running `scheduled-security.yml` through `workflow_dispatch`, and assert that all three dispositions survive.
-  5. **Close the PR unmerged**, and assert that the engagement is deleted and its duplicates re-parented.
+  5. **Close the PR unmerged**, and assert that the engagement is deleted, `ci/main` finding counts and dispositions are unchanged, and no finding references a deleted finding as its duplicate. (Amended 2026-09-26 by operator ruling: re-parenting cannot be exercised live because no `ci/main` finding is a duplicate of a PR finding; ADR-027 records re-parenting as NOT exercised live.)
 
   Assertions check API state, not HTTP status.
 - **D-12:** **`workflow_dispatch` of the scheduled caller is enough** for the scheduled path. A cron-fired 06:00 America/Toronto run is observed only if it lands before close, and is then recorded. It does not block close.
@@ -183,8 +183,8 @@ Carried forward, not re-decided:
 ### Operator-only steps (the planner models each one as a checkpoint)
 1. A UniFi client/ARP check that no non-Kubernetes device statically uses 10.40.3.65, before the VIP is pinned.
 2. Pi-hole Local DNS entries on 10.40.1.53 for `defectdojo.infra.ottawacloudconsulting.com` and `defectdojo.home.ottawacloudconsulting.com` → 10.40.3.65, and a decision on whether 10.30.1.53 needs them too.
-3. Creating the fine-grained PAT with org `Self-hosted runners: read/write`. Claude seals it; the operator supplies it without printing it.
-4. Creating the org runner group, restricted to `security-platform`, with "allow public repositories" on that group only.
+3. Creating the fine-grained PAT scoped to `security-platform` with Administration: Read and write. Claude seals it; the operator supplies it without printing it.
+4. ~~Creating the org runner group~~ — dropped (D-07 amended: personal account, repo-scoped registration). Replaced by: raising the `security-platform` fork-PR workflow approval policy to `all_external_contributors` before `DEFECTDOJO_RUNS_ON` is set (research finding).
 5. Holding the superuser token for the one-off `defectdojo-configure.sh` run.
 6. Creating `ci-importer` (`is_staff=true`, `is_superuser=false`) and its token, and setting the `security-platform` secret and variables.
 7. Approving any `security.yml` merge and the v1.x tag / `v1` move, and approving the overlay merges.
@@ -193,7 +193,7 @@ Carried forward, not re-decided:
 ### Accepted risks (the operator chose each explicitly; ADR-027 states them as accepted, not silent)
 - A self-hosted runner serves a **public** repository. Mitigation: only the import and cleanup jobs route to it, and both already skip fork and Dependabot runs. The runner group is restricted to selected repos.
 - There is **no egress NetworkPolicy** on runner pods, so a compromised job can reach the LAN.
-- A **PAT** is used instead of a GitHub App, so expiry needs manual rotation.
+- A **PAT** is used instead of a GitHub App, so expiry needs manual rotation. Because registration is repo-scoped (D-07/D-08 amended), the PAT holds Administration: Read and write on `security-platform`.
 
 ### Other notes
 - The cluster-team session also noted that app-config `docs/_working/rag-implementation/discovery/requirements-and-current-state.md:145` lists "where internal A records are managed" as open question O-11. D-04's finding (manual Pi-hole) can inform it, but closing it there is outside this repo.
