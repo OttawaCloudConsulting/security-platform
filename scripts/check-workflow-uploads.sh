@@ -43,6 +43,13 @@ set -euo pipefail
 #         SCHEME                     DEFECTDOJO_URL must be https:// (refused before
 #                                    the token header is written) and every curl is
 #                                    pinned with --proto/--proto-redir =https (CR-01)
+# Phase 29 (DefectDojo live validation):
+#   D-06  JOB-SHAPE                  every scan job keeps runs-on: ubuntu-latest;
+#                                    the scan jobs never move to a self-hosted runner
+#   D-09  SIDE-CHANNEL-SHAPE         both DefectDojo jobs use exactly
+#                                    runs-on: ${{ vars.DEFECTDOJO_RUNS_ON || 'ubuntu-latest' }}
+#                                    (SHAPE_RUNS_ON), so an unset caller variable
+#                                    keeps them on ubuntu-latest
 #
 # Self-test overrides (optional, used only to point the gate at scratch copies):
 #   WORKFLOWS_DIR           default .github/workflows
@@ -372,6 +379,12 @@ for jid in SCAN_JOB_IDS:
     if isinstance(body, dict) and "needs" in body:
         fail("JOB-SHAPE",
              "jobs.{} declares needs: — the scan jobs must stay fully parallel".format(jid))
+    # Phase 29 D-06: only the two DefectDojo side-channel jobs may route to a
+    # self-hosted runner. The scan jobs stay on GitHub-hosted runners.
+    if isinstance(body, dict) and body.get("runs-on") != "ubuntu-latest":
+        fail("JOB-SHAPE",
+             "jobs.{}.runs-on must be exactly 'ubuntu-latest' (Phase 29 D-06), got {!r}".format(
+                 jid, body.get("runs-on")))
 observed_names = [(callee_jobs.get(jid) or {}).get("name") if isinstance(callee_jobs.get(jid), dict)
                   else None for jid in SCAN_JOB_IDS]
 if observed_names != FROZEN_JOB_NAMES:
@@ -414,6 +427,10 @@ SHAPE_IF = {
     "defectdojo-import": ("always()", "github.event.action != 'closed'", "vars.DEFECTDOJO_URL != ''"),
     "defectdojo-cleanup": ("github.event.action == 'closed'", "vars.DEFECTDOJO_URL != ''"),
 }
+# Phase 29 D-09: an optional caller variable routes both side-channel jobs; the
+# `|| 'ubuntu-latest'` fallback keeps every caller that has not opted in on
+# GitHub-hosted runners. Compared byte-for-byte.
+SHAPE_RUNS_ON = "${{ vars.DEFECTDOJO_RUNS_ON || 'ubuntu-latest' }}"
 for jid in SIDE_CHANNEL_JOB_IDS:
     body = present.get(jid)
     if body is None:
@@ -433,6 +450,10 @@ for jid in SIDE_CHANNEL_JOB_IDS:
         if fragment not in job_if(body):
             fail("SIDE-CHANNEL-SHAPE",
                  "jobs.{}.if does not contain {!r} (got {!r})".format(jid, fragment, job_if(body)))
+    if body.get("runs-on") != SHAPE_RUNS_ON:
+        fail("SIDE-CHANNEL-SHAPE",
+             "jobs.{}.runs-on must be exactly {!r} (Phase 29 D-09), got {!r}".format(
+                 jid, SHAPE_RUNS_ON, body.get("runs-on")))
     job_env = body.get("env")
     if isinstance(job_env, dict):
         for key, value in job_env.items():

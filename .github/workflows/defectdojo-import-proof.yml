@@ -18,13 +18,17 @@
 # own runner and executes the committed side-channel run: bodies (extracted
 # from security.yml with yq, never copied) against it.
 #
-# OPT-OUT REGRESSION PROOF (D-02). security-platform sets no DEFECTDOJO_URL
-# variable, so inside `scans` the defectdojo-import and defectdojo-cleanup
-# jobs are skipped: every run of this workflow also shows that a repository
-# which has not opted in scans normally and sends nothing anywhere. Once
-# Phase 29 sets DEFECTDOJO_URL on this repository (RESEARCH OQ5), `scans`
-# additionally imports into the real instance; the kind proof in
-# `prove-import` is unaffected by that.
+# OPT-OUT REGRESSION PROOF (D-02). While security-platform sets no
+# DEFECTDOJO_URL variable, the defectdojo-import job inside `scans` is
+# skipped at job level: a repository which has not opted in scans normally
+# and sends nothing anywhere. Once Phase 29 sets DEFECTDOJO_URL on this
+# repository, `scans / DefectDojo Import` RUNS here (on the runner named by
+# the DEFECTDOJO_RUNS_ON variable) but prints `SKIP: DEFECTDOJO_API_TOKEN is
+# not available to this run`, because `scans` passes no secrets; it downloads,
+# imports and verifies nothing, and NOTHING reaches the real instance from
+# this workflow. The cleanup job never runs here, because `pull_request`
+# below uses the default types, which do not include `closed`. The kind proof
+# in `prove-import` is unaffected either way.
 #
 # WHY THE PATHS FILTER (D-21). The proof takes 15-30 minutes, so it runs on
 # pull requests only when something it proves changes: the callable
@@ -33,8 +37,9 @@
 # 28), or the DefectDojo chart. workflow_dispatch runs it on demand.
 #
 # Security: `pull_request`, never `pull_request_target`; no secrets are
-# passed to `scans` (the import is skipped anyway, and the harness mints its
-# own throwaway credentials inside the kind cluster); job permissions are
+# passed to `scans` (without the token the import job at most logs SKIP and
+# imports nothing, and the harness mints its own throwaway credentials inside
+# the kind cluster); job permissions are
 # read-only apart from the SARIF grant `scans` needs.
 
 name: DefectDojo Import Proof
@@ -73,7 +78,8 @@ jobs:
       actions: read
     uses: ./.github/workflows/security.yml
     # No `secrets:` and no `with:`: DEFECTDOJO_API_TOKEN stays unset here on
-    # purpose (see OPT-OUT REGRESSION PROOF above), and gate_mode falls
+    # purpose, so the import job skips or logs SKIP and imports nothing (see
+    # the corrected OPT-OUT REGRESSION PROOF paragraph above), and gate_mode falls
     # through to the repository's GATE_MODE variable as in pr-security.yml.
 
   prove-import:
@@ -82,6 +88,12 @@ jobs:
     # always(): the scanners exit non-zero by design and a blocking gate can
     # fail `scans`, but the reports are uploaded regardless, and the proof
     # needs only the reports.
+    # STALL NOTE (Phase 29, ADR-027): `needs: scans` waits for the WHOLE
+    # reusable call, including `scans / DefectDojo Import`. Once
+    # DEFECTDOJO_URL and DEFECTDOJO_RUNS_ON are set, that job queues for the
+    # self-hosted runner; if the runner is offline, this job waits until
+    # GitHub cancels the queued import job (about 24h). No functional guard
+    # is added on purpose; ADR-027 records the trade-off.
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 60
