@@ -97,6 +97,11 @@ Carried forward, not re-decided:
   - The ADR must also state that the import job **queues, rather than fails,** when the named runner is offline. GitHub cancels a queued job after about 24h. Merge is unaffected because the job is not a required check, and it must never become one (27 D-03).
   - Mark DDOJO-05 Complete in `.planning/REQUIREMENTS.md`. Update the chart README's DDOJO-05 row.
 
+### Operator rulings after research (2026-09-26)
+- **D-18:** The pod-to-VIP reachability probe (runner image, with and without `hostAliases`) runs as a **one-off `kubectl run --rm` ephemeral pod** from the workstation. The operator waived the overlay repo's no-workstation-`kubectl apply` rule for this measurement only. Nothing persistent is created; the pod is deleted after, and output is captured to `evidence/`.
+- **D-19:** The VLAN43 allocation table in `occ-k8s-cluster-config/docs/upgrade/cilium-l2-vantage-host-runbook.md` is **refreshed from a live `kubectl get svc -A` read**, not only appended: add .65 / DefectDojo, correct the stale counts and the `.77`/`.60` ownership, and update the table date.
+- **D-20:** ADR-027 and ADR-028 follow the ADR-022 address rule: they describe the design and do not record homelab addresses, hostnames, node names or context names.
+
 ### Claude's Discretion
 - The overlay directory name. `platform/defectdojo/` follows the Nexus precedent.
 - Where ARC lives: `occ-k8s-cluster-config` or `occ-k8s-app-config`, following whichever convention fits a cluster-wide controller. It also covers the ARC chart version, and the scale-set name and label.
