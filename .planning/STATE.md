@@ -4,14 +4,14 @@ milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
 stopped_at: Phase 29 context gathered
-last_updated: "2026-09-27T12:08:30.914Z"
-last_activity: 2026-09-27 -- Phase 29 planning complete
+last_updated: "2026-09-27T13:01:13.315Z"
+last_activity: 2026-09-27
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 74
-  completed_plans: 55
-  percent: 74
+  completed_plans: 56
+  percent: 76
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 29 — defectdojo live validation
+**Current focus:** Phase 29 — defectdojo-live-validation
 
 ## Current Position
 
-Phase: 29
-Plan: Not started
+Phase: 29 (defectdojo-live-validation) — EXECUTING
+Plan: 2 of 19
 Status: Ready to execute
-Last activity: 2026-09-27 -- Phase 29 planning complete
+Last activity: 2026-09-27
 
 ## Performance Metrics
 
@@ -286,6 +286,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 28]: 28-07: PR #23 opened for approved HEAD c77e4f4; GitHub proof run 36261602015 attempt 1 prove-import success, PROOF PASS - 127 assertions (35 in the Phase 28 block), not merged
 - [Phase 28]: 28-08: PR #23 merged (gh pr merge --merge) on operator approval 'Approved — merge'; merge c8027e6 parents 917352c + c77e4f4; verified from origin/main; workflows/callers/set-required-checks unchanged vs 917352c; v1 stays 917352c; chart 0.2.0
 - [Phase 28]: ADR-026 records FP/OOS as Mitigated from disposition (measured), and closes ADR-024's Phase 28 hand-forward in prose
+- [Phase 29]: [29-01] HOMELAB-CSRF-FOREIGN-403 attributes the 403 to the Origin check via the uwsgi log when DEBUG is off (Django 5.2.16 hides the reason in the body); an unattributable 403 is FAIL
+- [Phase 29]: [29-01] Idempotent markers confirmed from source: 'Admin user already exists; skipping first-boot setup' (complete_initialization.py:39 @3.3.200) and 'No migrations to apply.' (Django 5.2.16 migrate.py:325)
 
 ### Pending Todos
 
@@ -416,12 +418,13 @@ Carried forward from v1.1 close:
 | Phase 28 P07 | 15 min | 2 tasks | 2 files |
 | Phase 28 P08 | 5 min | 2 tasks | 1 files |
 | Phase 28 P09 | 20 min | 3 tasks | 6 files |
+| Phase 29 P01 | 25min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-27T00:40:37.975Z
+Last session: 2026-09-27T13:00:57.410Z
 Stopped at: Phase 29 context gathered
-Resume file: .planning/phases/29-defectdojo-live-validation/29-CONTEXT.md
+Resume file: None
 
 ## Operator Next Steps
 
