@@ -219,7 +219,29 @@ Plans:
 
 **Goal:** The DefectDojo generic chart (Phase 26) is deployed to the operator's homelab cluster via a private ArgoCD overlay, and CI import (Phase 27) with dedup/triage (Phase 28) is proven live end-to-end against that deployment.
 **Requirements**: DDOJO-05
-**Plans:** TBD
+**Plans:** 19 plans in 13 waves
+
+Plans:
+
+- [ ] 29-01-PLAN.md — Wave 0: DefectDojo homelab live-validation gate (TLS, Origin login both hosts, foreign-Origin 403, celery, hook phase, second sync)
+- [ ] 29-02-PLAN.md — Amend the `platform` AppProject for defectdojo, arc-systems, arc-runners (operator-approved merge, live read)
+- [ ] 29-03-PLAN.md — Adoption guide section 12: DEFECTDOJO_RUNS_ON, self-hosted reachability, fork approval, queue behaviour; gate extended
+- [ ] 29-04-PLAN.md — Wave 0: D-11 PR-lifecycle API assertion helper (amended step 5)
+- [ ] 29-05-PLAN.md — Author the DefectDojo overlay directory (SealedSecrets, Certificate, ghostunnel, LB VIP Service, staticName hook values)
+- [ ] 29-06-PLAN.md — security.yml DEFECTDOJO_RUNS_ON routing + runs-on shape gate + proof comments; PR A merged to main
+- [ ] 29-07-PLAN.md — Operator UniFi/Pi-hole checks, overlay PR and approved merge (first sync)
+- [ ] 29-08-PLAN.md — First-sync evidence (images incl. GAR postgres, cert, initializer) and gate first pass
+- [ ] 29-09-PLAN.md — Refresh the VLAN43 VIP inventory in the cluster-config runbook from a live read
+- [ ] 29-10-PLAN.md — Operator superuser token; defectdojo-configure.sh once (CHANGED) and again (NO CHANGE)
+- [ ] 29-11-PLAN.md — D-18 runner reachability probe, runner image tag, Postgres NetworkPolicy measurement
+- [ ] 29-12-PLAN.md — Operator PAT + fork approval raise; author ARC arc-systems and repo-scoped arc-runners
+- [ ] 29-13-PLAN.md — Ordered ARC merges; controller and listener verified
+- [ ] 29-14-PLAN.md — Ordering precondition gate; operator creates ci-importer and sets secret/variables (URL last)
+- [ ] 29-15-PLAN.md — Baseline ci/main import via dispatch on ARC; proof-workflow side effect
+- [ ] 29-16-PLAN.md — D-11 real PR lifecycle: duplicates, dispositions survive reimport, close unmerged
+- [ ] 29-17-PLAN.md — Second-sync idempotency and gate second pass (ALL PASS)
+- [ ] 29-18-PLAN.md — Chart README DDOJO-05 row and measured notes; PR B; v1.2.0 tag and v1 move
+- [ ] 29-19-PLAN.md — ADR-027, ADR-028, ADR index rows, DDOJO-05 Complete
 
 </details>
 
