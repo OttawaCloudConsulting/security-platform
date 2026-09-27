@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-04-PLAN.md
-last_updated: "2026-09-27T20:11:57.300Z"
+stopped_at: Completed 29-05-PLAN.md
+last_updated: "2026-09-27T20:29:39.712Z"
 last_activity: 2026-09-27
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 74
-  completed_plans: 59
-  percent: 80
+  completed_plans: 60
+  percent: 81
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 5 of 19 (next: 29-05-PLAN.md; completed: 29-01, 29-02, 29-03, 29-04 = 4/19)
+Plan: 6 of 19 (next: 29-06-PLAN.md; completed: 29-01, 29-02, 29-03, 29-04, 29-05 = 5/19)
 Status: Ready to execute
 Last activity: 2026-09-27
 
@@ -291,6 +291,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-03: adoption guide section 12 documents DEFECTDOJO_RUNS_ON (optional, unset = ubuntu-latest, from v1.2.0); DD_REQUIRED now 16 strings incl. all_external_contributors and queue
 - [Phase 29]: 29-02: Homelab kube context is admin@occ-new; platform AppProject amended via occ-k8s-app-config PR #246 (merge e965581) with enumerated kinds only (PDB, AutoscalingRunnerSet), clusterResourceWhitelist unchanged, ''/Pod excluded
 - [Phase 29]: 29-04: lifecycle-assert list reads page by offset and never follow DRF next (http:// behind the L4 proxy); ENGAGEMENT-GONE asserts the exact-name set empty; null duplicate_finding counts as dangling
+- [Phase 29]: 29-05: DefectDojo overlay directory committed locally as a783559 on feat/defectdojo-app-directory (not pushed); pinned security-platform c8027e6784ec631db128f45444c9a8092db9d0a1 (ls-remote 2026-09-27); DD_CREDENTIAL_AES_256_KEY sealed at 128 chars per chart README; hyphenated-key Secrets sealed via kubectl --from-file | kubeseal; no --target-status on ghostunnel; initializer staticName+Sync hook+BeforeHookCreation+keepSeconds 0 for 29-17 to measure — All gates green locally (c1, check_appconfig, source-1/source-2 renders, kubectl dry-run, gitleaks with 7 pinned ciphertext fingerprints); repo-wide yamllint . failure is pre-existing (51 errors on origin/main archive, same on HEAD archive)
 
 ### Pending Todos
 
@@ -314,6 +315,7 @@ None.
   `main` since Phase 14, and `security.yml` now carries Phase 15's five parallel scan jobs.
 
 - 18-08 must reconcile: PR #9 (OttawaCloudConsulting/security-platform) was found already merged (mergedAt 2026-09-12T12:48:34Z, merge commit 2e290042a775ff1c442bac75757ef8d0106d7dc3) when 18-07's live cross-check ran, before 18-08 had executed -- 18-05 recorded PR #9 as OPEN/MERGEABLE at that plan's end, so the merge happened outside any plan this executor could see
+- [Phase 29] 29-05: overlay commit a783559 ALSO sits on docs/authentik-7.1-closeout -- a concurrent session checked that branch out in the shared occ-k8s-app-config tree 49s before the commit (reflog 16:24:06 vs 16:24:55). feat/defectdojo-app-directory was moved to a783559; the other branch was NOT touched. Operator must drop a783559 from docs/authentik-7.1-closeout (git branch -f docs/authentik-7.1-closeout e965581 if nothing else was committed there) before 29-07 pushes.
 
 ## Deferred Items
 
@@ -425,11 +427,12 @@ Carried forward from v1.1 close:
 | Phase 29 P03 | 10min | 2 tasks | 2 files |
 | Phase 29 P02 | 35min | 3 tasks | 4 files |
 | Phase 29 P04 | 389min | 2 tasks | 1 files |
+| Phase 29 P05 | 15min | 3 tasks | 10 files |
 
 ## Session Continuity
 
-Last session: 2026-09-27T20:11:57.292Z
-Stopped at: Completed 29-04-PLAN.md
+Last session: 2026-09-27T20:28:46.266Z
+Stopped at: Completed 29-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
