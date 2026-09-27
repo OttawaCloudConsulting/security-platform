@@ -17,8 +17,10 @@
 # settings: the `DEFECTDOJO_URL` variable (the on/off switch — unset means
 # the import job is skipped), the `DEFECTDOJO_PRODUCT`,
 # `DEFECTDOJO_PRODUCT_TYPE`, `DEFECTDOJO_INSECURE` and `DEFECTDOJO_CA_CERT`
-# variables, and the `DEFECTDOJO_API_TOKEN` secret. None of them affects any
-# required check.
+# variables, and the `DEFECTDOJO_API_TOKEN` secret. The optional
+# `DEFECTDOJO_RUNS_ON` variable (Phase 29) names the runner for the two
+# DefectDojo jobs only; unset keeps them on ubuntu-latest. None of them
+# affects any required check.
 
 name: Security Scans
 
@@ -1266,7 +1268,18 @@ jobs:
     # the whole job (D-02). `secrets` is not an allowed context in a job-level
     # if:, which is why the token is checked by the dd-gate step instead.
     if: always() && github.event.action != 'closed' && vars.DEFECTDOJO_URL != ''
-    runs-on: ubuntu-latest
+    # RUNNER ROUTING (Phase 29 D-09): DEFECTDOJO_RUNS_ON is an optional
+    # variable read from the CALLER repository, like DEFECTDOJO_URL. Unset,
+    # the job stays on ubuntu-latest, so a caller that has not opted in sees
+    # no change. Set it to a self-hosted runner label (the ARC scale set)
+    # when DefectDojo is reachable only from a private network. A named
+    # runner that is offline or stale makes this job QUEUE, not fail, until
+    # GitHub cancels it after about 24h; runners left more than 30 days
+    # without a software update stop receiving jobs, with the same symptom.
+    # This job is not a required check and must never become one (Phase 27
+    # D-03), so a queued job never blocks a merge. The five scan jobs never
+    # route (D-06).
+    runs-on: ${{ vars.DEFECTDOJO_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 20
     permissions:
       contents: read
@@ -1649,7 +1662,19 @@ jobs:
     # repository in both modes, so an unset DEFECTDOJO_URL skips the job
     # (D-02); the token is checked by the dd-gate step, as in the import job.
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && vars.DEFECTDOJO_URL != ''
-    runs-on: ubuntu-latest
+    # RUNNER ROUTING (Phase 29 D-09): DEFECTDOJO_RUNS_ON is an optional
+    # variable read from the CALLER repository, like DEFECTDOJO_URL. Unset,
+    # the job stays on ubuntu-latest, so a caller that has not opted in sees
+    # no change. Set it to a self-hosted runner label (the ARC scale set)
+    # when DefectDojo is reachable only from a private network. A named
+    # runner that is offline or stale makes this job QUEUE, not fail, until
+    # GitHub cancels it after about 24h; runners left more than 30 days
+    # without a software update stop receiving jobs, with the same symptom.
+    # This job is not a required check and must never become one (Phase 27
+    # D-03), so a queued job never blocks a merge. The five scan jobs never
+    # route (D-06). An orphaned ci/<branch> engagement left by a cancelled
+    # cleanup is recoverable: re-run this job or delete it by hand.
+    runs-on: ${{ vars.DEFECTDOJO_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       contents: read
