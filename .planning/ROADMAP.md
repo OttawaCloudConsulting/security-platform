@@ -226,7 +226,7 @@ Plans:
 **Wave 1**
 
 - [x] 29-01-PLAN.md — Wave 0: DefectDojo homelab live-validation gate (TLS, Origin login both hosts, foreign-Origin 403, celery, hook phase, second sync)
-- [ ] 29-02-PLAN.md — Amend the `platform` AppProject for defectdojo, arc-systems, arc-runners (operator-approved merge, live read)
+- [x] 29-02-PLAN.md — Amend the `platform` AppProject for defectdojo, arc-systems, arc-runners (operator-approved merge, live read)
 - [x] 29-03-PLAN.md — Adoption guide section 12: DEFECTDOJO_RUNS_ON, self-hosted reachability, fork approval, queue behaviour; gate extended
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -364,7 +364,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
 | 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
-| 29. DefectDojo Live Validation | v3.0 | 2/19 | In Progress|  |
+| 29. DefectDojo Live Validation | v3.0 | 3/19 | In Progress|  |
 
 ## Next Milestone
 
