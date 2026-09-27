@@ -1,0 +1,12 @@
+# captured 2026-09-27T21:21:30Z
+# kubectl --context admin@occ-new get svc -A -o wide --field-selector spec.type=LoadBalancer
+NAMESPACE          NAME                         TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)                                  AGE    SELECTOR
+argo               argo-argo-workflows-server   LoadBalancer   10.96.235.50     10.40.3.62    443:31947/TCP                            374d   app.kubernetes.io/instance=argo,app.kubernetes.io/name=argo-workflows-server
+argocd             argocd-server-lb             LoadBalancer   10.106.63.120    10.40.3.61    443:32041/TCP                            18d    app.kubernetes.io/instance=argocd,app.kubernetes.io/name=argocd-server
+authentik          authentik-outpost-ldap       LoadBalancer   10.108.48.210    10.40.3.80    636:30751/TCP                            19d    app.kubernetes.io/component=outpost-ldap,app.kubernetes.io/name=authentik
+authentik          authentik-outpost-proxy      LoadBalancer   10.98.170.78     10.40.3.60    80:31495/TCP,443:31767/TCP               21d    app.kubernetes.io/component=outpost-proxy,app.kubernetes.io/name=authentik
+authentik          authentik-outpost-radius     LoadBalancer   10.103.93.75     10.40.3.81    1812:31579/UDP                           19d    app.kubernetes.io/component=outpost-radius,app.kubernetes.io/name=authentik
+authentik          authentik-server             LoadBalancer   10.100.142.183   10.40.3.63    80:31143/TCP,443:31235/TCP               23d    app.kubernetes.io/component=server,app.kubernetes.io/instance=authentik,app.kubernetes.io/name=authentik
+edgebridge         edgebridge                   LoadBalancer   10.100.142.40    10.40.1.80    8088:31070/TCP                           67d    app.kubernetes.io/name=edgebridge
+homepage           homepage                     LoadBalancer   10.106.239.70    10.40.3.77    443:30627/TCP                            374d   app.kubernetes.io/name=homepage
+smarthome-pihole   pihole                       LoadBalancer   10.100.228.172   10.30.1.53    53:32488/TCP,53:32488/UDP,80:32644/TCP   65d    app.kubernetes.io/instance=smarthome-pihole,app.kubernetes.io/name=pihole
