@@ -219,7 +219,7 @@ Plans:
 
 **Goal:** The DefectDojo generic chart (Phase 26) is deployed to the operator's homelab cluster via a private ArgoCD overlay, and CI import (Phase 27) with dedup/triage (Phase 28) is proven live end-to-end against that deployment.
 **Requirements**: DDOJO-05
-**Plans:** 19 plans in 13 waves
+**Plans:** 20 plans in 13 waves
 
 Plans:
 
@@ -241,6 +241,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
+- [ ] 29-08a-PLAN.md — Gap closure: ghostunnel as a native sidecar in the django pod via overlay values (operator B1), runtime arg check, approved merge, live TLS proof
 - [ ] 29-08-PLAN.md — First-sync evidence (images incl. GAR postgres, cert, initializer) and gate first pass
 - [ ] 29-09-PLAN.md — Refresh the VLAN43 VIP inventory in the cluster-config runbook from a live read
 
