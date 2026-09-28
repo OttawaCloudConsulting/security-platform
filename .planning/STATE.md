@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-11-PLAN.md
-last_updated: "2026-09-28T13:36:41.215Z"
+stopped_at: Completed 29-12-PLAN.md
+last_updated: "2026-09-28T14:08:31.870Z"
 last_activity: 2026-09-28
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 75
-  completed_plans: 67
+  completed_plans: 68
   percent: 86
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 12 of 20 (next: wave 7 — 29-12-PLAN.md; wave 6 complete; completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07, 29-08, 29-08a, 29-09, 29-10, 29-11 = 12/20)
+Plan: 13 of 20 (next: wave 8 — 29-13-PLAN.md; wave 7 complete; completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07, 29-08, 29-08a, 29-09, 29-10, 29-11, 29-12 = 13/20)
 Status: Ready to execute
 Last activity: 2026-09-28
 
@@ -306,6 +306,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-11: runner image for 29-12 is ghcr.io/actions/actions-runner:2.337.0 (latest release, unchanged from RESEARCH pin)
 - [Phase 29]: 29-11: ARC runner pods REQUIRE hostAliases defectdojo.infra.ottawacloudconsulting.com -> 10.40.3.65 (probe A NO-RESOLVE; probe B 200 0); operator reply verbatim: approve-probes
 - [Phase 29]: 29-11: D-14 measured passive-only (operator reply verbatim: passive-only); Postgres netpol allow path observed, deny path NOT verified (ADR-027)
+- [Phase 29]: 29-12: fork-PR approval on security-platform raised first_time_contributors -> all_external_contributors (2026-09-28T13:48:46Z), before DEFECTDOJO_RUNS_ON exists
+- [Phase 29]: 29-12: ARC authored on local overlay branches feat/arc-systems ad8c5db (controller 0.14.2, release arc, SSA, prune off) and feat/arc-runners 1070fac (repo-scoped scale set occ-homelab-defectdojo, runner 2.337.0, hostAliases 10.40.3.65, SealedSecret arc-github-pat, prune on); merge controller first in 29-13
+- [Phase 29]: 29-12: first sealing attempt lost the literal line to a trailing >/dev/null and unconditionally deleted the first PAT; guarded retry sealed the replacement and removed the plaintext. Revocation of the orphaned first PAT is NOT operator-confirmed (open follow-up)
 
 ### Pending Todos
 
@@ -449,11 +452,12 @@ Carried forward from v1.1 close:
 | Phase 29 P08 | 10min | 2 tasks | 5 files |
 | Phase 29 P10 | ~5min | 2 tasks | 2 files |
 | Phase 29 P11 | 8min | 3 tasks | 3 files |
+| Phase 29 P12 | 30min | 3 tasks | 8 files |
 
 ## Session Continuity
 
-Last session: 2026-09-28T13:36:41.075Z
-Stopped at: Completed 29-11-PLAN.md
+Last session: 2026-09-28T14:08:31.859Z
+Stopped at: Completed 29-12-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
