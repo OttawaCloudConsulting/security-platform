@@ -251,7 +251,7 @@ Plans:
 **Wave 6** *(blocked on Wave 5 completion)*
 
 - [x] 29-10-PLAN.md — Operator superuser token; defectdojo-configure.sh once (CHANGED) and again (NO CHANGE)
-- [ ] 29-11-PLAN.md — D-18 runner reachability probe, runner image tag, Postgres NetworkPolicy measurement
+- [x] 29-11-PLAN.md — D-18 runner reachability probe, runner image tag, Postgres NetworkPolicy measurement
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
@@ -368,7 +368,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
 | 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
-| 29. DefectDojo Live Validation | v3.0 | 11/20 | In Progress|  |
+| 29. DefectDojo Live Validation | v3.0 | 12/20 | In Progress|  |
 
 ## Next Milestone
 
