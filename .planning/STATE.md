@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-06-PLAN.md
-last_updated: "2026-09-27T21:20:14.044Z"
-last_activity: 2026-09-27
+stopped_at: Completed 29-07-PLAN.md
+last_updated: "2026-09-28T01:58:36.504Z"
+last_activity: 2026-09-28
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 74
-  completed_plans: 61
-  percent: 82
+  completed_plans: 62
+  percent: 84
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 7 of 19 (next: 29-07-PLAN.md; completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06 = 6/19)
+Plan: 8 of 19 (next: 29-08-PLAN.md; completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07 = 7/19)
 Status: Ready to execute
-Last activity: 2026-09-27
+Last activity: 2026-09-28
 
 ## Performance Metrics
 
@@ -294,6 +294,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-05: DefectDojo overlay directory committed locally as a783559 on feat/defectdojo-app-directory (not pushed); pinned security-platform c8027e6784ec631db128f45444c9a8092db9d0a1 (ls-remote 2026-09-27); DD_CREDENTIAL_AES_256_KEY sealed at 128 chars per chart README; hyphenated-key Secrets sealed via kubectl --from-file | kubeseal; no --target-status on ghostunnel; initializer staticName+Sync hook+BeforeHookCreation+keepSeconds 0 for 29-17 to measure — All gates green locally (c1, check_appconfig, source-1/source-2 renders, kubectl dry-run, gitleaks with 7 pinned ciphertext fingerprints); repo-wide yamllint . failure is pre-existing (51 errors on origin/main archive, same on HEAD archive)
 - [Phase 29]: 29-06: PR #24 (PR A) merged to security-platform main as 2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d (head e8387a8, --merge with --match-head-commit) after operator reply verbatim 'Rerun, then merge if green'; prove-import rerun (attempt 2, run 36350180923) green. Only defectdojo-import/cleanup route via runs-on vars.DEFECTDOJO_RUNS_ON || 'ubuntu-latest'; variables still unset; no tag moved (29-18 owns v1.2.0)
 - [Phase 29]: 29-06: live security-platform main has ZERO required status checks (ruleset 14243983 [deletion, non_fast_forward]) before and after the merge; the plan's five-required-contexts premise is not live; frozen job names enforced offline by FROZEN_JOB_NAMES. Count ${{ expressions with grep -F (ugrep 7.8.4)
+- [Phase 29]: [Phase 29-07]: PR #248 (DefectDojo overlay, overlay commit db5aae1 + README ad0a391) merged to occ-k8s-app-config main as cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd with operator reply 'approve', pinned by --match-head-commit; argocd/defectdojo Application appeared at 2026-09-28T01:56:38Z. GitGuardian incident 37678807 (Django Secret Key on kubeseal ciphertext DD_SECRET_KEY) is an OPEN false positive for the operator to dismiss. DDOJO-05 withheld; health measured by 29-08.
+- [Phase 29]: [Phase 29-07]: Operator reply 'vip-free vlan30-skip': 10.40.3.65 confirmed free in UniFi and the live LB pool; Pi-hole 10.40.1.53 resolves both DefectDojo FQDNs to 10.40.3.65; no records on the in-cluster Pi-hole 10.30.1.53, so VLAN30 clients cannot resolve the names (not needed for the runner path).
 
 ### Pending Todos
 
@@ -431,11 +433,12 @@ Carried forward from v1.1 close:
 | Phase 29 P04 | 389min | 2 tasks | 1 files |
 | Phase 29 P05 | 15min | 3 tasks | 10 files |
 | Phase 29 P06 | 45min | 3 tasks | 3 files |
+| Phase 29 P07 | ~2h | 3 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-09-27T21:20:02.897Z
-Stopped at: Completed 29-06-PLAN.md
+Last session: 2026-09-28T01:58:36.493Z
+Stopped at: Completed 29-07-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

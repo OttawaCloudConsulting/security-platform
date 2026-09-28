@@ -237,7 +237,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 29-06-PLAN.md — security.yml DEFECTDOJO_RUNS_ON routing + runs-on shape gate + proof comments; PR A merged to main
-- [ ] 29-07-PLAN.md — Operator UniFi/Pi-hole checks, overlay PR and approved merge (first sync)
+- [x] 29-07-PLAN.md — Operator UniFi/Pi-hole checks, overlay PR and approved merge (first sync)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -364,7 +364,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
 | 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
-| 29. DefectDojo Live Validation | v3.0 | 6/19 | In Progress|  |
+| 29. DefectDojo Live Validation | v3.0 | 7/19 | In Progress|  |
 
 ## Next Milestone
 
