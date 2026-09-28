@@ -1,0 +1,50 @@
+# captured 2026-09-28T12:36:27Z
+# kubectl --context admin@occ-new get svc -A -o wide --field-selector spec.type=LoadBalancer
+NAMESPACE          NAME                         TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)                                  AGE    SELECTOR
+argo               argo-argo-workflows-server   LoadBalancer   10.96.235.50     10.40.3.62    443:31947/TCP                            375d   app.kubernetes.io/instance=argo,app.kubernetes.io/name=argo-workflows-server
+argocd             argocd-server-lb             LoadBalancer   10.106.63.120    10.40.3.61    443:32041/TCP                            18d    app.kubernetes.io/instance=argocd,app.kubernetes.io/name=argocd-server
+authentik          authentik-outpost-ldap       LoadBalancer   10.108.48.210    10.40.3.80    636:30751/TCP                            19d    app.kubernetes.io/component=outpost-ldap,app.kubernetes.io/name=authentik
+authentik          authentik-outpost-proxy      LoadBalancer   10.98.170.78     10.40.3.60    80:31495/TCP,443:31767/TCP               21d    app.kubernetes.io/component=outpost-proxy,app.kubernetes.io/name=authentik
+authentik          authentik-outpost-radius     LoadBalancer   10.103.93.75     10.40.3.81    1812:31579/UDP                           19d    app.kubernetes.io/component=outpost-radius,app.kubernetes.io/name=authentik
+authentik          authentik-server             LoadBalancer   10.100.142.183   10.40.3.63    80:31143/TCP,443:31235/TCP               24d    app.kubernetes.io/component=server,app.kubernetes.io/instance=authentik,app.kubernetes.io/name=authentik
+defectdojo         defectdojo-ghostunnel        LoadBalancer   10.97.57.236     10.40.3.65    443:31772/TCP                            10h    app.kubernetes.io/instance=defectdojo,app.kubernetes.io/name=defectdojo,defectdojo.org/component=django
+edgebridge         edgebridge                   LoadBalancer   10.100.142.40    10.40.1.80    8088:31070/TCP                           68d    app.kubernetes.io/name=edgebridge
+homepage           homepage                     LoadBalancer   10.106.239.70    10.40.3.77    443:30627/TCP                            375d   app.kubernetes.io/name=homepage
+smarthome-pihole   pihole                       LoadBalancer   10.100.228.172   10.30.1.53    53:32488/TCP,53:32488/UDP,80:32644/TCP   65d    app.kubernetes.io/instance=smarthome-pihole,app.kubernetes.io/name=pihole
+
+# kubectl --context admin@occ-new get svc -A -o json --field-selector spec.type=LoadBalancer | jq -r '.items[] | [ns, name, ingress ip, label vlan, annotation lbipam.cilium.io/ips] | @tsv'
+argo	argo-argo-workflows-server	10.40.3.62	43	10.40.3.62
+argocd	argocd-server-lb	10.40.3.61	43	10.40.3.61
+authentik	authentik-outpost-ldap	10.40.3.80	43	10.40.3.80
+authentik	authentik-outpost-proxy	10.40.3.60	43	10.40.3.60
+authentik	authentik-outpost-radius	10.40.3.81	43	10.40.3.81
+authentik	authentik-server	10.40.3.63	43	10.40.3.63
+defectdojo	defectdojo-ghostunnel	10.40.3.65	43	10.40.3.65
+edgebridge	edgebridge	10.40.1.80	41	10.40.1.80
+homepage	homepage	10.40.3.77	43	10.40.3.77
+smarthome-pihole	pihole	10.30.1.53	30	10.30.1.53
+
+# supplementary: pool selector label + annotation origin (all Services pin via lbipam.cilium.io/ips)
+# kubectl --context admin@occ-new get svc -A -o json --field-selector spec.type=LoadBalancer | jq -r '[ns, name, ip, labels.vlan, labels.IPautoAssign, annotation ips] | @tsv'
+argo	argo-argo-workflows-server	10.40.3.62	43	false	10.40.3.62
+argocd	argocd-server-lb	10.40.3.61	43	false	10.40.3.61
+authentik	authentik-outpost-ldap	10.40.3.80	43	true	10.40.3.80
+authentik	authentik-outpost-proxy	10.40.3.60	43	false	10.40.3.60
+authentik	authentik-outpost-radius	10.40.3.81	43	true	10.40.3.81
+authentik	authentik-server	10.40.3.63	43	false	10.40.3.63
+defectdojo	defectdojo-ghostunnel	10.40.3.65	43	false	10.40.3.65
+edgebridge	edgebridge	10.40.1.80	41	true	10.40.1.80
+homepage	homepage	10.40.3.77	43	false	10.40.3.77
+smarthome-pihole	pihole	10.30.1.53	30	false	10.30.1.53
+
+# kubectl --context admin@occ-new get ciliumloadbalancerippools -o json | jq -r '[name, blocks, serviceSelector, disabled] | @tsv'
+vlan10-dhcp	[{"start":"10.10.1.10","stop":"10.10.1.19"}]	{"matchLabels":{"IPautoAssign":"true","vlan":"10"}}	false
+vlan10-static	[{"start":"10.10.1.20","stop":"10.10.1.29"}]	{"matchLabels":{"IPautoAssign":"false","vlan":"10"}}	false
+vlan30-dhcp	[{"start":"10.30.1.200","stop":"10.30.1.240"}]	{"matchLabels":{"IPautoAssign":"true","vlan":"30"}}	false
+vlan30-static	[{"start":"10.30.1.11","stop":"10.30.1.59"}]	{"matchLabels":{"IPautoAssign":"false","vlan":"30"}}	false
+vlan41-dhcp	[{"start":"10.40.1.80","stop":"10.40.1.99"}]	{"matchLabels":{"IPautoAssign":"true","vlan":"41"}}	false
+vlan41-static	[{"start":"10.40.1.60","stop":"10.40.1.79"}]	{"matchLabels":{"IPautoAssign":"false","vlan":"41"}}	false
+vlan43-dhcp	[{"start":"10.40.3.80","stop":"10.40.3.99"}]	{"matchLabels":{"IPautoAssign":"true","vlan":"43"}}	false
+vlan43-static	[{"start":"10.40.3.60","stop":"10.40.3.79"}]	{"matchLabels":{"IPautoAssign":"false","vlan":"43"}}	false
+vlan44-dhcp	[{"start":"10.40.4.100","stop":"10.40.4.199"}]	{"matchLabels":{"IPautoAssign":"true","vlan":"44"}}	false
+vlan44-static	[{"start":"10.40.4.80","stop":"10.40.4.99"}]	{"matchLabels":{"IPautoAssign":"false","vlan":"44"}}	false
