@@ -219,7 +219,7 @@ Plans:
 
 **Goal:** The DefectDojo generic chart (Phase 26) is deployed to the operator's homelab cluster via a private ArgoCD overlay, and CI import (Phase 27) with dedup/triage (Phase 28) is proven live end-to-end against that deployment.
 **Requirements**: DDOJO-05
-**Plans:** 20 plans in 13 waves
+**Plans:** 20 plans in 14 waves
 
 Plans:
 
@@ -242,43 +242,46 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [ ] 29-08a-PLAN.md — Gap closure: ghostunnel as a native sidecar in the django pod via overlay values (operator B1), runtime arg check, approved merge, live TLS proof
-- [ ] 29-08-PLAN.md — First-sync evidence (images incl. GAR postgres, cert, initializer) and gate first pass
 - [ ] 29-09-PLAN.md — Refresh the VLAN43 VIP inventory in the cluster-config runbook from a live read
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 29-10-PLAN.md — Operator superuser token; defectdojo-configure.sh once (CHANGED) and again (NO CHANGE)
-- [ ] 29-11-PLAN.md — D-18 runner reachability probe, runner image tag, Postgres NetworkPolicy measurement
+- [ ] 29-08-PLAN.md — First-sync evidence (images incl. GAR postgres, cert, initializer) and gate first pass
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 29-12-PLAN.md — Operator PAT + fork approval raise; author ARC arc-systems and repo-scoped arc-runners
+- [ ] 29-10-PLAN.md — Operator superuser token; defectdojo-configure.sh once (CHANGED) and again (NO CHANGE)
+- [ ] 29-11-PLAN.md — D-18 runner reachability probe, runner image tag, Postgres NetworkPolicy measurement
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 29-13-PLAN.md — Ordered ARC merges; controller and listener verified
+- [ ] 29-12-PLAN.md — Operator PAT + fork approval raise; author ARC arc-systems and repo-scoped arc-runners
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 29-14-PLAN.md — Ordering precondition gate; operator creates ci-importer and sets secret/variables (URL last)
+- [ ] 29-13-PLAN.md — Ordered ARC merges; controller and listener verified
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 29-15-PLAN.md — Baseline ci/main import via dispatch on ARC; proof-workflow side effect
+- [ ] 29-14-PLAN.md — Ordering precondition gate; operator creates ci-importer and sets secret/variables (URL last)
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
-- [ ] 29-16-PLAN.md — D-11 real PR lifecycle: duplicates, dispositions survive reimport, close unmerged
+- [ ] 29-15-PLAN.md — Baseline ci/main import via dispatch on ARC; proof-workflow side effect
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
-- [ ] 29-17-PLAN.md — Second-sync idempotency and gate second pass (ALL PASS)
+- [ ] 29-16-PLAN.md — D-11 real PR lifecycle: duplicates, dispositions survive reimport, close unmerged
 
 **Wave 12** *(blocked on Wave 11 completion)*
 
-- [ ] 29-18-PLAN.md — Chart README DDOJO-05 row and measured notes; PR B; v1.2.0 tag and v1 move
+- [ ] 29-17-PLAN.md — Second-sync idempotency and gate second pass (ALL PASS)
 
 **Wave 13** *(blocked on Wave 12 completion)*
+
+- [ ] 29-18-PLAN.md — Chart README DDOJO-05 row and measured notes; PR B; v1.2.0 tag and v1 move
+
+**Wave 14** *(blocked on Wave 13 completion)*
 
 - [ ] 29-19-PLAN.md — ADR-027, ADR-028, ADR index rows, DDOJO-05 Complete
 

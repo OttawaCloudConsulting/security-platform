@@ -136,7 +136,7 @@ Argo CD CLI form (overlay CLAUDE.md): `ARGOCD_AUTH_TOKEN=$(cat ~/.config/argocd/
     - `.planning/phases/29-defectdojo-live-validation/evidence/29-08-first-sync-application.pre-ghostunnel-fix.json` (operation shape)
   </read_first>
   <action>
-**Step A: worktree.** Run `git -C <shared overlay> fetch origin`. Then `git -C <shared overlay> worktree add SCRATCH/wt-29-08a -b fix/defectdojo-ghostunnel-native-sidecar origin/main`. All work below happens in `SCRATCH/wt-29-08a`. Confirm with `git -C SCRATCH/wt-29-08a rev-parse HEAD` that it equals `origin/main`, and record that SHA.
+**Step A: worktree.** First record the shared tree's baseline under a `## Shared overlay tree baseline` heading in `evidence/29-08a-argo-op-before.txt`: `git -C <shared overlay> rev-parse HEAD`, `git -C <shared overlay> symbolic-ref --short HEAD` and `git -C <shared overlay> worktree list`. Do NOT use `git status --porcelain` as a baseline; the other session changes the working tree, so its output is volatile. Then run `git -C <shared overlay> fetch origin`. Then `git -C <shared overlay> worktree add SCRATCH/wt-29-08a -b fix/defectdojo-ghostunnel-native-sidecar origin/main`. All work below happens in `SCRATCH/wt-29-08a`. Confirm with `git -C SCRATCH/wt-29-08a rev-parse HEAD` that it equals `origin/main`, and record that SHA.
 
 **Step B: Argo operation state before the change.** Read-only: `kubectl --context admin@occ-new -n argocd get applications.argoproj.io defectdojo -o json | jq '{sync:.status.sync, health:.status.health.status, op:.status.operationState|{phase,message,retryCount,startedAt,finishedAt,revisions:.operation.sync.revisions}}'`. Save it to `evidence/29-08a-argo-op-before.txt` with a UTC timestamp header. Also append `kubectl -n defectdojo get pvc data-defectdojo-postgresql-0 -o jsonpath='{.metadata.uid} {.status.phase}'`; this is the PVC UID baseline. If `operationState.phase` is `Running`, Task 2 must offer the terminate-op option (see there).
 
@@ -172,14 +172,14 @@ Argo CD CLI form (overlay CLAUDE.md): `ARGOCD_AUTH_TOKEN=$(cat ~/.config/argocd/
 
 **Step D: gates.** Run all of them from the worktree root, and append each command and its result to `evidence/29-08a-render-assertions.txt`. Every gate from 29-05/29-07 re-runs:
 1. `python3 docs/argocd/conformance/c1.py` and `python3 docs/argocd/conformance/check_appconfig.py --base origin/main` must PASS.
-2. `yamllint application-sets/platform/defectdojo`, scoped. Repo-wide `yamllint .` has 51 known pre-existing errors on `origin/main`; do not use it as a gate.
-3. Source-2 render: `helm template defectdojo-local application-sets/platform/defectdojo`. Assert its kinds are exactly Service, Certificate and three SealedSecret, and zero Deployment.
+2. `yamllint application-sets/platform/defectdojo`, scoped. Scoping is deliberate: repo-wide `yamllint .` fails with 51 pre-existing errors on `origin/main` (measured in 29-05 on a `git archive` of `origin/main`, and documented in `.yamllint-precommit.yaml`), plus gitignored `temp/` content. Only the changed directory can give a meaningful gate result.
+3. Chart.yaml changed (version 0.1.1), so first run `helm dependency update application-sets/platform/defectdojo` with the empty DOCKER_CONFIG. The chart has no `dependencies:`, so this must be a no-op. If it creates a `Chart.lock` or a `charts/` entry, STOP: vendored charts trip the `no-vendored-charts` hook. Then the source-2 render: `helm template defectdojo-local application-sets/platform/defectdojo`. Assert its kinds are exactly Service, Certificate and three SealedSecret, and zero Deployment.
 4. Source-1 render with the exact valuesObject:
    - First confirm `git -C repos/security-platform diff --stat c8027e6784ec631db128f45444c9a8092db9d0a1 HEAD -- kubernetes/defectdojo` prints nothing, and that `charts/defectdojo-1.9.53.tgz` exists. Otherwise use a `git archive` of the pin in SCRATCH plus `helm dependency build`, as 29-05 did.
    - Extract `.argocdOverrides.spec.sources[0].helm.valuesObject` with yq to `SCRATCH/src1-values-08a.yaml`.
    - Run `helm template defectdojo <chart> --namespace defectdojo -f SCRATCH/src1-values-08a.yaml > SCRATCH/src1-render-08a.yaml`.
    - Assert with yq on the Deployment `defectdojo-django`:
-     - (a) `initContainers[0].name=="tls"` and `restartPolicy=="Always"`, and `initContainers[1]` is the dbMigrationChecker;
+     - (a) `initContainers[0].name=="tls"` and `restartPolicy=="Always"`, and `initContainers[1].name=="db-migration-checker"` (the chart's `_helpers.tpl` name for dbMigrationChecker);
      - (b) the `tls` args list equals the eight args above, and no element contains `unsafe`;
      - (c) pod `volumes` includes `tls` with secret `defectdojo-tls`;
      - (d) neither the `uwsgi` nor the `nginx` container has a volumeMount named `tls`;
@@ -197,13 +197,13 @@ Argo CD CLI form (overlay CLAUDE.md): `ARGOCD_AUTH_TOKEN=$(cat ~/.config/argocd/
 - Positive run. Take the args verbatim from the source-1 render with yq; never retype them. Run `docker run -d --name gt-08a-pos --user 65532 -v SCRATCH/gt-tls:/etc/ghostunnel/tls:ro -p 127.0.0.1:18082:8082 <image@digest> <args...>`. After 10 seconds:
   - assert `docker inspect -f '{{.State.Running}}' gt-08a-pos` is `true`;
   - capture `docker logs gt-08a-pos`, which must not contain `--target must be`;
-  - `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18082/_status` must return an HTTP code. 503 is expected, because no nginx is listening in the test.
+  - `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18082/_status` must return exactly `200` or `503`. 503 is expected, because no nginx is listening in the test. Any other code, including `000` (no connection), is a failure.
 - Negative control: the same run, with only `--target` replaced by `--target=defectdojo-django.defectdojo.svc.cluster.local:80`, in the foreground with `--rm`. It must exit non-zero, and its output must contain `--target must be unix:PATH or localhost:PORT`.
 - Remove the containers and `SCRATCH/gt-tls`. If the positive run exits, or the negative control does not fail, STOP.
 
 **Step F: commit, push, PR.** In the worktree:
 - stage exactly the five changed paths;
-- commit with `bash .claude/scripts/gcommit` (or plain `git commit` if absent). Message: `fix(defectdojo): run ghostunnel as a native sidecar in the django pod (Phase 29 / DDOJO-05)`, with a body giving the CrashLoop error, B1 and the gate summary, plus both trailers;
+- commit with `git commit -F SCRATCH/msg-29-08a.txt`, per the overlay CLAUDE.md fallback. `.claude/` is gitignored, so `.claude/scripts/gcommit` does not exist in a fresh worktree. Message: `fix(defectdojo): run ghostunnel as a native sidecar in the django pod (Phase 29 / DDOJO-05)`, with a body giving the CrashLoop error, B1 and the gate summary, plus both trailers;
 - `git push -u origin fix/defectdojo-ghostunnel-native-sidecar`;
 - open the PR with `gh pr create --base main`. Its body gives: the root cause (raw error string); the B1 decision; the diff summary; the gates and the runtime check with its negative control; the expected live effects (the django pod rolls once with a surge pod; the standalone Deployment is pruned by `automated.prune: true`; the VIP is unchanged; brief HTTPS unavailability is possible while the Service selector moves, and the service is already down); the GitGuardian 37678807 false-positive note; the rollback caveat; the Claude Code footer.
 - Record the PR number and head SHA, and wait for the `conformance` check result.
@@ -214,10 +214,10 @@ Do not merge. Task 2 is the operator gate.
     <automated>W=/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/4a04faf8-acc3-4cd1-927d-a88ede360f9f/scratchpad/wt-29-08a && cd "$W" && python3 docs/argocd/conformance/c1.py && python3 docs/argocd/conformance/check_appconfig.py --base origin/main && yamllint application-sets/platform/defectdojo && test ! -e application-sets/platform/defectdojo/templates/ghostunnel-deployment.yaml && yq -e '[.argocdOverrides.spec.sources[0].helm.valuesObject.defectdojo.django.extraInitContainers[] | select(.name=="tls" and .restartPolicy=="Always" and ([.args[] | select(. == "--target=127.0.0.1:8080")] | length) == 1)] | length==1' application-sets/platform/defectdojo/argocd-overrides.yaml >/dev/null && yq -e '.spec.selector."defectdojo.org/component"=="django" and .spec.ports[0].targetPort==8443' application-sets/platform/defectdojo/templates/service.yaml >/dev/null && ! grep -rhv --include='*.yaml' '^\s*#' application-sets/platform/defectdojo | grep -q -- '--unsafe-target' && cd /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29-defectdojo-live-validation/evidence && grep -q 'target must be unix:PATH or localhost:PORT' 29-08a-runtime-arg-check.txt && test -s 29-08a-render-assertions.txt && test -s 29-08a-argo-op-before.txt</automated>
   </verify>
   <acceptance_criteria>
-    - The shared overlay tree's HEAD, branch and working tree are unchanged by this task. `git -C <shared> worktree list` shows `wt-29-08a`, and the shared tree's `git status --porcelain` output matches what it was before the task
+    - Compared with the Step A baseline, the shared overlay tree's HEAD SHA and current branch are unchanged, and `git -C <shared> worktree list` equals the baseline plus the one `wt-29-08a` entry. Porcelain status is not compared (the other session changes it)
     - The source-1 render shows `tls` as initContainers[0] with `restartPolicy: Always` and the eight args, followed by dbMigrationChecker. uwsgi and nginx have no `tls` mount. Exactly one Deployment pod template matches the Service selector
     - The source-2 render has zero Deployments. Service `defectdojo-ghostunnel` keeps the VIP annotation and labels, with numeric targetPort 8443
-    - The runtime evidence shows the positive run still Running after 10s with a `/_status` HTTP code, and the negative control exiting non-zero with the exact error string
+    - The runtime evidence shows the positive run still Running after 10s with `/_status` returning 200 or 503 (never 000), and the negative control exiting non-zero with the exact error string
     - Server-side dry-run on the django Deployment and the Service succeeds. c1, check_appconfig, scoped yamllint and both gitleaks forms pass
     - No non-comment YAML line in the directory contains `--unsafe-target`, and the security-platform pin is still `c8027e6784ec631db128f45444c9a8092db9d0a1`
     - PR opened. Its number and head SHA are recorded, along with the `conformance` result
@@ -260,7 +260,13 @@ Do not merge. Task 2 is the operator gate.
   - without that reply: STOP and report.
 - A refresh (`argocd app get defectdojo --refresh` in the same CLI form) is allowed. A manual `argocd app sync` is NOT; if automated sync does not pick up the new revision, STOP and report.
 
-Done when `.status.sync.status=="Synced"`, `.status.health.status=="Healthy"`, `.status.operationState.phase=="Succeeded"` and `.status.sync.revisions[1]` equals `MERGE_SHA`. Synced alone could describe the old operation. Save the JSON to `evidence/29-08a-application-after.json`.
+Done when ALL of these hold:
+- `.status.sync.status=="Synced"`, `.status.health.status=="Healthy"` and `.status.operationState.phase=="Succeeded"`;
+- `.status.sync.revisions[1]` equals `MERGE_SHA` or descends from it. Check with `git -C <shared overlay> merge-base --is-ancestor MERGE_SHA <revisions[1]>` after a `fetch`;
+- `.spec.sources[0].helm.valuesObject.defectdojo.django.extraInitContainers[0].name=="tls"`. The appset-apps generator regenerates the Application spec from the override file on its own cycle (about 3 minutes), so an intermediate sync can reach Synced/Healthy/Succeeded with `revisions[1]==MERGE_SHA` while source 1 still renders the OLD valuesObject;
+- if `.status.operationState.syncResult.sources[0]` is present, it also has `tls` at that same valuesObject path.
+
+If the spec does not yet carry the sidecar, keep polling within the 25-minute budget. Synced alone could describe the old operation. Record `MERGE_SHA=<sha>` as the first line of `evidence/29-08a-live-after.txt`. Save the JSON to `evidence/29-08a-application-after.json`.
 
 Expected behaviour, so it does not trigger a STOP:
 - during the rollout, the new pod's `tls` sidecar is not Ready until nginx is up;
@@ -278,7 +284,7 @@ If the Application is not Healthy, STOP with `.status.resources[] | select(.heal
    - `.status.initContainerStatuses[] | select(.name=="tls")` has `ready==true`, `started==true` and `restartCount==0`;
    - `.spec.initContainers[] | select(.name=="tls") | .restartPolicy=="Always"`;
    - every `.status.containerStatuses[].ready` is true;
-   - the dbMigrationChecker status is terminated with reason Completed.
+   - the `db-migration-checker` init container status is terminated with reason Completed.
    Do not rely on the READY column string.
 3. `kubectl -n defectdojo get endpointslices -l kubernetes.io/service-name=defectdojo-ghostunnel -o json`: exactly one endpoint, `conditions.ready==true`, its address equal to the django pod IP, and port 8443.
 4. `kubectl -n defectdojo get svc defectdojo-ghostunnel -o jsonpath='{.status.loadBalancer.ingress[*].ip}'` equals `10.40.3.65`.
@@ -296,7 +302,7 @@ Apply the evidence-hygiene grep: `grep -Ec 'github_pat_|ghp_|Authorization: Toke
 **Cleanup.**
 - `git -C <shared overlay> worktree remove SCRATCH/wt-29-08a`. It must be clean; never `--force` without reporting.
 - `git -C <shared overlay> fetch origin`, then confirm `origin/main` equals `MERGE_SHA` or descends from it.
-- Do not checkout, pull or prune in the shared tree.
+- Do not checkout, pull or prune in the shared tree. Re-read HEAD SHA, current branch and `worktree list`, and append them to `evidence/29-08a-live-after.txt`. They must equal the Step A baseline, and `wt-29-08a` must be absent.
 - Delete the remote branch only if the operator asks.
 
 **Docs commit.** In the docs repo, stage exactly the five `evidence/29-08a-*` files plus `29-08a-SUMMARY.md`, and the ROADMAP and STATE updates if the executor workflow makes them. Commit with a `docs(29-08a): ...` message and both trailers.
@@ -310,17 +316,17 @@ The SUMMARY `decisions:` must include:
 The SUMMARY also lists 29-CONTEXT D-02 and 29-RESEARCH Pattern 2 as stale, but does not edit them.
   </action>
   <verify>
-    <automated>cd /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29-defectdojo-live-validation/evidence && jq -e '.status.sync.status=="Synced" and .status.health.status=="Healthy" and .status.operationState.phase=="Succeeded" and .status.sync.revisions[0]=="c8027e6784ec631db128f45444c9a8092db9d0a1" and .status.sync.revisions[1]!="cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd" and ([.status.resources[] | select(.kind=="Deployment" and .name=="defectdojo-ghostunnel")] | length)==0' 29-08a-application-after.json >/dev/null && grep -q '10.40.3.65' 29-08a-live-after.txt && grep -qi 'NotFound' 29-08a-live-after.txt && test "$(grep -Ec 'github_pat_|ghp_|Authorization: Token [A-Za-z0-9]|JIRA Webhook Secret: [0-9a-f-]{36}' 29-08a-live-after.txt 29-08a-application-after.json | awk -F: '{s+=$NF} END {print s}')" = "0" && ! git -C /Users/christian/git-repos/OCC-github/kubernetes_stack/occ-k8s-app-config worktree list | grep -q wt-29-08a</automated>
+    <automated>cd /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29-defectdojo-live-validation/evidence && O=/Users/christian/git-repos/OCC-github/kubernetes_stack/occ-k8s-app-config && jq -e '.status.sync.status=="Synced" and .status.health.status=="Healthy" and .status.operationState.phase=="Succeeded" and .status.sync.revisions[0]=="c8027e6784ec631db128f45444c9a8092db9d0a1" and .spec.sources[0].helm.valuesObject.defectdojo.django.extraInitContainers[0].name=="tls" and (.status.operationState.syncResult.sources[0] as $x | $x==null or $x.helm.valuesObject.defectdojo.django.extraInitContainers[0].name=="tls") and ([.status.resources[] | select(.kind=="Deployment" and .name=="defectdojo-ghostunnel")] | length)==0' 29-08a-application-after.json >/dev/null && M=$(sed -n 's/^MERGE_SHA=\([0-9a-f]\{40\}\)$/\1/p' 29-08a-live-after.txt | head -1) && R=$(jq -r '.status.sync.revisions[1]' 29-08a-application-after.json) && test -n "$M" && git -C "$O" merge-base --is-ancestor "$M" "$R" && grep -q '10.40.3.65' 29-08a-live-after.txt && grep -qi 'NotFound' 29-08a-live-after.txt && test "$(grep -Ec 'github_pat_|ghp_|Authorization: Token [A-Za-z0-9]|JIRA Webhook Secret: [0-9a-f-]{36}' 29-08a-live-after.txt 29-08a-application-after.json | awk -F: '{s+=$NF} END {print s}')" = "0" && ! git -C "$O" worktree list | grep -q wt-29-08a</automated>
   </verify>
   <acceptance_criteria>
     - The PR was merged with `--match-head-commit` equal to the operator-approved head SHA, and the merge SHA is recorded
-    - The Application is Synced, Healthy and operation Succeeded. `revisions[0]` is the unchanged pin, and `revisions[1]` is the new overlay revision, not cc7fbc9
+    - The Application is Synced, Healthy and operation Succeeded. `revisions[0]` is the unchanged pin, and `revisions[1]` is `MERGE_SHA` or descends from it, and `.spec.sources[0]` valuesObject carries the `tls` sidecar
     - The standalone Deployment `defectdojo-ghostunnel` is NotFound and absent from `.status.resources`. The Service `defectdojo-ghostunnel` still holds 10.40.3.65
     - The django pod's `tls` init container has `restartPolicy: Always`, `ready: true` and `restartCount: 0`, and the uwsgi and nginx containers are ready
     - The EndpointSlice for `defectdojo-ghostunnel` has exactly one ready endpoint: the django pod IP, port 8443
     - Both hostnames: the certificate carries both SANs, curl with the system trust store gives `ssl_verify_result` 0, and `/` returns 200 or 302
     - The PVC UID and phase match the Task 1 baseline. terminate-op was run only if the operator replied "approve terminate-op" and the stale operation blocked
-    - The scratchpad worktree is removed. The shared overlay tree received only `fetch`, and its HEAD and branch are unchanged
+    - The scratchpad worktree is removed. The shared overlay tree received only `fetch`, and its HEAD SHA, branch and `worktree list` equal the Step A baseline
   </acceptance_criteria>
   <done>ghostunnel runs as a Ready native sidecar in the django pod, and HTTPS works on both hostnames through 10.40.3.65. The broken standalone Deployment is pruned. Plan 29-08 can resume.</done>
 </task>
@@ -345,7 +351,7 @@ The SUMMARY also lists 29-CONTEXT D-02 and 29-RESEARCH Pattern 2 as stale, but d
 | T-29-08a-03 | Denial of Service | Service selecting the wrong pods (celery) or a non-listening port | mitigate | The selector has all three django labels. The render gate checks that exactly one Deployment matches. The numeric targetPort 8443 is verified live through the EndpointSlice |
 | T-29-08a-04 | Tampering | prune deleting more than the standalone Deployment | mitigate | The PR diff removes only `templates/ghostunnel-deployment.yaml`. After sync, the PVC UID is compared with the baseline, and the Secrets and SealedSecrets are not in the diff |
 | T-29-13 | Denial of Service | Postgres data loss | mitigate | The PVC, Secrets and `DD_CREDENTIAL_AES_256_KEY` are never touched. README Rollback point 2 still applies. The PVC UID is checked before and after |
-| T-29-08a-05 | Tampering | shared overlay checkout corrupted by concurrent sessions | mitigate | Work happens only in the scratchpad worktree. The shared tree gets only `fetch` and `worktree add`/`remove` of its own path, and its porcelain status and HEAD are compared before and after |
+| T-29-08a-05 | Tampering | shared overlay checkout corrupted by concurrent sessions | mitigate | Work happens only in the scratchpad worktree. The shared tree gets only `fetch` and `worktree add`/`remove` of its own path, and its HEAD SHA, current branch and `worktree list` are compared with the Step A baseline (porcelain is not compared, because the other session changes it) |
 | T-29-08a-06 | Spoofing | operator approval bypassed by a late push | mitigate | `gh pr merge --match-head-commit <approved sha>` |
 | T-29-03 | Information Disclosure | JIRA webhook secret / tokens in evidence | mitigate | This plan reads no initializer log. The evidence-hygiene grep in Task 3 must return 0 |
 | T-29-SC | Tampering | ghostunnel image | mitigate | Same tag and digest as homepage and the pre-fix evidence (`sha256:51fa6192…4faf`). The local test pulls by digest. No package-manager installs |
