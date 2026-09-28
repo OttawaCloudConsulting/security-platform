@@ -1,0 +1,7 @@
+# 29-10 defectdojo-configure.sh run 2 at 2026-09-28T13:23:37Z from repos/security-platform @ e8387a8
+# pre-run counts: findings=0 (checked before run 1; no import occurred between runs)
+# command: DEFECTDOJO_URL=https://defectdojo.infra.ottawacloudconsulting.com DEFECTDOJO_ADMIN_TOKEN_FILE=$HOME/.config/defectdojo/homelab-admin.token bash scripts/defectdojo-configure.sh
+DefectDojo host: defectdojo.infra.ottawacloudconsulting.com
+NO CHANGE: all 5 settings already match (enable_deduplication, delete_duplicates, false_positive_history, retroactive_false_positive_history, risk_acceptance_form_default_days)
+# exit code: 0
+# post-run-2 counts (GET /api/v2/<ep>/?limit=1, http 200): findings=0 products=0 engagements=0 tests=0
