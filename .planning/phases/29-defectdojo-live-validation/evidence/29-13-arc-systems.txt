@@ -1,0 +1,30 @@
+# 29-13 arc-systems evidence (captured 2026-09-28T22:16:03Z, context admin@occ-new)
+
+## PR #251 merge
+pr=251 state=MERGED head=ad8c5db8c09cc44971c5216265125d9baf2fc3e9 merge_commit=03404fd30d99321b832bea6be84b2e529e9170d3 merged_at=2026-09-28T15:45:51Z merged_by=OttawaCloudConsulting
+
+## Application arc-systems
+sync=Synced revision= health=Healthy op_phase=Succeeded op_finished=2026-09-28T15:48:26Z op_revision= op_message=successfully synced (no more tasks)
+NAME          SYNC STATUS   HEALTH STATUS
+arc-systems   Synced        Healthy
+
+## CRDs Established
+autoscalingrunnersets.actions.github.com=True
+autoscalinglisteners.actions.github.com=True
+ephemeralrunners.actions.github.com=True
+ephemeralrunnersets.actions.github.com=True
+
+## Controller Deployment / pods
+NAME                    READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS   IMAGES                                                   SELECTOR
+arc-gha-rs-controller   1/1     1            1           6h27m   manager      ghcr.io/actions/gha-runner-scale-set-controller:0.14.2   app.kubernetes.io/instance=arc,app.kubernetes.io/name=gha-rs-controller,app.kubernetes.io/namespace=arc-systems
+arc-gha-rs-controller Available=True
+NAME                                    READY   STATUS    RESTARTS   AGE     IP          NODE                NOMINATED NODE   READINESS GATES
+arc-gha-rs-controller-f6b864554-tvc7v   1/1     Running   0          6h27m   10.0.1.91   occ-cs-k8worker01   <none>           <none>
+
+## Application arc-systems (multi-source revisions)
+sync.revisions=["0.14.2"]
+op.revisions=["0.14.2"]
+op.startedAt=2026-09-28T15:48:25Z
+
+## Note
+Captured after an interrupted executor resumed; PR #251 was merged by the earlier executor at 15:45:51Z, before the interruption. Assertions: 4/4 CRDs Established=True, controller Deployment Available=True, pod 1/1 Running 0 restarts.
