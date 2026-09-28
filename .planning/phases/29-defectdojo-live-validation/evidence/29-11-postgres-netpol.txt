@@ -40,15 +40,19 @@ defectdojo-postgresql-0   1/1     Running   0          11h   10.0.1.1   occ-cs-k
 $ kubectl -n kube-system get pod -l k8s-app=cilium --field-selector spec.nodeName=occ-cs-k8worker01 -o name
 pod/cilium-8ntcc
 
-$ kubectl -n kube-system exec cilium-8ntcc -c cilium-agent -- cilium-dbg endpoint list   (header + postgresql-0 row, IP 10.0.1.1)
-ENDPOINT   POLICY (ingress)   POLICY (egress)   IDENTITY   LABELS (source:key[=value])                                                  IPv6   IPv4         STATUS
+$ kubectl -n kube-system exec cilium-8ntcc -c cilium-agent -- cilium-dbg endpoint list | awk '<header + endpoint 3821 rows>'   (re-captured 2026-09-28T13:34:51Z)
+ENDPOINT   POLICY (ingress)   POLICY (egress)   IDENTITY   LABELS (source:key[=value])                                                            IPv6   IPv4         STATUS
            ENFORCEMENT        ENFORCEMENT
-30         Disabled           Disabled          2138       k8s:io.cilium.k8s.namespace.labels.kubernetes.io/metadata.name=crossplane           10.0.1.3     ready
-                                                           k8s:io.cilium.k8s.policy.cluster=occ-new
---
-3821       Enabled            Enabled           6201       k8s:app.kubernetes.io/component=primary                                             10.0.1.1     ready
+3821       Enabled            Enabled           6201       k8s:app.kubernetes.io/component=primary                                                       10.0.1.1     ready
                                                            k8s:app.kubernetes.io/instance=defectdojo
                                                            k8s:app.kubernetes.io/managed-by=Helm
+                                                           k8s:app.kubernetes.io/name=postgresql
+                                                           k8s:app.kubernetes.io/version=17.6.0
+                                                           k8s:helm.sh/chart=postgresql-16.7.27
+                                                           k8s:io.cilium.k8s.namespace.labels.kubernetes.io/metadata.name=defectdojo
+                                                           k8s:io.cilium.k8s.policy.cluster=occ-new
+                                                           k8s:io.cilium.k8s.policy.serviceaccount=defectdojo-postgresql
+                                                           k8s:io.kubernetes.pod.namespace=defectdojo
 
 $ ... cilium-dbg endpoint get 3821 -o json | jq '.[0].status | {ext: ."external-identifiers", enf: .policy.realized."policy-enabled"}'
 {"ext":{"cni-attachment-id":"774c27c09b6d43ed1bb8ccd63ec4f1d9869f9930c182b05e3fb88ee94286f16a:eth0","container-id":"774c27c09b6d43ed1bb8ccd63ec4f1d9869f9930c182b05e3fb88ee94286f16a","k8s-namespace":"defectdojo","k8s-pod-name":"defectdojo-postgresql-0","pod-name":"defectdojo/defectdojo-postgresql-0"},"enf":"both"}
@@ -78,4 +82,10 @@ $ ... hubble observe --namespace defectdojo --verdict DROPPED --last 50
 (no output: zero DROPPED flows in the local ring buffer; buffer at 4095/4095 flows spans only a few minutes, so this shows no drops on the live path, not that the deny path works)
 
 ## PASSIVE OBSERVED: netpol present (ingress TCP/5432 from any peer, egress all); postgresql-0 endpoint 3821 ingress+egress enforcement Enabled; django and celery -> 5432 FORWARDED.
-## PASSIVE NOT OBSERVED: the deny path (non-5432 ingress dropped). Active probe pending operator decision (29-11 Task 2).
+## PASSIVE NOT OBSERVED: the deny path (non-5432 ingress dropped).
+
+## 2. OPERATOR DECISION (29-11 Task 2)
+Operator reply (verbatim): `passive-only`
+No probe pod was created for D-14 and no exec into DefectDojo workloads was done. The only execs were read-only cilium-dbg/hubble commands in the cilium-agent container on occ-cs-k8worker01.
+
+VERDICT: allow path OBSERVED (NetworkPolicy defectdojo-postgresql present; ingress TCP/5432 from any peer, all egress; postgresql-0 endpoint 3821 ingress+egress enforcement Enabled; django ID 13784 and celery-worker ID 23303 -> 5432 ALLOWED/FORWARDED; zero DROPPED in the local ring). Deny path (non-5432 ingress dropped) NOT verified, by operator decision `passive-only`.

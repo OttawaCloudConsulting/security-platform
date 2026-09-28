@@ -20,4 +20,57 @@ daemonset.apps/network-multitool
 $ kubectl --context admin@occ-new -n default get netpol,limitrange,resourcequota
 No resources found in default namespace.
 
-## PROBES A/B: NOT YET RUN (awaiting operator approval of the exact pod commands; see 29-11 checkpoint)
+## OPERATOR APPROVAL
+Operator reply to the exact probe commands, cleanup, residue and risk (verbatim): `approve-probes`
+
+## PROBE A (no hostAliases) started 2026-09-28T13:33:49Z, ended 2026-09-28T13:34:11Z
+$ kubectl --context admin@occ-new -n default run dd-reach-probe-a --rm -i --restart=Never --pod-running-timeout=5m --image=ghcr.io/actions/actions-runner:2.337.0 --command -- bash -c 'getent hosts defectdojo.infra.ottawacloudconsulting.com || echo NO-RESOLVE'
+NO-RESOLVE
+pod "dd-reach-probe-a" deleted from default namespace
+exit=0
+
+## PROBE B (hostAliases -> 10.40.3.65) started 2026-09-28T13:34:19Z, ended 2026-09-28T13:34:21Z
+$ kubectl --context admin@occ-new -n default run dd-reach-probe-b --rm -i --restart=Never --pod-running-timeout=5m --image=ghcr.io/actions/actions-runner:2.337.0 --overrides='{"apiVersion":"v1","spec":{"hostAliases":[{"ip":"10.40.3.65","hostnames":["defectdojo.infra.ottawacloudconsulting.com"]}]}}' --command -- bash -c 'getent hosts defectdojo.infra.ottawacloudconsulting.com; curl -sS --proto =https -o /dev/null -w "%{http_code} %{ssl_verify_result}\n" https://defectdojo.infra.ottawacloudconsulting.com/login'
+10.40.3.65      defectdojo.infra.ottawacloudconsulting.com
+200 0
+pod "dd-reach-probe-b" deleted from default namespace
+exit=0
+
+## POST-PROBE STATE captured 2026-09-28T13:34:33Z
+$ kubectl --context admin@occ-new -n default get events --field-selector involvedObject.name=dd-reach-probe-a
+2026-09-28T13:33:49Z   Scheduled   Successfully assigned default/dd-reach-probe-a to occ-cs-k8worker01
+2026-09-28T13:33:50Z   Pulling     Pulling image "ghcr.io/actions/actions-runner:2.337.0"
+2026-09-28T13:34:09Z   Pulled      Successfully pulled image "ghcr.io/actions/actions-runner:2.337.0" in 19.362s (19.362s including waiting). Image size: 541817226 bytes.
+2026-09-28T13:34:09Z   Created     Created container: dd-reach-probe-a
+2026-09-28T13:34:09Z   Started     Started container dd-reach-probe-a
+
+$ kubectl --context admin@occ-new -n default get events --field-selector involvedObject.name=dd-reach-probe-b
+2026-09-28T13:34:19Z   Scheduled   Successfully assigned default/dd-reach-probe-b to occ-cs-k8worker01
+2026-09-28T13:34:20Z   Pulled      Container image "ghcr.io/actions/actions-runner:2.337.0" already present on machine
+2026-09-28T13:34:20Z   Created     Created container: dd-reach-probe-b
+2026-09-28T13:34:20Z   Started     Started container dd-reach-probe-b
+
+$ kubectl --context admin@occ-new -n default get pod dd-reach-probe-a dd-reach-probe-b
+Error from server (NotFound): pods "dd-reach-probe-a" not found
+Error from server (NotFound): pods "dd-reach-probe-b" not found
+
+$ kubectl --context admin@occ-new -n default get all -o name   (diff against PRE-PROBE list above)
+(identical 9 objects; diff exit 0, no additions, no removals)
+
+$ kubectl --context admin@occ-new -n default get netpol,limitrange,resourcequota
+No resources found in default namespace.
+
+Residue: the runner image (541817226 bytes) stays cached on occ-cs-k8worker01, and the Scheduled/Pulled/Created/Started events stay until the default event TTL expires. No API objects remain.
+
+## VIP PLACEMENT (read-only, for interpreting probe B)
+$ kubectl --context admin@occ-new -n kube-system get lease cilium-l2announce-defectdojo-defectdojo-ghostunnel -o custom-columns=HOLDER:.spec.holderIdentity
+occ-cs-k8worker01
+$ kubectl --context admin@occ-new -n defectdojo get svc defectdojo-ghostunnel -o wide
+defectdojo-ghostunnel   LoadBalancer   10.97.57.236   10.40.3.65   443:31772/TCP
+Caveat: both probe pods were scheduled on occ-cs-k8worker01, the node that currently holds the L2 lease for 10.40.3.65. The pod-to-VIP path was measured from the lease-holder node only. Cilium socket-LB translates the LoadBalancer VIP at connect() on every node, so a runner on another node is expected to behave the same. That is a THEORY and was not measured.
+
+## RESULT
+Probe A: NO-RESOLVE. Prediction held: the Pi-hole-only name does not resolve from cluster DNS.
+Probe B: getent 10.40.3.65; curl /login HTTP 200, ssl_verify_result 0 (TLS verified against the image system CA). The hairpin works; no fallback needed.
+Reachability model: ARC runner pods REQUIRE hostAliases for defectdojo.infra.ottawacloudconsulting.com.
+HOSTALIASES-TARGET: 10.40.3.65
