@@ -1,0 +1,40 @@
+# 29-08 Task 1 image-pull evidence, captured 2026-09-28T13:11:08Z (context admin@occ-new).
+# Describes the LATER sync state (op finished 2026-09-28T12:19:11Z), not the first sync.
+
+## kubectl -n defectdojo get events --field-selector reason=Pulled -o custom-columns=OBJ:.involvedObject.name,MSG:.message
+OBJ                                      MSG
+defectdojo-django-7bd88b9f6b-grm9j       Container image "docker.io/ghostunnel/ghostunnel:v1.11.3-distroless" already present on machine
+defectdojo-django-7bd88b9f6b-grm9j       Successfully pulled image "defectdojo/defectdojo-django:3.3.200" in 259ms (551ms including waiting). Image size: 251892624 bytes.
+defectdojo-django-7bd88b9f6b-grm9j       Successfully pulled image "defectdojo/defectdojo-django:3.3.200" in 246ms (246ms including waiting). Image size: 251892624 bytes.
+defectdojo-django-7bd88b9f6b-grm9j       Successfully pulled image "defectdojo/defectdojo-nginx:3.3.200" in 267ms (267ms including waiting). Image size: 114010583 bytes.
+defectdojo-ghostunnel-6688884646-crddv   Container image "docker.io/ghostunnel/ghostunnel:v1.11.3-distroless" already present on machine
+defectdojo-initializer-552xn             Successfully pulled image "defectdojo/defectdojo-django:3.3.200" in 300ms (300ms including waiting). Image size: 251892624 bytes.
+defectdojo-initializer-552xn             Successfully pulled image "defectdojo/defectdojo-django:3.3.200" in 293ms (293ms including waiting). Image size: 251892624 bytes.
+
+## Pod init + app containers: POD CONTAINER IMAGE IMAGEID (jsonpath over .status.initContainerStatuses and .status.containerStatuses)
+defectdojo-celery-beat-7d584ddd59-h2wr8 init db-migration-checker	docker.io/defectdojo/defectdojo-django:3.3.200	docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+defectdojo-celery-beat-7d584ddd59-h2wr8 app  celery	docker.io/defectdojo/defectdojo-django:3.3.200	docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+defectdojo-celery-worker-765bdc6995-bdrx5 init db-migration-checker	docker.io/defectdojo/defectdojo-django:3.3.200	docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+defectdojo-celery-worker-765bdc6995-bdrx5 app  celery	docker.io/defectdojo/defectdojo-django:3.3.200	docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+defectdojo-django-7bd88b9f6b-grm9j init tls	docker.io/ghostunnel/ghostunnel:v1.11.3-distroless	docker.io/ghostunnel/ghostunnel@sha256:51fa619294acf716e01efcb03ad00dc11229dc1f3829cba984c5b0a4f43f4faf
+defectdojo-django-7bd88b9f6b-grm9j init db-migration-checker	docker.io/defectdojo/defectdojo-django:3.3.200	docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+defectdojo-django-7bd88b9f6b-grm9j app  nginx	docker.io/defectdojo/defectdojo-nginx:3.3.200	docker.io/defectdojo/defectdojo-nginx@sha256:825d9ad8abaf7d2013d82a85b5562d096006727ef32cfa8940996efa70c6e5f9
+defectdojo-django-7bd88b9f6b-grm9j app  uwsgi	docker.io/defectdojo/defectdojo-django:3.3.200	docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+defectdojo-initializer-552xn init wait-for-db	docker.io/defectdojo/defectdojo-django:3.3.200	docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+defectdojo-initializer-552xn app  initializer	docker.io/defectdojo/defectdojo-django:3.3.200	docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+defectdojo-postgresql-0 app  postgresql	us-docker.pkg.dev/os-public-container-registry/defectdojo/bitnami/postgresql:17.6.0-debian-12-r4	us-docker.pkg.dev/os-public-container-registry/defectdojo/bitnami/postgresql@sha256:926356130b77d5742d8ce605b258d35db9b62f2f8fd1601f9dbaef0c8a710a8d
+defectdojo-valkey-0 app  valkey	sha256:df680660768bfc5148c5855dbb59c4f9aa1aeb5bceff10a2430a8732fa318067	docker.io/valkey/valkey@sha256:c9b77919daeba2c02ad954d0c844cc4e7142069d177b89c5fd771f405daf9e02
+
+## Pod spec images (as declared)
+defectdojo-celery-beat-7d584ddd59-h2wr8: defectdojo/defectdojo-django:3.3.200 defectdojo/defectdojo-django:3.3.200
+defectdojo-celery-worker-765bdc6995-bdrx5: defectdojo/defectdojo-django:3.3.200 defectdojo/defectdojo-django:3.3.200
+defectdojo-django-7bd88b9f6b-grm9j: docker.io/ghostunnel/ghostunnel:v1.11.3-distroless defectdojo/defectdojo-django:3.3.200 defectdojo/defectdojo-django:3.3.200 defectdojo/defectdojo-nginx:3.3.200
+defectdojo-initializer-552xn: defectdojo/defectdojo-django:3.3.200 defectdojo/defectdojo-django:3.3.200
+defectdojo-postgresql-0: us-docker.pkg.dev/os-public-container-registry/defectdojo/bitnami/postgresql:17.6.0-debian-12-r4
+defectdojo-valkey-0: docker.io/valkey/valkey:9.1.0-alpine3.23@sha256:c9b77919daeba2c02ad954d0c844cc4e7142069d177b89c5fd771f405daf9e02
+
+## D-14 source note
+# The Pulled events above cover only the pods (re)created by the 12:19Z sync (django, initializer) plus one aged event for the pruned
+# standalone ghostunnel pod. The postgresql, valkey and celery pods are 11h old and their Pulled events have aged out.
+# For those, the D-14 source is the imageIDs above plus 29-08-image-pulls.pre-ghostunnel-fix.txt (a40c5a8).
+# GAR postgresql imageID: us-docker.pkg.dev/os-public-container-registry/defectdojo/bitnami/postgresql@sha256:926356130b77d5742d8ce605b258d35db9b62f2f8fd1601f9dbaef0c8a710a8d

@@ -1,0 +1,48 @@
+# 29-08 Task 1 cluster evidence, captured 2026-09-28T13:10:56Z (context admin@occ-new).
+# This describes the LATER sync (operation finished 2026-09-28T12:19:11Z, revisions [c8027e6 (pin), 08ce26b (29-08a overlay)]), not the first sync.
+
+## kubectl -n defectdojo get pods,svc,pvc,job,certificates.cert-manager.io,sealedsecrets.bitnami.com,secret -o wide
+NAME                                            READY   STATUS      RESTARTS   AGE   IP           NODE                NOMINATED NODE   READINESS GATES
+pod/defectdojo-celery-beat-7d584ddd59-h2wr8     1/1     Running     0          11h   10.0.1.70    occ-cs-k8worker01   <none>           <none>
+pod/defectdojo-celery-worker-765bdc6995-bdrx5   1/1     Running     0          11h   10.0.1.219   occ-cs-k8worker01   <none>           <none>
+pod/defectdojo-django-7bd88b9f6b-grm9j          3/3     Running     0          52m   10.0.1.46    occ-cs-k8worker01   <none>           <none>
+pod/defectdojo-initializer-552xn                0/1     Completed   0          52m   10.0.1.118   occ-cs-k8worker01   <none>           <none>
+pod/defectdojo-postgresql-0                     1/1     Running     0          11h   10.0.1.1     occ-cs-k8worker01   <none>           <none>
+pod/defectdojo-valkey-0                         1/1     Running     0          11h   10.0.1.138   occ-cs-k8worker01   <none>           <none>
+
+NAME                                 TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)         AGE   SELECTOR
+service/defectdojo-django            ClusterIP      10.104.149.7     <none>        80/TCP          11h   app.kubernetes.io/instance=defectdojo,app.kubernetes.io/name=defectdojo,defectdojo.org/component=django
+service/defectdojo-ghostunnel        LoadBalancer   10.97.57.236     10.40.3.65    443:31772/TCP   11h   app.kubernetes.io/instance=defectdojo,app.kubernetes.io/name=defectdojo,defectdojo.org/component=django
+service/defectdojo-postgresql        ClusterIP      10.110.74.198    <none>        5432/TCP        11h   app.kubernetes.io/component=primary,app.kubernetes.io/instance=defectdojo,app.kubernetes.io/name=postgresql
+service/defectdojo-postgresql-hl     ClusterIP      None             <none>        5432/TCP        11h   app.kubernetes.io/component=primary,app.kubernetes.io/instance=defectdojo,app.kubernetes.io/name=postgresql
+service/defectdojo-valkey            ClusterIP      10.105.200.237   <none>        6379/TCP        11h   app.kubernetes.io/instance=defectdojo,app.kubernetes.io/name=valkey
+service/defectdojo-valkey-headless   ClusterIP      None             <none>        6379/TCP        11h   app.kubernetes.io/instance=defectdojo,app.kubernetes.io/name=valkey
+
+NAME                                                 STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE   VOLUMEMODE
+persistentvolumeclaim/data-defectdojo-postgresql-0   Bound    pvc-76aa54bc-51bf-487c-9ed9-dd3f9115f4f2   8Gi        RWO            default        <unset>                 11h   Filesystem
+
+NAME                               STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS    IMAGES                                 SELECTOR
+job.batch/defectdojo-initializer   Complete   1/1           15s        52m   initializer   defectdojo/defectdojo-django:3.3.200   batch.kubernetes.io/controller-uid=e43a2dcf-7c4c-4415-931d-f5f5952c1482
+
+NAME                                         READY   SECRET           ISSUER                   STATUS                                          AGE
+certificate.cert-manager.io/defectdojo-tls   True    defectdojo-tls   letsencrypt-dns01-prod   Certificate is up to date and has not expired   11h
+
+NAME                                                      STATUS   SYNCED   AGE
+sealedsecret.bitnami.com/defectdojo                                True     11h
+sealedsecret.bitnami.com/defectdojo-postgresql-specific            True     11h
+sealedsecret.bitnami.com/defectdojo-valkey-specific                True     11h
+
+NAME                                    TYPE                DATA   AGE
+secret/defectdojo                       Opaque              4      11h
+secret/defectdojo-postgresql-specific   Opaque              2      11h
+secret/defectdojo-tls                   kubernetes.io/tls   2      11h
+secret/defectdojo-valkey-specific       Opaque              1      11h
+
+## LB ingress IP: kubectl -n defectdojo get svc defectdojo-ghostunnel -o jsonpath='{.status.loadBalancer.ingress[*].ip}'
+10.40.3.65
+
+## Certificate Ready: kubectl -n defectdojo get certificates.cert-manager.io defectdojo-tls -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+True
+
+## PVC name / phase / StorageClass / UID
+data-defectdojo-postgresql-0	Bound	default	76aa54bc-51bf-487c-9ed9-dd3f9115f4f2
