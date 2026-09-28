@@ -1,0 +1,81 @@
+# 29-11 D-14 Bitnami Postgres NetworkPolicy on Cilium 1.19.6
+# context: admin@occ-new. Section 1 is passive/read-only (kubectl get + read-only cilium-dbg/hubble exec in the cilium agent).
+
+## 1. PASSIVE MEASUREMENT captured 2026-09-28T13:29:30Z
+$ kubectl -n defectdojo get netpol defectdojo-postgresql -o yaml  (last-applied annotation, uid, resourceVersion, timestamps elided)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  annotations:
+    argocd.argoproj.io/tracking-id: defectdojo:networking.k8s.io/NetworkPolicy:defectdojo/defectdojo-postgresql
+  labels:
+    app.kubernetes.io/component: primary
+    app.kubernetes.io/instance: defectdojo
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/version: 17.6.0
+    helm.sh/chart: postgresql-16.7.27
+  name: defectdojo-postgresql
+  namespace: defectdojo
+spec:
+  egress:
+  - {}
+  ingress:
+  - ports:
+    - port: 5432
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: primary
+      app.kubernetes.io/instance: defectdojo
+      app.kubernetes.io/name: postgresql
+  policyTypes:
+  - Ingress
+  - Egress
+
+$ kubectl -n defectdojo get pod -l app.kubernetes.io/name=postgresql -o wide
+NAME                      READY   STATUS    RESTARTS   AGE   IP         NODE                NOMINATED NODE   READINESS GATES
+defectdojo-postgresql-0   1/1     Running   0          11h   10.0.1.1   occ-cs-k8worker01   <none>           <none>
+
+$ kubectl -n kube-system get pod -l k8s-app=cilium --field-selector spec.nodeName=occ-cs-k8worker01 -o name
+pod/cilium-8ntcc
+
+$ kubectl -n kube-system exec cilium-8ntcc -c cilium-agent -- cilium-dbg endpoint list   (header + postgresql-0 row, IP 10.0.1.1)
+ENDPOINT   POLICY (ingress)   POLICY (egress)   IDENTITY   LABELS (source:key[=value])                                                  IPv6   IPv4         STATUS
+           ENFORCEMENT        ENFORCEMENT
+30         Disabled           Disabled          2138       k8s:io.cilium.k8s.namespace.labels.kubernetes.io/metadata.name=crossplane           10.0.1.3     ready
+                                                           k8s:io.cilium.k8s.policy.cluster=occ-new
+--
+3821       Enabled            Enabled           6201       k8s:app.kubernetes.io/component=primary                                             10.0.1.1     ready
+                                                           k8s:app.kubernetes.io/instance=defectdojo
+                                                           k8s:app.kubernetes.io/managed-by=Helm
+
+$ ... cilium-dbg endpoint get 3821 -o json | jq '.[0].status | {ext: ."external-identifiers", enf: .policy.realized."policy-enabled"}'
+{"ext":{"cni-attachment-id":"774c27c09b6d43ed1bb8ccd63ec4f1d9869f9930c182b05e3fb88ee94286f16a:eth0","container-id":"774c27c09b6d43ed1bb8ccd63ec4f1d9869f9930c182b05e3fb88ee94286f16a","k8s-namespace":"defectdojo","k8s-pod-name":"defectdojo-postgresql-0","pod-name":"defectdojo/defectdojo-postgresql-0"},"enf":"both"}
+
+hubble source: hubble CLI inside the cilium-agent container on worker01 (local unix socket; relay not used). django, celery and postgresql-0 all run on worker01, so the local observer sees the allowed path.
+$ ... hubble status
+Healthcheck (via unix:///var/run/cilium/hubble.sock): Ok
+Current/Max Flows: 4,095/4,095 (100.00%)
+Flows/s: 37.33
+
+$ ... hubble observe --namespace defectdojo --to-port 5432 --last 50 | grep -E 'SYN\)|policy-verdict' | tail -8
+Sep 28 13:29:20.951: defectdojo/defectdojo-django-7bd88b9f6b-grm9j:37880 (ID:13784) -> defectdojo/defectdojo-postgresql-0:5432 (ID:6201) policy-verdict:none TRAFFIC_DIRECTION_UNKNOWN ALLOWED (TCP Flags: SYN)
+Sep 28 13:29:20.951: defectdojo/defectdojo-django-7bd88b9f6b-grm9j:37880 (ID:13784) -> defectdojo/defectdojo-postgresql-0:5432 (ID:6201) to-endpoint FORWARDED (TCP Flags: SYN)
+Sep 28 13:29:25.928: defectdojo/defectdojo-django-7bd88b9f6b-grm9j:37216 (ID:13784) -> defectdojo/defectdojo-postgresql-0:5432 (ID:6201) policy-verdict:none TRAFFIC_DIRECTION_UNKNOWN ALLOWED (TCP Flags: SYN)
+Sep 28 13:29:25.928: defectdojo/defectdojo-django-7bd88b9f6b-grm9j:37216 (ID:13784) -> defectdojo/defectdojo-postgresql-0:5432 (ID:6201) to-endpoint FORWARDED (TCP Flags: SYN)
+Sep 28 13:29:26.538: defectdojo/defectdojo-django-7bd88b9f6b-grm9j:37226 (ID:13784) -> defectdojo/defectdojo-postgresql-0:5432 (ID:6201) policy-verdict:none TRAFFIC_DIRECTION_UNKNOWN ALLOWED (TCP Flags: SYN)
+Sep 28 13:29:26.538: defectdojo/defectdojo-django-7bd88b9f6b-grm9j:37226 (ID:13784) -> defectdojo/defectdojo-postgresql-0:5432 (ID:6201) to-endpoint FORWARDED (TCP Flags: SYN)
+Sep 28 13:29:30.950: defectdojo/defectdojo-django-7bd88b9f6b-grm9j:37238 (ID:13784) -> defectdojo/defectdojo-postgresql-0:5432 (ID:6201) policy-verdict:none TRAFFIC_DIRECTION_UNKNOWN ALLOWED (TCP Flags: SYN)
+Sep 28 13:29:30.950: defectdojo/defectdojo-django-7bd88b9f6b-grm9j:37238 (ID:13784) -> defectdojo/defectdojo-postgresql-0:5432 (ID:6201) to-endpoint FORWARDED (TCP Flags: SYN)
+
+$ ... hubble observe --from-pod defectdojo/<celery-worker> --to-port 5432 --last 50 | grep -E 'SYN\)' | tail -3
+Sep 28 13:28:48.123: defectdojo/defectdojo-celery-worker-765bdc6995-bdrx5:50744 (ID:23303) -> defectdojo/defectdojo-postgresql-0:5432 (ID:6201) to-endpoint FORWARDED (TCP Flags: SYN)
+Sep 28 13:28:48.225: defectdojo/defectdojo-celery-worker-765bdc6995-bdrx5:50754 (ID:23303) -> defectdojo/defectdojo-postgresql-0:5432 (ID:6201) policy-verdict:none TRAFFIC_DIRECTION_UNKNOWN ALLOWED (TCP Flags: SYN)
+Sep 28 13:28:48.225: defectdojo/defectdojo-celery-worker-765bdc6995-bdrx5:50754 (ID:23303) -> defectdojo/defectdojo-postgresql-0:5432 (ID:6201) to-endpoint FORWARDED (TCP Flags: SYN)
+
+$ ... hubble observe --namespace defectdojo --verdict DROPPED --last 50
+(no output: zero DROPPED flows in the local ring buffer; buffer at 4095/4095 flows spans only a few minutes, so this shows no drops on the live path, not that the deny path works)
+
+## PASSIVE OBSERVED: netpol present (ingress TCP/5432 from any peer, egress all); postgresql-0 endpoint 3821 ingress+egress enforcement Enabled; django and celery -> 5432 FORWARDED.
+## PASSIVE NOT OBSERVED: the deny path (non-5432 ingress dropped). Active probe pending operator decision (29-11 Task 2).

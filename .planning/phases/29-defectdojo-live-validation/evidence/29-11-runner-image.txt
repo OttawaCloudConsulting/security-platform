@@ -1,0 +1,25 @@
+# 29-11 runner image re-read (RESEARCH Pitfall 6). Read-only; no cluster writes.
+# captured: 2026-09-28T13:28:52Z
+
+$ gh api repos/actions/runner/releases/latest --jq '{tag: .tag_name, published: .published_at}'
+{"published":"2026-08-26T14:33:29Z","tag":"v2.337.0"}
+
+$ curl -sSI -H 'Authorization: Bearer <anonymous pull token>' -H 'Accept: application/vnd.oci.image.index.v1+json' https://ghcr.io/v2/actions/actions-runner/manifests/2.337.0
+HTTP/2 200
+content-type: application/vnd.oci.image.index.v1+json
+docker-content-digest: sha256:e5496277be5d09bc968b3d64911b74e219ac4a3f2edce956a3ecf9271bea1ef4
+
+$ (GET same manifest) | jq -c '.manifests[] | {digest, platform}'
+{"digest":"sha256:5036480998280bb21e32ade9fe1b02b493861ac314b62ba1aea320b94f56ec97","platform":"linux/amd64"}
+{"digest":"sha256:f5a0d9a3d857315f2aed7075a02a29f46927ad198221c3b1c66585ae9fe36c0d","platform":"linux/arm64"}
+{"digest":"sha256:554fb3c447e77350873806fcaf7a23ab199b8d80ebec4d81f0752d00af49c9da","platform":"unknown/unknown"}
+{"digest":"sha256:23fc84fd4e2dd77373586bab347f8c2d5cb69848d30446085bf4f03eb37a61fc","platform":"unknown/unknown"}
+
+tag: 2.337.0
+release: v2.337.0 published 2026-08-26T14:33:29Z (latest as of capture; unchanged from RESEARCH pin)
+image: ghcr.io/actions/actions-runner:2.337.0
+index-digest: sha256:e5496277be5d09bc968b3d64911b74e219ac4a3f2edce956a3ecf9271bea1ef4
+linux/amd64-digest: sha256:5036480998280bb21e32ade9fe1b02b493861ac314b62ba1aea320b94f56ec97 (matches RESEARCH)
+manifest-check: HTTP 200
+nodes: all 4 nodes x86_64 (kernel *.x86_64), so linux/amd64 is the pulled variant
+30-day rule: pinned image stops receiving jobs 30 days after the NEXT runner release (Pitfall 6)

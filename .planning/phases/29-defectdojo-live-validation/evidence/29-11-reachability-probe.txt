@@ -1,0 +1,23 @@
+# 29-11 D-18 reachability probe (runner image 2.337.0, with and without hostAliases)
+# context: admin@occ-new; probe namespace: default (non-defectdojo; arc-runners does not exist yet)
+
+## PRE-PROBE STATE (read-only) captured 2026-09-28T13:29:02Z
+$ kubectl --context admin@occ-new get ns arc-runners arc-systems
+Error from server (NotFound): namespaces "arc-runners" not found
+Error from server (NotFound): namespaces "arc-systems" not found
+
+$ kubectl --context admin@occ-new -n default get all -o name
+pod/dnsutils
+pod/network-multitool-76jzj
+pod/network-multitool-h57g2
+pod/network-multitool-pq6ww
+pod/network-multitool-z8p9b
+pod/node-debugger-occ-cs-k8control-plane02-htn69
+pod/node-debugger-occ-cs-k8control-plane02-v4ck4
+service/kubernetes
+daemonset.apps/network-multitool
+
+$ kubectl --context admin@occ-new -n default get netpol,limitrange,resourcequota
+No resources found in default namespace.
+
+## PROBES A/B: NOT YET RUN (awaiting operator approval of the exact pod commands; see 29-11 checkpoint)
