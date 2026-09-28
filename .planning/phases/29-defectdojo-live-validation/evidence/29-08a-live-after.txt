@@ -1,0 +1,186 @@
+MERGE_SHA=08ce26bf751b93f7aa9193d6412907bec710b63f
+# 29-08a live proof after merge of PR #249
+Captured: 2026-09-28T12:20:07Z (UTC)
+django pod(s): defectdojo-django-7bd88b9f6b-grm9j
+
+## 1. Workloads
+$ kubectl -n defectdojo get deploy,pods -o wide
+NAME                                       READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS    IMAGES                                                                     SELECTOR
+deployment.apps/defectdojo-celery-beat     1/1     1            1           10h   celery        defectdojo/defectdojo-django:3.3.200                                       app.kubernetes.io/instance=defectdojo,app.kubernetes.io/name=defectdojo,defectdojo.org/component=celery,defectdojo.org/subcomponent=beat
+deployment.apps/defectdojo-celery-worker   1/1     1            1           10h   celery        defectdojo/defectdojo-django:3.3.200                                       app.kubernetes.io/instance=defectdojo,app.kubernetes.io/name=defectdojo,defectdojo.org/component=celery,defectdojo.org/subcomponent=worker
+deployment.apps/defectdojo-django          1/1     1            1           10h   uwsgi,nginx   defectdojo/defectdojo-django:3.3.200,defectdojo/defectdojo-nginx:3.3.200   app.kubernetes.io/instance=defectdojo,app.kubernetes.io/name=defectdojo,defectdojo.org/component=django
+
+NAME                                            READY   STATUS      RESTARTS   AGE    IP           NODE                NOMINATED NODE   READINESS GATES
+pod/defectdojo-celery-beat-7d584ddd59-h2wr8     1/1     Running     0          10h    10.0.1.70    occ-cs-k8worker01   <none>           <none>
+pod/defectdojo-celery-worker-765bdc6995-bdrx5   1/1     Running     0          10h    10.0.1.219   occ-cs-k8worker01   <none>           <none>
+pod/defectdojo-django-7bd88b9f6b-grm9j          3/3     Running     0          112s   10.0.1.46    occ-cs-k8worker01   <none>           <none>
+pod/defectdojo-initializer-552xn                0/1     Completed   0          112s   10.0.1.118   occ-cs-k8worker01   <none>           <none>
+pod/defectdojo-postgresql-0                     1/1     Running     0          10h    10.0.1.1     occ-cs-k8worker01   <none>           <none>
+pod/defectdojo-valkey-0                         1/1     Running     0          10h    10.0.1.138   occ-cs-k8worker01   <none>           <none>
+$ kubectl -n defectdojo get deploy defectdojo-ghostunnel
+Error from server (NotFound): deployments.apps "defectdojo-ghostunnel" not found
+ghostunnel pods remaining: 0
+
+## 2. django pod sidecar/containers
+{
+  "tls_status": {
+    "ready": true,
+    "started": true,
+    "restartCount": 0,
+    "image": "docker.io/ghostunnel/ghostunnel:v1.11.3-distroless",
+    "imageID": "docker.io/ghostunnel/ghostunnel@sha256:51fa619294acf716e01efcb03ad00dc11229dc1f3829cba984c5b0a4f43f4faf"
+  },
+  "tls_restartPolicy": "Always",
+  "tls_args": [
+    "server",
+    "--listen=:8443",
+    "--target=127.0.0.1:8080",
+    "--cert=/etc/ghostunnel/tls/tls.crt",
+    "--key=/etc/ghostunnel/tls/tls.key",
+    "--disable-authentication",
+    "--timed-reload=300s",
+    "--status=http://0.0.0.0:8082"
+  ],
+  "tls_volumeMounts": [
+    {
+      "mountPath": "/etc/ghostunnel/tls",
+      "name": "tls",
+      "readOnly": true
+    }
+  ],
+  "app_mounts_named_tls": [
+    {
+      "name": "uwsgi",
+      "tls_mount": 0
+    },
+    {
+      "name": "nginx",
+      "tls_mount": 0
+    }
+  ],
+  "containers_ready": [
+    {
+      "name": "nginx",
+      "ready": true,
+      "restartCount": 0
+    },
+    {
+      "name": "uwsgi",
+      "ready": true,
+      "restartCount": 0
+    }
+  ],
+  "all_containers_ready": true,
+  "db_migration_checker": {
+    "reason": "Completed",
+    "exitCode": 0
+  },
+  "podIP": "10.0.1.46"
+}
+
+## 3. EndpointSlice for Service defectdojo-ghostunnel
+[
+  {
+    "name": "defectdojo-ghostunnel-g82lh",
+    "ports": [
+      {
+        "name": "https",
+        "port": 8443,
+        "protocol": "TCP"
+      }
+    ],
+    "endpoints": [
+      {
+        "addresses": [
+          "10.0.1.46"
+        ],
+        "ready": true,
+        "pod": "defectdojo-django-7bd88b9f6b-grm9j"
+      }
+    ]
+  }
+]
+
+## 4. Service VIP
+$ kubectl -n defectdojo get svc defectdojo-ghostunnel -o jsonpath='{.status.loadBalancer.ingress[*].ip}'
+10.40.3.65
+{"selector":{"app.kubernetes.io/instance":"defectdojo","app.kubernetes.io/name":"defectdojo","defectdojo.org/component":"django"},"ports":[{"name":"https","nodePort":31772,"port":443,"protocol":"TCP","targetPort":8443}]}
+
+## 5. Certificate
+{"ready":"True","notAfter":"2026-12-27T00:59:37Z","dnsNames":["defectdojo.infra.ottawacloudconsulting.com","defectdojo.home.ottawacloudconsulting.com"]}
+
+## 6. PVC
+{"phase":"Bound","uid":"76aa54bc-51bf-487c-9ed9-dd3f9115f4f2","baseline_uid":"76aa54bc-51bf-487c-9ed9-dd3f9115f4f2","uid_match":true}
+
+## 7. TLS and HTTP on both hostnames
+### defectdojo.infra.ottawacloudconsulting.com
+$ openssl s_client -connect 10.40.3.65:443 -servername defectdojo.infra.ottawacloudconsulting.com | openssl x509 -noout -subject -ext subjectAltName
+subject=CN=defectdojo.infra.ottawacloudconsulting.com
+X509v3 Subject Alternative Name:
+    DNS:defectdojo.home.ottawacloudconsulting.com, DNS:defectdojo.infra.ottawacloudconsulting.com
+resolves to: 10.40.3.65
+$ curl -sS -o /dev/null -w '%{http_code} %{ssl_verify_result}' https://defectdojo.infra.ottawacloudconsulting.com/
+302 0
+$ curl -sS -o /dev/null -w '%{http_code}' https://defectdojo.infra.ottawacloudconsulting.com/login
+200
+### defectdojo.home.ottawacloudconsulting.com
+$ openssl s_client -connect 10.40.3.65:443 -servername defectdojo.home.ottawacloudconsulting.com | openssl x509 -noout -subject -ext subjectAltName
+subject=CN=defectdojo.infra.ottawacloudconsulting.com
+X509v3 Subject Alternative Name:
+    DNS:defectdojo.home.ottawacloudconsulting.com, DNS:defectdojo.infra.ottawacloudconsulting.com
+resolves to: 10.40.3.65
+$ curl -sS -o /dev/null -w '%{http_code} %{ssl_verify_result}' https://defectdojo.home.ottawacloudconsulting.com/
+302 0
+$ curl -sS -o /dev/null -w '%{http_code}' https://defectdojo.home.ottawacloudconsulting.com/login
+200
+
+## 8. Sidecar logs (pod defectdojo-django-7bd88b9f6b-grm9j, container tls, tail 20)
+[1] 2026/09/28 12:18:16.263443 using cert/key files on disk as certificate source
+[1] 2026/09/28 12:18:16.264011 using target address 127.0.0.1:8080
+[1] 2026/09/28 12:18:16.264634 listening for connections on :8443
+[1] 2026/09/28 12:18:35.926330 error on TLS handshake from 10.0.1.218:51386: EOF
+[1] 2026/09/28 12:18:55.926874 error on TLS handshake from 10.0.1.218:50126: EOF
+[1] 2026/09/28 12:19:15.926480 error on TLS handshake from 10.0.1.218:57986: EOF
+[1] 2026/09/28 12:19:35.927218 error on TLS handshake from 10.0.1.218:41528: EOF
+[1] 2026/09/28 12:19:55.927091 error on TLS handshake from 10.0.1.218:40814: EOF
+[1] 2026/09/28 12:20:08.094222 opening pipe: tcp:10.40.1.107:65164 [no cert] <-> tcp:127.0.0.1:8080 [no tls]
+[1] 2026/09/28 12:20:08.094490 closed pipe: tcp:10.40.1.107:65164 [no cert] <-> tcp:127.0.0.1:8080 [no tls] [forwarded 0 bytes, returned 0 bytes, open 268.422µs]
+[1] 2026/09/28 12:20:08.176618 opening pipe: tcp:10.40.1.107:65165 [no cert] <-> tcp:127.0.0.1:8080 [no tls]
+[1] 2026/09/28 12:20:08.188389 closed pipe: tcp:10.40.1.107:65165 [no cert] <-> tcp:127.0.0.1:8080 [no tls] [forwarded 105 bytes, returned 615 bytes, open 12ms]
+[1] 2026/09/28 12:20:08.214364 opening pipe: tcp:10.40.1.107:65166 [no cert] <-> tcp:127.0.0.1:8080 [no tls]
+[1] 2026/09/28 12:20:08.235986 closed pipe: tcp:10.40.1.107:65166 [no cert] <-> tcp:127.0.0.1:8080 [no tls] [forwarded 110 bytes, returned 18.6 KiB, open 22ms]
+[1] 2026/09/28 12:20:08.260943 opening pipe: tcp:10.40.1.107:65167 [no cert] <-> tcp:127.0.0.1:8080 [no tls]
+[1] 2026/09/28 12:20:08.261081 closed pipe: tcp:10.40.1.107:65167 [no cert] <-> tcp:127.0.0.1:8080 [no tls] [forwarded 0 bytes, returned 0 bytes, open 139.065µs]
+[1] 2026/09/28 12:20:08.291770 opening pipe: tcp:10.40.1.107:65168 [no cert] <-> tcp:127.0.0.1:8080 [no tls]
+[1] 2026/09/28 12:20:08.304355 closed pipe: tcp:10.40.1.107:65168 [no cert] <-> tcp:127.0.0.1:8080 [no tls] [forwarded 104 bytes, returned 615 bytes, open 13ms]
+[1] 2026/09/28 12:20:08.325340 opening pipe: tcp:10.40.1.107:65169 [no cert] <-> tcp:127.0.0.1:8080 [no tls]
+[1] 2026/09/28 12:20:08.348667 closed pipe: tcp:10.40.1.107:65169 [no cert] <-> tcp:127.0.0.1:8080 [no tls] [forwarded 109 bytes, returned 18.6 KiB, open 23ms]
+count '--target must be': 0
+Note: the 'error on TLS handshake from 10.0.1.218: EOF' lines every 20s are the sidecar's own livenessProbe (tcpSocket on port https/8443, periodSeconds 20); 10.0.1.218 is the cilium_host router IP of occ-cs-k8worker01 (CiliumNode addresses 10.40.4.31,10.0.1.218). A TCP connect/close without a handshake is expected, not a TLS load error.
+
+## Argo operation branch
+Pre-merge op was Succeeded (not Running) on [c8027e6, cc7fbc9]. After merge (12:14:31Z) automated sync started a new operation at 12:18:09Z on [c8027e6, 08ce26b] with the sidecar valuesObject already in spec and syncResult; finished Succeeded 12:19:11Z. terminate-op NOT run; no refresh, no manual sync. Single sync, no two-sync gap.
+Expected facts: revisions[0]=c8027e6784ec631db128f45444c9a8092db9d0a1 (pin unchanged); initializer Sync hook re-ran (Job defectdojo-initializer hookType Sync, hookPhase Succeeded, pod defectdojo-initializer-552xn Completed); syncResult shows Deployment defectdojo-ghostunnel status Pruned.
+
+## Evidence hygiene
+Plan Task 3 evidence-hygiene grep (token, PAT and webhook-secret patterns, per plan verify) run on 29-08a-application-after.json and 29-08a-live-after.txt: 0 matches in both (pattern text not reproduced here so the file does not match itself).
+
+## Cleanup and shared-tree comparison (2026-09-28T12:20:51Z)
+$ git -C <shared overlay> worktree remove SCRATCH/wt-29-08a  -> removed (clean, no --force)
+$ git -C <shared overlay> fetch origin
+origin/main=08ce26bf751b93f7aa9193d6412907bec710b63f (MERGE_SHA ancestor check: pass)
+$ git -C <shared overlay> rev-parse HEAD
+08ce26bf751b93f7aa9193d6412907bec710b63f
+$ git -C <shared overlay> symbolic-ref --short HEAD
+main
+$ git -C <shared overlay> worktree list
+/Users/christian/git-repos/OCC-github/kubernetes_stack/occ-k8s-app-config 08ce26b [main]
+/private/tmp/occ-5.4-outage                                               adf9962 [drill/5.4-authentik-restore] prunable
+Baseline: HEAD cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd, branch main, worktree list = shared main + /private/tmp/occ-5.4-outage (prunable). wt-29-08a absent: yes
+
+## External change to shared tree (recorded, not touched)
+HEAD differs from the Step A baseline: cc7fbc9 -> 08ce26b (= MERGE_SHA). Branch (main) and worktree list (minus wt-29-08a) match baseline.
+$ git -C <shared overlay> reflog -2 --date=iso HEAD
+08ce26b HEAD@{2026-09-28 08:18:30 -0400}: pull --ff-only origin main: Fast-forward
+cc7fbc9 HEAD@{2026-09-27 22:12:01 -0400}: pull --ff-only origin main: Fast-forward
+The fast-forward at 2026-09-28 08:18:30 -0400 (12:18:30Z) is a 'pull --ff-only origin main' that this executor did not run (this executor issued only 'worktree remove' and 'fetch' at ~12:20:50Z, and no git commands against the shared tree during the 12:14-12:20 poll). Attributed to another session; left as-is.

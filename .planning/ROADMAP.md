@@ -241,7 +241,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 29-08a-PLAN.md — Gap closure: ghostunnel as a native sidecar in the django pod via overlay values (operator B1), runtime arg check, approved merge, live TLS proof
+- [x] 29-08a-PLAN.md — Gap closure: ghostunnel as a native sidecar in the django pod via overlay values (operator B1), runtime arg check, approved merge, live TLS proof
 - [ ] 29-09-PLAN.md — Refresh the VLAN43 VIP inventory in the cluster-config runbook from a live read
 
 **Wave 5** *(blocked on Wave 4 completion)*
@@ -368,7 +368,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
 | 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
-| 29. DefectDojo Live Validation | v3.0 | 7/19 | In Progress|  |
+| 29. DefectDojo Live Validation | v3.0 | 8/20 | In Progress|  |
 
 ## Next Milestone
 

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-07-PLAN.md
-last_updated: "2026-09-28T01:58:36.504Z"
+stopped_at: Completed 29-08a-PLAN.md
+last_updated: "2026-09-28T12:26:02.202Z"
 last_activity: 2026-09-28
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 74
-  completed_plans: 62
+  total_plans: 75
+  completed_plans: 63
   percent: 84
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 8 of 19 (next: 29-08-PLAN.md; completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07 = 7/19)
+Plan: 9 of 20 (next: 29-09-PLAN.md (wave 4), then 29-08-PLAN.md (wave 5); completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07, 29-08a = 8/20)
 Status: Ready to execute
 Last activity: 2026-09-28
 
@@ -296,6 +296,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-06: live security-platform main has ZERO required status checks (ruleset 14243983 [deletion, non_fast_forward]) before and after the merge; the plan's five-required-contexts premise is not live; frozen job names enforced offline by FROZEN_JOB_NAMES. Count ${{ expressions with grep -F (ugrep 7.8.4)
 - [Phase 29]: [Phase 29-07]: PR #248 (DefectDojo overlay, overlay commit db5aae1 + README ad0a391) merged to occ-k8s-app-config main as cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd with operator reply 'approve', pinned by --match-head-commit; argocd/defectdojo Application appeared at 2026-09-28T01:56:38Z. GitGuardian incident 37678807 (Django Secret Key on kubeseal ciphertext DD_SECRET_KEY) is an OPEN false positive for the operator to dismiss. DDOJO-05 withheld; health measured by 29-08.
 - [Phase 29]: [Phase 29-07]: Operator reply 'vip-free vlan30-skip': 10.40.3.65 confirmed free in UniFi and the live LB pool; Pi-hole 10.40.1.53 resolves both DefectDojo FQDNs to 10.40.3.65; no records on the in-cluster Pi-hole 10.30.1.53, so VLAN30 clients cannot resolve the names (not needed for the runner path).
+- [Phase 29]: [Phase 29-08a]: Operator B1 ('B1: overlay values') shipped: ghostunnel is a native sidecar (init container tls, restartPolicy Always, --target=127.0.0.1:8080) in the defectdojo-django pod via overlay values only; the standalone Deployment was pruned; PR #249 merged as 08ce26bf751b93f7aa9193d6412907bec710b63f (pinned --match-head-commit b2cacd0); Service defectdojo-ghostunnel keeps 10.40.3.65 on numeric targetPort 8443. Supersedes 29-CONTEXT D-02; 29-CONTEXT D-02 and 29-RESEARCH Pattern 2 are stale (not edited).
+- [Phase 29]: [Phase 29-08a]: Operator reply 'approve terminate-op'; terminate-op NOT used - the pre-merge Argo op was already Succeeded and auto-sync ran a single operation on 08ce26b (12:18:09Z-12:19:11Z) with the sidecar spec already present (no two-sync gap). Live proof passed on both hostnames (/ 302, ssl_verify_result 0; /login 200); PVC UID unchanged. DDOJO-05 withheld (full validation is 29-08 Task 2).
+- [Phase 29]: [Phase 29-08a]: ADR-027 lesson: helm template and kubectl client/server dry-run validate structure and admission, not container arg semantics (they all passed on the crashlooping --target=<service DNS> args). A runtime arg check with a negative control (pinned image, exact rendered args) is the pattern for containers whose args encode policy.
 
 ### Pending Todos
 
@@ -434,11 +437,12 @@ Carried forward from v1.1 close:
 | Phase 29 P05 | 15min | 3 tasks | 10 files |
 | Phase 29 P06 | 45min | 3 tasks | 3 files |
 | Phase 29 P07 | ~2h | 3 tasks | 3 files |
+| Phase 29 P08a | ~9.5h wall (incl. operator gate) | 3 tasks | 11 files |
 
 ## Session Continuity
 
-Last session: 2026-09-28T01:58:36.493Z
-Stopped at: Completed 29-07-PLAN.md
+Last session: 2026-09-28T12:26:02.193Z
+Stopped at: Completed 29-08a-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
