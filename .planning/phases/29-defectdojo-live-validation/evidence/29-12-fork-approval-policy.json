@@ -1,0 +1,6 @@
+{
+  "endpoint": "repos/OttawaCloudConsulting/security-platform/actions/permissions/fork-pr-contributor-approval",
+  "before": {"approval_policy": "first_time_contributors", "read_at": "2026-09-28T13:39:02Z"},
+  "after": {"approval_policy": "all_external_contributors", "read_at": "2026-09-28T13:48:46Z"},
+  "pat_file_check": {"path": "~/.config/arc/security-platform-pat", "mode": "600", "bytes": 94, "lines": 1, "line_length": 93, "prefix_github_pat_": true, "charset_only_alnum_underscore": true, "content_read": false}
+}
