@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-08a-PLAN.md
-last_updated: "2026-09-28T12:26:02.202Z"
+stopped_at: Completed 29-09-PLAN.md
+last_updated: "2026-09-28T13:07:10.785Z"
 last_activity: 2026-09-28
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 75
-  completed_plans: 63
-  percent: 84
+  completed_plans: 64
+  percent: 85
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 9 of 20 (next: 29-09-PLAN.md (wave 4), then 29-08-PLAN.md (wave 5); completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07, 29-08a = 8/20)
+Plan: 10 of 20 (next: 29-08-PLAN.md (wave 5); wave 4 complete; completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07, 29-08a, 29-09 = 9/20)
 Status: Ready to execute
 Last activity: 2026-09-28
 
@@ -299,6 +299,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: [Phase 29-08a]: Operator B1 ('B1: overlay values') shipped: ghostunnel is a native sidecar (init container tls, restartPolicy Always, --target=127.0.0.1:8080) in the defectdojo-django pod via overlay values only; the standalone Deployment was pruned; PR #249 merged as 08ce26bf751b93f7aa9193d6412907bec710b63f (pinned --match-head-commit b2cacd0); Service defectdojo-ghostunnel keeps 10.40.3.65 on numeric targetPort 8443. Supersedes 29-CONTEXT D-02; 29-CONTEXT D-02 and 29-RESEARCH Pattern 2 are stale (not edited).
 - [Phase 29]: [Phase 29-08a]: Operator reply 'approve terminate-op'; terminate-op NOT used - the pre-merge Argo op was already Succeeded and auto-sync ran a single operation on 08ce26b (12:18:09Z-12:19:11Z) with the sidecar spec already present (no two-sync gap). Live proof passed on both hostnames (/ 302, ssl_verify_result 0; /login 200); PVC UID unchanged. DDOJO-05 withheld (full validation is 29-08 Task 2).
 - [Phase 29]: [Phase 29-08a]: ADR-027 lesson: helm template and kubectl client/server dry-run validate structure and admission, not container arg semantics (they all passed on the crashlooping --target=<service DNS> args). A runtime arg check with a negative control (pinned image, exact rendered args) is the pattern for containers whose args encode policy.
+- [Phase 29]: [Phase 29-09]: Operator reply 'approved'. VLAN43 VIP inventory in the cluster-config Cilium L2 runbook rebuilt from a live read (eight VIPs incl. defectdojo-ghostunnel 10.40.3.65); PR #43 squash-merged as 5c65ffb221efa4fd665afe4e24537f608081302c (pinned --match-head-commit d3d00bb; no rulesets on main). The live read corrected .60/.77 (.60 authentik-outpost-proxy, .77 homepage) and showed .80/.81 are pinned via lbipam.cilium.io/ips in vlan43-dhcp, not auto-assigned. Open follow-up: VLAN41 edgebridge 10.40.1.80 is likewise pinned but still described as auto-assigned (left untouched, out of scope). DDOJO-05 withheld.
 
 ### Pending Todos
 
@@ -438,11 +439,12 @@ Carried forward from v1.1 close:
 | Phase 29 P06 | 45min | 3 tasks | 3 files |
 | Phase 29 P07 | ~2h | 3 tasks | 3 files |
 | Phase 29 P08a | ~9.5h wall (incl. operator gate) | 3 tasks | 11 files |
+| Phase 29 P09 | 30min | 3 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-28T12:26:02.193Z
-Stopped at: Completed 29-08a-PLAN.md
+Last session: 2026-09-28T13:07:03.241Z
+Stopped at: Completed 29-09-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
