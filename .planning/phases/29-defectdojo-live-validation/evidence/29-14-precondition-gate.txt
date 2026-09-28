@@ -1,0 +1,16 @@
+# 29-14 ordering precondition gate (captured 2026-09-28T23:44:10Z, kube context admin@occ-new)
+# security-platform main HEAD at check time: 2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d
+PRECONDITION-1 PASS main security.yml non-comment lines matching runs-on DEFECTDOJO_RUNS_ON expression = 2 (expected 2; fixed-string grep -F, see note)
+PRECONDITION-2 PASS listener pod arc-systems/occ-homelab-defectdojo-776f7979-listener phase=Running
+PRECONDITION-3 PASS grep -c '^NO CHANGE' evidence/29-10-configure-2.txt = 1 (expected >=1)
+PRECONDITION-4 PASS fork-pr-contributor-approval approval_policy=all_external_contributors
+
+## pre-state: gh variable list -R OttawaCloudConsulting/security-platform (names only)
+(none)
+## pre-state: gh secret list -R OttawaCloudConsulting/security-platform (names only)
+(none)
+pre-state DEFECTDOJO_URL present: no; DEFECTDOJO_RUNS_ON present: no
+
+## note on PRECONDITION-1 tooling
+The workstation grep is ugrep 7.8.4. Its basic-regex mode does not match the literal '${{ ... }}' braces, so the plan's grep -c without -F counted 0 against a file that has the expression on lines 1282 and 1677.
+The same pattern as a fixed string (grep -F) counts 2. The comment filter grep -v '^\s*#' is unchanged. Lines 21, 1271 and 1665 mention the variable only in comments and are excluded.
