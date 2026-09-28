@@ -1,0 +1,36 @@
+# 29-08 snapshot 2026-09-28T02:13:02Z, captured before any ghostunnel fix (ghostunnel CrashLoopBackOff)
+## Pulled events
+OBJ                                         MSG
+defectdojo-celery-beat-7d584ddd59-h2wr8     Successfully pulled image "defectdojo/defectdojo-django:3.3.200" in 249ms (14.271s including waiting). Image size: 251892624 bytes.
+defectdojo-celery-beat-7d584ddd59-h2wr8     Successfully pulled image "defectdojo/defectdojo-django:3.3.200" in 245ms (9.309s including waiting). Image size: 251892624 bytes.
+defectdojo-celery-worker-765bdc6995-bdrx5   Successfully pulled image "defectdojo/defectdojo-django:3.3.200" in 14.101s (14.101s including waiting). Image size: 251892624 bytes.
+defectdojo-celery-worker-765bdc6995-bdrx5   Successfully pulled image "defectdojo/defectdojo-django:3.3.200" in 263ms (10.072s including waiting). Image size: 251892624 bytes.
+defectdojo-django-59cc687f89-lhl4m          Successfully pulled image "defectdojo/defectdojo-django:3.3.200" in 259ms (14.528s including waiting). Image size: 251892624 bytes.
+defectdojo-django-59cc687f89-lhl4m          Successfully pulled image "defectdojo/defectdojo-django:3.3.200" in 282ms (282ms including waiting). Image size: 251892624 bytes.
+defectdojo-django-59cc687f89-lhl4m          Successfully pulled image "defectdojo/defectdojo-nginx:3.3.200" in 11.476s (11.476s including waiting). Image size: 114010583 bytes.
+defectdojo-ghostunnel-6688884646-crddv      Container image "docker.io/ghostunnel/ghostunnel:v1.11.3-distroless" already present on machine
+defectdojo-initializer-lsdtw                Successfully pulled image "defectdojo/defectdojo-django:3.3.200" in 303ms (14.21s including waiting). Image size: 251892624 bytes.
+defectdojo-initializer-lsdtw                Successfully pulled image "defectdojo/defectdojo-django:3.3.200" in 267ms (267ms including waiting). Image size: 251892624 bytes.
+defectdojo-postgresql-0                     Successfully pulled image "us-docker.pkg.dev/os-public-container-registry/defectdojo/bitnami/postgresql:17.6.0-debian-12-r4" in 8.423s (8.423s including waiting). Image size: 111552581 bytes.
+defectdojo-valkey-0                         Successfully pulled image "docker.io/valkey/valkey:9.1.0-alpine3.23@sha256:c9b77919daeba2c02ad954d0c844cc4e7142069d177b89c5fd771f405daf9e02" in 1.428s (15.906s including waiting). Image size: 18732695 bytes.
+
+## Pod container image / imageID
+defectdojo-celery-beat-7d584ddd59-h2wr8
+  init db-migration-checker: docker.io/defectdojo/defectdojo-django:3.3.200 | docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+  celery: docker.io/defectdojo/defectdojo-django:3.3.200 | docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+defectdojo-celery-worker-765bdc6995-bdrx5
+  init db-migration-checker: docker.io/defectdojo/defectdojo-django:3.3.200 | docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+  celery: docker.io/defectdojo/defectdojo-django:3.3.200 | docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+defectdojo-django-59cc687f89-lhl4m
+  init db-migration-checker: docker.io/defectdojo/defectdojo-django:3.3.200 | docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+  nginx: docker.io/defectdojo/defectdojo-nginx:3.3.200 | docker.io/defectdojo/defectdojo-nginx@sha256:825d9ad8abaf7d2013d82a85b5562d096006727ef32cfa8940996efa70c6e5f9
+  uwsgi: docker.io/defectdojo/defectdojo-django:3.3.200 | docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+defectdojo-ghostunnel-6688884646-crddv
+  tls: docker.io/ghostunnel/ghostunnel:v1.11.3-distroless | docker.io/ghostunnel/ghostunnel@sha256:51fa619294acf716e01efcb03ad00dc11229dc1f3829cba984c5b0a4f43f4faf
+defectdojo-initializer-lsdtw
+  init wait-for-db: docker.io/defectdojo/defectdojo-django:3.3.200 | docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+  initializer: docker.io/defectdojo/defectdojo-django:3.3.200 | docker.io/defectdojo/defectdojo-django@sha256:1cee5281e176128aa141dd9a506427af4924550f3e771272e85f42321c37c1ed
+defectdojo-postgresql-0
+  postgresql: us-docker.pkg.dev/os-public-container-registry/defectdojo/bitnami/postgresql:17.6.0-debian-12-r4 | us-docker.pkg.dev/os-public-container-registry/defectdojo/bitnami/postgresql@sha256:926356130b77d5742d8ce605b258d35db9b62f2f8fd1601f9dbaef0c8a710a8d
+defectdojo-valkey-0
+  valkey: sha256:df680660768bfc5148c5855dbb59c4f9aa1aeb5bceff10a2430a8732fa318067 | docker.io/valkey/valkey@sha256:c9b77919daeba2c02ad954d0c844cc4e7142069d177b89c5fd771f405daf9e02

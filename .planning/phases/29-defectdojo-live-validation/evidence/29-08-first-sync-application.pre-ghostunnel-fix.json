@@ -1,0 +1,783 @@
+{
+    "apiVersion": "argoproj.io/v1alpha1",
+    "kind": "Application",
+    "metadata": {
+        "creationTimestamp": "2026-09-28T01:56:32Z",
+        "generation": 43,
+        "labels": {
+            "app.kubernetes.io/managed-by": "argocd",
+            "app.kubernetes.io/part-of": "appset-apps"
+        },
+        "name": "defectdojo",
+        "namespace": "argocd",
+        "ownerReferences": [
+            {
+                "apiVersion": "argoproj.io/v1alpha1",
+                "blockOwnerDeletion": true,
+                "controller": true,
+                "kind": "ApplicationSet",
+                "name": "appset-apps",
+                "uid": "0c8b0520-ca3e-4f58-a862-2d9aa81d29e8"
+            }
+        ],
+        "resourceVersion": "173919210",
+        "uid": "c035cb68-73b0-4434-aea1-6e44e28c6cdf"
+    },
+    "operation": {
+        "initiatedBy": {
+            "automated": true
+        },
+        "retry": {
+            "backoff": {
+                "duration": "30s",
+                "factor": 2,
+                "maxDuration": "10m"
+            },
+            "limit": 5
+        },
+        "sync": {
+            "prune": true,
+            "revisions": [
+                "c8027e6784ec631db128f45444c9a8092db9d0a1",
+                "cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd"
+            ],
+            "sources": [
+                {
+                    "helm": {
+                        "releaseName": "defectdojo",
+                        "valuesObject": {
+                            "defectdojo": {
+                                "alternativeHosts": [
+                                    "defectdojo.home.ottawacloudconsulting.com"
+                                ],
+                                "django": {
+                                    "ingress": {
+                                        "enabled": false
+                                    }
+                                },
+                                "extraConfigs": {
+                                    "DD_CSRF_TRUSTED_ORIGINS": "https://defectdojo.infra.ottawacloudconsulting.com,https://defectdojo.home.ottawacloudconsulting.com"
+                                },
+                                "host": "defectdojo.infra.ottawacloudconsulting.com",
+                                "initializer": {
+                                    "jobAnnotations": {
+                                        "argocd.argoproj.io/hook": "Sync",
+                                        "argocd.argoproj.io/hook-delete-policy": "BeforeHookCreation"
+                                    },
+                                    "keepSeconds": 0,
+                                    "staticName": true
+                                },
+                                "siteUrl": "https://defectdojo.infra.ottawacloudconsulting.com"
+                            }
+                        }
+                    },
+                    "path": "kubernetes/defectdojo",
+                    "repoURL": "https://github.com/OttawaCloudConsulting/security-platform",
+                    "targetRevision": "c8027e6784ec631db128f45444c9a8092db9d0a1"
+                },
+                {
+                    "path": "application-sets/platform/defectdojo",
+                    "repoURL": "https://github.com/OttawaCloudConsulting/occ-k8s-app-config",
+                    "targetRevision": "main"
+                }
+            ],
+            "syncOptions": [
+                "CreateNamespace=true",
+                "ApplyOutOfSyncOnly=true"
+            ]
+        }
+    },
+    "spec": {
+        "destination": {
+            "namespace": "defectdojo",
+            "server": "https://kubernetes.default.svc"
+        },
+        "project": "platform",
+        "sources": [
+            {
+                "helm": {
+                    "releaseName": "defectdojo",
+                    "valuesObject": {
+                        "defectdojo": {
+                            "alternativeHosts": [
+                                "defectdojo.home.ottawacloudconsulting.com"
+                            ],
+                            "django": {
+                                "ingress": {
+                                    "enabled": false
+                                }
+                            },
+                            "extraConfigs": {
+                                "DD_CSRF_TRUSTED_ORIGINS": "https://defectdojo.infra.ottawacloudconsulting.com,https://defectdojo.home.ottawacloudconsulting.com"
+                            },
+                            "host": "defectdojo.infra.ottawacloudconsulting.com",
+                            "initializer": {
+                                "jobAnnotations": {
+                                    "argocd.argoproj.io/hook": "Sync",
+                                    "argocd.argoproj.io/hook-delete-policy": "BeforeHookCreation"
+                                },
+                                "keepSeconds": 0,
+                                "staticName": true
+                            },
+                            "siteUrl": "https://defectdojo.infra.ottawacloudconsulting.com"
+                        }
+                    }
+                },
+                "path": "kubernetes/defectdojo",
+                "repoURL": "https://github.com/OttawaCloudConsulting/security-platform",
+                "targetRevision": "c8027e6784ec631db128f45444c9a8092db9d0a1"
+            },
+            {
+                "path": "application-sets/platform/defectdojo",
+                "repoURL": "https://github.com/OttawaCloudConsulting/occ-k8s-app-config",
+                "targetRevision": "main"
+            }
+        ],
+        "syncPolicy": {
+            "automated": {
+                "enabled": true,
+                "prune": true,
+                "selfHeal": true
+            },
+            "retry": {
+                "backoff": {
+                    "duration": "30s",
+                    "factor": 2,
+                    "maxDuration": "10m"
+                },
+                "limit": 5
+            },
+            "syncOptions": [
+                "CreateNamespace=true",
+                "ApplyOutOfSyncOnly=true"
+            ]
+        }
+    },
+    "status": {
+        "controllerNamespace": "argocd",
+        "health": {
+            "lastTransitionTime": "2026-09-28T02:11:15Z",
+            "status": "Degraded"
+        },
+        "operationState": {
+            "finishedAt": "2026-09-28T02:11:15Z",
+            "message": "one or more synchronization tasks completed unsuccessfully. Retrying attempt #3 at 2:13AM.",
+            "operation": {
+                "initiatedBy": {
+                    "automated": true
+                },
+                "retry": {
+                    "backoff": {
+                        "duration": "30s",
+                        "factor": 2,
+                        "maxDuration": "10m"
+                    },
+                    "limit": 5
+                },
+                "sync": {
+                    "prune": true,
+                    "revisions": [
+                        "c8027e6784ec631db128f45444c9a8092db9d0a1",
+                        "cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd"
+                    ],
+                    "sources": [
+                        {
+                            "helm": {
+                                "releaseName": "defectdojo",
+                                "valuesObject": {
+                                    "defectdojo": {
+                                        "alternativeHosts": [
+                                            "defectdojo.home.ottawacloudconsulting.com"
+                                        ],
+                                        "django": {
+                                            "ingress": {
+                                                "enabled": false
+                                            }
+                                        },
+                                        "extraConfigs": {
+                                            "DD_CSRF_TRUSTED_ORIGINS": "https://defectdojo.infra.ottawacloudconsulting.com,https://defectdojo.home.ottawacloudconsulting.com"
+                                        },
+                                        "host": "defectdojo.infra.ottawacloudconsulting.com",
+                                        "initializer": {
+                                            "jobAnnotations": {
+                                                "argocd.argoproj.io/hook": "Sync",
+                                                "argocd.argoproj.io/hook-delete-policy": "BeforeHookCreation"
+                                            },
+                                            "keepSeconds": 0,
+                                            "staticName": true
+                                        },
+                                        "siteUrl": "https://defectdojo.infra.ottawacloudconsulting.com"
+                                    }
+                                }
+                            },
+                            "path": "kubernetes/defectdojo",
+                            "repoURL": "https://github.com/OttawaCloudConsulting/security-platform",
+                            "targetRevision": "c8027e6784ec631db128f45444c9a8092db9d0a1"
+                        },
+                        {
+                            "path": "application-sets/platform/defectdojo",
+                            "repoURL": "https://github.com/OttawaCloudConsulting/occ-k8s-app-config",
+                            "targetRevision": "main"
+                        }
+                    ],
+                    "syncOptions": [
+                        "CreateNamespace=true",
+                        "ApplyOutOfSyncOnly=true"
+                    ]
+                }
+            },
+            "phase": "Running",
+            "retryCount": 3,
+            "startedAt": "2026-09-28T01:56:36Z",
+            "syncResult": {
+                "resources": [
+                    {
+                        "group": "",
+                        "hookPhase": "Succeeded",
+                        "hookType": "PreSync",
+                        "kind": "ServiceAccount",
+                        "message": "defectdojo created",
+                        "name": "defectdojo",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "PreSync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "networking.k8s.io",
+                        "hookPhase": "Succeeded",
+                        "kind": "NetworkPolicy",
+                        "message": "networkpolicy.networking.k8s.io/defectdojo-postgresql created",
+                        "name": "defectdojo-postgresql",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "policy",
+                        "hookPhase": "Succeeded",
+                        "kind": "PodDisruptionBudget",
+                        "message": "PodDisruptionBudget has InsufficientPods",
+                        "name": "defectdojo-postgresql",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Succeeded",
+                        "kind": "ServiceAccount",
+                        "message": "serviceaccount/defectdojo-valkey created",
+                        "name": "defectdojo-valkey",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Succeeded",
+                        "kind": "ServiceAccount",
+                        "message": "serviceaccount/defectdojo-postgresql created",
+                        "name": "defectdojo-postgresql",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Succeeded",
+                        "kind": "ConfigMap",
+                        "message": "configmap/defectdojo-valkey created",
+                        "name": "defectdojo-valkey",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Succeeded",
+                        "kind": "ConfigMap",
+                        "message": "configmap/defectdojo created",
+                        "name": "defectdojo",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Succeeded",
+                        "kind": "Service",
+                        "message": "service/defectdojo-ghostunnel created",
+                        "name": "defectdojo-ghostunnel",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Succeeded",
+                        "kind": "Service",
+                        "message": "service/defectdojo-postgresql created",
+                        "name": "defectdojo-postgresql",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Succeeded",
+                        "kind": "Service",
+                        "message": "service/defectdojo-django created",
+                        "name": "defectdojo-django",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Succeeded",
+                        "kind": "Service",
+                        "message": "service/defectdojo-valkey created",
+                        "name": "defectdojo-valkey",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Succeeded",
+                        "kind": "Service",
+                        "message": "service/defectdojo-postgresql-hl created",
+                        "name": "defectdojo-postgresql-hl",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "",
+                        "hookPhase": "Succeeded",
+                        "kind": "Service",
+                        "message": "service/defectdojo-valkey-headless created",
+                        "name": "defectdojo-valkey-headless",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "apps",
+                        "hookPhase": "Succeeded",
+                        "images": [
+                            "defectdojo/defectdojo-django:3.3.200"
+                        ],
+                        "kind": "Deployment",
+                        "message": "deployment.apps/defectdojo-celery-beat created",
+                        "name": "defectdojo-celery-beat",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "apps",
+                        "hookPhase": "Failed",
+                        "images": [
+                            "docker.io/ghostunnel/ghostunnel:v1.11.3-distroless"
+                        ],
+                        "kind": "Deployment",
+                        "message": "Deployment \"defectdojo-ghostunnel\" exceeded its progress deadline",
+                        "name": "defectdojo-ghostunnel",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "apps",
+                        "hookPhase": "Succeeded",
+                        "images": [
+                            "defectdojo/defectdojo-django:3.3.200"
+                        ],
+                        "kind": "Deployment",
+                        "message": "deployment.apps/defectdojo-celery-worker created",
+                        "name": "defectdojo-celery-worker",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "apps",
+                        "hookPhase": "Succeeded",
+                        "images": [
+                            "defectdojo/defectdojo-django:3.3.200",
+                            "defectdojo/defectdojo-nginx:3.3.200"
+                        ],
+                        "kind": "Deployment",
+                        "message": "deployment.apps/defectdojo-django created",
+                        "name": "defectdojo-django",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "apps",
+                        "hookPhase": "Succeeded",
+                        "images": [
+                            "us-docker.pkg.dev/os-public-container-registry/defectdojo/bitnami/postgresql:17.6.0-debian-12-r4"
+                        ],
+                        "kind": "StatefulSet",
+                        "message": "partitioned roll out complete: 1 new pods have been updated...",
+                        "name": "defectdojo-postgresql",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "apps",
+                        "hookPhase": "Succeeded",
+                        "images": [
+                            "docker.io/valkey/valkey:9.1.0-alpine3.23@sha256:c9b77919daeba2c02ad954d0c844cc4e7142069d177b89c5fd771f405daf9e02"
+                        ],
+                        "kind": "StatefulSet",
+                        "message": "partitioned roll out complete: 1 new pods have been updated...",
+                        "name": "defectdojo-valkey",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    },
+                    {
+                        "group": "batch",
+                        "hookPhase": "Succeeded",
+                        "hookType": "Sync",
+                        "images": [
+                            "defectdojo/defectdojo-django:3.3.200"
+                        ],
+                        "kind": "Job",
+                        "message": "Reached expected number of succeeded pods",
+                        "name": "defectdojo-initializer",
+                        "namespace": "defectdojo",
+                        "status": "Synced",
+                        "syncPhase": "Sync",
+                        "version": "v1"
+                    }
+                ],
+                "revision": "",
+                "revisions": [
+                    "c8027e6784ec631db128f45444c9a8092db9d0a1",
+                    "cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd"
+                ],
+                "source": {
+                    "repoURL": ""
+                },
+                "sources": [
+                    {
+                        "helm": {
+                            "releaseName": "defectdojo",
+                            "valuesObject": {
+                                "defectdojo": {
+                                    "alternativeHosts": [
+                                        "defectdojo.home.ottawacloudconsulting.com"
+                                    ],
+                                    "django": {
+                                        "ingress": {
+                                            "enabled": false
+                                        }
+                                    },
+                                    "extraConfigs": {
+                                        "DD_CSRF_TRUSTED_ORIGINS": "https://defectdojo.infra.ottawacloudconsulting.com,https://defectdojo.home.ottawacloudconsulting.com"
+                                    },
+                                    "host": "defectdojo.infra.ottawacloudconsulting.com",
+                                    "initializer": {
+                                        "jobAnnotations": {
+                                            "argocd.argoproj.io/hook": "Sync",
+                                            "argocd.argoproj.io/hook-delete-policy": "BeforeHookCreation"
+                                        },
+                                        "keepSeconds": 0,
+                                        "staticName": true
+                                    },
+                                    "siteUrl": "https://defectdojo.infra.ottawacloudconsulting.com"
+                                }
+                            }
+                        },
+                        "path": "kubernetes/defectdojo",
+                        "repoURL": "https://github.com/OttawaCloudConsulting/security-platform",
+                        "targetRevision": "c8027e6784ec631db128f45444c9a8092db9d0a1"
+                    },
+                    {
+                        "path": "application-sets/platform/defectdojo",
+                        "repoURL": "https://github.com/OttawaCloudConsulting/occ-k8s-app-config",
+                        "targetRevision": "main"
+                    }
+                ]
+            }
+        },
+        "reconciledAt": "2026-09-28T02:12:06Z",
+        "resourceHealthSource": "appTree",
+        "resources": [
+            {
+                "kind": "ConfigMap",
+                "name": "defectdojo",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "ConfigMap",
+                "name": "defectdojo-valkey",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "Service",
+                "name": "defectdojo-django",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "Service",
+                "name": "defectdojo-ghostunnel",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "Service",
+                "name": "defectdojo-postgresql",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "Service",
+                "name": "defectdojo-postgresql-hl",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "Service",
+                "name": "defectdojo-valkey",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "Service",
+                "name": "defectdojo-valkey-headless",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "hook": true,
+                "kind": "ServiceAccount",
+                "name": "defectdojo",
+                "namespace": "defectdojo",
+                "requiresPruning": true,
+                "version": "v1"
+            },
+            {
+                "kind": "ServiceAccount",
+                "name": "defectdojo-postgresql",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "kind": "ServiceAccount",
+                "name": "defectdojo-valkey",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "apps",
+                "kind": "Deployment",
+                "name": "defectdojo-celery-beat",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "apps",
+                "kind": "Deployment",
+                "name": "defectdojo-celery-worker",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "apps",
+                "kind": "Deployment",
+                "name": "defectdojo-django",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "apps",
+                "kind": "Deployment",
+                "name": "defectdojo-ghostunnel",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "apps",
+                "kind": "StatefulSet",
+                "name": "defectdojo-postgresql",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "apps",
+                "kind": "StatefulSet",
+                "name": "defectdojo-valkey",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "batch",
+                "hook": true,
+                "kind": "Job",
+                "name": "defectdojo-initializer",
+                "namespace": "defectdojo",
+                "requiresPruning": true,
+                "version": "v1"
+            },
+            {
+                "group": "bitnami.com",
+                "kind": "SealedSecret",
+                "name": "defectdojo",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "syncWave": -1,
+                "version": "v1alpha1"
+            },
+            {
+                "group": "bitnami.com",
+                "kind": "SealedSecret",
+                "name": "defectdojo-postgresql-specific",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "syncWave": -1,
+                "version": "v1alpha1"
+            },
+            {
+                "group": "bitnami.com",
+                "kind": "SealedSecret",
+                "name": "defectdojo-valkey-specific",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "syncWave": -1,
+                "version": "v1alpha1"
+            },
+            {
+                "group": "cert-manager.io",
+                "kind": "Certificate",
+                "name": "defectdojo-tls",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "syncWave": -1,
+                "version": "v1"
+            },
+            {
+                "group": "networking.k8s.io",
+                "kind": "NetworkPolicy",
+                "name": "defectdojo-postgresql",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            },
+            {
+                "group": "policy",
+                "kind": "PodDisruptionBudget",
+                "name": "defectdojo-postgresql",
+                "namespace": "defectdojo",
+                "status": "Synced",
+                "version": "v1"
+            }
+        ],
+        "sourceHydrator": {},
+        "sourceTypes": [
+            "Helm",
+            "Helm"
+        ],
+        "summary": {},
+        "sync": {
+            "comparedTo": {
+                "destination": {
+                    "namespace": "defectdojo",
+                    "server": "https://kubernetes.default.svc"
+                },
+                "source": {
+                    "repoURL": ""
+                },
+                "sources": [
+                    {
+                        "helm": {
+                            "releaseName": "defectdojo",
+                            "valuesObject": {
+                                "defectdojo": {
+                                    "alternativeHosts": [
+                                        "defectdojo.home.ottawacloudconsulting.com"
+                                    ],
+                                    "django": {
+                                        "ingress": {
+                                            "enabled": false
+                                        }
+                                    },
+                                    "extraConfigs": {
+                                        "DD_CSRF_TRUSTED_ORIGINS": "https://defectdojo.infra.ottawacloudconsulting.com,https://defectdojo.home.ottawacloudconsulting.com"
+                                    },
+                                    "host": "defectdojo.infra.ottawacloudconsulting.com",
+                                    "initializer": {
+                                        "jobAnnotations": {
+                                            "argocd.argoproj.io/hook": "Sync",
+                                            "argocd.argoproj.io/hook-delete-policy": "BeforeHookCreation"
+                                        },
+                                        "keepSeconds": 0,
+                                        "staticName": true
+                                    },
+                                    "siteUrl": "https://defectdojo.infra.ottawacloudconsulting.com"
+                                }
+                            }
+                        },
+                        "path": "kubernetes/defectdojo",
+                        "repoURL": "https://github.com/OttawaCloudConsulting/security-platform",
+                        "targetRevision": "c8027e6784ec631db128f45444c9a8092db9d0a1"
+                    },
+                    {
+                        "path": "application-sets/platform/defectdojo",
+                        "repoURL": "https://github.com/OttawaCloudConsulting/occ-k8s-app-config",
+                        "targetRevision": "main"
+                    }
+                ]
+            },
+            "revisions": [
+                "c8027e6784ec631db128f45444c9a8092db9d0a1",
+                "cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd"
+            ],
+            "status": "Synced"
+        }
+    }
+}
