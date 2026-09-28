@@ -143,3 +143,9 @@ None.
 
 - Plan 29-09 (wave 4), then plan 29-08 (wave 5), which resumes from its Task 1 with the resume note applied. Full `defectdojo-homelab-validate.sh` pass is 29-08 Task 2.
 - Operator: remote branch `fix/defectdojo-ghostunnel-native-sidecar` still exists; delete on request. GitGuardian incident 37678807 remains the known false positive.
+
+## Self-Check: PASSED
+
+- All five evidence/29-08a-* files and this SUMMARY exist.
+- Docs commits 1339c65 and 783c233 exist; overlay commits b2cacd0 (PR head) and 08ce26b (merge) exist in occ-k8s-app-config.
+- Plan Task 3 automated verify printed PLAN_VERIFY_PASS against the committed evidence.
