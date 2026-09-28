@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-12-PLAN.md
-last_updated: "2026-09-28T14:08:31.870Z"
+stopped_at: Completed 29-13-PLAN.md; stopped at operator request (merge the PRs and then stop); next 29-14 wave 9 not started
+last_updated: "2026-09-28T22:21:41.321Z"
 last_activity: 2026-09-28
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 75
-  completed_plans: 68
+  completed_plans: 69
   percent: 86
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 13 of 20 (next: wave 8 — 29-13-PLAN.md; wave 7 complete; completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07, 29-08, 29-08a, 29-09, 29-10, 29-11, 29-12 = 13/20)
+Plan: 14 of 20 (next: wave 9 — 29-14-PLAN.md; wave 8 complete; completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07, 29-08, 29-08a, 29-09, 29-10, 29-11, 29-12, 29-13 = 14/20; stopped after 29-13 at operator request)
 Status: Ready to execute
 Last activity: 2026-09-28
 
@@ -309,6 +309,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-12: fork-PR approval on security-platform raised first_time_contributors -> all_external_contributors (2026-09-28T13:48:46Z), before DEFECTDOJO_RUNS_ON exists
 - [Phase 29]: 29-12: ARC authored on local overlay branches feat/arc-systems ad8c5db (controller 0.14.2, release arc, SSA, prune off) and feat/arc-runners 1070fac (repo-scoped scale set occ-homelab-defectdojo, runner 2.337.0, hostAliases 10.40.3.65, SealedSecret arc-github-pat, prune on); merge controller first in 29-13
 - [Phase 29]: 29-12: first sealing attempt lost the literal line to a trailing >/dev/null and unconditionally deleted the first PAT; guarded retry sealed the replacement and removed the plaintext. Revocation of the orphaned first PAT is NOT operator-confirmed (open follow-up)
+- [Phase 29]: 29-13: operator reply 'merge the PRs and then stop' — PR #251 arc-systems (03404fd) merged first, CRDs Established + controller Available verified, then PR #252 arc-runners (d32c5e1); listener arc-systems/occ-homelab-defectdojo-776f7979-listener Running with no 401/403; repo runners total_count=0 (minRunners 0)
+- [Phase 29]: 29-13: operator confirmed the orphaned first ARC PAT from the 29-12 sealing incident is revoked (reply: 'revoked'); closes the 29-12 open follow-up
 
 ### Pending Todos
 
@@ -453,11 +455,12 @@ Carried forward from v1.1 close:
 | Phase 29 P10 | ~5min | 2 tasks | 2 files |
 | Phase 29 P11 | 8min | 3 tasks | 3 files |
 | Phase 29 P12 | 30min | 3 tasks | 8 files |
+| Phase 29 P13 | ~9min resumed (22:10Z-22:19Z) after interruption | 3 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-28T14:08:31.859Z
-Stopped at: Completed 29-12-PLAN.md
+Last session: 2026-09-28T22:20:54.778Z
+Stopped at: Completed 29-13-PLAN.md; stopped at operator request (merge the PRs and then stop); next 29-14 wave 9 not started
 Resume file: None
 
 ## Operator Next Steps
