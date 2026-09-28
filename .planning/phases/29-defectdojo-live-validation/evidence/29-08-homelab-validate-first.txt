@@ -1,0 +1,31 @@
+=== defectdojo-homelab-validate: https://defectdojo.infra.ottawacloudconsulting.com + https://defectdojo.home.ottawacloudconsulting.com (context admin@occ-new, namespace defectdojo, app argocd/defectdojo, sync pass first) ===
+
+--- 1. TLS on both hostnames (system trust store) ---
+==> HOMELAB-TLS-INFRA: PASS - GET https://defectdojo.infra.ottawacloudconsulting.com/login -> 200 with ssl_verify_result 0 against the system trust store; served certificate SANs include DNS:defectdojo.infra.ottawacloudconsulting.com and DNS:defectdojo.home.ottawacloudconsulting.com
+==> HOMELAB-TLS-HOME: PASS - GET https://defectdojo.home.ottawacloudconsulting.com/login -> 200 with ssl_verify_result 0 against the system trust store; served certificate SANs include DNS:defectdojo.infra.ottawacloudconsulting.com and DNS:defectdojo.home.ottawacloudconsulting.com
+
+--- 2. admin login with a browser-equivalent Origin, on both hostnames ---
+==> HOMELAB-LOGIN-ORIGIN-INFRA: PASS - admin login POST with Origin https://defectdojo.infra.ottawacloudconsulting.com (plus Referer and CSRF token) -> 302 to https://defectdojo.infra.ottawacloudconsulting.com/; /dashboard with the session -> 200
+==> HOMELAB-LOGIN-ORIGIN-HOME: PASS - admin login POST with Origin https://defectdojo.home.ottawacloudconsulting.com (plus Referer and CSRF token) -> 302 to https://defectdojo.home.ottawacloudconsulting.com/; /dashboard with the session -> 200
+
+--- 3. negative control: foreign Origin must be refused ---
+==> HOMELAB-CSRF-FOREIGN-403: PASS - POST with Origin https://evil.example and a valid token -> 403 'CSRF verification failed'; the uwsgi log names it: [28/Sep/2026 13:11:49] WARNING [django.security.csrf:253] Forbidden (Origin checking failed - https://evil.example does not match any trusted origins.): /login
+
+--- 4. Celery broker round-trip ---
+==> HOMELAB-CELERY-PING: PASS - celery -A dojo inspect ping in defectdojo-celery-worker/celery exited 0 with pong (broker round-trip)
+
+--- 5. Argo CD: initializer hook phase and Application status ---
+    INFO: ServiceAccount defectdojo recorded as hook PreSync/Succeeded (expected: helm pre-install mapped to PreSync, RESEARCH Pitfall 4; not a failure)
+==> ARGOCD-HOOK-PHASE: PASS - Application defectdojo: Job defectdojo-initializer ran as a Sync hook and its hookPhase is Succeeded; Synced, Healthy, no ComparisonError
+
+
+--- 7. second-sync idempotency ---
+    SKIPPED - --sync-pass first
+
+
+=== Summary ===
+SKIPPED - 1 sub-check(s) did not run. A SKIP IS NOT A PASS:
+  - SECOND-SYNC-IDEMPOTENT: not evaluated on a --sync-pass first run; re-run this gate with --sync-pass second --pre-state <file> --token-file <file> after the second Argo CD sync of the same revision
+
+ALL PASS - 7 live check(s) executed and passed; 1 sub-check(s) skipped (not passed).
+# gate exit code: 0 (run 2026-09-28T13:11:56Z, script at security-platform e8387a8, identical to origin/main 9726b35 version)
