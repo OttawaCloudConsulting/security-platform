@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-08-PLAN.md
-last_updated: "2026-09-28T13:13:25.699Z"
+stopped_at: Completed 29-10-PLAN.md
+last_updated: "2026-09-28T13:26:04.554Z"
 last_activity: 2026-09-28
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 75
-  completed_plans: 65
-  percent: 86
+  completed_plans: 66
+  percent: 88
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 11 of 20 (next: wave 6 — 29-10-PLAN.md, 29-11-PLAN.md; wave 5 complete; completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07, 29-08, 29-08a, 29-09 = 10/20)
+Plan: 12 of 20 (next: wave 6 — 29-11-PLAN.md; wave 5 complete; completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07, 29-08, 29-08a, 29-09, 29-10 = 11/20)
 Status: Ready to execute
 Last activity: 2026-09-28
 
@@ -301,6 +301,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: [Phase 29-08a]: ADR-027 lesson: helm template and kubectl client/server dry-run validate structure and admission, not container arg semantics (they all passed on the crashlooping --target=<service DNS> args). A runtime arg check with a negative control (pinned image, exact rendered args) is the pattern for containers whose args encode policy.
 - [Phase 29]: [Phase 29-09]: Operator reply 'approved'. VLAN43 VIP inventory in the cluster-config Cilium L2 runbook rebuilt from a live read (eight VIPs incl. defectdojo-ghostunnel 10.40.3.65); PR #43 squash-merged as 5c65ffb221efa4fd665afe4e24537f608081302c (pinned --match-head-commit d3d00bb; no rulesets on main). The live read corrected .60/.77 (.60 authentik-outpost-proxy, .77 homepage) and showed .80/.81 are pinned via lbipam.cilium.io/ips in vlan43-dhcp, not auto-assigned. Open follow-up: VLAN41 edgebridge 10.40.1.80 is likewise pinned but still described as auto-assigned (left untouched, out of scope). DDOJO-05 withheld.
 - [Phase 29]: 29-08: first-pass live gate 7 PASS / SECOND-SYNC skipped / exit 0 on both hosts; Application/cluster evidence is the later sync (12:19:11Z, [c8027e6, 08ce26b]); first-run initializer baseline stays a40c5a8; 29-17 must capture its own --write-state pre-state
+- [Phase 29]: 29-10: D-13 bootstrap applied live before any import over 0 findings/products/engagements/tests. Run 1 CHANGED: enable_deduplication, risk_acceptance_form_default_days (VERIFIED, exit 0); run 2 NO CHANGE on all 5 keys. ADR-026 NOT-verified item 1 stays open and unexercised. — Plan 29-14 precondition 3 (29-10-configure-2.txt contains NO CHANGE) is now satisfied; operator token left at ~/.config/defectdojo/homelab-admin.token (0600) for 29-14..29-17.
+- [Phase 29]: 29-10: JIRA webhook secret rotation DESCOPED by operator, verbatim: "wait, we don't actually have jira in our environment, descope this from the test". No rotation happened. — JIRA is not integrated, so the secret printed during 29-08 protects nothing; configure.sh manages no Jira key. Plan amended in 3b74622.
 
 ### Pending Todos
 
@@ -442,11 +444,12 @@ Carried forward from v1.1 close:
 | Phase 29 P08a | ~9.5h wall (incl. operator gate) | 3 tasks | 11 files |
 | Phase 29 P09 | 30min | 3 tasks | 2 files |
 | Phase 29 P08 | 10min | 2 tasks | 5 files |
+| Phase 29 P10 | ~5min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-28T13:13:25.689Z
-Stopped at: Completed 29-08-PLAN.md
+Last session: 2026-09-28T13:26:04.545Z
+Stopped at: Completed 29-10-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
