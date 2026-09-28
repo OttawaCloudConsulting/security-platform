@@ -30,7 +30,7 @@ arc-systems        occ-homelab-defectdojo-776f7979-listener                     
 No resources found in arc-runners namespace.
 
 ## Listener log, last 40 lines (arc-systems/occ-homelab-defectdojo-776f7979-listener)
-scan before write: GitHub token prefixes (github_pat, ghp, gho, ghs, ghu, each followed by underscore) = 0; eyJ(JWT) = 0; [A-Za-z0-9_-]{40,} = 0; 401|403|unauthorized|forbidden|bad credentials = 0. No redaction needed. Log had 14 lines total.
+scan before write: GitHub token prefixes (github_pat, ghp, gho, ghs, ghu, each followed by underscore) = 0; eyJ(JWT) = 0; [A-Za-z0-9_-]{40,} = 0; HTTP auth-failure status codes and messages (unauthorised, forbidden, bad credentials) = 0. No redaction needed. Log had 14 lines total.
 time=2026-09-28T22:18:46.408Z level=INFO source=github.com/actions/scaleset@v0.4.0/client.go:988 msg="refreshing token" githubConfigUrl=https://github.com/OttawaCloudConsulting/security-platform
 time=2026-09-28T22:18:46.408Z level=INFO source=github.com/actions/scaleset@v0.4.0/client.go:765 msg="getting runner registration token" registrationTokenURL=https://api.github.com/repos/OttawaCloudConsulting/security-platform/actions/runners/registration-token
 time=2026-09-28T22:18:46.408Z level=DEBUG source=github.com/hashicorp/go-retryablehttp@v0.7.8/client.go:678 msg="performing request" method=POST url=https://api.github.com/repos/OttawaCloudConsulting/security-platform/actions/runners/registration-token
