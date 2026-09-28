@@ -1,0 +1,98 @@
+# 29-08a Argo operation state before change
+Captured: 2026-09-28T02:49:42Z (UTC)
+
+## Shared overlay tree baseline
+$ git -C <shared overlay> rev-parse HEAD
+cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd
+$ git -C <shared overlay> symbolic-ref --short HEAD
+main
+$ git -C <shared overlay> worktree list
+/Users/christian/git-repos/OCC-github/kubernetes_stack/occ-k8s-app-config cc7fbc9 [main]
+/private/tmp/occ-5.4-outage                                               adf9962 [drill/5.4-authentik-restore] prunable
+
+## Argo Application defectdojo (read-only) at 2026-09-28T02:49:57Z
+$ kubectl --context admin@occ-new -n argocd get applications.argoproj.io defectdojo -o json | jq '{sync,health,op}'
+{
+  "sync": {
+    "comparedTo": {
+      "destination": {
+        "namespace": "defectdojo",
+        "server": "https://kubernetes.default.svc"
+      },
+      "source": {
+        "repoURL": ""
+      },
+      "sources": [
+        {
+          "helm": {
+            "releaseName": "defectdojo",
+            "valuesObject": {
+              "defectdojo": {
+                "alternativeHosts": [
+                  "defectdojo.home.ottawacloudconsulting.com"
+                ],
+                "django": {
+                  "ingress": {
+                    "enabled": false
+                  }
+                },
+                "extraConfigs": {
+                  "DD_CSRF_TRUSTED_ORIGINS": "https://defectdojo.infra.ottawacloudconsulting.com,https://defectdojo.home.ottawacloudconsulting.com"
+                },
+                "host": "defectdojo.infra.ottawacloudconsulting.com",
+                "initializer": {
+                  "jobAnnotations": {
+                    "argocd.argoproj.io/hook": "Sync",
+                    "argocd.argoproj.io/hook-delete-policy": "BeforeHookCreation"
+                  },
+                  "keepSeconds": 0,
+                  "staticName": true
+                },
+                "siteUrl": "https://defectdojo.infra.ottawacloudconsulting.com"
+              }
+            }
+          },
+          "path": "kubernetes/defectdojo",
+          "repoURL": "https://github.com/OttawaCloudConsulting/security-platform",
+          "targetRevision": "c8027e6784ec631db128f45444c9a8092db9d0a1"
+        },
+        {
+          "path": "application-sets/platform/defectdojo",
+          "repoURL": "https://github.com/OttawaCloudConsulting/occ-k8s-app-config",
+          "targetRevision": "main"
+        }
+      ]
+    },
+    "revisions": [
+      "c8027e6784ec631db128f45444c9a8092db9d0a1",
+      "cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd"
+    ],
+    "status": "Synced"
+  },
+  "health": "Degraded",
+  "op": {
+    "phase": "Succeeded",
+    "message": "successfully synced (no more tasks)",
+    "retryCount": 4,
+    "startedAt": "2026-09-28T01:56:36Z",
+    "finishedAt": "2026-09-28T02:23:35Z",
+    "revisions": [
+      "c8027e6784ec631db128f45444c9a8092db9d0a1",
+      "cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd"
+    ]
+  }
+}
+
+## PVC baseline at 2026-09-28T02:49:58Z
+$ kubectl -n defectdojo get pvc data-defectdojo-postgresql-0 -o jsonpath='{.metadata.uid} {.status.phase}'
+76aa54bc-51bf-487c-9ed9-dd3f9115f4f2 Bound
+
+## Refresh before the operator gate at 2026-09-28T12:05:38Z (read-only)
+{"sync":"Synced","revisions":["c8027e6784ec631db128f45444c9a8092db9d0a1","cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd"],"health":"Degraded","op":{"phase":"Succeeded","message":"successfully synced (no more tasks)","retryCount":4,"startedAt":"2026-09-28T01:56:36Z","finishedAt":"2026-09-28T02:23:35Z","revisions":["c8027e6784ec631db128f45444c9a8092db9d0a1","cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd"]}}
+$ kubectl -n defectdojo get deploy
+NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
+defectdojo-celery-beat     1/1     1            1           10h
+defectdojo-celery-worker   1/1     1            1           10h
+defectdojo-django          1/1     1            1           10h
+defectdojo-ghostunnel      0/1     1            0           10h
+PVC: 76aa54bc-51bf-487c-9ed9-dd3f9115f4f2 Bound

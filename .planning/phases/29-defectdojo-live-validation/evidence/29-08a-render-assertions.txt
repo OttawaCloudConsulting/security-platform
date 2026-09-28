@@ -1,0 +1,234 @@
+# 29-08a gates and render assertions
+Worktree: SCRATCH/wt-29-08a, branch fix/defectdojo-ghostunnel-native-sidecar, base origin/main cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd
+Started: 2026-09-28T02:55:24Z
+
+## Gate 1: conformance (pre-commit, working tree)
+$ python3 docs/argocd/conformance/c1.py
+PASS: 0 violation(s)
+PASS F-1a
+PASS F-1a2
+PASS F-1b
+PASS F-1c
+PASS C-1: 0 violation(s) across 21 file(s)
+rc=0
+
+$ python3 docs/argocd/conformance/check_appconfig.py --base origin/main
+PASS SHAPE
+PASS NEW-1
+PASS NEW-2
+PASS 14h
+PASS NEW-3
+PASS 14a
+PASS 14b
+PASS 14c
+PASS 14d
+PASS 14e
+PASS 14f
+PASS 14g
+PASS 14i
+PASS 14j
+PASS 14k
+NOTE appset-apps: exclude 'application-sets/development*/argocd-overrides.yaml' matches no file — a typo here would silently widen the generator, and no check can distinguish that from a deliberately forward-looking exclude
+NOTE appset-apps: exclude 'application-sets/default*/argocd-overrides.yaml' matches no file — a typo here would silently widen the generator, and no check can distinguish that from a deliberately forward-looking exclude
+SKIP appset-development-apps: matrix(plugin, git@{{.branch}}) — its directory set lives on development/* branches, which git ls-files on this branch cannot see. NEW-2 cannot be derived for it. NEW-1 IS still applied to its template and templatePatch; the residual is the per-directory .argocd-source.yaml layer on those branches, which no check on this branch can reach
+
+PASS check-appconfig: 0 check(s) failed across 1 generator(s), 22 application(s) (1 standalone), 1 KCL directory(ies)
+rc=0
+
+## Gate 2: scoped yamllint (repo-wide yamllint . has 51 pre-existing errors on origin/main, measured in 29-05; see .yamllint-precommit.yaml)
+$ yamllint application-sets/platform/defectdojo
+rc=0
+
+## Gate 3: helm dependency update (must be a no-op) + source-2 render
+$ DOCKER_CONFIG=SCRATCH/dockercfg-empty helm dependency update application-sets/platform/defectdojo --registry-config SCRATCH/helm-registry.json
+rc=0
+$ git status --short --untracked-files=all application-sets/platform/defectdojo  (no Chart.lock / charts/ may appear)
+ M application-sets/platform/defectdojo/Chart.yaml
+ M application-sets/platform/defectdojo/README.md
+ M application-sets/platform/defectdojo/argocd-overrides.yaml
+ M application-sets/platform/defectdojo/templates/certificate.yaml
+D  application-sets/platform/defectdojo/templates/ghostunnel-deployment.yaml
+ M application-sets/platform/defectdojo/templates/service.yaml
+argocd-overrides.yaml
+Chart.yaml
+README.md
+templates
+
+$ helm template defectdojo-local application-sets/platform/defectdojo | yq kinds
+rc=0
+Service/defectdojo-ghostunnel
+Certificate/defectdojo-tls
+SealedSecret/defectdojo-postgresql-specific
+SealedSecret/defectdojo-valkey-specific
+SealedSecret/defectdojo
+Deployment count: 0
+Service selector + ports + VIP annotation:
+selector:
+  # Selects the chart's django pod, which now carries the ghostunnel sidecar -- but the
+  # port above targets ghostunnel's TLS 8443 ONLY, never nginx's plaintext 8080 or uwsgi's
+  # 8081: sending TLS from :443 to a plaintext port would fail every connection. Keep ALL
+  # THREE labels: the celery-beat and celery-worker pods share `app.kubernetes.io/name` and
+  # `app.kubernetes.io/instance`, so without the component label the VIP would also balance
+  # onto celery pods that have no 8443 listener.
+  defectdojo.org/component: django
+  app.kubernetes.io/name: defectdojo
+  app.kubernetes.io/instance: defectdojo
+ports:
+  # HTTPS only -- ghostunnel is the sole path from the VIP. Plaintext django :80 is NOT
+  # exposed on this Service. It does stay reachable IN-CLUSTER through the chart's ClusterIP
+  # Service `defectdojo-django`, with no NetworkPolicy: DefectDojo authenticates every
+  # request, and namespace isolation is a hardening-bucket item (Out of Scope, recorded in
+  # ADR-027). Homepage's NetworkPolicy is deliberately not copied.
+  - port: 443
+    # NUMERIC on purpose: 8443 is ghostunnel's `https` port, but that port is declared on an
+    # INIT container (the native sidecar). Whether a Service's named targetPort resolves
+    # against ports declared on init containers is Kubernetes-version-dependent, and no
+    # dry-run checks it, so the number is used instead of the name.
+    targetPort: 8443
+    protocol: TCP
+    name: https
+ann:
+  # Quoted per Phase 29 D-03. Internal A records for both FQDNs point here through manual
+  # Pi-hole Local DNS entries (README.md "Homelab literals").
+  lbipam.cilium.io/ips: "10.40.3.65"
+labels:
+  app.kubernetes.io/name: defectdojo-ghostunnel
+  # LB-IPAM selector: vlan43-static pool (10.40.3.60-79); the address itself is pinned by
+  # the annotation below. Values MUST be quoted strings -- an unquoted true/43 becomes a
+  # YAML scalar and the Cilium pool label selector may not match.
+  vlan: "43"
+  IPautoAssign: "false"
+type: LoadBalancer
+etp: Cluster
+
+## Gate 4: source-1 render (pinned chart, exact valuesObject)
+$ git -C repos/security-platform diff --stat c8027e6784ec631db128f45444c9a8092db9d0a1 HEAD -- kubernetes/defectdojo   (empty = chart dir identical to the pin)
+rc=0 (output above this line empty)
+$ shasum -a 256 charts/defectdojo-1.9.53.tgz  (identical to the 29-05 scratchpad dependency-build output)
+0393332d77412d2a76921f418faf933e9739088ddbf207b2a4b94867daa0657d  charts/defectdojo-1.9.53.tgz
+$ yq '.argocdOverrides.spec.sources[0].helm.valuesObject' argocd-overrides.yaml > SCRATCH/src1-values-08a.yaml
+rc=0
+$ helm template defectdojo repos/security-platform/kubernetes/defectdojo --namespace defectdojo -f SCRATCH/src1-values-08a.yaml > SCRATCH/src1-render-08a.yaml
+rc=0
+
+### Source-1 assertions (script: SCRATCH/assert-08a.sh SCRATCH/src1-render-08a.yaml templates/service.yaml)
+django initContainers (name, restartPolicy):
+tls restartPolicy=Always
+db-migration-checker restartPolicy=<unset>
+PASS (a) initContainers[0]=tls, restartPolicy=Always, initContainers[1]=db-migration-checker
+tls args (from render):
+server
+--listen=:8443
+--target=127.0.0.1:8080
+--cert=/etc/ghostunnel/tls/tls.crt
+--key=/etc/ghostunnel/tls/tls.key
+--disable-authentication
+--timed-reload=300s
+--status=http://0.0.0.0:8082
+PASS (b) tls args == the eight expected args, in order
+PASS (b) no tls arg contains 'unsafe'
+PASS (c) pod volumes include tls -> secret defectdojo-tls (defaultMode unset)
+PASS (d) uwsgi has no tls volumeMount
+PASS (d) nginx has no tls volumeMount
+PASS (d') tls is mounted by exactly one container in the pod (the sidecar), whole dir, readOnly, no subPath
+PASS (e) nginx port http containerPort 8080
+PASS (e') no container/initContainer port other than the sidecar's uses 8443 or 8082
+PASS (extra) tls sidecar has NO startupProbe (one on /_status would block dbMigrationChecker forever: nginx is not up during init)
+tls securityContext: {"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true,"runAsNonRoot":true,"runAsUser":65532,"seccompProfile":{"type":"RuntimeDefault"}}
+PASS (extra) tls sidecar securityContext carried over verbatim
+pod-level securityContext actually rendered (informational; the chart renders it only when django.mediaPersistentVolume.enabled):
+{"fsGroup":1001,"runAsNonRoot":true}
+pod automountServiceAccountToken: false
+Service selector (templates/service.yaml): {"defectdojo.org/component":"django","app.kubernetes.io/name":"defectdojo","app.kubernetes.io/instance":"defectdojo"}
+django pod template labels (selector keys): {"defectdojo.org/component":"django","app.kubernetes.io/name":"defectdojo","app.kubernetes.io/instance":"defectdojo"}
+PASS (f) django pod template labels contain all three selector labels
+Pod templates (Deployment/StatefulSet) matching the Service selector:
+  Deployment/defectdojo-celery-beat selector-key labels: {"defectdojo.org/component":"celery","app.kubernetes.io/name":"defectdojo","app.kubernetes.io/instance":"defectdojo"}
+  Deployment/defectdojo-celery-worker selector-key labels: {"defectdojo.org/component":"celery","app.kubernetes.io/name":"defectdojo","app.kubernetes.io/instance":"defectdojo"}
+  Deployment/defectdojo-django selector-key labels: {"defectdojo.org/component":"django","app.kubernetes.io/name":"defectdojo","app.kubernetes.io/instance":"defectdojo"}
+  StatefulSet/defectdojo-postgresql selector-key labels: {"app.kubernetes.io/instance":"defectdojo","app.kubernetes.io/name":"postgresql"}
+  StatefulSet/defectdojo-valkey selector-key labels: {"app.kubernetes.io/instance":"defectdojo","app.kubernetes.io/name":"valkey"}
+Deployment/defectdojo-django
+PASS exactly ONE workload pod template matches the Service selector (Deployment/defectdojo-django)
+All Deployments in source-1 render: defectdojo-celery-beat defectdojo-celery-worker defectdojo-django
+29-05 (b) ConfigMap: DD_ALLOWED_HOSTS=defectdojo.infra.ottawacloudconsulting.com,defectdojo.home.ottawacloudconsulting.com
+29-05 (b) ConfigMap: DD_SITE_URL=https://defectdojo.infra.ottawacloudconsulting.com
+29-05 (b) ConfigMap: DD_CSRF_TRUSTED_ORIGINS=https://defectdojo.infra.ottawacloudconsulting.com,https://defectdojo.home.ottawacloudconsulting.com
+PASS 29-05 (b) hosts / site URL / CSRF origins
+PASS DD_SECURE_PROXY_SSL_HEADER absent
+PASS 29-05 (c) DD_SESSION_COOKIE_SECURE and DD_CSRF_COOKIE_SECURE == "True" on uwsgi env
+29-05 (d) Jobs: {"name":"defectdojo-initializer","hook":"Sync","del":"BeforeHookCreation","ttl":null}
+PASS 29-05 (d) initializer Sync hook
+29-05 (e) Service defectdojo-django ports: [{"name":"http","protocol":"TCP","port":80,"targetPort":"http"}]
+PASS 29-05 (e) Service defectdojo-django port 80 still rendered
+29-05 (a) Ingress count: 0
+PASS 29-05 (a) no Ingress
+OVERALL: PASS
+rc=0
+
+## Gate 5: kubectl client dry-run on each remaining template
+$ kubectl --context admin@occ-new apply --dry-run=client -f application-sets/platform/defectdojo/templates/certificate.yaml
+certificate.cert-manager.io/defectdojo-tls created (dry run)
+rc=0
+$ kubectl --context admin@occ-new apply --dry-run=client -f application-sets/platform/defectdojo/templates/sealedsecret-defectdojo-postgresql-specific.yaml
+sealedsecret.bitnami.com/defectdojo-postgresql-specific configured (dry run)
+rc=0
+$ kubectl --context admin@occ-new apply --dry-run=client -f application-sets/platform/defectdojo/templates/sealedsecret-defectdojo-valkey-specific.yaml
+sealedsecret.bitnami.com/defectdojo-valkey-specific configured (dry run)
+rc=0
+$ kubectl --context admin@occ-new apply --dry-run=client -f application-sets/platform/defectdojo/templates/sealedsecret-defectdojo.yaml
+sealedsecret.bitnami.com/defectdojo configured (dry run)
+rc=0
+$ kubectl --context admin@occ-new apply --dry-run=client -f application-sets/platform/defectdojo/templates/service.yaml
+service/defectdojo-ghostunnel created (dry run)
+rc=0
+
+## Gate 6: server-side dry-run (runs live admission policies: namespace-boundary, L2 etp)
+$ kubectl --context admin@occ-new -n defectdojo apply --dry-run=server -f SCRATCH/dryrun-django-08a.yaml   (source-1 render, Deployment defectdojo-django)
+deployment.apps/defectdojo-django configured (server dry run)
+rc=0
+$ kubectl --context admin@occ-new -n defectdojo apply --dry-run=server -f SCRATCH/dryrun-svc-08a.yaml   (source-2 render, Service defectdojo-ghostunnel)
+service/defectdojo-ghostunnel configured (server dry run)
+rc=0
+NOTE: neither the client nor the server dry-run validates container ARG SEMANTICS (the 29-05 gates passed while ghostunnel v1.11.3 rejected --target at runtime). That is what the runtime arg check in 29-08a-runtime-arg-check.txt covers.
+
+## Gate 7a: gitleaks scoped (working tree, existing .gitleaksignore)
+$ gitleaks detect --source application-sets --no-git --redact
+    ○ ░
+    ░    gitleaks
+10:57PM INF scanned ~611077 bytes (611.08 KB) in 104ms
+10:57PM INF no leaks found
+rc=0
+
+## Gate 7b: gitleaks CI form (--source . on a git archive of commit b2cacd0562c49d84378c464c76b9ec33f6339038)
+$ git archive HEAD | tar -x -C SCRATCH/ci-extract-08a && (cd SCRATCH/ci-extract-08a && gitleaks detect --source . --no-git --redact)
+    ░    gitleaks
+11:18PM INF scanned ~5080699 bytes (5.08 MB) in 773ms
+11:18PM INF no leaks found
+rc=0
+
+## Commit b2cacd0 pre-commit hooks: yamllint, markdownlint, c1, check_appconfig (--base HEAD) all Passed
+$ git show --stat HEAD
+b2cacd0562c49d84378c464c76b9ec33f6339038 fix(defectdojo): run ghostunnel as a native sidecar in the django pod (Phase 29 / DDOJO-05)
+
+ application-sets/platform/defectdojo/Chart.yaml    |   5 +-
+ application-sets/platform/defectdojo/README.md     |  28 +++-
+ .../platform/defectdojo/argocd-overrides.yaml      | 150 ++++++++++++++++++++-
+ .../platform/defectdojo/templates/certificate.yaml |  14 +-
+ .../templates/ghostunnel-deployment.yaml           | 122 -----------------
+ .../platform/defectdojo/templates/service.yaml     |  30 +++--
+ 6 files changed, 200 insertions(+), 149 deletions(-)
+
+## PR
+PR: https://github.com/OttawaCloudConsulting/occ-k8s-app-config/pull/249  (OPEN, MERGEABLE, not merged)
+Head SHA: b2cacd0562c49d84378c464c76b9ec33f6339038 (pushed; origin/fix/defectdojo-ghostunnel-native-sidecar equals it)
+Checks at 2026-09-28T12:05:26Z:
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com
+conformance	pass	21s	https://github.com/OttawaCloudConsulting/occ-k8s-app-config/actions/runs/36419519582/job/108918604470
+
+## Shared overlay tree after Task 1 (compare with the Step A baseline in 29-08a-argo-op-before.txt)
+HEAD: cc7fbc958c7928d1d640c2f9ec20a44b78a7fcfd
+branch: main
+/Users/christian/git-repos/OCC-github/kubernetes_stack/occ-k8s-app-config                                                                                         cc7fbc9 [main]
+/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/4a04faf8-acc3-4cd1-927d-a88ede360f9f/scratchpad/wt-29-08a b2cacd0 [fix/defectdojo-ghostunnel-native-sidecar]
+/private/tmp/occ-5.4-outage                                                                                                                                       adf9962 [drill/5.4-authentik-restore] prunable

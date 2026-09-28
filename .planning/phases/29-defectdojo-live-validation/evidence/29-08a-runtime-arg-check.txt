@@ -1,0 +1,73 @@
+# 29-08a runtime arg check (pre-merge)
+Captured: 2026-09-28T03:01:10Z (UTC)
+Purpose: helm template and kubectl --dry-run (client and server) do not validate what container args mean; run the pinned image with the exact rendered args, plus a negative control.
+
+## Image
+$ DOCKER_CONFIG=SCRATCH/dockercfg-empty docker pull docker.io/ghostunnel/ghostunnel@sha256:51fa619294acf716e01efcb03ad00dc11229dc1f3829cba984c5b0a4f43f4faf   (rc=0)
+$ docker image inspect -f '{{json .RepoDigests}} {{.Os}}/{{.Architecture}}'
+["ghostunnel/ghostunnel@sha256:51fa619294acf716e01efcb03ad00dc11229dc1f3829cba984c5b0a4f43f4faf"] linux/arm64
+(Local run is the arm64 variant of the same multi-arch index digest the cluster pulls; the tag v1.11.3-distroless is the one in argocd-overrides.yaml.)
+
+## Test certificate
+Throwaway self-signed ECDSA P-256, CN=localhost, 1 day, generated into SCRATCH/gt-tls/ with
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 1 -subj /CN=localhost; files chmod 0644. No key material is recorded here; the directory is deleted after the check.
+
+## Positive run: args taken verbatim from the source-1 render (yq on SCRATCH/src1-render-08a.yaml, django initContainers[tls].args)
+  server
+  --listen=:8443
+  --target=127.0.0.1:8080
+  --cert=/etc/ghostunnel/tls/tls.crt
+  --key=/etc/ghostunnel/tls/tls.key
+  --disable-authentication
+  --timed-reload=300s
+  --status=http://0.0.0.0:8082
+$ docker run -d --name gt-08a-pos --user 65532 -v SCRATCH/gt-tls:/etc/ghostunnel/tls:ro -p 127.0.0.1:18082:8082 <image@digest> <args above>
+0c9fceec93434bba485594b4fe328d3289659c345a491407377c376ba7512009
+rc=0
+$ timeout 10 docker wait gt-08a-pos   (rc 124 = still running after 10s; any other rc is the container's exit)
+rc=124
+$ docker inspect -f '{{.State.Running}} restarts={{.RestartCount}} exit={{.State.ExitCode}}' gt-08a-pos
+true restarts=0 exit=0
+$ curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18082/_status   (200 or 503 required; 503 expected: no nginx on 127.0.0.1:8080 in the test)
+http_code=503
+$ curl -s http://127.0.0.1:18082/_status   (body)
+{"ok":false,"status":"critical","listen_address":":8443","forward_address":"127.0.0.1:8080","backend_ok":false,"backend_status":"critical","backend_error":"dial tcp 127.0.0.1:8080: connect: connection refused","time":"2026-09-28T03:01:20.912874798Z","last_reload":"0001-01-01T00:00:00Z","hostname":"0c9fceec9343","message":"listening","revision":"v1.11.3","compiler":"go1.27.0"}
+$ docker logs gt-08a-pos   (must not contain '--target must be')
+[1] 2026/09/28 03:01:10.709335 starting ghostunnel in server mode
+[1] 2026/09/28 03:01:10.709387 setting up landlock rules to limit process privileges
+[1] 2026/09/28 03:01:10.710638 note: kernel does not support landlock net rules, sandboxing will be limited
+[1] 2026/09/28 03:01:10.715058 using cert/key files on disk as certificate source
+[1] 2026/09/28 03:01:10.715538 using target address 127.0.0.1:8080
+[1] 2026/09/28 03:01:10.715670 listening for connections on :8443
+grep -c -- '--target must be' in logs: 0
+
+## Negative control: identical run, only --target replaced by the old standalone Deployment's value
+  server
+  --listen=:8443
+  --target=defectdojo-django.defectdojo.svc.cluster.local:80
+  --cert=/etc/ghostunnel/tls/tls.crt
+  --key=/etc/ghostunnel/tls/tls.key
+  --disable-authentication
+  --timed-reload=300s
+  --status=http://0.0.0.0:8082
+$ docker run --rm --name gt-08a-neg --user 65532 -v SCRATCH/gt-tls:/etc/ghostunnel/tls:ro <image@digest> <args above>   (foreground)
+[1] 2026/09/28 03:01:32.362189 starting ghostunnel in server mode
+[1] 2026/09/28 03:01:32.362220 setting up landlock rules to limit process privileges
+[1] 2026/09/28 03:01:32.362403 note: kernel does not support landlock net rules, sandboxing will be limited
+error: --target must be unix:PATH or localhost:PORT (unless --unsafe-target is set)
+[1] 2026/09/28 03:01:32.366942 error: --target must be unix:PATH or localhost:PORT (unless --unsafe-target is set)
+rc=1  (must be non-zero; 124 would mean it hung/stayed up = FAIL)
+grep -c 'target must be unix:PATH or localhost:PORT': 2
+
+## Result
+Positive: PASS (Running after 10s, restarts=0, /_status 503 with backend connection refused on 127.0.0.1:8080 as expected, no '--target must be' in logs).
+Negative control: PASS (exit rc=1 with 'error: --target must be unix:PATH or localhost:PORT (unless --unsafe-target is set)'), so the check distinguishes the two targets.
+
+## Cleanup
+$ docker rm -f gt-08a-pos
+gt-08a-pos
+rc=0
+$ rm -rf SCRATCH/gt-tls SCRATCH/gt-neg-out.txt
+rc=0
+$ test ! -e SCRATCH/gt-tls
+gt-tls removed
