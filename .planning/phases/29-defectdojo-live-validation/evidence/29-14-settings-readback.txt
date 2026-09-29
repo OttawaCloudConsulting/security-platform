@@ -1,0 +1,48 @@
+# 29-14 settings read-back (captured 2026-09-29T00:15:07Z)
+# DefectDojo reads use the superuser token via a 0600 header file (never the ci-importer token: it cannot list /api/v2/users/)
+
+## GET https://defectdojo.infra.ottawacloudconsulting.com/api/v2/users/?username=ci-importer (selected fields)
+http_code: 200
+{
+  "count": 1,
+  "results": [
+    {
+      "id": 3,
+      "username": "ci-importer",
+      "email": "ci-importer@ottawacloudconsulting.com",
+      "is_active": true,
+      "is_staff": true,
+      "is_superuser": false
+    }
+  ]
+}
+
+## GET https://defectdojo.infra.ottawacloudconsulting.com/api/v2/users/2/ (deleted failed-attempt user; expect 404)
+http_code: 404
+
+## gh variable list -R OttawaCloudConsulting/security-platform --json name,value,updatedAt
+[{"name":"DEFECTDOJO_RUNS_ON","updatedAt":"2026-09-29T00:14:11Z","value":"occ-homelab-defectdojo"},{"name":"DEFECTDOJO_URL","updatedAt":"2026-09-29T00:14:11Z","value":"https://defectdojo.infra.ottawacloudconsulting.com"}]
+
+## gh secret list -R OttawaCloudConsulting/security-platform --json name,updatedAt (names and times only; values are never readable)
+[{"name":"DEFECTDOJO_API_TOKEN","updatedAt":"2026-09-29T00:14:10Z"}]
+
+absence check CA_CERT: absent (DEFECTDOJO_ prefix omitted here)
+absence check INSECURE: absent (DEFECTDOJO_ prefix omitted here)
+
+## operator temp files in ~/.config/defectdojo
+ci-importer.pw: absent
+ci-importer.token: absent
+ci-importer* file count: 0
+
+## result
+ci-importer: id 3, count 1, is_active true, is_staff true, is_superuser false -> MATCH
+DEFECTDOJO_RUNS_ON = occ-homelab-defectdojo -> MATCH
+DEFECTDOJO_URL = https://defectdojo.infra.ottawacloudconsulting.com -> MATCH
+DEFECTDOJO_API_TOKEN secret present, updated 2026-09-29 (UTC) -> MATCH
+CA_CERT and INSECURE settings absent -> MATCH
+operator ci-importer temp files absent -> MATCH
+
+## note on order
+GitHub updatedAt has one-second resolution: the secret reads 00:14:10Z and both variables read 00:14:11Z, so the read-back proves
+the secret was set before the variables but cannot order RUNS_ON vs URL inside the same second. The order (secret, RUNS_ON, URL last)
+comes from the operator's helper-script output (all three stamped 2026-09-29T00:14:10Z, run sequentially, URL last).
