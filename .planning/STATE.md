@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-15-PLAN.md; ci/main baseline live (product id 1, engagement id 1, 155 findings); next 29-16
-last_updated: "2026-09-29T00:32:03.999Z"
+stopped_at: Completed 29-16-PLAN.md; D-11 lifecycle proven live (step 2 under the 2026-09-29 trivy-image scope amendment); next 29-17
+last_updated: "2026-09-29T02:25:36.119Z"
 last_activity: 2026-09-29
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 75
-  completed_plans: 71
-  percent: 95
+  completed_plans: 72
+  percent: 96
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 16 of 20 (next: wave 11 — 29-16-PLAN.md; completed: 29-01 … 29-15 incl. 29-08a = 16/20)
+Plan: 17 of 20 (next: wave 12 — 29-17-PLAN.md; completed: 29-01 … 29-16 incl. 29-08a = 17/20)
 Status: Ready to execute
 Last activity: 2026-09-29
 
@@ -318,6 +318,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-15: live product name OttawaCloudConsulting/security-platform (product_type CI, product id 1), read from the run log; ci/main engagement id 1 holds 155 findings in tests 1-8; 29-16 uses evidence/main-baseline-snapshot.json as --main-snapshot
 - [Phase 29]: 29-15: proof workflow D-10 side effect measured live: scans / DefectDojo Import runs on ARC, logs SKIP: DEFECTDOJO_API_TOKEN, imports nothing (count 155 before and after); prove-import was red on KIND-CELERY-PING (kind, not live), logged in deferred-items.md
 - [Phase 29]: 29-15: count_before/count_after backreference regex is not strict (155 vs 154 matches); use an anchored numeric equality check. Runner placement comes from gh api actions/runs/<id>/jobs, not gh run view
+- [Phase 29]: 29-16: D-11 step 2 amended 2026-09-29 by operator ruling (a+d): the duplicates assertion excludes the trivy-image Test (scan_type Trivy Scan, title trivy-image); the other 96 PR findings all duplicate ci/main originals (PASS); original FAIL evidence kept
+- [Phase 29]: 29-16: trivy-image findings never dedupe across branches (file_path scan-target:<github.sha>); TRIAGE.md correction deferred to 29-18 PR B, fixed-tag follow-up (b) deferred, ADR-027 (29-19) must record the gap and the amendment
+- [Phase 29]: 29-16: D-11 lifecycle proven live via PR #25: dispositions FP 3 / OOS 10 / RA 22 (risk acceptance 1, expiry 2026-12-28) survived reimport run 36510481745 and close; cleanup run 36510679451 on ARC deleted engagement 2; ci/main stayed 155
 
 ### Pending Todos
 
@@ -465,11 +468,12 @@ Carried forward from v1.1 close:
 | Phase 29 P13 | ~9min resumed (22:10Z-22:19Z) after interruption | 3 tasks | 2 files |
 | Phase 29 P14 | ~31min incl. operator step | 3 tasks | 2 files |
 | Phase 29 P15 | 14min | 2 tasks | 6 files |
+| Phase 29 P16 | 35min | 3 tasks | 19 files |
 
 ## Session Continuity
 
-Last session: 2026-09-29T00:32:03.989Z
-Stopped at: Completed 29-15-PLAN.md; ci/main baseline live (product id 1, engagement id 1, 155 findings); next 29-16
+Last session: 2026-09-29T02:25:36.106Z
+Stopped at: Completed 29-16-PLAN.md; D-11 lifecycle proven live (step 2 under the 2026-09-29 trivy-image scope amendment); next 29-17
 Resume file: None
 
 ## Operator Next Steps

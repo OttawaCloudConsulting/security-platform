@@ -271,7 +271,7 @@ Plans:
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
-- [ ] 29-16-PLAN.md — D-11 real PR lifecycle: duplicates, dispositions survive reimport, close unmerged
+- [x] 29-16-PLAN.md — D-11 real PR lifecycle: duplicates, dispositions survive reimport, close unmerged
 
 **Wave 12** *(blocked on Wave 11 completion)*
 
@@ -368,7 +368,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
 | 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
-| 29. DefectDojo Live Validation | v3.0 | 16/20 | In Progress|  |
+| 29. DefectDojo Live Validation | v3.0 | 17/20 | In Progress|  |
 
 ## Next Milestone
 
