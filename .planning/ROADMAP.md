@@ -18,7 +18,7 @@
 - [ ] **Phase 26: DefectDojo Generic Chart** - Public Helm chart deploys DefectDojo with external ingress and cert-manager TLS
 - [ ] **Phase 27: DefectDojo CI Auto-Import** - security-platform scan jobs push SARIF/JSON findings into DefectDojo automatically
 - [ ] **Phase 28: DefectDojo Dedup and Triage** - Dedup rules collapse repeated findings; triage workflow documented and configured
-- [ ] **Phase 29: DefectDojo Live Validation** - Chart deployed to the homelab cluster via private ArgoCD overlay; CI import proven live end-to-end
+- [x] **Phase 29: DefectDojo Live Validation** - Chart deployed to the homelab cluster via private ArgoCD overlay; CI import proven live end-to-end (completed 2026-09-29)
 
 ### Phase 23: Nexus Generic Chart
 
@@ -368,7 +368,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
 | 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
-| 29. DefectDojo Live Validation | v3.0 | 20/20 | Complete   | 2026-09-29 |
+| 29. DefectDojo Live Validation | v3.0 | 20/20 | Complete    | 2026-09-29 |
 
 ## Next Milestone
 
