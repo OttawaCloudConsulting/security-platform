@@ -28,7 +28,7 @@ key-files:
   modified: []
 decisions:
   - "29-17: the initializer.staticName plus Sync-hook (BeforeHookCreation) choice is kept. A same-revision second sync over real data (155 findings) re-created the Job and the PreSync ServiceAccount with new UIDs, took the idempotent path, preserved every finding id and disposition, and 10 minutes at a fixed revision showed no drift"
-  - "29-17: a scheduled reimport (run 36553070357, about 10:03Z) fell inside the 02:41Z-13:22Z gap between the second sync and the second-pass gate. It is accepted as non-confounding, because a readback shows the same 155 finding ids (max id 155) and identical disposition flags. A rerun in a clean window is left to the operator"
+  - "29-17: a scheduled reimport (run 36553070357, about 10:03Z) fell inside the 02:41Z-13:22Z gap between the second sync and the second-pass gate. It is accepted as non-confounding, because a readback shows the same 155 finding ids (max id 155) and identical disposition flags. Operator ruling 2026-09-29: result accepted as is (option a); no clean-window rerun"
 metrics:
   duration: "~11h wall clock (about 20 min active; the session paused about 10h41m between Task 1 and Task 2)"
   completed: 2026-09-29
@@ -79,6 +79,7 @@ The overlay moved from `08ce26b` to `11e6614` between history 1 and the pre-stat
 - **Concurrent writer:** Scheduled Security run `36553070357` (event schedule, headSha `2fda1ac`, the same main SHA as the 29-16 reimport) ran `DefectDojo Import` successfully in the gap. All 8 ci/main tests show `updated` between 10:03:34Z and 10:03:38Z.
 - **Exposure per sub-assertion:** the UIDs, the initializer log and the revision were captured before the gap and were unchanged at 13:22Z (same Job UID, history still 2), so the gap does not affect them. Only the counts were exposed.
 - **Compensating check (added artifact `evidence/29-17-post-gap-readback.json`):** an admin API readback of engagement 1 shows 155 findings with ids exactly equal to `main-after-reimport-snapshot.json` (02:01:11Z, before the pre-state), max id 155, and identical `active/false_p/out_of_scope/risk_accepted/is_mitigated/duplicate` flags (FP 3, OOS 10, RA 22). The reimport updated existing findings and created none. If the sync had wiped data and the reimport had refilled it, there would be new ids above 155, so the preserved counts are supported by id identity.
+- **Operator ruling (2026-09-29):** the operator accepted the result as is (option a). There is no clean-window rerun.
 - **Not done:** a third sync to re-measure in a clean window. That would create hook resources beyond what the plan specifies, so the operator decides whether to run it.
 
 ## Known Stubs
