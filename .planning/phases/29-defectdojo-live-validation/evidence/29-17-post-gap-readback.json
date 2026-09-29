@@ -1,0 +1,56 @@
+{
+  "purpose": "29-17 confounder check: Scheduled Security run 36553070357 (schedule, headSha 2fda1ac, DefectDojo Import success) reimported into ci/main at ~10:03Z, between the second sync (02:41:33Z) and the second-pass gate (13:22Z). Compares ci/main finding ids and disposition flags with main-after-reimport-snapshot.json (02:01:11Z, before the pre-state).",
+  "captured_at": "2026-09-29T13:43:32Z",
+  "product_id": 1,
+  "engagement_id": 1,
+  "reference": "main-after-reimport-snapshot.json",
+  "reference_count": 155,
+  "now_count": 155,
+  "ids_equal": true,
+  "id_min": 1,
+  "id_max": 155,
+  "flags_equal": true,
+  "false_p_ids": [
+    3
+  ],
+  "out_of_scope_ids": [
+    10
+  ],
+  "risk_accepted_ids": [
+    22
+  ],
+  "test_updated": [
+    {
+      "id": 1,
+      "updated": "2026-09-29T10:03:34.363964Z"
+    },
+    {
+      "id": 2,
+      "updated": "2026-09-29T10:03:34.784890Z"
+    },
+    {
+      "id": 3,
+      "updated": "2026-09-29T10:03:35.277181Z"
+    },
+    {
+      "id": 4,
+      "updated": "2026-09-29T10:03:35.792184Z"
+    },
+    {
+      "id": 5,
+      "updated": "2026-09-29T10:03:36.292896Z"
+    },
+    {
+      "id": 6,
+      "updated": "2026-09-29T10:03:36.785180Z"
+    },
+    {
+      "id": 7,
+      "updated": "2026-09-29T10:03:37.361770Z"
+    },
+    {
+      "id": 8,
+      "updated": "2026-09-29T10:03:38.179897Z"
+    }
+  ]
+}

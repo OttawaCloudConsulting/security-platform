@@ -1,0 +1,35 @@
+=== defectdojo-homelab-validate: https://defectdojo.infra.ottawacloudconsulting.com + https://defectdojo.home.ottawacloudconsulting.com (context admin@occ-new, namespace defectdojo, app argocd/defectdojo, sync pass second) ===
+
+--- 1. TLS on both hostnames (system trust store) ---
+==> HOMELAB-TLS-INFRA: PASS - GET https://defectdojo.infra.ottawacloudconsulting.com/login -> 200 with ssl_verify_result 0 against the system trust store; served certificate SANs include DNS:defectdojo.infra.ottawacloudconsulting.com and DNS:defectdojo.home.ottawacloudconsulting.com
+==> HOMELAB-TLS-HOME: PASS - GET https://defectdojo.home.ottawacloudconsulting.com/login -> 200 with ssl_verify_result 0 against the system trust store; served certificate SANs include DNS:defectdojo.infra.ottawacloudconsulting.com and DNS:defectdojo.home.ottawacloudconsulting.com
+
+--- 2. admin login with a browser-equivalent Origin, on both hostnames ---
+==> HOMELAB-LOGIN-ORIGIN-INFRA: PASS - admin login POST with Origin https://defectdojo.infra.ottawacloudconsulting.com (plus Referer and CSRF token) -> 302 to https://defectdojo.infra.ottawacloudconsulting.com/; /dashboard with the session -> 200
+==> HOMELAB-LOGIN-ORIGIN-HOME: PASS - admin login POST with Origin https://defectdojo.home.ottawacloudconsulting.com (plus Referer and CSRF token) -> 302 to https://defectdojo.home.ottawacloudconsulting.com/; /dashboard with the session -> 200
+
+--- 3. negative control: foreign Origin must be refused ---
+==> HOMELAB-CSRF-FOREIGN-403: PASS - POST with Origin https://evil.example and a valid token -> 403 'CSRF verification failed'; the uwsgi log names it: [29/Sep/2026 13:22:10] WARNING [django.security.csrf:253] Forbidden (Origin checking failed - https://evil.example does not match any trusted origins.): /login
+
+--- 4. Celery broker round-trip ---
+==> HOMELAB-CELERY-PING: PASS - celery -A dojo inspect ping in defectdojo-celery-worker/celery exited 0 with pong (broker round-trip)
+
+--- 5. Argo CD: initializer hook phase and Application status ---
+    INFO: ServiceAccount defectdojo recorded as hook PreSync/Succeeded (expected: helm pre-install mapped to PreSync, RESEARCH Pitfall 4; not a failure)
+==> ARGOCD-HOOK-PHASE: PASS - Application defectdojo: Job defectdojo-initializer ran as a Sync hook and its hookPhase is Succeeded; Synced, Healthy, no ComparisonError
+
+--- 6. measuring state (initializer and ServiceAccount UIDs, revision, counts) ---
+
+--- 7. second-sync idempotency ---
+    pre-state captured_at 2026-09-29T02:30:16Z
+    initializer_uid: before 'e43a2dcf-7c4c-4415-931d-f5f5952c1482' after '7b2753fd-ca89-4e1d-a4e8-576b885fadee'
+    serviceaccount_uid: before 'd163032c-3542-4d63-9538-d556fb8c5c22' after '84144fe3-224f-4fb9-8026-361c936f8be0'
+    initializer log: 'Admin user already exists; skipping first-boot setup' x1, 'No migrations to apply.' x1, applied-migration lines x0, 'Running first boot setup' x0
+    app_revision: before ["c8027e6784ec631db128f45444c9a8092db9d0a1","11e6614ac945a51abee41d64ce929b2fba1693d8"] after ["c8027e6784ec631db128f45444c9a8092db9d0a1","11e6614ac945a51abee41d64ce929b2fba1693d8"]; sync status 'Synced'
+    product_count: before 1 after 1
+    finding_count: before 155 after 155
+==> SECOND-SYNC-IDEMPOTENT: PASS - same-revision second sync: initializer UID e43a2dcf-7c4c-4415-931d-f5f5952c1482 -> 7b2753fd-ca89-4e1d-a4e8-576b885fadee, ServiceAccount UID d163032c-3542-4d63-9538-d556fb8c5c22 -> 84144fe3-224f-4fb9-8026-361c936f8be0, log shows 'Admin user already exists; skipping first-boot setup' and 'No migrations to apply.' with 0 applied migrations and no first-boot setup, Synced at ["c8027e6784ec631db128f45444c9a8092db9d0a1","11e6614ac945a51abee41d64ce929b2fba1693d8"], products 1 = 1, findings 155 = 155
+
+
+=== Summary ===
+ALL PASS - 8 live check(s) executed and passed; 0 sub-check(s) skipped (not passed).
