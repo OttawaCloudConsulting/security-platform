@@ -688,6 +688,9 @@ gh variable set DEFECTDOJO_CA_CERT -R OWNER/REPO < internal-ca.pem
 gh variable set DEFECTDOJO_INSECURE --body true -R OWNER/REPO
   ## Optional and NOT recommended: disables TLS verification (see TLS below).
   ## None of these commands was executed against any pilot repository.
+  ## Exception: the DEFECTDOJO_API_TOKEN secret and the DEFECTDOJO_RUNS_ON and DEFECTDOJO_URL
+  ## variables were set on the canonical security-platform repository in Phase 29 (ADR-027),
+  ## and on no other consumer repository. The other commands remain unexecuted.
 ```
 
 `DEFECTDOJO_URL` is the only setting that turns the import on. The token being set alone

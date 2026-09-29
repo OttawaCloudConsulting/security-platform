@@ -23,7 +23,7 @@ Architecture constraint (Key Decision, see PROJECT.md): generic Helm charts are 
 - [x] **DDOJO-02**: `security-platform` CI scan jobs automatically import SARIF/JSON findings into DefectDojo after each run
 - [x] **DDOJO-03**: Deduplication rules configured so repeated findings across scans/tools collapse rather than duplicate
 - [x] **DDOJO-04**: Triage workflow documented/configured for reviewing and dispositioning findings in DefectDojo
-- [ ] **DDOJO-05**: DefectDojo chart validated live via private ArgoCD overlay deploy to the operator's homelab cluster
+- [x] **DDOJO-05**: DefectDojo chart validated live via private ArgoCD overlay deploy to the operator's homelab cluster
 
 ## Out of Scope
 
@@ -53,7 +53,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DDOJO-02 | Phase 27 | Complete |
 | DDOJO-03 | Phase 28 | Complete |
 | DDOJO-04 | Phase 28 | Complete |
-| DDOJO-05 | Phase 29 | Pending |
+| DDOJO-05 | Phase 29 | Complete |
 
 **Coverage:**
 - v3.0 requirements: 10 total
@@ -62,4 +62,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-09-17*
-*Last updated: 2026-09-24 after Phase 26*
+*Last updated: 2026-09-29 after Phase 29*
