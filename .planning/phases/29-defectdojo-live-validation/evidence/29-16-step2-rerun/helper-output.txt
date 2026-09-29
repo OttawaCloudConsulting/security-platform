@@ -1,0 +1,8 @@
+==> D11-STEP2-ENGAGEMENT: PASS - engagement 'ci/phase29/d11-lifecycle-fixture' exists in product 1 (id 2)
+==> D11-STEP2-UNTRIAGED-EQ-FIXTURE: PASS - the Under Review set on ci/phase29/d11-lifecycle-fixture is exactly the 1 finding(s) under 'phase29-d11-fixture/': ["phase29-d11-fixture/unsafe_pickle.py"]
+==> D11-STEP2-DUPLICATES-POINT-TO-MAIN: FAIL - 59 of 155 other finding(s) are not duplicates of a --main-snapshot finding: [{"id":184,"title":"CVE-2026-53613 Bsdutils 1:2.38.1-5+deb12u3","file_path":"scan-target:17fd99dc7f62fffa66747695d539a315cd93130e (debian 12.15)","active":true,"duplicate":false,"duplicate_finding":null},{"id":185,"title":"CVE-2026-76642 Bsdutils 1:2.38.1-5+deb12u3","file_path
+    evidence: /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29-defectdojo-live-validation/evidence/29-16-step2-rerun/step2-assert.json
+
+=== Summary ===
+FAILED - one or more live checks did not produce the expected result:
+  - D11-STEP2-DUPLICATES-POINT-TO-MAIN: 59 of 155 other finding(s) are not duplicates of a --main-snapshot finding: [{"id":184,"title":"CVE-2026-53613 Bsdutils 1:2.38.1-5+deb12u3","file_path":"scan-target:17fd99dc7f62fffa66747695d539a315cd93130e (debian 12.15)","active":true,"duplicate":false,"duplicate_finding":null},{"id":185,"title":"CVE-2026-76642 Bsdutils 1:2.38.1-5+deb12u3","file_path":"scan

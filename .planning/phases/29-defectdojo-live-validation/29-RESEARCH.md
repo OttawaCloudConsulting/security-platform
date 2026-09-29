@@ -7,7 +7,7 @@
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
 
-> **Superseded in part:** D-07, D-08, D-11 step 5 and D-16 were amended in 29-CONTEXT.md on 2026-09-26/27, and D-18 to D-20 were added. CONTEXT.md is authoritative where this copy differs.
+> **Superseded in part:** D-07, D-08, D-11 step 5 and D-16 were amended in 29-CONTEXT.md on 2026-09-26/27, D-11 step 2 on 2026-09-29, and D-18 to D-20 were added. CONTEXT.md is authoritative where this copy differs.
 
 ### Locked Decisions
 

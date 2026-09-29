@@ -1,0 +1,8 @@
+==> D11-STEP2A-ENGAGEMENT: PASS - engagement 2 is 'ci/phase29/d11-lifecycle-fixture' in product 1, not the ci/main engagement
+==> D11-STEP2A-READ-GUARD: PASS - 8 tests and 156 findings all belong to engagement 2
+==> D11-STEP2A-EXCLUSION-KEY: PASS - exactly one Test matches scan_type 'Trivy Scan' + title 'trivy-image': [{"id":12,"title":"trivy-image","scan_type":"Trivy Scan"}]
+    INFO: excluded (measured, not asserted): 59 trivy-image finding(s), 0 of them duplicates; PR file_paths ["scan-target:17fd99dc7f62fffa66747695d539a315cd93130e (debian 12.15)"]; ci/main file_paths ["scan-target:2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d (debian 12.15)"]
+==> D11-STEP2-DUPLICATES-POINT-TO-MAIN (amended 2026-09-29): PASS - all 96 non-fixture, non-trivy-image finding(s) on ci/phase29/d11-lifecycle-fixture are duplicates of ci/main snapshot findings
+    INFO: every duplicate_finding target is a non-duplicate ci/main original: true
+    evidence: /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29-defectdojo-live-validation/evidence/step2-amended-assert.json
+ALL PASS
