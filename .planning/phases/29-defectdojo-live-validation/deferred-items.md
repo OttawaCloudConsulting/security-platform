@@ -40,3 +40,17 @@
 ### 29-19: ADR-027 must record the trivy-image dedup gap and the step-2 scope amendment
 
 - ADR-027 must record two things. First, the live finding that trivy-image findings do not dedupe across branches, because the `scan-target:<github.sha>` tag changes per commit. Second, the D-11 step 2 scope amendment (operator ruling 2026-09-29, 29-CONTEXT.md), which excludes the trivy-image Test from the duplicates assertion. It must list both next to the re-parenting-not-exercised-live item, and point to follow-up (b).
+
+## From phase 29 code review (29-REVIEW.md, 2026-09-29)
+
+The review was advisory, and the phase verifier (29-VERIFICATION.md, status passed) judged none of these as blocking. They are follow-up hardening. Warnings WR-02 through WR-08 are defects in the scripts themselves, so fixing them needs a security-platform change after v1.2.0 (WR-02 is in this repo's `scripts/check-adoption-guide.sh`).
+
+- **WR-01, ADR-027 check-id traceability.** ADR-027 cites `D11-STEP2A-*` ids, which come from the planning helper `29-16-step2-amended.sh`. The shipped `defectdojo-lifecycle-assert.sh` emits `D11-STEP2-*` ids and has no READ-GUARD check. The shipped exclusion (0f401f7) was replayed offline only and never run live. ADRs are append-only, so any correction must be a new record (an erratum or a later ADR), not an edit to ADR-027.
+- **WR-04, inferred and not measured: trivy-image dispositions across a new main SHA.** The scan-target tag carries github.sha, so ci/main trivy-image findings may be re-created on every new main commit. A FP or risk acceptance set on one would then be lost. Every in-phase main import ran at `2fda1ac`. Check after the first ci/main import at `fdabac9` or later, and widen the TRIAGE.md and README caveat if it is confirmed. Follow-up (b), the fixed scan-image tag, would resolve both this and the cross-branch gap.
+- **WR-02:** in `scripts/check-adoption-guide.sh` line 278, the needle `"queue"` also matches "untriaged-queue", so the queue caveat can be deleted and the gate still passes. Use `"queued for about 24 hours"`.
+- **WR-03:** in `defectdojo-homelab-validate.sh`, `openssl x509 -ext` is unsupported by macOS LibreSSL 3.3.6, and the resulting failure blames the certificate.
+- **WR-05:** paging in `defectdojo-lifecycle-assert.sh` uses offsets with no stable ordering, and nothing asserts that ids are unique. This is latent while every read fits in one page.
+- **WR-06:** `D11-STEP5-MAIN-COUNT-UNCHANGED` compares counts only, although the added and removed id lists are already computed, so a one-for-one swap would pass.
+- **WR-07:** in `defectdojo-homelab-validate.sh`, null saved counts on a second-sync run give a SKIP instead of a FAIL, so the idempotency check can pass vacuously.
+- **WR-08:** neither helper sets a `curl` `--connect-timeout`/`--max-time` or an `openssl s_client` timeout, so the gate can hang indefinitely.
+- **IN-01 to IN-03** are in 29-REVIEW.md: hardcoded release-derived names, undetected partial `base64 -d`, and the auto-mounted SA token on ARC runner pods.
