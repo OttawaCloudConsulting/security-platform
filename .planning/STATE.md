@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-14-PLAN.md; live importer armed (ci-importer id 3, URL set last); next 29-15 wave 10
-last_updated: "2026-09-29T00:16:39.941Z"
+stopped_at: Completed 29-15-PLAN.md; ci/main baseline live (product id 1, engagement id 1, 155 findings); next 29-16
+last_updated: "2026-09-29T00:32:03.999Z"
 last_activity: 2026-09-29
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 75
-  completed_plans: 70
-  percent: 93
+  completed_plans: 71
+  percent: 95
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 15 of 20 (next: wave 10 — 29-15-PLAN.md; completed: 29-01 … 29-14 incl. 29-08a = 15/20)
+Plan: 16 of 20 (next: wave 11 — 29-16-PLAN.md; completed: 29-01 … 29-15 incl. 29-08a = 16/20)
 Status: Ready to execute
 Last activity: 2026-09-29
 
@@ -315,6 +315,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-14: validate a ci-importer token with GET /api/v2/user_profile/, not /api/v2/users/ (403 for non-superuser); privilege read-back uses the admin token
 - [Phase 29]: 29-14: ci-importer is DefectDojo user id 3 (staff, non-superuser); failed-attempt user id 2 deleted
 - [Phase 29]: 29-14: security-platform live importer armed: secret DEFECTDOJO_API_TOKEN, DEFECTDOJO_RUNS_ON=occ-homelab-defectdojo, DEFECTDOJO_URL set last; no CA_CERT/INSECURE
+- [Phase 29]: 29-15: live product name OttawaCloudConsulting/security-platform (product_type CI, product id 1), read from the run log; ci/main engagement id 1 holds 155 findings in tests 1-8; 29-16 uses evidence/main-baseline-snapshot.json as --main-snapshot
+- [Phase 29]: 29-15: proof workflow D-10 side effect measured live: scans / DefectDojo Import runs on ARC, logs SKIP: DEFECTDOJO_API_TOKEN, imports nothing (count 155 before and after); prove-import was red on KIND-CELERY-PING (kind, not live), logged in deferred-items.md
+- [Phase 29]: 29-15: count_before/count_after backreference regex is not strict (155 vs 154 matches); use an anchored numeric equality check. Runner placement comes from gh api actions/runs/<id>/jobs, not gh run view
 
 ### Pending Todos
 
@@ -461,11 +464,12 @@ Carried forward from v1.1 close:
 | Phase 29 P12 | 30min | 3 tasks | 8 files |
 | Phase 29 P13 | ~9min resumed (22:10Z-22:19Z) after interruption | 3 tasks | 2 files |
 | Phase 29 P14 | ~31min incl. operator step | 3 tasks | 2 files |
+| Phase 29 P15 | 14min | 2 tasks | 6 files |
 
 ## Session Continuity
 
-Last session: 2026-09-29T00:16:10.796Z
-Stopped at: Completed 29-14-PLAN.md; live importer armed (ci-importer id 3, URL set last); next 29-15 wave 10
+Last session: 2026-09-29T00:32:03.989Z
+Stopped at: Completed 29-15-PLAN.md; ci/main baseline live (product id 1, engagement id 1, 155 findings); next 29-16
 Resume file: None
 
 ## Operator Next Steps

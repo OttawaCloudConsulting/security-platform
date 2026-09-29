@@ -267,7 +267,7 @@ Plans:
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
-- [ ] 29-15-PLAN.md — Baseline ci/main import via dispatch on ARC; proof-workflow side effect
+- [x] 29-15-PLAN.md — Baseline ci/main import via dispatch on ARC; proof-workflow side effect
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
@@ -368,7 +368,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
 | 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
-| 29. DefectDojo Live Validation | v3.0 | 15/20 | In Progress|  |
+| 29. DefectDojo Live Validation | v3.0 | 16/20 | In Progress|  |
 
 ## Next Milestone
 
