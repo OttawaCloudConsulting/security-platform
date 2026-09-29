@@ -1,0 +1,9 @@
+==> D11-STEP5-ENGAGEMENT-GONE: PASS - no engagement named exactly 'ci/phase29/d11-lifecycle-fixture' in product 1 (API count for the name filter: 0)
+==> D11-STEP5-MAIN-COUNT-UNCHANGED: PASS - ci/main (id 1) holds 155 findings, as in the snapshot
+==> D11-STEP5-DISPOSITIONS-UNCHANGED: PASS - fp, oos and ra tuples and the risk acceptance match the step-4 expectations
+==> D11-STEP5-NO-DANGLING-DUPLICATE: PASS - all 23 duplicate(s) among 155 product findings reference a finding that exists in the product
+INFO: re-parenting NOT asserted (D-11 amended 2026-09-26): no ci/main finding is a duplicate of a PR finding in this sequence; re-parenting was proven on kind in Phase 28
+    evidence: /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29-defectdojo-live-validation/evidence/step5-assert.json
+
+=== Summary ===
+ALL PASS - 4 live check(s) executed and passed; 0 sub-check(s) skipped (not passed).
