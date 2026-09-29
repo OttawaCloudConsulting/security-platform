@@ -35,6 +35,7 @@ Every code change is automatically scanned for security issues, secrets, and sup
 - [x] DDOJO-02: `security-platform` scan jobs import their SARIF/JSON findings into a consumer's DefectDojo after each run (opt-in via `DEFECTDOJO_URL`/`DEFECTDOJO_API_TOKEN`, reimport per branch, ADR-024); `DEFECTDOJO_URL` must be https:// and curl is pinned to https (CR-01 fix, ADR-025, released as `v1.1.1`, `v1` moved). Live proof 88 assertions on kind. Validated in Phase 27: DefectDojo CI Auto-Import
 - [x] DDOJO-03: Deduplication collapses repeated findings within each scanner and across branch engagements, product-wide (chart guards `DD_DUPLICATE_CLUSTER_CASCADE_DELETE=False` and a per-parser algorithm map, gate 22/22; one-time superuser bootstrap `scripts/defectdojo-configure.sh`). Cross-tool SCA collapse (Trivy vs npm audit vs pip-audit) is not achievable in DefectDojo 3.3.200 (measured) and was descoped with operator approval (ADR-026). Validated in Phase 28: DefectDojo Dedup and Triage
 - [x] DDOJO-04: Triage runbook `kubernetes/defectdojo/TRIAGE.md`: dispositions (False Positive, Out of Scope, Risk Accepted) set on the default-branch engagement survive reimport and suppress PR duplicates; PR-engagement delete re-parents rather than deletes (proof 127 assertions, GitHub run 36261602015, PR #23 merged c8027e6, ADR-026). Validated in Phase 28: DefectDojo Dedup and Triage
+- [x] DDOJO-05: DefectDojo chart validated live via a private ArgoCD overlay on the homelab cluster (ghostunnel native sidecar, verified-system TLS). security-platform CI imports into it through a repo-scoped ARC runner (`DEFECTDOJO_RUNS_ON`), and the D-11 PR lifecycle (dedup, dispositions surviving reimport, cleanup) and second-sync idempotency are proven live. One measured limit: trivy-image findings do not dedupe across branches, because the scan-target tag carries `github.sha`. This narrows DDOJO-03's cross-branch claim for that scanner, and the step-2 scope was amended with operator approval. Shipped in security-platform PR #26 / `v1.2.0` (fdabac9), recorded in ADR-027 and ADR-028. Validated in Phase 29: DefectDojo Live Validation
 
 ## Current Milestone: v3.0 K8s Infra & Dashboards
 
@@ -90,7 +91,7 @@ Every code change is automatically scanned for security issues, secrets, and sup
 
 ## Current State
 
-**In progress: v3.0 K8s Infra & Dashboards** — Phase 28 complete (2026-09-26): DefectDojo dedup guards ship as chart defaults (chart 0.2.0), an idempotent superuser bootstrap enables dedup, and a triage runbook documents dispositions on the default-branch engagement (DDOJO-03/04, ADR-026, PR #23 merged c8027e6; no workflow change, `v1` unchanged). Dedup stays off on any install until an operator runs `scripts/defectdojo-configure.sh` once; Phase 29 must include that step. Cross-tool SCA collapse descoped (not possible in 3.3.200). Open follow-ups in `28-REVIEW.md`: CR-01 (configure script reads the operator's curlrc, so `insecure` there disables TLS verification; fix before Phase 29's live bootstrap) and 4 warnings. Phase 27 items in `27-HUMAN-UAT.md` and `27-REVIEW.md` remain open. Next: Phase 29 (DefectDojo Live Validation).
+**v3.0 K8s Infra & Dashboards: all phases complete, milestone ready for audit.** Phase 29 completed on 2026-09-29, with 20 plans and verification passed. The DefectDojo chart runs live on the homelab cluster through the private ArgoCD overlay, and security-platform CI imports into it on a repo-scoped ARC runner. Dedup, triage dispositions, PR cleanup and second-sync idempotency are proven live (DDOJO-05, ADR-027, ADR-028). security-platform `v1.2.0` was cut, and `v1` moved to fdabac9. Open follow-ups are in `29-deferred-items` (`.planning/phases/29-defectdojo-live-validation/deferred-items.md`): a fixed scan-image tag so trivy-image dedupes across branches, the unmeasured risk that trivy-image dispositions on ci/main are lost when main's commit changes (WR-04), and the helper-script hardening warnings WR-01 to WR-08 from `29-REVIEW.md`. Next: `/gsd:audit-milestone` for v3.0.
 
 **Shipped: v2.0 CI/CD Security Pipeline** (2026-09-17) — Phases 14-22 (10 phases incl. inserted 20.1), 63 plans, 15/15 requirements.
 
@@ -174,4 +175,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-26 after Phase 28 (DefectDojo Dedup and Triage)*
+*Last updated: 2026-09-29 after Phase 29 (DefectDojo Live Validation)*
