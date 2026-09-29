@@ -279,7 +279,7 @@ Plans:
 
 **Wave 13** *(blocked on Wave 12 completion)*
 
-- [ ] 29-18-PLAN.md — Chart README DDOJO-05 row and measured notes; PR B; v1.2.0 tag and v1 move
+- [x] 29-18-PLAN.md — Chart README DDOJO-05 row and measured notes; PR B; v1.2.0 tag and v1 move
 
 **Wave 14** *(blocked on Wave 13 completion)*
 
@@ -368,7 +368,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
 | 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
-| 29. DefectDojo Live Validation | v3.0 | 18/20 | In Progress|  |
+| 29. DefectDojo Live Validation | v3.0 | 19/20 | In Progress|  |
 
 ## Next Milestone
 

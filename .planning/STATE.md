@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-17-PLAN.md; second-sync idempotency proven live over real data (SECOND-SYNC-IDEMPOTENT PASS, ALL PASS 0 skipped); next 29-18
-last_updated: "2026-09-29T15:42:24.796Z"
+stopped_at: "Completed 29-18-PLAN.md; PR #26 merged as fdabac9, v1.2.0 cut, v1 moved (API-verified); next 29-19"
+last_updated: "2026-09-29T22:12:01.873Z"
 last_activity: 2026-09-29
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 75
-  completed_plans: 73
-  percent: 97
+  completed_plans: 74
+  percent: 99
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 18 of 20 (next: wave 13 — 29-18-PLAN.md; completed: 29-01 … 29-17 incl. 29-08a = 18/20)
+Plan: 19 of 20 (next: wave 14 — 29-19-PLAN.md; completed: 29-01 … 29-18 incl. 29-08a = 19/20)
 Status: Ready to execute
 Last activity: 2026-09-29
 
@@ -323,6 +323,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-16: D-11 lifecycle proven live via PR #25: dispositions FP 3 / OOS 10 / RA 22 (risk acceptance 1, expiry 2026-12-28) survived reimport run 36510481745 and close; cleanup run 36510679451 on ARC deleted engagement 2; ci/main stayed 155
 - [Phase 29]: 29-17: initializer.staticName + Sync-hook (BeforeHookCreation) kept — same-revision second sync over 155 findings re-created Job and PreSync SA with new UIDs, idempotent log path, identical finding ids and dispositions; no drift over 10 min at a fixed revision
 - [Phase 29]: 29-17: scheduled reimport run 36553070357 (~10:03Z) fell inside the 02:41Z-13:22Z sync-to-gate gap; accepted as non-confounding via id-identity readback (same 155 ids, max id 155, flags identical); clean-window rerun left to operator
+- [Phase 29]: 29-18: operator 'approve'; security-platform PR #26 merged (--merge) as fdabac9; v1.2.0 annotated tag b8ae59d -> fdabac9; v1 moved 917352c -> fdabac9 (API-verified, ADR-018); v1.1.1 unchanged
+- [Phase 29]: 29-18: PR #26 trivy-image red check (run 36600468855 job 109516223383, public.ecr.aws 429 Data limit exceeded) accepted by operator without rerun; same job passed at same SHA in run 36600468850
 
 ### Pending Todos
 
@@ -472,11 +474,12 @@ Carried forward from v1.1 close:
 | Phase 29 P15 | 14min | 2 tasks | 6 files |
 | Phase 29 P16 | 35min | 3 tasks | 19 files |
 | Phase 29 P17 | ~11h wall (~20 min active) | 2 tasks | 6 files |
+| Phase 29 P18 | ~15min (continuation) | 3 tasks | 7 files |
 
 ## Session Continuity
 
-Last session: 2026-09-29T15:45:00Z
-Stopped at: Completed 29-17-PLAN.md; second-sync idempotency proven live over real data (SECOND-SYNC-IDEMPOTENT PASS, ALL PASS 0 skipped); next 29-18
+Last session: 2026-09-29T22:12:01.863Z
+Stopped at: Completed 29-18-PLAN.md; PR #26 merged as fdabac9, v1.2.0 cut, v1 moved (API-verified); next 29-19
 Resume file: None
 
 ## Operator Next Steps
