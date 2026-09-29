@@ -1,0 +1,11 @@
+{
+  "initializer_uid": "e43a2dcf-7c4c-4415-931d-f5f5952c1482",
+  "serviceaccount_uid": "d163032c-3542-4d63-9538-d556fb8c5c22",
+  "product_count": 1,
+  "finding_count": 155,
+  "captured_at": "2026-09-29T02:30:16Z",
+  "app_revision": [
+    "c8027e6784ec631db128f45444c9a8092db9d0a1",
+    "11e6614ac945a51abee41d64ce929b2fba1693d8"
+  ]
+}
