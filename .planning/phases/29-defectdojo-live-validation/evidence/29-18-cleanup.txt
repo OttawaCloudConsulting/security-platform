@@ -1,0 +1,20 @@
+# 29-18 PR B (#26) merge: DefectDojo Cleanup of the PR engagement
+
+PR #26 merged 2026-09-29T22:03:51Z, merge commit fdabac9464f2baaeaa276f8934dc8d353295b355 (gh pr merge --merge).
+The pull_request `closed` event started PR Security run 36637286444 (head 0f401f7), conclusion success.
+
+Job:      109640922581  security / DefectDojo Cleanup
+Labels:   occ-homelab-defectdojo (ARC, via DEFECTDOJO_RUNS_ON)
+Runner:   occ-homelab-defectdojo-qqrsp-runner-cs6wv (runner group Default)
+Timing:   started 22:04:00Z, completed 22:04:07Z, conclusion success
+All other jobs in the run were skipped, as expected on a closed PR.
+
+Log lines (gh run view 36637286444 --log; URLs redacted, no secret printed):
+  TLS mode: verified-system
+  product='OttawaCloudConsulting/security-platform' target='ci/feature/phase-29-defectdojo-closeout' default_branch='main'
+  DELETED: engagement id=3 name='ci/feature/phase-29-defectdojo-closeout' product=1
+  DefectDojo cleanup verified: outcome=deleted target=ci/feature/phase-29-defectdojo-closeout product=OttawaCloudConsulting/security-platform product_id=1 deleted_ids=[3]
+
+Result: the PR engagement, which held 7 of 8 reports because the trivy-image upload was lost to the accepted 429
+(29-18-red-check-429.txt), was deleted automatically on ARC. No manual cleanup was done.
+The DefectDojo Import Proof workflow (kind, ephemeral) has no cleanup job on close, so it has nothing to report.

@@ -1,0 +1,36 @@
+# 29-18 PR B (#26) red check: accepted as a known external registry 429 (operator decision, 2026-09-29)
+
+PR:        https://github.com/OttawaCloudConsulting/security-platform/pull/26
+Head SHA:  0f401f75f33c7d9c73d3feae88933ade35b0871d
+Captured:  2026-09-29, before the merge (gh pr checks 26; gh api actions/jobs)
+
+## Failing check
+
+Check:     security / Container — Trivy Image
+Workflow:  PR Security (security.yml, pull_request caller)
+Run:       36600468855
+Job:       109516223383  (started 2026-09-29T16:49:04Z, completed 16:49:13Z, conclusion failure)
+URL:       https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36600468855/job/109516223383
+
+Error lines (gh run view --job 109516223383 --log-failed):
+  2026-09-29T16:49:08.8675984Z #2 ERROR: failed to copy: httpReadSeeker: failed open: unexpected status code https://public.ecr.aws/v2/docker/library/debian/manifests/sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171: 429 Too Many Requests - Server message: toomanyrequests: Data limit exceeded
+  2026-09-29T16:49:08.8898542Z ERROR: failed to build: failed to solve: public.ecr.aws/docker/library/debian:12-slim@sha256:88200866... : failed to resolve source metadata ... 429 Too Many Requests - Server message: toomanyrequests: Data limit exceeded
+
+The failure happened in the docker build base-image pull (fixtures/Dockerfile, FROM public.ecr.aws/docker/library/debian:12-slim@sha256:8820...),
+before any Trivy scan ran. The code under test was not evaluated.
+
+## Counter-evidence: same job, same head SHA, passed
+
+Run:       36600468850 (DefectDojo Import Proof, pull_request)
+Job:       109516224085  scans / Container — Trivy Image  started 16:49:05Z, completed 16:49:32Z, conclusion success
+           (the same reusable container job and the same Dockerfile and digest; it completed 19s after the failing job ended)
+Job:       109516595106  prove-import  completed 16:55:43Z, conclusion success (includes KIND-CELERY-PING: PASS)
+
+All other PR #26 checks passed: Checkov, GitGuardian, Semgrep OSS, Trivy, gitleaks, tflint, tflint-errors,
+security/* and scans/* (Gitleaks, Semgrep, Trivy FS, Checkov, DefectDojo Import). DefectDojo Cleanup was skipped (expected on an open PR).
+
+## Disposition
+
+Operator decision 1: ACCEPT as a known external registry 429 (public.ecr.aws data limit). NOT rerun.
+Side effect: the PR engagement ci/feature/phase-29-defectdojo-closeout received 7 of 8 reports (no trivy-image from the
+PR Security run). DefectDojo Cleanup deletes the engagement when the PR merges (see 29-18-cleanup.txt).

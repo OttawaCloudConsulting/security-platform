@@ -1,0 +1,39 @@
+{
+  "captured_at": "2026-09-29T22:09:31Z",
+  "method": "ADR-018 API verification (gh api git/ref/tags/*, git/tags/*)",
+  "pr": {
+    "number": 26,
+    "state": "MERGED",
+    "merge_commit": "fdabac9464f2baaeaa276f8934dc8d353295b355"
+  },
+  "origin_main": "fdabac9464f2baaeaa276f8934dc8d353295b355",
+  "v1": {
+    "sha": "fdabac9464f2baaeaa276f8934dc8d353295b355",
+    "type": "commit"
+  },
+  "v1_2_0": {
+    "sha": "b8ae59df7dcf6aec798dac699ca334d68812939d",
+    "type": "tag",
+    "url": "https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/tags/b8ae59df7dcf6aec798dac699ca334d68812939d"
+  },
+  "v1_2_0_tag_object": {
+    "object": {
+      "sha": "fdabac9464f2baaeaa276f8934dc8d353295b355",
+      "type": "commit",
+      "url": "https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/commits/fdabac9464f2baaeaa276f8934dc8d353295b355"
+    },
+    "tag": "v1.2.0"
+  },
+  "v1_2_0_commit": "fdabac9464f2baaeaa276f8934dc8d353295b355",
+  "v1_1_1": {
+    "sha": "c1565b35e88de4e70e61d79292943c15b3fe67f6",
+    "type": "tag",
+    "url": "https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/tags/c1565b35e88de4e70e61d79292943c15b3fe67f6",
+    "commit": "917352c00987023fa5ff1e6cdabc16987eb114dd"
+  },
+  "v1_previous": {
+    "type": "commit",
+    "sha": "917352c00987023fa5ff1e6cdabc16987eb114dd"
+  },
+  "rollback": "git tag -f v1 917352c00987023fa5ff1e6cdabc16987eb114dd && git push -f origin refs/tags/v1"
+}
