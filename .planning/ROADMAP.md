@@ -283,7 +283,7 @@ Plans:
 
 **Wave 14** *(blocked on Wave 13 completion)*
 
-- [ ] 29-19-PLAN.md — ADR-027, ADR-028, ADR index rows, DDOJO-05 Complete
+- [x] 29-19-PLAN.md — ADR-027, ADR-028, ADR index rows, DDOJO-05 Complete
 
 </details>
 
@@ -368,7 +368,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
 | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
 | 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
-| 29. DefectDojo Live Validation | v3.0 | 19/20 | In Progress|  |
+| 29. DefectDojo Live Validation | v3.0 | 20/20 | Complete   | 2026-09-29 |
 
 ## Next Milestone
 

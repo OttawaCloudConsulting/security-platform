@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: executing
-stopped_at: "Completed 29-18-PLAN.md; PR #26 merged as fdabac9, v1.2.0 cut, v1 moved (API-verified); next 29-19"
-last_updated: "2026-09-29T22:12:01.873Z"
+status: verifying
+stopped_at: Completed 29-19-PLAN.md; ADR-027/ADR-028 written, DDOJO-05 Complete; all 20/20 phase-29 plans done, awaiting phase verification
+last_updated: "2026-09-29T22:36:12.864Z"
 last_activity: 2026-09-29
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 75
-  completed_plans: 74
-  percent: 99
+  completed_plans: 75
+  percent: 100
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 19 of 20 (next: wave 14 — 29-19-PLAN.md; completed: 29-01 … 29-18 incl. 29-08a = 19/20)
-Status: Ready to execute
+Plan: 20 of 20 (all plans complete: 29-01 … 29-19 incl. 29-08a = 20/20; awaiting phase verification)
+Status: All plans complete; awaiting phase verification
 Last activity: 2026-09-29
 
 ## Performance Metrics
@@ -325,6 +325,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-17: scheduled reimport run 36553070357 (~10:03Z) fell inside the 02:41Z-13:22Z sync-to-gate gap; accepted as non-confounding via id-identity readback (same 155 ids, max id 155, flags identical); clean-window rerun left to operator
 - [Phase 29]: 29-18: operator 'approve'; security-platform PR #26 merged (--merge) as fdabac9; v1.2.0 annotated tag b8ae59d -> fdabac9; v1 moved 917352c -> fdabac9 (API-verified, ADR-018); v1.1.1 unchanged
 - [Phase 29]: 29-18: PR #26 trivy-image red check (run 36600468855 job 109516223383, public.ecr.aws 429 Data limit exceeded) accepted by operator without rerun; same job passed at same SHA in run 36600468850
+- [Phase 29]: 29-19: ADR-027 records DefectDojo exposure as deployed (ghostunnel native sidecar via overlay values, B1), the CSRF Origin mechanism, D-11/second-sync/netpol results, the trivy-image cross-branch dedup gap and the 2026-09-29 step-2 amendment — Plan 29-08a context note superseded the plan's standalone-Deployment wording; the trivy-image gap was measured live in 29-16
+- [Phase 29]: 29-19: ADR-028 records repository-scoped ARC registration (personal User account, no runner groups), the Administration RW fine-grained PAT as an accepted risk, and per-repo scale sets — D-07/D-08 amended 2026-09-26 by operator ruling; RESEARCH A6 verified by the 29-13 listener session
+- [Phase 29]: 29-19: D-12 cron-fired scheduled run observed (36553070357, success, import on ARC); DDOJO-05 marked Complete — Evidence 29-19-scheduled-runs.json and 29-19-cron-run-jobs.json
 
 ### Pending Todos
 
@@ -475,11 +478,12 @@ Carried forward from v1.1 close:
 | Phase 29 P16 | 35min | 3 tasks | 19 files |
 | Phase 29 P17 | ~11h wall (~20 min active) | 2 tasks | 6 files |
 | Phase 29 P18 | ~15min (continuation) | 3 tasks | 7 files |
+| Phase 29 P19 | ~15min | 3 tasks | 7 files |
 
 ## Session Continuity
 
-Last session: 2026-09-29T22:12:01.863Z
-Stopped at: Completed 29-18-PLAN.md; PR #26 merged as fdabac9, v1.2.0 cut, v1 moved (API-verified); next 29-19
+Last session: 2026-09-29T22:29:30.209Z
+Stopped at: Completed 29-19-PLAN.md; ADR-027/ADR-028 written, DDOJO-05 Complete; all 20/20 phase-29 plans done, awaiting phase verification
 Resume file: None
 
 ## Operator Next Steps
