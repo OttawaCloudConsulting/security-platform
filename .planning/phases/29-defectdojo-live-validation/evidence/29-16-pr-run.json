@@ -1,0 +1,98 @@
+{
+  "id": 36506042988,
+  "workflow": "PR Security",
+  "event": "pull_request",
+  "headBranch": "phase29/d11-lifecycle-fixture",
+  "headSha": "36ef1ba39c7efd5c1ba808f53f484905191087c1",
+  "createdAt": "2026-09-29T01:03:15Z",
+  "conclusion": "success",
+  "pr": 25,
+  "pr_url": "https://github.com/OttawaCloudConsulting/security-platform/pull/25",
+  "jobs_source": "gh api repos/OttawaCloudConsulting/security-platform/actions/runs/36506042988/jobs (gh run view --json jobs returns null runnerName/labels)",
+  "jobs": [
+    {
+      "id": 109207611477,
+      "name": "security / Secrets — Gitleaks",
+      "runnerName": "GitHub Actions 1000001224",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T01:03:18Z",
+      "completed_at": "2026-09-29T01:03:33Z"
+    },
+    {
+      "id": 109207611593,
+      "name": "security / SCA — Trivy Filesystem",
+      "runnerName": "GitHub Actions 1000001223",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T01:03:18Z",
+      "completed_at": "2026-09-29T01:04:04Z"
+    },
+    {
+      "id": 109207611761,
+      "name": "security / SAST — Semgrep CE",
+      "runnerName": "GitHub Actions 1000001226",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T01:03:19Z",
+      "completed_at": "2026-09-29T01:03:52Z"
+    },
+    {
+      "id": 109207611767,
+      "name": "security / Container — Trivy Image",
+      "runnerName": "GitHub Actions 1000001225",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T01:03:18Z",
+      "completed_at": "2026-09-29T01:03:43Z"
+    },
+    {
+      "id": 109207611826,
+      "name": "security / IaC — Checkov",
+      "runnerName": "GitHub Actions 1000001227",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T01:03:18Z",
+      "completed_at": "2026-09-29T01:03:47Z"
+    },
+    {
+      "id": 109207612704,
+      "name": "security / DefectDojo Cleanup",
+      "runnerName": null,
+      "runnerGroup": null,
+      "labels": [
+        "occ-homelab-defectdojo"
+      ],
+      "conclusion": "skipped",
+      "started_at": "2026-09-29T01:03:16Z",
+      "completed_at": "2026-09-29T01:03:16Z"
+    },
+    {
+      "id": 109207810773,
+      "name": "security / DefectDojo Import",
+      "runnerName": "occ-homelab-defectdojo-qqrsp-runner-hwk9w",
+      "runnerGroup": "Default",
+      "labels": [
+        "occ-homelab-defectdojo"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T01:04:10Z",
+      "completed_at": "2026-09-29T01:04:22Z"
+    }
+  ]
+}

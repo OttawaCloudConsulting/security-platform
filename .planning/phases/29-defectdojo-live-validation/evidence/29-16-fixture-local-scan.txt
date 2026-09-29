@@ -1,0 +1,38 @@
+# 29-16 Task 1: local proof of the D-11 fixture (captured 2026-09-29T00:52:36Z)
+# Branch phase29/d11-lifecycle-fixture cut from security-platform origin/main 2fda1ac; fixture staged, not yet pushed.
+# Fixture files: phase29-d11-fixture/README.md phase29-d11-fixture/unsafe_pickle.py
+# Local semgrep 1.155.0 (CI pins semgrep==1.177.0; p/default is fetched from the registry by both).
+
+## 1. Semgrep, the CI sast invocation (security.yml sast job) from the repo root
+$ semgrep scan --config p/default --metrics=off --json-output=sg-full.json .
+exit 0 (run without --error so the evidence records the full result set)
+findings by path and rule:
+  .github/dependabot.yml package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown MEDIUM line=16
+  fixtures/Dockerfile dockerfile.security.missing-user.missing-user ERROR line=6
+  fixtures/secret.env generic.secrets.security.detected-aws-access-key-id-value.detected-aws-access-key-id-value ERROR line=21
+  fixtures/secret.env generic.secrets.security.detected-aws-secret-access-key.detected-aws-secret-access-key ERROR line=22
+  fixtures/vulnerable.py python.lang.security.audit.eval-detected.eval-detected WARNING line=20
+  fixtures/vulnerable.py python.lang.security.audit.exec-detected.exec-detected WARNING line=24
+  fixtures/vulnerable.py python.lang.security.audit.subprocess-shell-true.subprocess-shell-true ERROR line=32
+  phase29-d11-fixture/unsafe_pickle.py python.lang.security.deserialization.pickle.avoid-pickle WARNING line=8
+fixture findings (path contains phase29-d11-fixture/): 1
+non-fixture findings: 7 (baseline ci/main Semgrep test 1 holds 7)
+
+## 2. Novelty against evidence/main-baseline-snapshot.json (155 findings)
+$ jq -r '.findings[].title' main-baseline-snapshot.json | grep -c -F avoid-pickle
+0
+$ jq '[.findings[] | select((.file_path//"")|contains("phase29-d11-fixture"))]|length' main-baseline-snapshot.json
+0
+
+## 3. Other scanners on the fixture directory (the fixture must add nothing else)
+$ checkov -d phase29-d11-fixture --quiet --compact -o json   (checkov 3.2.396)
+{"passed":0,"failed":0,"skipped":0,"resource_count":0}
+$ gitleaks dir phase29-d11-fixture --no-banner
+8:52PM INF no leaks found
+Trivy fs runs --scanners vuln only and the fixture adds no package manifest; no Dockerfile is added (trivy-image unaffected); npm/pip-audit see no new manifest.
+
+## 4. Proof-workflow paths filter (defectdojo-import-proof.yml pull_request.paths)
+fixture paths: phase29-d11-fixture/README.md phase29-d11-fixture/unsafe_pickle.py
+filter: .github/workflows/{security,pr-security,scheduled-security,defectdojo-import-proof}.yml, scripts/defectdojo-{import-proof,live-smoke,configure}.sh, kubernetes/defectdojo/** -> no match
+
+VERDICT: 1 new Semgrep finding (python.lang.security.deserialization.pickle.avoid-pickle, phase29-d11-fixture/unsafe_pickle.py), rule absent from the baseline; not a secret; outside the proof paths filter.
