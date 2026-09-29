@@ -34,3 +34,5 @@ For the full findings that prompted ADR-001 through ADR-012, see [`red-team/00-c
 | [ADR-024](adr024-defectdojo-ci-import-reimport-per-branch-and-opt-in.md) | DefectDojo CI Import — Reimport per Branch, Delete on Close, Opt-In | 2026-09-25 | Accepted |
 | [ADR-025](adr025-defectdojo-import-https-only.md) | DefectDojo CI Import Refuses Non-HTTPS URLs | 2026-09-25 | Accepted |
 | [ADR-026](adr026-defectdojo-dedup-product-wide-and-triage-on-default-branch.md) | DefectDojo Dedup Is Product-Wide and Triage Happens on the Default Branch | 2026-09-26 | Accepted |
+| [ADR-027](adr027-defectdojo-homelab-live-validation.md) | DefectDojo Validated Live on the Homelab via an ArgoCD Overlay, an L4 TLS Proxy and a Self-Hosted Import Runner | 2026-09-29 | Accepted |
+| [ADR-028](adr028-repo-scoped-arc-runner-for-private-defectdojo-import.md) | A Repository-Scoped actions-runner-controller Scale Set Carries DefectDojo Import to a Private Instance | 2026-09-29 | Accepted |
