@@ -1,0 +1,16 @@
+# 29-15 Task 2: D-10 side effect of defectdojo-import-proof.yml (RESEARCH Pattern 5)
+run_id=36502717161 event=workflow_dispatch ref=main head_sha=2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d dispatched_at=2026-09-29T00:21:47Z
+import_job='scans / DefectDojo Import' job_id=109197273118 conclusion=success (ran, not skipped)
+2026-09-29T00:22:43.0425032Z Runner name: 'occ-homelab-defectdojo-qqrsp-runner-ntr9z'
+2026-09-29T00:22:44.4510403Z SKIP: DEFECTDOJO_API_TOKEN is not available to this run (fork or Dependabot pull request, or the secret is unset) — nothing sent to DefectDojo
+imported_lines_in_import_job=0
+# Product finding count, admin token via 0600 header file, GET /api/v2/findings/?test__engagement__product=1&limit=1 field count
+# product=OttawaCloudConsulting/security-platform product_id=1 (only engagement: id 1 ci/main)
+# before read at 2026-09-29T00:21:42Z (before dispatch); after read at 2026-09-29T00:28:40Z (after the whole run completed)
+# cross-check: unfiltered GET /api/v2/findings/?limit=1 count was 155 before and 155 after; test ids 1-8 in the 00:20:46Z main-baseline snapshot and the same eight ids in the after read
+count_before=155 count_after=155
+verdict=PASS routed to occ-homelab-defectdojo, SKIP logged, nothing imported, product count unchanged
+# prove-import (kind proof on ubuntu-latest) conclusion as observed: failure, job_id=109197316267
+# cause (ephemeral kind DefectDojo on the hosted runner, not the live instance):
+2026-09-29T00:27:32.2532231Z ==> KIND-CELERY-PING: FAIL - celery -A dojo inspect ping exited 69 without pong (broker unreachable or worker not replying): Error: No nodes replied within time constraint command terminated with exit code 69
+# workflow run conclusion: failure (from prove-import only; all five scans and scans / DefectDojo Import succeeded)

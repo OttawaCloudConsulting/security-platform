@@ -1,0 +1,107 @@
+{
+  "id": 36502717161,
+  "event": "workflow_dispatch",
+  "headBranch": "main",
+  "headSha": "2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d",
+  "createdAt": "2026-09-29T00:21:49Z",
+  "conclusion": "failure",
+  "jobs_source": "gh api repos/OttawaCloudConsulting/security-platform/actions/runs/36502717161/jobs (gh run view --json jobs returns null runnerName/labels)",
+  "jobs": [
+    {
+      "id": 109197064592,
+      "name": "scans / SAST — Semgrep CE",
+      "runnerName": "GitHub Actions 1000001213",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T00:21:54Z",
+      "completed_at": "2026-09-29T00:22:27Z"
+    },
+    {
+      "id": 109197064747,
+      "name": "scans / Secrets — Gitleaks",
+      "runnerName": "GitHub Actions 1000001214",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T00:21:53Z",
+      "completed_at": "2026-09-29T00:22:10Z"
+    },
+    {
+      "id": 109197064843,
+      "name": "scans / SCA — Trivy Filesystem",
+      "runnerName": "GitHub Actions 1000001215",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T00:21:53Z",
+      "completed_at": "2026-09-29T00:22:35Z"
+    },
+    {
+      "id": 109197064872,
+      "name": "scans / IaC — Checkov",
+      "runnerName": "GitHub Actions 1000001216",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T00:21:54Z",
+      "completed_at": "2026-09-29T00:22:36Z"
+    },
+    {
+      "id": 109197064933,
+      "name": "scans / Container — Trivy Image",
+      "runnerName": "GitHub Actions 1000001217",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T00:21:53Z",
+      "completed_at": "2026-09-29T00:22:16Z"
+    },
+    {
+      "id": 109197065866,
+      "name": "scans / DefectDojo Cleanup",
+      "runnerName": null,
+      "runnerGroup": null,
+      "labels": [
+        "occ-homelab-defectdojo"
+      ],
+      "conclusion": "skipped",
+      "started_at": "2026-09-29T00:21:51Z",
+      "completed_at": "2026-09-29T00:21:51Z"
+    },
+    {
+      "id": 109197273118,
+      "name": "scans / DefectDojo Import",
+      "runnerName": "occ-homelab-defectdojo-qqrsp-runner-ntr9z",
+      "runnerGroup": "Default",
+      "labels": [
+        "occ-homelab-defectdojo"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T00:22:42Z",
+      "completed_at": "2026-09-29T00:22:46Z"
+    },
+    {
+      "id": 109197316267,
+      "name": "prove-import",
+      "runnerName": "GitHub Actions 1000001218",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "failure",
+      "started_at": "2026-09-29T00:22:48Z",
+      "completed_at": "2026-09-29T00:27:49Z"
+    }
+  ]
+}
