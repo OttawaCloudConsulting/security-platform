@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-16-PLAN.md; D-11 lifecycle proven live (step 2 under the 2026-09-29 trivy-image scope amendment); next 29-17
-last_updated: "2026-09-29T02:25:36.119Z"
+stopped_at: Completed 29-17-PLAN.md; second-sync idempotency proven live over real data (SECOND-SYNC-IDEMPOTENT PASS, ALL PASS 0 skipped); next 29-18
+last_updated: "2026-09-29T15:42:24.796Z"
 last_activity: 2026-09-29
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 75
-  completed_plans: 72
-  percent: 96
+  completed_plans: 73
+  percent: 97
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 17 of 20 (next: wave 12 — 29-17-PLAN.md; completed: 29-01 … 29-16 incl. 29-08a = 17/20)
+Plan: 18 of 20 (next: wave 13 — 29-18-PLAN.md; completed: 29-01 … 29-17 incl. 29-08a = 18/20)
 Status: Ready to execute
 Last activity: 2026-09-29
 
@@ -321,6 +321,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-16: D-11 step 2 amended 2026-09-29 by operator ruling (a+d): the duplicates assertion excludes the trivy-image Test (scan_type Trivy Scan, title trivy-image); the other 96 PR findings all duplicate ci/main originals (PASS); original FAIL evidence kept
 - [Phase 29]: 29-16: trivy-image findings never dedupe across branches (file_path scan-target:<github.sha>); TRIAGE.md correction deferred to 29-18 PR B, fixed-tag follow-up (b) deferred, ADR-027 (29-19) must record the gap and the amendment
 - [Phase 29]: 29-16: D-11 lifecycle proven live via PR #25: dispositions FP 3 / OOS 10 / RA 22 (risk acceptance 1, expiry 2026-12-28) survived reimport run 36510481745 and close; cleanup run 36510679451 on ARC deleted engagement 2; ci/main stayed 155
+- [Phase 29]: 29-17: initializer.staticName + Sync-hook (BeforeHookCreation) kept — same-revision second sync over 155 findings re-created Job and PreSync SA with new UIDs, idempotent log path, identical finding ids and dispositions; no drift over 10 min at a fixed revision
+- [Phase 29]: 29-17: scheduled reimport run 36553070357 (~10:03Z) fell inside the 02:41Z-13:22Z sync-to-gate gap; accepted as non-confounding via id-identity readback (same 155 ids, max id 155, flags identical); clean-window rerun left to operator
 
 ### Pending Todos
 
@@ -469,11 +471,12 @@ Carried forward from v1.1 close:
 | Phase 29 P14 | ~31min incl. operator step | 3 tasks | 2 files |
 | Phase 29 P15 | 14min | 2 tasks | 6 files |
 | Phase 29 P16 | 35min | 3 tasks | 19 files |
+| Phase 29 P17 | ~11h wall (~20 min active) | 2 tasks | 6 files |
 
 ## Session Continuity
 
-Last session: 2026-09-29T02:25:36.106Z
-Stopped at: Completed 29-16-PLAN.md; D-11 lifecycle proven live (step 2 under the 2026-09-29 trivy-image scope amendment); next 29-17
+Last session: 2026-09-29T15:45:00Z
+Stopped at: Completed 29-17-PLAN.md; second-sync idempotency proven live over real data (SECOND-SYNC-IDEMPOTENT PASS, ALL PASS 0 skipped); next 29-18
 Resume file: None
 
 ## Operator Next Steps
