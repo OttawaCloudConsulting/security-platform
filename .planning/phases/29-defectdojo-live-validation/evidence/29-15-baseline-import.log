@@ -1,0 +1,25 @@
+# 29-15 baseline import log extract (filtered; only runtime output lines, no script source lines)
+# run_id=36502430372 job_id=109196329353 job='security / DefectDojo Import' event=workflow_dispatch ref=main
+# source: gh run view 36502430372 -R OttawaCloudConsulting/security-platform --log --job 109196329353
+# filter: drop lines containing the step-script echo marker '[36;1m', keep Runner name, TLS mode:, product=, IMPORTED:, attempted=, OK , failure-verdict lines, and the verify summary
+2026-09-29T00:19:14.7487825Z Runner name: 'occ-homelab-defectdojo-qqrsp-runner-tbt47'
+2026-09-29T00:19:25.4037688Z TLS mode: verified-system
+2026-09-29T00:19:25.4038496Z product=OttawaCloudConsulting/security-platform product_type=CI engagement=ci/main
+2026-09-29T00:19:25.4039329Z IMPORTED: semgrep-results.json scan_type=Semgrep JSON Report test=semgrep http=201 test_id=1 after_total=7
+2026-09-29T00:19:25.4040182Z IMPORTED: checkov-results.json scan_type=Checkov Scan test=checkov http=201 test_id=2 after_total=14
+2026-09-29T00:19:25.4041474Z IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=3 after_total=6
+2026-09-29T00:19:25.4042447Z IMPORTED: trivy-image.json scan_type=Trivy Scan test=trivy-image http=201 test_id=4 after_total=59
+2026-09-29T00:19:25.4043405Z IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=5 after_total=18
+2026-09-29T00:19:25.4044269Z IMPORTED: npm-audit-1.json scan_type=NPM Audit v7+ Scan test=npm-audit-1 http=201 test_id=6 after_total=2
+2026-09-29T00:19:25.4045172Z IMPORTED: pip-audit-1.json scan_type=pip-audit Scan test=pip-audit-1 http=201 test_id=7 after_total=46
+2026-09-29T00:19:25.4045978Z IMPORTED: tflint.sarif scan_type=SARIF test=tflint http=201 test_id=8 after_total=3
+2026-09-29T00:19:25.4046567Z attempted=8 skipped=0 failed=0
+2026-09-29T00:19:25.4417909Z OK   semgrep-results.json test=semgrep http=201 test_id=1 after_total=7
+2026-09-29T00:19:25.4418591Z OK   checkov-results.json test=checkov http=201 test_id=2 after_total=14
+2026-09-29T00:19:25.4419189Z OK   trivy-fs.json test=trivy-fs http=201 test_id=3 after_total=6
+2026-09-29T00:19:25.4419807Z OK   trivy-image.json test=trivy-image http=201 test_id=4 after_total=59
+2026-09-29T00:19:25.4420881Z OK   gitleaks-results.json test=gitleaks http=201 test_id=5 after_total=18
+2026-09-29T00:19:25.4421521Z OK   npm-audit-1.json test=npm-audit-1 http=201 test_id=6 after_total=2
+2026-09-29T00:19:25.4422126Z OK   pip-audit-1.json test=pip-audit-1 http=201 test_id=7 after_total=46
+2026-09-29T00:19:25.4422785Z OK   tflint.sarif test=tflint http=201 test_id=8 after_total=3
+2026-09-29T00:19:25.4443177Z DefectDojo import verified: 8 report(s) into OttawaCloudConsulting/security-platform / ci/main

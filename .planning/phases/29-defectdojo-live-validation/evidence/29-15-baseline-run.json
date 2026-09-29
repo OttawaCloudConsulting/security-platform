@@ -1,0 +1,95 @@
+{
+  "id": 36502430372,
+  "event": "workflow_dispatch",
+  "headBranch": "main",
+  "headSha": "2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d",
+  "createdAt": "2026-09-29T00:18:24Z",
+  "conclusion": "success",
+  "jobs_source": "gh api repos/OttawaCloudConsulting/security-platform/actions/runs/36502430372/jobs (gh run view --json jobs returns null runnerName/labels)",
+  "jobs": [
+    {
+      "id": 109196147214,
+      "name": "security / Secrets — Gitleaks",
+      "runnerName": "GitHub Actions 1000001208",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T00:18:28Z",
+      "completed_at": "2026-09-29T00:18:44Z"
+    },
+    {
+      "id": 109196147419,
+      "name": "security / Container — Trivy Image",
+      "runnerName": "GitHub Actions 1000001209",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T00:18:29Z",
+      "completed_at": "2026-09-29T00:18:50Z"
+    },
+    {
+      "id": 109196147477,
+      "name": "security / SCA — Trivy Filesystem",
+      "runnerName": "GitHub Actions 1000001210",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T00:18:28Z",
+      "completed_at": "2026-09-29T00:19:08Z"
+    },
+    {
+      "id": 109196147540,
+      "name": "security / IaC — Checkov",
+      "runnerName": "GitHub Actions 1000001211",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T00:18:29Z",
+      "completed_at": "2026-09-29T00:19:07Z"
+    },
+    {
+      "id": 109196147581,
+      "name": "security / SAST — Semgrep CE",
+      "runnerName": "GitHub Actions 1000001212",
+      "runnerGroup": "GitHub Actions",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T00:18:29Z",
+      "completed_at": "2026-09-29T00:19:01Z"
+    },
+    {
+      "id": 109196148383,
+      "name": "security / DefectDojo Cleanup",
+      "runnerName": null,
+      "runnerGroup": null,
+      "labels": [
+        "occ-homelab-defectdojo"
+      ],
+      "conclusion": "skipped",
+      "started_at": "2026-09-29T00:18:27Z",
+      "completed_at": "2026-09-29T00:18:26Z"
+    },
+    {
+      "id": 109196329353,
+      "name": "security / DefectDojo Import",
+      "runnerName": "occ-homelab-defectdojo-qqrsp-runner-tbt47",
+      "runnerGroup": "Default",
+      "labels": [
+        "occ-homelab-defectdojo"
+      ],
+      "conclusion": "success",
+      "started_at": "2026-09-29T00:19:13Z",
+      "completed_at": "2026-09-29T00:19:26Z"
+    }
+  ]
+}
