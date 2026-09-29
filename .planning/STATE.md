@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29-13-PLAN.md; stopped at operator request (merge the PRs and then stop); next 29-14 wave 9 not started
-last_updated: "2026-09-28T22:21:41.321Z"
-last_activity: 2026-09-28
+stopped_at: Completed 29-14-PLAN.md; live importer armed (ci-importer id 3, URL set last); next 29-15 wave 10
+last_updated: "2026-09-29T00:16:39.941Z"
+last_activity: 2026-09-29
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 75
-  completed_plans: 69
-  percent: 86
+  completed_plans: 70
+  percent: 93
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29 (defectdojo-live-validation) — EXECUTING
-Plan: 14 of 20 (next: wave 9 — 29-14-PLAN.md; wave 8 complete; completed: 29-01, 29-02, 29-03, 29-04, 29-05, 29-06, 29-07, 29-08, 29-08a, 29-09, 29-10, 29-11, 29-12, 29-13 = 14/20; stopped after 29-13 at operator request)
+Plan: 15 of 20 (next: wave 10 — 29-15-PLAN.md; completed: 29-01 … 29-14 incl. 29-08a = 15/20)
 Status: Ready to execute
-Last activity: 2026-09-28
+Last activity: 2026-09-29
 
 ## Performance Metrics
 
@@ -311,6 +311,10 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-12: first sealing attempt lost the literal line to a trailing >/dev/null and unconditionally deleted the first PAT; guarded retry sealed the replacement and removed the plaintext. Revocation of the orphaned first PAT is NOT operator-confirmed (open follow-up)
 - [Phase 29]: 29-13: operator reply 'merge the PRs and then stop' — PR #251 arc-systems (03404fd) merged first, CRDs Established + controller Available verified, then PR #252 arc-runners (d32c5e1); listener arc-systems/occ-homelab-defectdojo-776f7979-listener Running with no 401/403; repo runners total_count=0 (minRunners 0)
 - [Phase 29]: 29-13: operator confirmed the orphaned first ARC PAT from the 29-12 sealing incident is revoked (reply: 'revoked'); closes the 29-12 open follow-up
+- [Phase 29]: 29-14: DefectDojo POST /api/v2/users/ requires email; ci-importer uses ci-importer@ottawacloudconsulting.com
+- [Phase 29]: 29-14: validate a ci-importer token with GET /api/v2/user_profile/, not /api/v2/users/ (403 for non-superuser); privilege read-back uses the admin token
+- [Phase 29]: 29-14: ci-importer is DefectDojo user id 3 (staff, non-superuser); failed-attempt user id 2 deleted
+- [Phase 29]: 29-14: security-platform live importer armed: secret DEFECTDOJO_API_TOKEN, DEFECTDOJO_RUNS_ON=occ-homelab-defectdojo, DEFECTDOJO_URL set last; no CA_CERT/INSECURE
 
 ### Pending Todos
 
@@ -456,11 +460,12 @@ Carried forward from v1.1 close:
 | Phase 29 P11 | 8min | 3 tasks | 3 files |
 | Phase 29 P12 | 30min | 3 tasks | 8 files |
 | Phase 29 P13 | ~9min resumed (22:10Z-22:19Z) after interruption | 3 tasks | 2 files |
+| Phase 29 P14 | ~31min incl. operator step | 3 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-28T22:20:54.778Z
-Stopped at: Completed 29-13-PLAN.md; stopped at operator request (merge the PRs and then stop); next 29-14 wave 9 not started
+Last session: 2026-09-29T00:16:10.796Z
+Stopped at: Completed 29-14-PLAN.md; live importer armed (ci-importer id 3, URL set last); next 29-15 wave 10
 Resume file: None
 
 ## Operator Next Steps
