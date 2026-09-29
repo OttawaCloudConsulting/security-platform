@@ -1,0 +1,8 @@
+==> D11-STEP4-FP: PASS - finding 3 matches {"false_p":true,"out_of_scope":false,"risk_accepted":false,"active":false,"is_mitigated":true}
+==> D11-STEP4-OOS: PASS - finding 10 matches {"false_p":false,"out_of_scope":true,"risk_accepted":false,"active":false,"is_mitigated":true}
+==> D11-STEP4-RA: PASS - finding 22 matches {"false_p":false,"out_of_scope":false,"risk_accepted":true,"active":false,"is_mitigated":false}
+==> D11-STEP4-RA-EXPIRY: PASS - risk acceptance 1 exists, expires 2026-12-28, has a reason and holds the ra finding
+    evidence: /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29-defectdojo-live-validation/evidence/step4-assert.json
+
+=== Summary ===
+ALL PASS - 4 live check(s) executed and passed; 0 sub-check(s) skipped (not passed).

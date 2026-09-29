@@ -1,0 +1,82 @@
+{
+  "measured_at": "2026-09-29T02:01:09Z",
+  "fp": {
+    "id": 3,
+    "expected": {
+      "false_p": true,
+      "out_of_scope": false,
+      "risk_accepted": false,
+      "active": false,
+      "is_mitigated": true
+    },
+    "measured": {
+      "id": 3,
+      "test": 1,
+      "false_p": true,
+      "out_of_scope": false,
+      "risk_accepted": false,
+      "active": false,
+      "is_mitigated": true,
+      "verified": false,
+      "duplicate": false
+    },
+    "ok": true
+  },
+  "oos": {
+    "id": 10,
+    "expected": {
+      "false_p": false,
+      "out_of_scope": true,
+      "risk_accepted": false,
+      "active": false,
+      "is_mitigated": true
+    },
+    "measured": {
+      "id": 10,
+      "test": 2,
+      "false_p": false,
+      "out_of_scope": true,
+      "risk_accepted": false,
+      "active": false,
+      "is_mitigated": true,
+      "verified": false,
+      "duplicate": false
+    },
+    "ok": true
+  },
+  "ra": {
+    "id": 22,
+    "expected": {
+      "false_p": false,
+      "out_of_scope": false,
+      "risk_accepted": true,
+      "active": false,
+      "is_mitigated": false
+    },
+    "measured": {
+      "id": 22,
+      "test": 3,
+      "false_p": false,
+      "out_of_scope": false,
+      "risk_accepted": true,
+      "active": false,
+      "is_mitigated": false,
+      "verified": true,
+      "duplicate": false
+    },
+    "ok": true
+  },
+  "risk_acceptance": {
+    "id": 1,
+    "expected_expiry_date": "2026-12-28",
+    "measured": {
+      "expiration_date": "2026-12-28T00:00:00Z",
+      "decision": "A",
+      "decision_details": "Phase 29 D-11: disposition must survive a ci/main reimport",
+      "accepted_findings": [
+        22
+      ]
+    },
+    "ok": true
+  }
+}

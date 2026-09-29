@@ -1,0 +1,10 @@
+==> D11-STEP3-PREVALIDATE: PASS - fp 3, oos 10, ra 22 are distinct, active, non-duplicate ci/main findings (snapshot and live)
+    RA owner: admin (id 1); expiration_date 2026-12-28T00:00:00Z
+==> D11-STEP3-WRITE: PASS - fp PATCH 200, oos PATCH 200, risk_acceptance POST 201 (id 1)
+==> D11-STEP3-FP: PASS - finding 3 reads false_p=true active=false
+==> D11-STEP3-OOS: PASS - finding 10 reads out_of_scope=true active=false
+==> D11-STEP3-RA: PASS - finding 22 reads risk_accepted=true active=false
+    evidence: /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29-defectdojo-live-validation/evidence/dispositions.json
+
+=== Summary ===
+ALL PASS - 5 live check(s) executed and passed; 0 sub-check(s) skipped (not passed).
