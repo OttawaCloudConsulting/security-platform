@@ -1,0 +1,75 @@
+PR #27 https://github.com/OttawaCloudConsulting/security-platform/pull/27 head 415618cdf390483d48dbbb82d9efc3742ec97251 - captured after proof run 36742180976 attempt 2 (success)
+note: trailing whitespace stripped for the docs pre-commit git diff --check; content otherwise verbatim
+earlier checks: 29.2-07-pr-checks-attempt1.txt, 29.2-07-pr-checks-attempt2.txt (head 35363b7)
+
+$ gh pr checks 27
+Checkov	pass	8s	https://github.com/OttawaCloudConsulting/security-platform/runs/109979284297
+GitGuardian Security Checks	pass	6m10s	https://dashboard.gitguardian.com
+Semgrep OSS	pass	8s	https://github.com/OttawaCloudConsulting/security-platform/runs/109979269922
+Trivy	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/109979256087
+gitleaks	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/109979177696
+prove-import	pass	6m53s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742180976/job/109981740185
+scans / Container — Trivy Image	pass	30s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742180976/job/109981804219
+scans / DefectDojo Import	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742180976/job/109981741522
+scans / IaC — Checkov	pass	42s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742180976/job/109981796153
+scans / SAST — Semgrep CE	pass	41s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742180976/job/109981739388
+scans / SCA — Trivy Filesystem	pass	50s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742180976/job/109981797628
+scans / Secrets — Gitleaks	pass	17s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742180976/job/109981794857
+security / Container — Trivy Image	pass	29s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742181020/job/109979105927
+security / DefectDojo Import	pass	13s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742181020/job/109979452614
+security / IaC — Checkov	pass	36s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742181020/job/109979105889
+security / SAST — Semgrep CE	pass	39s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742181020/job/109979105556
+security / SCA — Trivy Filesystem	pass	39s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742181020/job/109979105791
+security / Secrets — Gitleaks	pass	17s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742181020/job/109979105914
+tflint	pass	5s	https://github.com/OttawaCloudConsulting/security-platform/runs/109979382014
+tflint-errors	pass	5s	https://github.com/OttawaCloudConsulting/security-platform/runs/109979383332
+scans / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742180976/job/109981740062
+security / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742181020/job/109979116205
+
+$ gh api repos/OttawaCloudConsulting/security-platform/commits/415618cdf390483d48dbbb82d9efc3742ec97251/check-runs --paginate --jq '.check_runs[] | [.name, .status, .conclusion] | @tsv'
+GitGuardian Security Checks	completed	success
+scans / Container — Trivy Image	completed	success
+scans / SCA — Trivy Filesystem	completed	success
+scans / IaC — Checkov	completed	success
+scans / Secrets — Gitleaks	completed	success
+scans / DefectDojo Import	completed	success
+prove-import	completed	success
+scans / DefectDojo Cleanup	completed	skipped
+scans / SAST — Semgrep CE	completed	success
+security / DefectDojo Import	completed	success
+tflint-errors	completed	success
+tflint	completed	success
+Checkov	completed	success
+Semgrep OSS	completed	success
+Trivy	completed	success
+gitleaks	completed	success
+security / DefectDojo Cleanup	completed	skipped
+security / Container — Trivy Image	completed	success
+security / Secrets — Gitleaks	completed	success
+security / IaC — Checkov	completed	success
+security / SCA — Trivy Filesystem	completed	success
+security / SAST — Semgrep CE	completed	success
+
+$ gh run view 36742181020 --job 109979452614 --log | grep (security / DefectDojo Import, amended must-have #3: runs against homelab DefectDojo)
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T16:10:56.9178329Z TLS mode: verified-system
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T16:10:56.9179532Z product=OttawaCloudConsulting/security-platform product_type=CI engagement=ci/fix/phase-29.2-curlrc
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T16:10:56.9180636Z IMPORTED: semgrep-results.json scan_type=Semgrep JSON Report test=semgrep http=201 test_id=24 after_total=7
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T16:10:56.9200761Z IMPORTED: checkov-results.json scan_type=Checkov Scan test=checkov http=201 test_id=25 after_total=14
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T16:10:56.9201579Z IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=26 after_total=6
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T16:10:56.9202379Z IMPORTED: trivy-image.json scan_type=Trivy Scan test=trivy-image http=201 test_id=27 after_total=118
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T16:10:56.9203483Z IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=28 after_total=18
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T16:10:56.9204301Z IMPORTED: npm-audit-1.json scan_type=NPM Audit v7+ Scan test=npm-audit-1 http=201 test_id=29 after_total=2
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T16:10:56.9205329Z IMPORTED: pip-audit-1.json scan_type=pip-audit Scan test=pip-audit-1 http=201 test_id=30 after_total=47
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T16:10:56.9206154Z IMPORTED: tflint.sarif scan_type=SARIF test=tflint http=201 test_id=31 after_total=3
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T16:10:57.0087999Z DefectDojo import verified: 8 report(s) into OttawaCloudConsulting/security-platform / ci/fix/phase-29.2-curlrc
+
+$ git ls-remote --tags origin 'v1*' (post-run; identical to the pre-push table)
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}

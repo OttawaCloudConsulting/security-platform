@@ -1,0 +1,880 @@
+run: 36738325634 https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634 head 35363b70ca87d6e76b9a6e5dd1987c302ab57ca0 prove-import conclusion: failure (attempt 2, job 109971612024; the single operator-approved rerun via 'gh run rerun 36738325634 --failed')
+note: trailing whitespace stripped for the docs pre-commit git diff --check; content otherwise verbatim
+note: attempt 1 failed at KIND-CELERY-PING (exit 69) before --hook; see 29.2-07-proof-run-attempt1.log and 29.2-07-pr-checks-attempt1.txt
+note: attempt 2 result: PROOF FAIL - 1 of 151; the failing line is P-INSECURE (see below)
+prove-import	Set up job	﻿2026-09-30T15:52:23.2100212Z Current runner version: '2.337.0'
+prove-import	Set up job	2026-09-30T15:52:23.2134920Z ##[group]Runner Image Provisioner
+prove-import	Set up job	2026-09-30T15:52:23.2136165Z Hosted Compute Agent
+prove-import	Set up job	2026-09-30T15:52:23.2137316Z Version: 20260828.587
+prove-import	Set up job	2026-09-30T15:52:23.2138455Z Commit: abac92662cab4cc7352de4f9f9d2e2419aad9c29
+prove-import	Set up job	2026-09-30T15:52:23.2139802Z Build Date: 2026-08-28T16:44:25Z
+prove-import	Set up job	2026-09-30T15:52:23.2140907Z Worker ID: {c3b14c2e-c275-49ab-a187-5f44b304ee6d}
+prove-import	Set up job	2026-09-30T15:52:23.2142075Z Azure Region: eastus
+prove-import	Set up job	2026-09-30T15:52:23.2143372Z ##[endgroup]
+prove-import	Set up job	2026-09-30T15:52:23.2145730Z ##[group]Operating System
+prove-import	Set up job	2026-09-30T15:52:23.2146912Z Ubuntu
+prove-import	Set up job	2026-09-30T15:52:23.2147720Z 24.04.5
+prove-import	Set up job	2026-09-30T15:52:23.2148532Z LTS
+prove-import	Set up job	2026-09-30T15:52:23.2149460Z ##[endgroup]
+prove-import	Set up job	2026-09-30T15:52:23.2150420Z ##[group]Runner Image
+prove-import	Set up job	2026-09-30T15:52:23.2151435Z Image: ubuntu-24.04
+prove-import	Set up job	2026-09-30T15:52:23.2152375Z Version: 20260920.314.1
+prove-import	Set up job	2026-09-30T15:52:23.2154464Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260920.314/images/ubuntu/Ubuntu2404-Readme.md
+prove-import	Set up job	2026-09-30T15:52:23.2157580Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260920.314
+prove-import	Set up job	2026-09-30T15:52:23.2159375Z ##[endgroup]
+prove-import	Set up job	2026-09-30T15:52:23.2161231Z ##[group]GITHUB_TOKEN Permissions
+prove-import	Set up job	2026-09-30T15:52:23.2164389Z Actions: read
+prove-import	Set up job	2026-09-30T15:52:23.2165391Z Contents: read
+prove-import	Set up job	2026-09-30T15:52:23.2166423Z Metadata: read
+prove-import	Set up job	2026-09-30T15:52:23.2167299Z ##[endgroup]
+prove-import	Set up job	2026-09-30T15:52:23.2170158Z Secret source: Actions
+prove-import	Set up job	2026-09-30T15:52:23.2171781Z Cache mode: write
+prove-import	Set up job	2026-09-30T15:52:23.2172900Z Prepare workflow directory
+prove-import	Set up job	2026-09-30T15:52:23.2641204Z Prepare all required actions
+prove-import	Set up job	2026-09-30T15:52:23.2711712Z Getting action download info
+prove-import	Set up job	2026-09-30T15:52:23.5720446Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+prove-import	Set up job	2026-09-30T15:52:23.6580953Z Download action repository 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c' (SHA:3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c)
+prove-import	Set up job	2026-09-30T15:52:23.9161364Z Complete job name: prove-import
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	﻿2026-09-30T15:52:23.9945538Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9946721Z with:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9947335Z   repository: OttawaCloudConsulting/security-platform
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9951336Z   token: ***
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9951828Z   ssh-strict: true
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9952329Z   ssh-user: git
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9952840Z   persist-credentials: true
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9953602Z   clean: true
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9954111Z   sparse-checkout-cone-mode: true
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9954698Z   fetch-depth: 1
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9955195Z   fetch-tags: false
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9955686Z   show-progress: true
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9956197Z   lfs: false
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9956659Z   submodules: false
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9957169Z   set-safe-directory: true
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9957743Z   allow-unsafe-pr-checkout: false
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:23.9958594Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.0922926Z Syncing repository: OttawaCloudConsulting/security-platform
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.0925412Z ##[group]Getting Git version info
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.0926417Z Working directory is '/home/runner/work/security-platform/security-platform'
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.0927660Z [command]/usr/bin/git version
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.0995948Z git version 2.55.0
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1017080Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1027340Z Temporarily overriding HOME='/home/runner/work/_temp/c356c0aa-f515-4f6d-9287-d41b075c5fc6' before making global git config changes
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1028982Z Adding repository directory to the temporary git global config as a safe directory
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1032878Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/security-platform/security-platform
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1077873Z Deleting the contents of '/home/runner/work/security-platform/security-platform'
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1081146Z ##[group]Determining repository object format
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1083224Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1084341Z ##[group]Initializing the repository
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1087440Z [command]/usr/bin/git init /home/runner/work/security-platform/security-platform
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1193968Z hint: Using 'master' as the name for the initial branch. This default branch name
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1196207Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1198231Z hint: to use in all of your new repositories, which will suppress this warning,
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1199298Z hint: call:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1199863Z hint:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1200558Z hint: 	git config --global init.defaultBranch <name>
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1201416Z hint:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1202435Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1204194Z hint: 'development'. The just-created branch can be renamed via this command:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1205208Z hint:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1205738Z hint: 	git branch -m <name>
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1206751Z hint:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1207733Z hint: Disable this message with "git config set advice.defaultBranchName false"
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1209089Z Initialized empty Git repository in /home/runner/work/security-platform/security-platform/.git/
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1211330Z [command]/usr/bin/git remote add origin https://github.com/OttawaCloudConsulting/security-platform
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1254612Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1255698Z ##[group]Disabling automatic garbage collection
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1257571Z [command]/usr/bin/git config --local gc.auto 0
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1287029Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1288106Z ##[group]Setting up auth
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1288758Z Removing SSH command configuration
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1292609Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1322501Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1675866Z Removing HTTP extra header
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1680499Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1719183Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1932616Z Removing includeIf entries pointing to credentials config files
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1938000Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.1967926Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.2206435Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-d9f2c47f-60c6-4592-a3d8-e77d7eb94abb.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.2251541Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/security-platform/security-platform/.git.path /home/runner/work/_temp/git-credentials-d9f2c47f-60c6-4592-a3d8-e77d7eb94abb.config
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.2289519Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/security-platform/security-platform/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-d9f2c47f-60c6-4592-a3d8-e77d7eb94abb.config
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.2324321Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-d9f2c47f-60c6-4592-a3d8-e77d7eb94abb.config
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.2358176Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-d9f2c47f-60c6-4592-a3d8-e77d7eb94abb.config
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.2385832Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.2387508Z ##[group]Fetching the repository
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.2394108Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +0eebd48439055351d19ded7610cd894c6493f3bd:refs/remotes/pull/27/merge
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.5766893Z From https://github.com/OttawaCloudConsulting/security-platform
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.5768871Z  * [new ref]         0eebd48439055351d19ded7610cd894c6493f3bd -> pull/27/merge
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.5773844Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.5775972Z ##[group]Determining the checkout info
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.5777619Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.5778438Z [command]/usr/bin/git sparse-checkout disable
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.5826211Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.5855581Z ##[group]Checking out the ref
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.5859008Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/27/merge
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.5993934Z Note: switching to 'refs/remotes/pull/27/merge'.
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.5995165Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.5996044Z You are in 'detached HEAD' state. You can look around, make experimental
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.5998204Z changes and commit them, and you can discard any commits you make in this
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6000305Z state without impacting any branches by switching back to a branch.
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6001808Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6003138Z If you want to create a new branch to retain commits you create, you may
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6005796Z do so (now or later) by using -c with the switch command. Example:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6006817Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6007253Z   git switch -c <new-branch-name>
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6007949Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6008426Z Or undo this operation with:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6009221Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6009733Z   git switch -
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6010387Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6011535Z Turn off this advice by setting config variable advice.detachedHead to false
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6012917Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6014799Z HEAD is now at 0eebd48 Merge 35363b70ca87d6e76b9a6e5dd1987c302ab57ca0 into fdabac9464f2baaeaa276f8934dc8d353295b355
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6019787Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6043297Z [command]/usr/bin/git log -1 --format=%H
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:52:24.6067959Z 0eebd48439055351d19ded7610cd894c6493f3bd
+prove-import	Download scan reports	﻿2026-09-30T15:52:24.6403713Z ##[group]Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+prove-import	Download scan reports	2026-09-30T15:52:24.6405582Z with:
+prove-import	Download scan reports	2026-09-30T15:52:24.6406476Z   pattern: *-results
+prove-import	Download scan reports	2026-09-30T15:52:24.6407483Z   merge-multiple: true
+prove-import	Download scan reports	2026-09-30T15:52:24.6408498Z   path: dd-reports
+prove-import	Download scan reports	2026-09-30T15:52:24.6409687Z   repository: OttawaCloudConsulting/security-platform
+prove-import	Download scan reports	2026-09-30T15:52:24.6411133Z   run-id: 36738325634
+prove-import	Download scan reports	2026-09-30T15:52:24.6412165Z   skip-decompress: false
+prove-import	Download scan reports	2026-09-30T15:52:24.6413388Z   digest-mismatch: error
+prove-import	Download scan reports	2026-09-30T15:52:24.6414422Z ##[endgroup]
+prove-import	Download scan reports	2026-09-30T15:52:24.8939158Z Found 5 artifact(s)
+prove-import	Download scan reports	2026-09-30T15:52:24.8942143Z Filtering artifacts by pattern '*-results'
+prove-import	Download scan reports	2026-09-30T15:52:24.8959857Z Preparing to download the following artifacts:
+prove-import	Download scan reports	2026-09-30T15:52:24.8963546Z - checkov-results (ID: 11109520598, Size: 5185, Expected Digest: sha256:aa74c8b3e281cd286ff80f27a064bd5577074ecd8349b1271a36dbe3e750182d)
+prove-import	Download scan reports	2026-09-30T15:52:24.8968860Z - gitleaks-results (ID: 11109515649, Size: 11581, Expected Digest: sha256:c2b529e09a72a800f69710526f187c65a2ce2afeea7a85bd90f13fe8008f5678)
+prove-import	Download scan reports	2026-09-30T15:52:24.8975856Z - semgrep-results (ID: 11109320728, Size: 202372, Expected Digest: sha256:fc057a5076288c73714a80ed8d601befd89a6fd3ee8c3e92413ad6faadce478e)
+prove-import	Download scan reports	2026-09-30T15:52:24.8980904Z - trivy-image-results (ID: 11109125811, Size: 65762, Expected Digest: sha256:e00f353c4ab392a7081562db30c5aa87f7ed80fc865e42744f9c655b769a8f9d)
+prove-import	Download scan reports	2026-09-30T15:52:24.8985671Z - sca-results (ID: 11107119926, Size: 20431, Expected Digest: sha256:ac4d2e69450b819fb38894b9cb2d6abb8caa32fc6220d2e44b3ffee2a408d9b8)
+prove-import	Download scan reports	2026-09-30T15:52:25.0595692Z Redirecting to blob download url: https://productionresultssa12.blob.core.windows.net/actions-results/44a9d08c-81f5-8646-bbe1-bb8948c9be3d/workflow-job-run-83627ad2-bc24-50a0-938e-c3f8db579467/artifacts/d40db5eb328143e4f250f33b5c23c37c6493fbbce19fc26bc03ecf8707e30cdc.zip
+prove-import	Download scan reports	2026-09-30T15:52:25.0604094Z Starting download of artifact to: /home/runner/work/security-platform/security-platform/dd-reports
+prove-import	Download scan reports	2026-09-30T15:52:25.0638084Z Redirecting to blob download url: https://productionresultssa12.blob.core.windows.net/actions-results/44a9d08c-81f5-8646-bbe1-bb8948c9be3d/workflow-job-run-d863c125-d539-51d4-81ee-d29dd01de93e/artifacts/f1b761662e96253e8d8aa9b0b5a2426b58a6bdbaeb645bc86569765d1014ea15.zip
+prove-import	Download scan reports	2026-09-30T15:52:25.0645063Z Starting download of artifact to: /home/runner/work/security-platform/security-platform/dd-reports
+prove-import	Download scan reports	2026-09-30T15:52:25.0715936Z Redirecting to blob download url: https://productionresultssa12.blob.core.windows.net/actions-results/44a9d08c-81f5-8646-bbe1-bb8948c9be3d/workflow-job-run-a2849876-0ed5-5b8e-aaeb-1a677f4e136c/artifacts/f6d5e86f6efa4dec7fc5e34597285a5a17bdfb0ccd650e0a00fe3f3653dddbf9.zip
+prove-import	Download scan reports	2026-09-30T15:52:25.0726052Z Starting download of artifact to: /home/runner/work/security-platform/security-platform/dd-reports
+prove-import	Download scan reports	2026-09-30T15:52:25.0865579Z Redirecting to blob download url: https://productionresultssa12.blob.core.windows.net/actions-results/44a9d08c-81f5-8646-bbe1-bb8948c9be3d/workflow-job-run-c1d10579-a04d-592c-b8f1-7837b35b94b1/artifacts/7a918f38da188c6de76b0c09e99e3e08b5d7ff8c86381063d125bda113497aee.zip
+prove-import	Download scan reports	2026-09-30T15:52:25.0875899Z Starting download of artifact to: /home/runner/work/security-platform/security-platform/dd-reports
+prove-import	Download scan reports	2026-09-30T15:52:25.0906964Z (node:2269) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
+prove-import	Download scan reports	2026-09-30T15:52:25.0910887Z (Use `node --trace-deprecation ...` to show where the warning was created)
+prove-import	Download scan reports	2026-09-30T15:52:25.0972132Z Redirecting to blob download url: https://productionresultssa12.blob.core.windows.net/actions-results/44a9d08c-81f5-8646-bbe1-bb8948c9be3d/workflow-job-run-d5eb0c69-b24f-5987-a1c8-f608b9274bb1/artifacts/ceae855e0a33d83c591870c5088bf87c0fac7ae7675b7688a79cb52f11953e1f.zip
+prove-import	Download scan reports	2026-09-30T15:52:25.0980971Z Starting download of artifact to: /home/runner/work/security-platform/security-platform/dd-reports
+prove-import	Download scan reports	2026-09-30T15:52:25.1092838Z SHA256 digest of downloaded artifact is ac4d2e69450b819fb38894b9cb2d6abb8caa32fc6220d2e44b3ffee2a408d9b8
+prove-import	Download scan reports	2026-09-30T15:52:25.1097103Z Artifact download completed successfully.
+prove-import	Download scan reports	2026-09-30T15:52:25.1184081Z SHA256 digest of downloaded artifact is e00f353c4ab392a7081562db30c5aa87f7ed80fc865e42744f9c655b769a8f9d
+prove-import	Download scan reports	2026-09-30T15:52:25.1187971Z Artifact download completed successfully.
+prove-import	Download scan reports	2026-09-30T15:52:25.1225383Z SHA256 digest of downloaded artifact is aa74c8b3e281cd286ff80f27a064bd5577074ecd8349b1271a36dbe3e750182d
+prove-import	Download scan reports	2026-09-30T15:52:25.1228998Z Artifact download completed successfully.
+prove-import	Download scan reports	2026-09-30T15:52:25.1251273Z SHA256 digest of downloaded artifact is c2b529e09a72a800f69710526f187c65a2ce2afeea7a85bd90f13fe8008f5678
+prove-import	Download scan reports	2026-09-30T15:52:25.1255363Z Artifact download completed successfully.
+prove-import	Download scan reports	2026-09-30T15:52:25.1306763Z SHA256 digest of downloaded artifact is fc057a5076288c73714a80ed8d601befd89a6fd3ee8c3e92413ad6faadce478e
+prove-import	Download scan reports	2026-09-30T15:52:25.1310017Z Artifact download completed successfully.
+prove-import	Download scan reports	2026-09-30T15:52:25.1311873Z Total of 5 artifact(s) downloaded
+prove-import	Download scan reports	2026-09-30T15:52:25.1313641Z Download artifact has finished successfully
+prove-import	Install Helm v4.3.0	﻿2026-09-30T15:52:25.1479970Z ##[group]Run curl -sSfL -o helm.tar.gz https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.1482760Z ^[[36;1mcurl -sSfL -o helm.tar.gz https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.1485766Z ^[[36;1mecho "86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb  helm.tar.gz" \^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.1487901Z ^[[36;1m  | sha256sum -c -^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.1489670Z ^[[36;1msudo tar xzf helm.tar.gz -C /usr/local/bin --strip-components=1 linux-amd64/helm^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.1491603Z ^[[36;1mrm -f helm.tar.gz^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.1492892Z ^[[36;1mhelm_version="$(helm version --short)"^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.1494656Z ^[[36;1mecho "helm ${helm_version}"^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.1496216Z ^[[36;1mcase "$helm_version" in^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.1497494Z ^[[36;1m  v4.3.0*) ;;^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.1498989Z ^[[36;1m  *) echo "expected Helm v4.3.0, found ${helm_version}"; exit 1 ;;^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.1500751Z ^[[36;1mesac^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.1786717Z shell: /usr/bin/bash -e {0}
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.1788037Z ##[endgroup]
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.3789133Z helm.tar.gz: OK
+prove-import	Install Helm v4.3.0	2026-09-30T15:52:25.8528676Z helm v4.3.0+gbec5b06
+prove-import	Live proof	﻿2026-09-30T15:52:25.8665402Z ##[group]Run bash scripts/defectdojo-import-proof.sh dd-reports
+prove-import	Live proof	2026-09-30T15:52:25.8667578Z ^[[36;1mbash scripts/defectdojo-import-proof.sh dd-reports^[[0m
+prove-import	Live proof	2026-09-30T15:52:25.8734971Z shell: /usr/bin/bash -e {0}
+prove-import	Live proof	2026-09-30T15:52:25.8736144Z ##[endgroup]
+prove-import	Live proof	2026-09-30T15:52:26.5003755Z PASS: defectdojo-import/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+prove-import	Live proof	2026-09-30T15:52:26.5006291Z PASS: defectdojo-import/dd-import: extracted (223 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_INSECURE', 'DD_PRODUCT', 'DD_PRODUCT_TYPE', 'DD_REPORTS_DIR', 'DD_RESULTS_FILE', 'DD_TOKEN', 'DD_URL']
+prove-import	Live proof	2026-09-30T15:52:26.5008787Z PASS: defectdojo-import/dd-verify: extracted (39 lines), no ${{, bash -n clean, env names match the contract ['DD_IMPORT_OUTCOME', 'DD_RESULTS_FILE']
+prove-import	Live proof	2026-09-30T15:52:26.5010576Z PASS: defectdojo-cleanup/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+prove-import	Live proof	2026-09-30T15:52:26.5012755Z PASS: defectdojo-cleanup/dd-delete: extracted (219 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_CLEANUP_RESULT_FILE', 'DD_DEFAULT_BRANCH', 'DD_INSECURE', 'DD_PRODUCT', 'DD_TOKEN', 'DD_URL']
+prove-import	Live proof	2026-09-30T15:52:26.5015407Z PASS: defectdojo-cleanup/dd-cleanup-verify: extracted (23 lines), no ${{, bash -n clean, env names match the contract ['DD_CLEANUP_RESULT_FILE', 'DD_DELETE_OUTCOME']
+prove-import	Live proof	2026-09-30T15:52:26.5017176Z PASS: DD-GATE-IDENTICAL: the import and cleanup dd-gate bodies are byte-identical
+prove-import	Live proof	2026-09-30T15:52:26.5018157Z extract: 7 passed, 0 failed
+prove-import	Live proof	2026-09-30T15:52:26.5066471Z EXTRACT PASS - .github/workflows/security.yml
+prove-import	Live proof	2026-09-30T15:52:26.5489481Z helm client: v4.3.0+gbec5b06
+prove-import	Live proof	2026-09-30T15:52:26.5668079Z     kubernetes/defectdojo/charts/defectdojo-1.9.53.tgz not vendored; running helm dependency build (needs network)
+prove-import	Live proof	2026-09-30T15:52:26.6893972Z Hang tight while we grab the latest from your chart repositories...
+prove-import	Live proof	2026-09-30T15:52:26.7471509Z ...Successfully got an update from the "defectdojo" chart repository
+prove-import	Live proof	2026-09-30T15:52:26.7473331Z Update Complete. ⎈Happy Helming!⎈
+prove-import	Live proof	2026-09-30T15:52:26.7808666Z Saving 1 charts
+prove-import	Live proof	2026-09-30T15:52:26.7810200Z Downloading defectdojo from repo https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/helm-charts
+prove-import	Live proof	2026-09-30T15:52:26.9371574Z Deleting outdated charts
+prove-import	Live proof	2026-09-30T15:52:26.9588150Z --- 1. kind cluster ---
+prove-import	Live proof	2026-09-30T15:52:31.0188248Z     creating cluster dd-smoke (cold image pulls follow; this is the slow part)
+prove-import	Live proof	2026-09-30T15:52:52.7136505Z ==> KIND-CLUSTER: PASS - cluster dd-smoke is up (context kind-dd-smoke)
+prove-import	Live proof	2026-09-30T15:53:17.1233293Z --- 2. cert-manager v1.21.2 ---
+prove-import	Live proof	2026-09-30T15:53:17.1234704Z ==> KIND-CERT-MANAGER: PASS - cert-manager v1.21.2 applied; cert-manager, cert-manager-webhook and cert-manager-cainjector rolled out
+prove-import	Live proof	2026-09-30T15:53:17.1236162Z --- 3. ingress-nginx controller-v1.15.1 (smoke-only; archived upstream) ---
+prove-import	Live proof	2026-09-30T15:53:33.1657941Z ==> KIND-INGRESS-NGINX: PASS - ingress-nginx controller-v1.15.1 rolled out; IngressClass nginx annotated is-default-class=true
+prove-import	Live proof	2026-09-30T15:53:33.1659223Z --- 4. CA ClusterIssuer ---
+prove-import	Live proof	2026-09-30T15:53:33.6488513Z ==> KIND-CA-ISSUER: PASS - ClusterIssuer selfsigned -> Certificate smoke-ca (isCA, Ready) -> ClusterIssuer smoke-ca
+prove-import	Live proof	2026-09-30T15:53:33.6490958Z --- 5. namespace and pre-created Secrets ---
+prove-import	Live proof	2026-09-30T15:53:34.0671122Z     Secrets defectdojo, defectdojo-postgresql-specific, defectdojo-valkey-specific applied from stdin
+prove-import	Live proof	2026-09-30T15:53:34.0672446Z --- 6. install (D-15: first install only) ---
+prove-import	Live proof	2026-09-30T15:57:05.7751675Z NAME: defectdojo
+prove-import	Live proof	2026-09-30T15:57:05.7757965Z LAST DEPLOYED: Wed Sep 30 15:53:34 2026
+prove-import	Live proof	2026-09-30T15:57:05.7783558Z NAMESPACE: defectdojo
+prove-import	Live proof	2026-09-30T15:57:05.7796812Z STATUS: deployed
+prove-import	Live proof	2026-09-30T15:57:05.7804511Z REVISION: 1
+prove-import	Live proof	2026-09-30T15:57:05.7805342Z DESCRIPTION: Install complete
+prove-import	Live proof	2026-09-30T15:57:05.7808378Z ==> KIND-INSTALL: exit=0 (PASS - completed successfully)
+prove-import	Live proof	2026-09-30T15:57:05.7809685Z --- 7. workloads ---
+prove-import	Live proof	2026-09-30T15:57:06.7427221Z ==> KIND-DEPLOYMENTS-READY: PASS - every Deployment in defectdojo is Available, including defectdojo-django defectdojo-celery-worker defectdojo-celery-beat
+prove-import	Live proof	2026-09-30T15:57:06.9342091Z ==> KIND-PG-PVC-BOUND: PASS - Postgres PVC(s) Bound: data-defectdojo-postgresql-0=Bound
+prove-import	Live proof	2026-09-30T15:57:06.9364266Z --- 8. ingress and certificate ---
+prove-import	Live proof	2026-09-30T15:57:07.1996387Z ==> KIND-CERT-READY: PASS - Certificate defectdojo-tls (created by ingress-shim from the annotation) is Ready
+prove-import	Live proof	2026-09-30T15:57:07.3716460Z ==> KIND-INGRESSCLASS-DEFAULTED: PASS - the live Ingress has ingressClassName nginx, set by DefaultIngressClass admission
+prove-import	Live proof	2026-09-30T15:57:07.3718487Z --- 9. verified TLS, login and broker ---
+prove-import	Live proof	2026-09-30T15:57:11.1447192Z ==> KIND-TLS-LOGIN-200: PASS - GET https://defectdojo.smoke.test:18443/login -> 200 with ssl_verify_result 0 against the issued ca.crt; served cert issuer CN = smoke-ca, SAN DNS:defectdojo.smoke.test
+prove-import	Live proof	2026-09-30T15:57:11.4407692Z ==> KIND-LOGIN: PASS - admin login POST (CSRF token + Referer) -> 302 to https://defectdojo.smoke.test:18443/; /dashboard with the session -> 200, all over verified TLS
+prove-import	Live proof	2026-09-30T15:57:17.4459772Z ==> KIND-CELERY-PING: PASS - celery -A dojo inspect ping in defectdojo-celery-worker/celery exited 0 with pong (broker round-trip)
+prove-import	Live proof	2026-09-30T15:57:17.4461732Z --- 10. post-hook /home/runner/work/security-platform/security-platform/scripts/defectdojo-import-proof.sh ---
+prove-import	Live proof	2026-09-30T15:57:17.4613780Z === DefectDojo import proof against https://defectdojo.smoke.test:18443 (run 1) ===
+prove-import	Live proof	2026-09-30T15:57:17.5099319Z PASS: defectdojo-import/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+prove-import	Live proof	2026-09-30T15:57:17.5100784Z PASS: defectdojo-import/dd-import: extracted (223 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_INSECURE', 'DD_PRODUCT', 'DD_PRODUCT_TYPE', 'DD_REPORTS_DIR', 'DD_RESULTS_FILE', 'DD_TOKEN', 'DD_URL']
+prove-import	Live proof	2026-09-30T15:57:17.5102283Z PASS: defectdojo-import/dd-verify: extracted (39 lines), no ${{, bash -n clean, env names match the contract ['DD_IMPORT_OUTCOME', 'DD_RESULTS_FILE']
+prove-import	Live proof	2026-09-30T15:57:17.5103799Z PASS: defectdojo-cleanup/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+prove-import	Live proof	2026-09-30T15:57:17.5105038Z PASS: defectdojo-cleanup/dd-delete: extracted (219 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_CLEANUP_RESULT_FILE', 'DD_DEFAULT_BRANCH', 'DD_INSECURE', 'DD_PRODUCT', 'DD_TOKEN', 'DD_URL']
+prove-import	Live proof	2026-09-30T15:57:17.5106389Z PASS: defectdojo-cleanup/dd-cleanup-verify: extracted (23 lines), no ${{, bash -n clean, env names match the contract ['DD_CLEANUP_RESULT_FILE', 'DD_DELETE_OUTCOME']
+prove-import	Live proof	2026-09-30T15:57:17.5107291Z PASS: DD-GATE-IDENTICAL: the import and cleanup dd-gate bodies are byte-identical
+prove-import	Live proof	2026-09-30T15:57:17.5107762Z extract: 7 passed, 0 failed
+prove-import	Live proof	2026-09-30T15:57:17.5149065Z PROOF: P-EXTRACT PASS six committed side-channel bodies extracted from .github/workflows/security.yml
+prove-import	Live proof	2026-09-30T15:57:17.7919308Z PROOF: P-TLS PASS GET https://defectdojo.smoke.test:18443/api/v2/ -> http 403, ssl_verify_result 0 against the kind CA; host resolved by DEFECTDOJO_RESOLVE; the hostile CURL_HOME curlrc was ignored
+prove-import	Live proof	2026-09-30T15:57:17.9008214Z PROOF: P-ADMIN-TOKEN PASS api-token-auth as admin -> 200 with a token, over verified TLS
+prove-import	Live proof	2026-09-30T15:57:18.1186634Z PROOF: P-USER PASS ci-importer created and read back with is_staff=true, is_superuser=false (the documented minimum, not superuser)
+prove-import	Live proof	2026-09-30T15:57:18.2261535Z PROOF: P-IMPORTER-TOKEN PASS api-token-auth as ci-importer -> 200 with a token, over verified TLS; all body runs use this token
+prove-import	Live proof	2026-09-30T15:57:18.2337970Z PROOF: P-GATE PASS token absent -> exit 0, enabled=false, SKIP line printed
+prove-import	Live proof	2026-09-30T15:57:18.2430487Z PROOF: P-GATE PASS Dependabot actor with a token set -> exit 0, enabled=false
+prove-import	Live proof	2026-09-30T15:57:18.2528209Z PROOF: P-GATE PASS token present, normal actor -> exit 0, enabled=true
+prove-import	Live proof	2026-09-30T15:57:27.0578698Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:57:27.0579640Z     | product=proof/security-platform product_type=CI engagement=ci/proof/branch-a
+prove-import	Live proof	2026-09-30T15:57:27.0581123Z     | IMPORTED: semgrep-results.json scan_type=Semgrep JSON Report test=semgrep http=201 test_id=1 after_total=7
+prove-import	Live proof	2026-09-30T15:57:27.0582472Z     | IMPORTED: checkov-results.json scan_type=Checkov Scan test=checkov http=201 test_id=2 after_total=14
+prove-import	Live proof	2026-09-30T15:57:27.0583743Z     | IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=3 after_total=6
+prove-import	Live proof	2026-09-30T15:57:27.0584561Z     | IMPORTED: trivy-image.json scan_type=Trivy Scan test=trivy-image http=201 test_id=4 after_total=59
+prove-import	Live proof	2026-09-30T15:57:27.0585439Z     | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=5 after_total=18
+prove-import	Live proof	2026-09-30T15:57:27.0586349Z     | IMPORTED: npm-audit-1.json scan_type=NPM Audit v7+ Scan test=npm-audit-1 http=201 test_id=6 after_total=2
+prove-import	Live proof	2026-09-30T15:57:27.0587208Z     | IMPORTED: pip-audit-1.json scan_type=pip-audit Scan test=pip-audit-1 http=201 test_id=7 after_total=47
+prove-import	Live proof	2026-09-30T15:57:27.0587990Z     | IMPORTED: tflint.sarif scan_type=SARIF test=tflint http=201 test_id=8 after_total=3
+prove-import	Live proof	2026-09-30T15:57:27.0588530Z     | attempted=8 skipped=0 failed=0
+prove-import	Live proof	2026-09-30T15:57:27.0640791Z PROOF: P-RUN1 PASS committed dd-import body exited 0 as ci-importer, tls_mode verified-ca, no ::warning::
+prove-import	Live proof	2026-09-30T15:57:27.0935949Z     | OK   semgrep-results.json test=semgrep http=201 test_id=1 after_total=7
+prove-import	Live proof	2026-09-30T15:57:27.0937051Z     | OK   checkov-results.json test=checkov http=201 test_id=2 after_total=14
+prove-import	Live proof	2026-09-30T15:57:27.0938012Z     | OK   trivy-fs.json test=trivy-fs http=201 test_id=3 after_total=6
+prove-import	Live proof	2026-09-30T15:57:27.0938879Z     | OK   trivy-image.json test=trivy-image http=201 test_id=4 after_total=59
+prove-import	Live proof	2026-09-30T15:57:27.0939839Z     | OK   gitleaks-results.json test=gitleaks http=201 test_id=5 after_total=18
+prove-import	Live proof	2026-09-30T15:57:27.0940992Z     | OK   npm-audit-1.json test=npm-audit-1 http=201 test_id=6 after_total=2
+prove-import	Live proof	2026-09-30T15:57:27.0942317Z     | OK   pip-audit-1.json test=pip-audit-1 http=201 test_id=7 after_total=47
+prove-import	Live proof	2026-09-30T15:57:27.0943607Z     | OK   tflint.sarif test=tflint http=201 test_id=8 after_total=3
+prove-import	Live proof	2026-09-30T15:57:27.0944610Z     | DefectDojo import verified: 8 report(s) into proof/security-platform / ci/proof/branch-a
+prove-import	Live proof	2026-09-30T15:57:27.0945508Z PROOF: P-RUN1 PASS committed dd-verify body exited 0 on the run-1 results
+prove-import	Live proof	2026-09-30T15:57:29.9664579Z PROOF: P-CONTEXT PASS product type exactly named 'CI': 1 found
+prove-import	Live proof	2026-09-30T15:57:29.9665689Z PROOF: P-CONTEXT PASS product exactly named 'proof/security-platform': 1 found
+prove-import	Live proof	2026-09-30T15:57:29.9666866Z PROOF: P-CONTEXT PASS product 1 is under product type 'CI' (id 2), found prod_type 2
+prove-import	Live proof	2026-09-30T15:57:29.9668120Z PROOF: P-CONTEXT PASS engagement exactly named 'ci/proof/branch-a' in product 1: 1 found
+prove-import	Live proof	2026-09-30T15:57:29.9669503Z PROOF: P-CONTEXT PASS every attempted import reported product 1 / engagement 1
+prove-import	Live proof	2026-09-30T15:57:29.9670941Z PROOF: P-TESTS PASS engagement 1 holds 8 Test(s); 8 report file(s) were attempted
+prove-import	Live proof	2026-09-30T15:57:29.9676517Z PROOF: P-TESTS PASS attempted files ['checkov-results.json', 'gitleaks-results.json', 'npm-audit-1.json', 'pip-audit-1.json', 'semgrep-results.json', 'tflint.sarif', 'trivy-fs.json', 'trivy-image.json'] == present known report files ['checkov-results.json', 'gitleaks-results.json', 'npm-audit-1.json', 'pip-audit-1.json', 'semgrep-results.json', 'tflint.sarif', 'trivy-fs.json', 'trivy-image.json']
+prove-import	Live proof	2026-09-30T15:57:29.9679654Z PROOF: P-TESTS PASS no present report file was skipped
+prove-import	Live proof	2026-09-30T15:57:29.9684460Z PROOF: P-TESTS PASS semgrep-results.json: test 1 title='semgrep' scan_type='Semgrep JSON Report'; expected 'semgrep' / 'Semgrep JSON Report'
+prove-import	Live proof	2026-09-30T15:57:29.9685571Z PROOF: P-TESTS PASS checkov-results.json: test 2 title='checkov' scan_type='Checkov Scan'; expected 'checkov' / 'Checkov Scan'
+prove-import	Live proof	2026-09-30T15:57:29.9686438Z PROOF: P-TESTS PASS trivy-fs.json: test 3 title='trivy-fs' scan_type='Trivy Scan'; expected 'trivy-fs' / 'Trivy Scan'
+prove-import	Live proof	2026-09-30T15:57:29.9687274Z PROOF: P-TESTS PASS trivy-image.json: test 4 title='trivy-image' scan_type='Trivy Scan'; expected 'trivy-image' / 'Trivy Scan'
+prove-import	Live proof	2026-09-30T15:57:29.9688443Z PROOF: P-TESTS PASS gitleaks-results.json: test 5 title='gitleaks' scan_type='Gitleaks Scan'; expected 'gitleaks' / 'Gitleaks Scan'
+prove-import	Live proof	2026-09-30T15:57:29.9689394Z PROOF: P-TESTS PASS npm-audit-1.json: test 6 title='npm-audit-1' scan_type='NPM Audit v7+ Scan'; expected 'npm-audit-1' / 'NPM Audit v7+ Scan'
+prove-import	Live proof	2026-09-30T15:57:29.9691073Z PROOF: P-TESTS PASS pip-audit-1.json: test 7 title='pip-audit-1' scan_type='pip-audit Scan'; expected 'pip-audit-1' / 'pip-audit Scan'
+prove-import	Live proof	2026-09-30T15:57:29.9692608Z PROOF: P-TESTS PASS tflint.sarif: test 8 title='tflint' scan_type='SARIF'; expected 'tflint' / 'SARIF'
+prove-import	Live proof	2026-09-30T15:57:29.9694829Z     file                       raw   imported(after)  findings-api  rule
+prove-import	Live proof	2026-09-30T15:57:29.9695843Z     semgrep-results.json           7                 7             7  bounded
+prove-import	Live proof	2026-09-30T15:57:29.9696837Z PROOF: P-COUNTS PASS semgrep-results.json: statistics.after.total.total 7 == findings?test=1 count 7
+prove-import	Live proof	2026-09-30T15:57:29.9697646Z PROOF: P-COUNTS PASS semgrep-results.json: 1 <= imported 7 <= raw 7 (bounded: parser merges entries)
+prove-import	Live proof	2026-09-30T15:57:29.9698391Z     checkov-results.json          14                14            14  exact
+prove-import	Live proof	2026-09-30T15:57:29.9699222Z PROOF: P-COUNTS PASS checkov-results.json: statistics.after.total.total 14 == findings?test=2 count 14
+prove-import	Live proof	2026-09-30T15:57:29.9699959Z PROOF: P-COUNTS PASS checkov-results.json: imported 14 == raw 14 (exact: parser does not merge)
+prove-import	Live proof	2026-09-30T15:57:29.9700696Z     trivy-fs.json                  6                 6             6  exact
+prove-import	Live proof	2026-09-30T15:57:29.9701274Z PROOF: P-COUNTS PASS trivy-fs.json: statistics.after.total.total 6 == findings?test=3 count 6
+prove-import	Live proof	2026-09-30T15:57:29.9702046Z PROOF: P-COUNTS PASS trivy-fs.json: imported 6 == raw 6 (exact: parser does not merge)
+prove-import	Live proof	2026-09-30T15:57:29.9702737Z     trivy-image.json              59                59            59  exact
+prove-import	Live proof	2026-09-30T15:57:29.9703807Z PROOF: P-COUNTS PASS trivy-image.json: statistics.after.total.total 59 == findings?test=4 count 59
+prove-import	Live proof	2026-09-30T15:57:29.9704867Z PROOF: P-COUNTS PASS trivy-image.json: imported 59 == raw 59 (exact: parser does not merge)
+prove-import	Live proof	2026-09-30T15:57:29.9705477Z     gitleaks-results.json         18                18            18  bounded
+prove-import	Live proof	2026-09-30T15:57:29.9706558Z PROOF: P-COUNTS PASS gitleaks-results.json: statistics.after.total.total 18 == findings?test=5 count 18
+prove-import	Live proof	2026-09-30T15:57:29.9707848Z PROOF: P-COUNTS PASS gitleaks-results.json: 1 <= imported 18 <= raw 18 (bounded: parser merges entries)
+prove-import	Live proof	2026-09-30T15:57:29.9708477Z     npm-audit-1.json               8                 2             2  bounded
+prove-import	Live proof	2026-09-30T15:57:29.9709251Z PROOF: P-COUNTS PASS npm-audit-1.json: statistics.after.total.total 2 == findings?test=6 count 2
+prove-import	Live proof	2026-09-30T15:57:29.9710145Z PROOF: P-COUNTS PASS npm-audit-1.json: 1 <= imported 2 <= raw 8 (bounded: parser merges entries)
+prove-import	Live proof	2026-09-30T15:57:29.9710797Z     pip-audit-1.json              47                47            47  exact
+prove-import	Live proof	2026-09-30T15:57:29.9711605Z PROOF: P-COUNTS PASS pip-audit-1.json: statistics.after.total.total 47 == findings?test=7 count 47
+prove-import	Live proof	2026-09-30T15:57:29.9712457Z PROOF: P-COUNTS PASS pip-audit-1.json: imported 47 == raw 47 (exact: parser does not merge)
+prove-import	Live proof	2026-09-30T15:57:29.9713303Z     tflint.sarif                   3                 3             3  bounded
+prove-import	Live proof	2026-09-30T15:57:29.9713893Z PROOF: P-COUNTS PASS tflint.sarif: statistics.after.total.total 3 == findings?test=8 count 3
+prove-import	Live proof	2026-09-30T15:57:29.9714780Z PROOF: P-COUNTS PASS tflint.sarif: 1 <= imported 3 <= raw 3 (bounded: parser merges entries)
+prove-import	Live proof	2026-09-30T15:57:29.9761733Z
+prove-import	Live proof	2026-09-30T15:57:29.9762283Z === run 2: reimport the same reports into ci/proof/branch-a ===
+prove-import	Live proof	2026-09-30T15:57:34.4599932Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:57:34.4600863Z     | product=proof/security-platform product_type=CI engagement=ci/proof/branch-a
+prove-import	Live proof	2026-09-30T15:57:34.4602099Z     | IMPORTED: semgrep-results.json scan_type=Semgrep JSON Report test=semgrep http=201 test_id=1 after_total=7
+prove-import	Live proof	2026-09-30T15:57:34.4604382Z     | IMPORTED: checkov-results.json scan_type=Checkov Scan test=checkov http=201 test_id=2 after_total=14
+prove-import	Live proof	2026-09-30T15:57:34.4605203Z     | IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=3 after_total=6
+prove-import	Live proof	2026-09-30T15:57:34.4605916Z     | IMPORTED: trivy-image.json scan_type=Trivy Scan test=trivy-image http=201 test_id=4 after_total=59
+prove-import	Live proof	2026-09-30T15:57:34.4606694Z     | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=5 after_total=18
+prove-import	Live proof	2026-09-30T15:57:34.4607486Z     | IMPORTED: npm-audit-1.json scan_type=NPM Audit v7+ Scan test=npm-audit-1 http=201 test_id=6 after_total=2
+prove-import	Live proof	2026-09-30T15:57:34.4608233Z     | IMPORTED: pip-audit-1.json scan_type=pip-audit Scan test=pip-audit-1 http=201 test_id=7 after_total=47
+prove-import	Live proof	2026-09-30T15:57:34.4608907Z     | IMPORTED: tflint.sarif scan_type=SARIF test=tflint http=201 test_id=8 after_total=3
+prove-import	Live proof	2026-09-30T15:57:34.4609380Z     | attempted=8 skipped=0 failed=0
+prove-import	Live proof	2026-09-30T15:57:34.4916369Z     | OK   semgrep-results.json test=semgrep http=201 test_id=1 after_total=7
+prove-import	Live proof	2026-09-30T15:57:34.4917319Z     | OK   checkov-results.json test=checkov http=201 test_id=2 after_total=14
+prove-import	Live proof	2026-09-30T15:57:34.4918217Z     | OK   trivy-fs.json test=trivy-fs http=201 test_id=3 after_total=6
+prove-import	Live proof	2026-09-30T15:57:34.4919075Z     | OK   trivy-image.json test=trivy-image http=201 test_id=4 after_total=59
+prove-import	Live proof	2026-09-30T15:57:34.4920003Z     | OK   gitleaks-results.json test=gitleaks http=201 test_id=5 after_total=18
+prove-import	Live proof	2026-09-30T15:57:34.4921274Z     | OK   npm-audit-1.json test=npm-audit-1 http=201 test_id=6 after_total=2
+prove-import	Live proof	2026-09-30T15:57:34.4922648Z     | OK   pip-audit-1.json test=pip-audit-1 http=201 test_id=7 after_total=47
+prove-import	Live proof	2026-09-30T15:57:34.4923935Z     | OK   tflint.sarif test=tflint http=201 test_id=8 after_total=3
+prove-import	Live proof	2026-09-30T15:57:34.4924909Z     | DefectDojo import verified: 8 report(s) into proof/security-platform / ci/proof/branch-a
+prove-import	Live proof	2026-09-30T15:57:34.4925576Z PROOF: P-RUN2 PASS committed dd-import (run 2) and dd-verify bodies exited 0
+prove-import	Live proof	2026-09-30T15:57:35.1527564Z PROOF: P-RUN2 PASS run 2 attempted ['checkov-results.json', 'gitleaks-results.json', 'npm-audit-1.json', 'pip-audit-1.json', 'semgrep-results.json', 'tflint.sarif', 'trivy-fs.json', 'trivy-image.json'] == run 1 files ['checkov-results.json', 'gitleaks-results.json', 'npm-audit-1.json', 'pip-audit-1.json', 'semgrep-results.json', 'tflint.sarif', 'trivy-fs.json', 'trivy-image.json']
+prove-import	Live proof	2026-09-30T15:57:35.1529652Z     file                       test(run1) test(run2)  after(run1) after(run2)  delta.created
+prove-import	Live proof	2026-09-30T15:57:35.1544066Z     semgrep-results.json                1          1            7           7              0
+prove-import	Live proof	2026-09-30T15:57:35.1545074Z PROOF: P-RUN2 PASS semgrep-results.json: delta.created.total.total 0 == 0
+prove-import	Live proof	2026-09-30T15:57:35.1546161Z PROOF: P-RUN2 PASS semgrep-results.json: after.total.total 7 == run-1 7
+prove-import	Live proof	2026-09-30T15:57:35.1547284Z PROOF: P-RUN2 PASS semgrep-results.json: test_id 1 == run-1 test_id 1 (reimported in place)
+prove-import	Live proof	2026-09-30T15:57:35.1548443Z     checkov-results.json                2          2           14          14              0
+prove-import	Live proof	2026-09-30T15:57:35.1570309Z PROOF: P-RUN2 PASS checkov-results.json: delta.created.total.total 0 == 0
+prove-import	Live proof	2026-09-30T15:57:35.1571242Z PROOF: P-RUN2 PASS checkov-results.json: after.total.total 14 == run-1 14
+prove-import	Live proof	2026-09-30T15:57:35.1572223Z PROOF: P-RUN2 PASS checkov-results.json: test_id 2 == run-1 test_id 2 (reimported in place)
+prove-import	Live proof	2026-09-30T15:57:35.1572871Z     trivy-fs.json                       3          3            6           6              0
+prove-import	Live proof	2026-09-30T15:57:35.1574603Z PROOF: P-RUN2 PASS trivy-fs.json: delta.created.total.total 0 == 0
+prove-import	Live proof	2026-09-30T15:57:35.1575418Z PROOF: P-RUN2 PASS trivy-fs.json: after.total.total 6 == run-1 6
+prove-import	Live proof	2026-09-30T15:57:35.1576336Z PROOF: P-RUN2 PASS trivy-fs.json: test_id 3 == run-1 test_id 3 (reimported in place)
+prove-import	Live proof	2026-09-30T15:57:35.1577299Z     trivy-image.json                    4          4           59          59              0
+prove-import	Live proof	2026-09-30T15:57:35.1578109Z PROOF: P-RUN2 PASS trivy-image.json: delta.created.total.total 0 == 0
+prove-import	Live proof	2026-09-30T15:57:35.1578661Z PROOF: P-RUN2 PASS trivy-image.json: after.total.total 59 == run-1 59
+prove-import	Live proof	2026-09-30T15:57:35.1579253Z PROOF: P-RUN2 PASS trivy-image.json: test_id 4 == run-1 test_id 4 (reimported in place)
+prove-import	Live proof	2026-09-30T15:57:35.1579871Z     gitleaks-results.json               5          5           18          18              0
+prove-import	Live proof	2026-09-30T15:57:35.1580463Z PROOF: P-RUN2 PASS gitleaks-results.json: delta.created.total.total 0 == 0
+prove-import	Live proof	2026-09-30T15:57:35.1581048Z PROOF: P-RUN2 PASS gitleaks-results.json: after.total.total 18 == run-1 18
+prove-import	Live proof	2026-09-30T15:57:35.1581683Z PROOF: P-RUN2 PASS gitleaks-results.json: test_id 5 == run-1 test_id 5 (reimported in place)
+prove-import	Live proof	2026-09-30T15:57:35.1582299Z     npm-audit-1.json                    6          6            2           2              0
+prove-import	Live proof	2026-09-30T15:57:35.1582839Z PROOF: P-RUN2 PASS npm-audit-1.json: delta.created.total.total 0 == 0
+prove-import	Live proof	2026-09-30T15:57:35.1583756Z PROOF: P-RUN2 PASS npm-audit-1.json: after.total.total 2 == run-1 2
+prove-import	Live proof	2026-09-30T15:57:35.1584364Z PROOF: P-RUN2 PASS npm-audit-1.json: test_id 6 == run-1 test_id 6 (reimported in place)
+prove-import	Live proof	2026-09-30T15:57:35.1584961Z     pip-audit-1.json                    7          7           47          47              0
+prove-import	Live proof	2026-09-30T15:57:35.1585511Z PROOF: P-RUN2 PASS pip-audit-1.json: delta.created.total.total 0 == 0
+prove-import	Live proof	2026-09-30T15:57:35.1586026Z PROOF: P-RUN2 PASS pip-audit-1.json: after.total.total 47 == run-1 47
+prove-import	Live proof	2026-09-30T15:57:35.1586567Z PROOF: P-RUN2 PASS pip-audit-1.json: test_id 7 == run-1 test_id 7 (reimported in place)
+prove-import	Live proof	2026-09-30T15:57:35.1587307Z     tflint.sarif                        8          8            3           3              0
+prove-import	Live proof	2026-09-30T15:57:35.1587997Z PROOF: P-RUN2 PASS tflint.sarif: delta.created.total.total 0 == 0
+prove-import	Live proof	2026-09-30T15:57:35.1588479Z PROOF: P-RUN2 PASS tflint.sarif: after.total.total 3 == run-1 3
+prove-import	Live proof	2026-09-30T15:57:35.1589033Z PROOF: P-RUN2 PASS tflint.sarif: test_id 8 == run-1 test_id 8 (reimported in place)
+prove-import	Live proof	2026-09-30T15:57:35.1590317Z PROOF: P-RUN2 PASS engagement 'ci/proof/branch-a': 1 match(es), Test count 8 == run-1 8
+prove-import	Live proof	2026-09-30T15:57:35.1590967Z
+prove-import	Live proof	2026-09-30T15:57:35.1591229Z === schedule event: branch from GITHUB_REF_NAME ===
+prove-import	Live proof	2026-09-30T15:57:35.8322523Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:57:35.8323656Z     | product=proof/security-platform product_type=CI engagement=ci/main
+prove-import	Live proof	2026-09-30T15:57:35.8325039Z     | SKIP: semgrep-results.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:57:35.8326303Z     | SKIP: checkov-results.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:57:35.8327725Z     | SKIP: trivy-fs.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:57:35.8329042Z     | SKIP: trivy-image.json not in artifacts — no Dockerfile in this repository
+prove-import	Live proof	2026-09-30T15:57:35.8330356Z     | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=9 after_total=18
+prove-import	Live proof	2026-09-30T15:57:35.8332189Z     | SKIP: npm-audit-*.json not in artifacts — no package-lock.json in this repository
+prove-import	Live proof	2026-09-30T15:57:35.8333853Z     | SKIP: pip-audit-*.json not in artifacts — no requirements file in this repository
+prove-import	Live proof	2026-09-30T15:57:35.8335143Z     | SKIP: tflint.sarif not in artifacts — no Terraform in this repository
+prove-import	Live proof	2026-09-30T15:57:35.8336004Z     | attempted=1 skipped=7 failed=0
+prove-import	Live proof	2026-09-30T15:57:36.5278016Z PROOF: P-SCHEDULE PASS schedule event, empty head ref, GITHUB_REF_NAME=main -> exit 0 and engagement 'ci/main' exists in proof/security-platform (1 Test)
+prove-import	Live proof	2026-09-30T15:57:36.5279443Z
+prove-import	Live proof	2026-09-30T15:57:36.5280278Z === hostile head ref ===
+prove-import	Live proof	2026-09-30T15:57:37.2459118Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:57:37.2460581Z     | product=proof/security-platform product_type=CI engagement=ci/@dd-proof/$(touch pwned)
+prove-import	Live proof	2026-09-30T15:57:37.2461989Z     | SKIP: semgrep-results.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:57:37.2463230Z     | SKIP: checkov-results.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:57:37.2465109Z     | SKIP: trivy-fs.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:57:37.2466547Z     | SKIP: trivy-image.json not in artifacts — no Dockerfile in this repository
+prove-import	Live proof	2026-09-30T15:57:37.2467763Z     | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=10 after_total=18
+prove-import	Live proof	2026-09-30T15:57:37.2469733Z     | SKIP: npm-audit-*.json not in artifacts — no package-lock.json in this repository
+prove-import	Live proof	2026-09-30T15:57:37.2471145Z     | SKIP: pip-audit-*.json not in artifacts — no requirements file in this repository
+prove-import	Live proof	2026-09-30T15:57:37.2472249Z     | SKIP: tflint.sarif not in artifacts — no Terraform in this repository
+prove-import	Live proof	2026-09-30T15:57:37.2473853Z     | attempted=1 skipped=7 failed=0
+prove-import	Live proof	2026-09-30T15:57:37.2474616Z PROOF: P-HOSTILE PASS import with the hostile head ref exited 0
+prove-import	Live proof	2026-09-30T15:57:37.9370727Z PROOF: P-HOSTILE PASS exactly one engagement named literally 'ci/@dd-proof/$(touch pwned)' exists in proof/security-platform
+prove-import	Live proof	2026-09-30T15:57:37.9403476Z PROOF: P-HOSTILE PASS no file named pwned in the body's cwd, /home/runner/work/security-platform/security-platform or anywhere under $DD_SMOKE_OUT: the $( ) never ran
+prove-import	Live proof	2026-09-30T15:57:37.9404852Z
+prove-import	Live proof	2026-09-30T15:57:37.9405172Z === same hostile engagement name in proof/other-product ===
+prove-import	Live proof	2026-09-30T15:57:38.7506962Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:57:38.7507996Z     | product=proof/other-product product_type=CI engagement=ci/@dd-proof/$(touch pwned)
+prove-import	Live proof	2026-09-30T15:57:38.7509388Z     | SKIP: semgrep-results.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:57:38.7510442Z     | SKIP: checkov-results.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:57:38.7511873Z     | SKIP: trivy-fs.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:57:38.7513604Z     | SKIP: trivy-image.json not in artifacts — no Dockerfile in this repository
+prove-import	Live proof	2026-09-30T15:57:38.7515257Z     | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=11 after_total=18
+prove-import	Live proof	2026-09-30T15:57:38.7516511Z     | SKIP: npm-audit-*.json not in artifacts — no package-lock.json in this repository
+prove-import	Live proof	2026-09-30T15:57:38.7517336Z     | SKIP: pip-audit-*.json not in artifacts — no requirements file in this repository
+prove-import	Live proof	2026-09-30T15:57:38.7518053Z     | SKIP: tflint.sarif not in artifacts — no Terraform in this repository
+prove-import	Live proof	2026-09-30T15:57:38.7518558Z     | attempted=1 skipped=7 failed=0
+prove-import	Live proof	2026-09-30T15:57:39.7344485Z PROOF: P-SCOPE PASS an engagement with the identical hostile name exists in proof/other-product too
+prove-import	Live proof	2026-09-30T15:57:39.7345589Z
+prove-import	Live proof	2026-09-30T15:57:39.7346010Z === cleanup: delete ci/<hostile ref> in proof/security-platform only ===
+prove-import	Live proof	2026-09-30T15:57:41.3609099Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:57:41.3610055Z     | product='proof/security-platform' target='ci/@dd-proof/$(touch pwned)' default_branch='main'
+prove-import	Live proof	2026-09-30T15:57:41.3611197Z     | DELETED: engagement id=3 name='ci/@dd-proof/$(touch pwned)' product=1
+prove-import	Live proof	2026-09-30T15:57:41.3646891Z PROOF: P-CLEANUP PASS committed dd-delete body exited 0 with outcome deleted, as ci-importer
+prove-import	Live proof	2026-09-30T15:57:41.5429557Z PROOF: P-CLEANUP PASS the hostile engagement is gone from proof/security-platform
+prove-import	Live proof	2026-09-30T15:57:41.8461449Z PROOF: P-CLEANUP PASS the same-named engagement in proof/other-product still exists (product-scoped delete)
+prove-import	Live proof	2026-09-30T15:57:42.1368078Z PROOF: P-CLEANUP PASS ci/proof/branch-a still exists with its run-2 Test count 8
+prove-import	Live proof	2026-09-30T15:57:42.4424466Z PROOF: P-CLEANUP PASS ci/main still exists
+prove-import	Live proof	2026-09-30T15:57:42.4713875Z     | DefectDojo cleanup verified: outcome=deleted target=ci/@dd-proof/$(touch pwned) product=proof/security-platform product_id=1 deleted_ids=[3]
+prove-import	Live proof	2026-09-30T15:57:42.4715481Z PROOF: P-CLEANUP PASS committed dd-cleanup-verify body exited 0 on the deleted result
+prove-import	Live proof	2026-09-30T15:57:42.4716121Z
+prove-import	Live proof	2026-09-30T15:57:42.4716242Z === cleanup refusals ===
+prove-import	Live proof	2026-09-30T15:57:42.5160529Z     | REFUSE: head ref 'main' is empty or the default branch — nothing deleted
+prove-import	Live proof	2026-09-30T15:57:42.5209643Z PROOF: P-REFUSE PASS head ref 'main' (default-branch) -> exit 0, outcome refused, REFUSE: line
+prove-import	Live proof	2026-09-30T15:57:42.5646873Z     | REFUSE: head ref '' is empty or the default branch — nothing deleted
+prove-import	Live proof	2026-09-30T15:57:42.5695681Z PROOF: P-REFUSE PASS head ref '' (empty-head) -> exit 0, outcome refused, REFUSE: line
+prove-import	Live proof	2026-09-30T15:57:42.8512716Z PROOF: P-REFUSE PASS ci/main still exists after both refusals
+prove-import	Live proof	2026-09-30T15:57:42.8513541Z
+prove-import	Live proof	2026-09-30T15:57:42.8513895Z === cleanup of a branch that never existed ===
+prove-import	Live proof	2026-09-30T15:57:43.1276965Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:57:43.1278804Z     | product='proof/security-platform' target='ci/never/existed' default_branch='main'
+prove-import	Live proof	2026-09-30T15:57:43.1279887Z     | NOTHING TO DELETE: no engagement 'ci/never/existed' in product 1
+prove-import	Live proof	2026-09-30T15:57:43.5300537Z PROOF: P-NOMATCH PASS head ref 'never/existed' -> exit 0, outcome nothing-to-delete, instance engagement count 3 -> 3
+prove-import	Live proof	2026-09-30T15:57:43.5301468Z
+prove-import	Live proof	2026-09-30T15:57:43.5301614Z === insecure-TLS warning, no request ===
+prove-import	Live proof	2026-09-30T15:57:43.5758663Z     | FAILED: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (test hook; leave it unset)
+prove-import	Live proof	2026-09-30T15:57:43.5816741Z PROOF: P-INSECURE FAIL DD_INSECURE=true: exit 2, results 'no-result-file', warning marker 0; expected exit 0, the ::warning:: line and 'insecure attempted=0 skipped=8'
+prove-import	Live proof	2026-09-30T15:57:43.5847166Z
+prove-import	Live proof	2026-09-30T15:57:43.5847715Z === non-https DEFECTDOJO_URL is refused before any request (P-HTTP) ===
+prove-import	Live proof	2026-09-30T15:57:43.6284513Z     | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the API token over 'http'
+prove-import	Live proof	2026-09-30T15:57:43.6341272Z PROOF: P-HTTP PASS import-http: DD_URL=http://127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+prove-import	Live proof	2026-09-30T15:57:43.6793478Z     | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the API token over '(no scheme)'
+prove-import	Live proof	2026-09-30T15:57:43.6850991Z PROOF: P-HTTP PASS import-noscheme: DD_URL=127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+prove-import	Live proof	2026-09-30T15:57:43.7290703Z     | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the API token over 'http'
+prove-import	Live proof	2026-09-30T15:57:43.7349344Z PROOF: P-HTTP PASS delete-http: DD_URL=http://127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+prove-import	Live proof	2026-09-30T15:57:43.7399942Z
+prove-import	Live proof	2026-09-30T15:57:43.7400974Z === defectdojo-configure.sh refuses a non-https URL and fails its preflight guards offline (P-HTTP, P-CONFIGURE-GUARD) ===
+prove-import	Live proof	2026-09-30T15:57:43.7818075Z     | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the admin token over 'http'
+prove-import	Live proof	2026-09-30T15:57:43.7882061Z PROOF: P-HTTP PASS configure-http: DEFECTDOJO_URL=http://127.0.0.1:9 -> exit 1, refused before the token file is read, no request, token absent
+prove-import	Live proof	2026-09-30T15:57:43.8293167Z     | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the admin token over '(no scheme)'
+prove-import	Live proof	2026-09-30T15:57:43.8349065Z PROOF: P-HTTP PASS configure-noscheme: DEFECTDOJO_URL=127.0.0.1:9 -> exit 1, refused before the token file is read, no request, token absent
+prove-import	Live proof	2026-09-30T15:57:43.8403320Z     | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE is not set (see the usage lines at the top of this script)
+prove-import	Live proof	2026-09-30T15:57:43.8446357Z PROOF: P-CONFIGURE-GUARD PASS configure-no-env: empty DEFECTDOJO_ADMIN_TOKEN_FILE -> exit 2, FATAL names the variable, no request
+prove-import	Live proof	2026-09-30T15:57:43.8858746Z     | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE '/tmp/tmp.Mr72e070R1/proof/configure-dummy-loose.token' is readable by group or other (mode 644); chmod 600 it
+prove-import	Live proof	2026-09-30T15:57:43.8860093Z     | DefectDojo host: 127.0.0.1
+prove-import	Live proof	2026-09-30T15:57:43.8909491Z PROOF: P-CONFIGURE-GUARD PASS configure-loose-perms: 0644 token file -> exit 2, FATAL names the path, no request, token absent
+prove-import	Live proof	2026-09-30T15:57:43.8925137Z
+prove-import	Live proof	2026-09-30T15:57:43.8925531Z === ambient curlrc is ignored; unverified peer refused before any request (P-CURLRC) ===
+prove-import	Live proof	2026-09-30T15:57:44.3531206Z PROOF: P-CURLRC PASS control: no -q curl read the hostile curlrc and reached the listener (REQUEST auth=yes; trace and libcurl files written)
+prove-import	Live proof	2026-09-30T15:57:44.4286339Z     | DefectDojo host: defectdojo.curlrc.test
+prove-import	Live proof	2026-09-30T15:57:44.4287871Z     | FAILED: GET /api/v2/system_settings/: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self-signed certificate
+prove-import	Live proof	2026-09-30T15:57:44.4468746Z PROOF: P-CURLRC PASS configure: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:44.5102700Z     | ==> PREREQ-PRODUCT: FAIL - GET /api/v2/products/?name_exact=p-curlrc&limit=250&offset=0: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self-signed certificate
+prove-import	Live proof	2026-09-30T15:57:44.5104542Z     |
+prove-import	Live proof	2026-09-30T15:57:44.5104934Z     | === Summary ===
+prove-import	Live proof	2026-09-30T15:57:44.5105514Z     | SKIPPED - 1 sub-check(s) did not run. A SKIP IS NOT A PASS:
+prove-import	Live proof	2026-09-30T15:57:44.5106654Z     |   - the remaining snapshot assertions: not evaluated, they depend on PREREQ-PRODUCT
+prove-import	Live proof	2026-09-30T15:57:44.5107559Z     |
+prove-import	Live proof	2026-09-30T15:57:44.5107954Z     | FAILED - one or more live checks did not produce the expected result:
+prove-import	Live proof	2026-09-30T15:57:44.5108894Z     |   - PREREQ-PRODUCT: GET /api/v2/products/?name_exact=p-curlrc&limit=250&offset=0: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self-signed certificate
+prove-import	Live proof	2026-09-30T15:57:44.5284096Z PROOF: P-CURLRC PASS lifecycle: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.1134376Z     | === defectdojo-homelab-validate: https://127.0.0.1:39807 + https://127.0.0.1:39807 (context p-curlrc-no-such-context, namespace p-curlrc, app argocd/p-curlrc, sync pass first) ===
+prove-import	Live proof	2026-09-30T15:57:45.1136152Z     |
+prove-import	Live proof	2026-09-30T15:57:45.1136715Z     | --- 1. TLS on both hostnames (system trust store) ---
+prove-import	Live proof	2026-09-30T15:57:45.1138812Z     | ==> HOMELAB-TLS-INFRA: FAIL - GET https://127.0.0.1:39807/login: curl exit 60, http 000, TLS verification result 18 (must be 0; curl exit 60 = certificate did not verify against the system trust store): SSL certificate problem: self-signed certificate
+prove-import	Live proof	2026-09-30T15:57:45.1140899Z     | ==> HOMELAB-TLS-HOME: FAIL - GET https://127.0.0.1:39807/login: curl exit 60, http 000, TLS verification result 18 (must be 0; curl exit 60 = certificate did not verify against the system trust store): SSL certificate problem: self-signed certificate
+prove-import	Live proof	2026-09-30T15:57:45.1142131Z     |
+prove-import	Live proof	2026-09-30T15:57:45.1142629Z     | --- 2. admin login with a browser-equivalent Origin, on both hostnames ---
+prove-import	Live proof	2026-09-30T15:57:45.1144480Z     | ==> HOMELAB-LOGIN-ORIGIN-INFRA: FAIL - no admin password to log in with: kubectl exited 1 reading Secret p-curlrc/defectdojo: error: context "p-curlrc-no-such-context" does not exist
+prove-import	Live proof	2026-09-30T15:57:45.1146013Z     | ==> HOMELAB-LOGIN-ORIGIN-HOME: FAIL - no admin password to log in with: kubectl exited 1 reading Secret p-curlrc/defectdojo: error: context "p-curlrc-no-such-context" does not exist
+prove-import	Live proof	2026-09-30T15:57:45.1146843Z     |
+prove-import	Live proof	2026-09-30T15:57:45.1147152Z     | --- 3. negative control: foreign Origin must be refused ---
+prove-import	Live proof	2026-09-30T15:57:45.1148085Z     | ==> HOMELAB-CSRF-FOREIGN-403: FAIL - GET https://127.0.0.1:39807/login for the CSRF token: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self-signed certificate
+prove-import	Live proof	2026-09-30T15:57:45.1148926Z     |
+prove-import	Live proof	2026-09-30T15:57:45.1149166Z     | --- 4. Celery broker round-trip ---
+prove-import	Live proof	2026-09-30T15:57:45.1150008Z     | ==> HOMELAB-CELERY-PING: FAIL - celery -A dojo inspect ping exited 1 without pong (broker unreachable or worker not replying): error: context "p-curlrc-no-such-context" does not exist
+prove-import	Live proof	2026-09-30T15:57:45.1151075Z     |
+prove-import	Live proof	2026-09-30T15:57:45.1151409Z     | --- 5. Argo CD: initializer hook phase and Application status ---
+prove-import	Live proof	2026-09-30T15:57:45.1152327Z     | ==> ARGOCD-HOOK-PHASE: FAIL - kubectl exited 1 reading Application argocd/p-curlrc on context p-curlrc-no-such-context: error: context "p-curlrc-no-such-context" does not exist
+prove-import	Live proof	2026-09-30T15:57:45.1153850Z     |
+prove-import	Live proof	2026-09-30T15:57:45.1154272Z     | --- 6. measuring state (initializer and ServiceAccount UIDs, revision, counts) ---
+prove-import	Live proof	2026-09-30T15:57:45.1155177Z     | ==> HOMELAB-API-TLS: FAIL - GET /api/v2/products/?limit=1: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self-signed certificate
+prove-import	Live proof	2026-09-30T15:57:45.1156247Z     |     measurement gap: job/defectdojo-initializer uid: kubectl exit 1: error: context "p-curlrc-no-such-context" does not exist
+prove-import	Live proof	2026-09-30T15:57:45.1157461Z     |     measurement gap: sa/defectdojo uid: kubectl exit 1: error: context "p-curlrc-no-such-context" does not exist
+prove-import	Live proof	2026-09-30T15:57:45.1158979Z     |     measurement gap: app_revision: Application argocd/p-curlrc was not read (see ARGOCD-HOOK-PHASE)
+prove-import	Live proof	2026-09-30T15:57:45.1160503Z     |     measurement gap: GET /api/v2/products/?limit=1: transport failure (see HOMELAB-API-TLS)
+prove-import	Live proof	2026-09-30T15:57:45.1161385Z     |     measurement gap: GET /api/v2/findings/?limit=1: not attempted after HOMELAB-API-TLS (the token is not sent to the same peer again)
+prove-import	Live proof	2026-09-30T15:57:45.1162144Z     |     state written to /tmp/tmp.Mr72e070R1/proof/curlrc-homelab-state.json
+prove-import	Live proof	2026-09-30T15:57:45.1162897Z     |     WARNING: 5 value(s) in the state file are null (see measurement gaps above); a second-sync run compared against it cannot assert them
+prove-import	Live proof	2026-09-30T15:57:45.1164047Z     |
+prove-import	Live proof	2026-09-30T15:57:45.1164307Z     | --- 7. second-sync idempotency ---
+prove-import	Live proof	2026-09-30T15:57:45.1164784Z     |     SKIPPED - --sync-pass first
+prove-import	Live proof	2026-09-30T15:57:45.1165337Z     |
+prove-import	Live proof	2026-09-30T15:57:45.1165557Z     |
+prove-import	Live proof	2026-09-30T15:57:45.1165772Z     | === Summary ===
+prove-import	Live proof	2026-09-30T15:57:45.1166168Z     | SKIPPED - 1 sub-check(s) did not run. A SKIP IS NOT A PASS:
+prove-import	Live proof	2026-09-30T15:57:45.1167291Z     |   - SECOND-SYNC-IDEMPOTENT: not evaluated on a --sync-pass first run; re-run this gate with --sync-pass second --pre-state <file> --token-file <file> after the second Argo CD sync of the same revision
+prove-import	Live proof	2026-09-30T15:57:45.1168142Z     |
+prove-import	Live proof	2026-09-30T15:57:45.1168474Z     | FAILED - one or more live checks did not produce the expected result:
+prove-import	Live proof	2026-09-30T15:57:45.1169581Z     |   - HOMELAB-TLS-INFRA: GET https://127.0.0.1:39807/login: curl exit 60, http 000, TLS verification result 18 (must be 0; curl exit 60 = certificate did not verify against the system trust store): SSL certificate problem: self-signed certificate
+prove-import	Live proof	2026-09-30T15:57:45.1171424Z     |   - HOMELAB-TLS-HOME: GET https://127.0.0.1:39807/login: curl exit 60, http 000, TLS verification result 18 (must be 0; curl exit 60 = certificate did not verify against the system trust store): SSL certificate problem: self-signed certificate
+prove-import	Live proof	2026-09-30T15:57:45.1172877Z     |   - HOMELAB-LOGIN-ORIGIN-INFRA: no admin password to log in with: kubectl exited 1 reading Secret p-curlrc/defectdojo: error: context "p-curlrc-no-such-context" does not exist
+prove-import	Live proof	2026-09-30T15:57:45.1174665Z     |   - HOMELAB-LOGIN-ORIGIN-HOME: no admin password to log in with: kubectl exited 1 reading Secret p-curlrc/defectdojo: error: context "p-curlrc-no-such-context" does not exist
+prove-import	Live proof	2026-09-30T15:57:45.1176251Z     |   - HOMELAB-CSRF-FOREIGN-403: GET https://127.0.0.1:39807/login for the CSRF token: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self-signed certificate
+prove-import	Live proof	2026-09-30T15:57:45.1177557Z     |   - HOMELAB-CELERY-PING: celery -A dojo inspect ping exited 1 without pong (broker unreachable or worker not replying): error: context "p-curlrc-no-such-context" does not exist
+prove-import	Live proof	2026-09-30T15:57:45.1179343Z     |   - ARGOCD-HOOK-PHASE: kubectl exited 1 reading Application argocd/p-curlrc on context p-curlrc-no-such-context: error: context "p-curlrc-no-such-context" does not exist
+prove-import	Live proof	2026-09-30T15:57:45.1181618Z     |   - HOMELAB-API-TLS: GET /api/v2/products/?limit=1: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self-signed certificate
+prove-import	Live proof	2026-09-30T15:57:45.1335499Z PROOF: P-CURLRC PASS homelab-tls-probe: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.1506878Z PROOF: P-CURLRC PASS homelab-token-get: the measure_count token GET was refused on TLS verification before any request (listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.2294386Z     | TLS mode: verified-system
+prove-import	Live proof	2026-09-30T15:57:45.2295246Z     | product=proof/security-platform product_type=CI engagement=ci/proof/branch-a
+prove-import	Live proof	2026-09-30T15:57:45.2296166Z     | FAILED: semgrep-results.json: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self-signed certificate
+prove-import	Live proof	2026-09-30T15:57:45.2296960Z     | STOPPED: no further report is sent after a transport or TLS failure
+prove-import	Live proof	2026-09-30T15:57:45.2297394Z     | attempted=1 skipped=0 failed=1
+prove-import	Live proof	2026-09-30T15:57:45.2651832Z PROOF: P-CURLRC PASS dd-import: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.3424094Z     | TLS mode: verified-system
+prove-import	Live proof	2026-09-30T15:57:45.3425022Z     | product='proof/security-platform' target='ci/proof/branch-a' default_branch='main'
+prove-import	Live proof	2026-09-30T15:57:45.3426724Z     | FAILED: GET /api/v2/products/?name_exact=proof%2Fsecurity-platform&limit=100: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self-signed certificate
+prove-import	Live proof	2026-09-30T15:57:45.3612690Z PROOF: P-CURLRC PASS dd-delete: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.3626273Z
+prove-import	Live proof	2026-09-30T15:57:45.3626982Z === token-file and DEFECTDOJO_RESOLVE preflight guards send nothing (P-CONFIGURE-GUARD, P-RESOLVE-GUARD, P-TOKEN-GUARD) ===
+prove-import	Live proof	2026-09-30T15:57:45.4123800Z     | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE '/tmp/tmp.Mr72e070R1/proof/guard-configure-token-dir.token' is not a regular file
+prove-import	Live proof	2026-09-30T15:57:45.4124746Z     | DefectDojo host: defectdojo.curlrc.test
+prove-import	Live proof	2026-09-30T15:57:45.4305968Z PROOF: P-CONFIGURE-GUARD PASS configure-token-dir: the token path is a directory -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.4860224Z     | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE '/tmp/tmp.Mr72e070R1/proof/guard-configure-token-mode000.token' cannot be read: Permission denied
+prove-import	Live proof	2026-09-30T15:57:45.4861110Z     | DefectDojo host: defectdojo.curlrc.test
+prove-import	Live proof	2026-09-30T15:57:45.5045491Z PROOF: P-CONFIGURE-GUARD PASS configure-token-mode000: a mode-000 token file -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.5583753Z     | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE '/tmp/tmp.Mr72e070R1/proof/guard-configure-token-multiline.token' must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix
+prove-import	Live proof	2026-09-30T15:57:45.5584883Z     | DefectDojo host: defectdojo.curlrc.test
+prove-import	Live proof	2026-09-30T15:57:45.5778652Z PROOF: P-CONFIGURE-GUARD PASS configure-token-multiline: a two-line token file (40-hex, then 'X-Other: 1') -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.6323182Z     | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE '/tmp/tmp.Mr72e070R1/proof/guard-configure-token-prefix.token' must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix
+prove-import	Live proof	2026-09-30T15:57:45.6325248Z     | DefectDojo host: defectdojo.curlrc.test
+prove-import	Live proof	2026-09-30T15:57:45.6517314Z PROOF: P-CONFIGURE-GUARD PASS configure-token-prefix: a 'Token '-prefixed token file -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.7073311Z     | FATAL: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (a test hook; leave it unset)
+prove-import	Live proof	2026-09-30T15:57:45.7259656Z PROOF: P-RESOLVE-GUARD PASS configure-resolve-host: DEFECTDOJO_RESOLVE host differs from DEFECTDOJO_URL -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.7777540Z     | FATAL: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (a test hook; leave it unset)
+prove-import	Live proof	2026-09-30T15:57:45.7978410Z PROOF: P-RESOLVE-GUARD PASS configure-resolve-wildcard: a wildcard DEFECTDOJO_RESOLVE -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.8287432Z     | ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix
+prove-import	Live proof	2026-09-30T15:57:45.8472835Z PROOF: P-TOKEN-GUARD PASS lifecycle-token-multiline: a two-line token file (two 40-hex lines, the WR-02 join gap) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.8757454Z     | ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix
+prove-import	Live proof	2026-09-30T15:57:45.8936556Z PROOF: P-TOKEN-GUARD PASS lifecycle-token-prefix: a 'Token '-prefixed token file (regression guard: refused before 29.2) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.9167340Z     | ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE is not a readable file
+prove-import	Live proof	2026-09-30T15:57:45.9346433Z PROOF: P-TOKEN-GUARD PASS lifecycle-token-dir: the token path is a directory (regression guard: refused before 29.2) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.9580036Z     | ERROR: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (a test hook; leave it unset)
+prove-import	Live proof	2026-09-30T15:57:45.9764826Z PROOF: P-RESOLVE-GUARD PASS lifecycle-resolve-host: DEFECTDOJO_RESOLVE host differs from DEFECTDOJO_URL -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:45.9942025Z     | ERROR: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (a test hook; leave it unset)
+prove-import	Live proof	2026-09-30T15:57:46.0125896Z PROOF: P-RESOLVE-GUARD PASS lifecycle-resolve-wildcard: a wildcard DEFECTDOJO_RESOLVE -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:46.0394985Z     | ERROR: --token-file '/tmp/tmp.Mr72e070R1/proof/guard-homelab-token-multiline.token' must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix
+prove-import	Live proof	2026-09-30T15:57:46.0396543Z     | Usage: bash scripts/defectdojo-homelab-validate.sh --url <URL> --alt-url <URL> --context <kube-context> --namespace <ns> --app <name> --sync-pass <first|second> [options]
+prove-import	Live proof	2026-09-30T15:57:46.0397439Z     |
+prove-import	Live proof	2026-09-30T15:57:46.0398216Z     | Required (there are NO defaults for these — the gate refuses to guess):
+prove-import	Live proof	2026-09-30T15:57:46.0398952Z     |   --url <https://host>         Primary public URL of DefectDojo (checks named *-INFRA).
+prove-import	Live proof	2026-09-30T15:57:46.0399598Z     |   --alt-url <https://host>     Alternative public URL (DD_SITE_URL alternative host,
+prove-import	Live proof	2026-09-30T15:57:46.0400177Z     |                                checks named *-HOME). Both must start with https://.
+prove-import	Live proof	2026-09-30T15:57:46.0401090Z     |   --context <kube-context>     kubeconfig context every kubectl call is pinned to.
+prove-import	Live proof	2026-09-30T15:57:46.0401642Z     |                                KUBECONFIG is honoured from the environment.
+prove-import	Live proof	2026-09-30T15:57:46.0402115Z     |   --namespace <ns>             Namespace DefectDojo is deployed in.
+prove-import	Live proof	2026-09-30T15:57:46.0402567Z     |   --app <name>                 Argo CD Application name.
+prove-import	Live proof	2026-09-30T15:57:46.0403532Z     |   --sync-pass <first|second>   Which Argo CD sync this run follows. `second`
+prove-import	Live proof	2026-09-30T15:57:46.0404048Z     |                                evaluates SECOND-SYNC-IDEMPOTENT and needs
+prove-import	Live proof	2026-09-30T15:57:46.0404478Z     |                                --pre-state and --token-file.
+prove-import	Live proof	2026-09-30T15:57:46.0404818Z     |
+prove-import	Live proof	2026-09-30T15:57:46.0405036Z     | Optional:
+prove-import	Live proof	2026-09-30T15:57:46.0405386Z     |   --write-state <file>         Write the measured state (initializer and
+prove-import	Live proof	2026-09-30T15:57:46.0405891Z     |                                ServiceAccount UIDs, Application revision, product
+prove-import	Live proof	2026-09-30T15:57:46.0406345Z     |                                and finding counts) as JSON to <file>.
+prove-import	Live proof	2026-09-30T15:57:46.0406794Z     |   --pre-state <file>           State file written by an earlier run with
+prove-import	Live proof	2026-09-30T15:57:46.0407283Z     |                                --write-state (required with --sync-pass second).
+prove-import	Live proof	2026-09-30T15:57:46.0407806Z     |   --token-file <file>          File holding a DefectDojo API v2 token; used only
+prove-import	Live proof	2026-09-30T15:57:46.0408312Z     |                                for the product/finding counts (required with
+prove-import	Live proof	2026-09-30T15:57:46.0408748Z     |                                --sync-pass second).
+prove-import	Live proof	2026-09-30T15:57:46.0409204Z     |   --argocd-namespace <ns>      Namespace Argo CD runs in (default: argocd)
+prove-import	Live proof	2026-09-30T15:57:46.0409700Z     |   -h, --help                   Print this help and exit 0
+prove-import	Live proof	2026-09-30T15:57:46.0410058Z     |
+prove-import	Live proof	2026-09-30T15:57:46.0410417Z     | Exit codes: 0 all checks that ran passed (or NOTHING RAN), 1 a check failed or
+prove-import	Live proof	2026-09-30T15:57:46.0410942Z     | a hard-tier binary is missing, 2 usage or preflight error.
+prove-import	Live proof	2026-09-30T15:57:46.0584461Z PROOF: P-TOKEN-GUARD PASS homelab-token-multiline: a two-line token file (two 40-hex lines, the WR-02 join gap) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:46.0820107Z     | ERROR: --token-file '/tmp/tmp.Mr72e070R1/proof/guard-homelab-token-prefix.token' must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix
+prove-import	Live proof	2026-09-30T15:57:46.0822459Z     | Usage: bash scripts/defectdojo-homelab-validate.sh --url <URL> --alt-url <URL> --context <kube-context> --namespace <ns> --app <name> --sync-pass <first|second> [options]
+prove-import	Live proof	2026-09-30T15:57:46.0824583Z     |
+prove-import	Live proof	2026-09-30T15:57:46.0825189Z     | Required (there are NO defaults for these — the gate refuses to guess):
+prove-import	Live proof	2026-09-30T15:57:46.0825794Z     |   --url <https://host>         Primary public URL of DefectDojo (checks named *-INFRA).
+prove-import	Live proof	2026-09-30T15:57:46.0826418Z     |   --alt-url <https://host>     Alternative public URL (DD_SITE_URL alternative host,
+prove-import	Live proof	2026-09-30T15:57:46.0826961Z     |                                checks named *-HOME). Both must start with https://.
+prove-import	Live proof	2026-09-30T15:57:46.0827505Z     |   --context <kube-context>     kubeconfig context every kubectl call is pinned to.
+prove-import	Live proof	2026-09-30T15:57:46.0828033Z     |                                KUBECONFIG is honoured from the environment.
+prove-import	Live proof	2026-09-30T15:57:46.0828683Z     |   --namespace <ns>             Namespace DefectDojo is deployed in.
+prove-import	Live proof	2026-09-30T15:57:46.0829161Z     |   --app <name>                 Argo CD Application name.
+prove-import	Live proof	2026-09-30T15:57:46.0829643Z     |   --sync-pass <first|second>   Which Argo CD sync this run follows. `second`
+prove-import	Live proof	2026-09-30T15:57:46.0830148Z     |                                evaluates SECOND-SYNC-IDEMPOTENT and needs
+prove-import	Live proof	2026-09-30T15:57:46.0830572Z     |                                --pre-state and --token-file.
+prove-import	Live proof	2026-09-30T15:57:46.0831140Z     |
+prove-import	Live proof	2026-09-30T15:57:46.0831356Z     | Optional:
+prove-import	Live proof	2026-09-30T15:57:46.0831704Z     |   --write-state <file>         Write the measured state (initializer and
+prove-import	Live proof	2026-09-30T15:57:46.0832219Z     |                                ServiceAccount UIDs, Application revision, product
+prove-import	Live proof	2026-09-30T15:57:46.0832698Z     |                                and finding counts) as JSON to <file>.
+prove-import	Live proof	2026-09-30T15:57:46.0833518Z     |   --pre-state <file>           State file written by an earlier run with
+prove-import	Live proof	2026-09-30T15:57:46.0834211Z     |                                --write-state (required with --sync-pass second).
+prove-import	Live proof	2026-09-30T15:57:46.0834742Z     |   --token-file <file>          File holding a DefectDojo API v2 token; used only
+prove-import	Live proof	2026-09-30T15:57:46.0835238Z     |                                for the product/finding counts (required with
+prove-import	Live proof	2026-09-30T15:57:46.0835652Z     |                                --sync-pass second).
+prove-import	Live proof	2026-09-30T15:57:46.0836116Z     |   --argocd-namespace <ns>      Namespace Argo CD runs in (default: argocd)
+prove-import	Live proof	2026-09-30T15:57:46.0836601Z     |   -h, --help                   Print this help and exit 0
+prove-import	Live proof	2026-09-30T15:57:46.0837106Z     |
+prove-import	Live proof	2026-09-30T15:57:46.0837574Z     | Exit codes: 0 all checks that ran passed (or NOTHING RAN), 1 a check failed or
+prove-import	Live proof	2026-09-30T15:57:46.0838107Z     | a hard-tier binary is missing, 2 usage or preflight error.
+prove-import	Live proof	2026-09-30T15:57:46.1001429Z PROOF: P-TOKEN-GUARD PASS homelab-token-prefix: a 'Token '-prefixed token file -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:46.1209788Z     | ERROR: --token-file '/tmp/tmp.Mr72e070R1/proof/guard-homelab-token-dir.token' does not exist or is not a readable regular file
+prove-import	Live proof	2026-09-30T15:57:46.1211798Z     | Usage: bash scripts/defectdojo-homelab-validate.sh --url <URL> --alt-url <URL> --context <kube-context> --namespace <ns> --app <name> --sync-pass <first|second> [options]
+prove-import	Live proof	2026-09-30T15:57:46.1213614Z     |
+prove-import	Live proof	2026-09-30T15:57:46.1214256Z     | Required (there are NO defaults for these — the gate refuses to guess):
+prove-import	Live proof	2026-09-30T15:57:46.1214878Z     |   --url <https://host>         Primary public URL of DefectDojo (checks named *-INFRA).
+prove-import	Live proof	2026-09-30T15:57:46.1215489Z     |   --alt-url <https://host>     Alternative public URL (DD_SITE_URL alternative host,
+prove-import	Live proof	2026-09-30T15:57:46.1216105Z     |                                checks named *-HOME). Both must start with https://.
+prove-import	Live proof	2026-09-30T15:57:46.1216980Z     |   --context <kube-context>     kubeconfig context every kubectl call is pinned to.
+prove-import	Live proof	2026-09-30T15:57:46.1217542Z     |                                KUBECONFIG is honoured from the environment.
+prove-import	Live proof	2026-09-30T15:57:46.1218187Z     |   --namespace <ns>             Namespace DefectDojo is deployed in.
+prove-import	Live proof	2026-09-30T15:57:46.1218656Z     |   --app <name>                 Argo CD Application name.
+prove-import	Live proof	2026-09-30T15:57:46.1219413Z     |   --sync-pass <first|second>   Which Argo CD sync this run follows. `second`
+prove-import	Live proof	2026-09-30T15:57:46.1219985Z     |                                evaluates SECOND-SYNC-IDEMPOTENT and needs
+prove-import	Live proof	2026-09-30T15:57:46.1220490Z     |                                --pre-state and --token-file.
+prove-import	Live proof	2026-09-30T15:57:46.1220924Z     |
+prove-import	Live proof	2026-09-30T15:57:46.1221147Z     | Optional:
+prove-import	Live proof	2026-09-30T15:57:46.1221699Z     |   --write-state <file>         Write the measured state (initializer and
+prove-import	Live proof	2026-09-30T15:57:46.1222394Z     |                                ServiceAccount UIDs, Application revision, product
+prove-import	Live proof	2026-09-30T15:57:46.1222856Z     |                                and finding counts) as JSON to <file>.
+prove-import	Live proof	2026-09-30T15:57:46.1223640Z     |   --pre-state <file>           State file written by an earlier run with
+prove-import	Live proof	2026-09-30T15:57:46.1224143Z     |                                --write-state (required with --sync-pass second).
+prove-import	Live proof	2026-09-30T15:57:46.1224653Z     |   --token-file <file>          File holding a DefectDojo API v2 token; used only
+prove-import	Live proof	2026-09-30T15:57:46.1225149Z     |                                for the product/finding counts (required with
+prove-import	Live proof	2026-09-30T15:57:46.1225784Z     |                                --sync-pass second).
+prove-import	Live proof	2026-09-30T15:57:46.1226232Z     |   --argocd-namespace <ns>      Namespace Argo CD runs in (default: argocd)
+prove-import	Live proof	2026-09-30T15:57:46.1226712Z     |   -h, --help                   Print this help and exit 0
+prove-import	Live proof	2026-09-30T15:57:46.1227304Z     |
+prove-import	Live proof	2026-09-30T15:57:46.1227778Z     | Exit codes: 0 all checks that ran passed (or NOTHING RAN), 1 a check failed or
+prove-import	Live proof	2026-09-30T15:57:46.1228674Z     | a hard-tier binary is missing, 2 usage or preflight error.
+prove-import	Live proof	2026-09-30T15:57:46.1391129Z PROOF: P-TOKEN-GUARD PASS homelab-token-dir: the --token-file path is a directory -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:46.1906448Z     | FAILED: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (test hook; leave it unset)
+prove-import	Live proof	2026-09-30T15:57:46.2103877Z PROOF: P-RESOLVE-GUARD PASS dd-import-resolve-host: DEFECTDOJO_RESOLVE host differs from DD_URL -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:46.2682175Z     | FAILED: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (test hook; leave it unset)
+prove-import	Live proof	2026-09-30T15:57:46.2877468Z PROOF: P-RESOLVE-GUARD PASS dd-delete-resolve-host: DEFECTDOJO_RESOLVE host differs from DD_URL -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+prove-import	Live proof	2026-09-30T15:57:46.2954536Z
+prove-import	Live proof	2026-09-30T15:57:46.2955398Z === Phase 28: dedup and triage (fresh products) ===
+prove-import	Live proof	2026-09-30T15:57:46.2955903Z
+prove-import	Live proof	2026-09-30T15:57:46.2956449Z === bootstrap: scripts/defectdojo-configure.sh with the admin token (P-CONFIGURE) ===
+prove-import	Live proof	2026-09-30T15:57:46.3704631Z     before: {"enable_deduplication":false,"delete_duplicates":false,"false_positive_history":false,"retroactive_false_positive_history":false,"risk_acceptance_form_default_days":180,"enable_finding_sla":true}
+prove-import	Live proof	2026-09-30T15:57:46.5328388Z     | DefectDojo host: defectdojo.smoke.test
+prove-import	Live proof	2026-09-30T15:57:46.5329212Z     | CHANGED: enable_deduplication, risk_acceptance_form_default_days
+prove-import	Live proof	2026-09-30T15:57:46.5329903Z     | VERIFIED: all 5 settings match
+prove-import	Live proof	2026-09-30T15:57:46.5362318Z PROOF: P-CONFIGURE PASS run 1 on the fresh install -> exit 0, CHANGED: names enable_deduplication, VERIFIED: printed
+prove-import	Live proof	2026-09-30T15:57:46.6243872Z     after:  {"enable_deduplication":true,"delete_duplicates":false,"false_positive_history":false,"retroactive_false_positive_history":false,"risk_acceptance_form_default_days":90,"enable_finding_sla":true}
+prove-import	Live proof	2026-09-30T15:57:46.6273482Z PROOF: P-CONFIGURE PASS read-back: enable_deduplication=true, delete_duplicates=false, both false-positive-history flags false, risk_acceptance_form_default_days=90
+prove-import	Live proof	2026-09-30T15:57:46.6333521Z PROOF: P-CONFIGURE PASS enable_finding_sla unchanged by the bootstrap (true -> true, D-21)
+prove-import	Live proof	2026-09-30T15:57:46.6348103Z PROOF: P-CONFIGURE PASS the admin token string does not appear in the run-1 log
+prove-import	Live proof	2026-09-30T15:57:46.6348821Z
+prove-import	Live proof	2026-09-30T15:57:46.6349156Z === bootstrap rerun changes nothing (P-IDEMPOTENT) ===
+prove-import	Live proof	2026-09-30T15:57:46.7833862Z     | DefectDojo host: defectdojo.smoke.test
+prove-import	Live proof	2026-09-30T15:57:46.7835526Z     | NO CHANGE: all 5 settings already match (enable_deduplication, delete_duplicates, false_positive_history, retroactive_false_positive_history, risk_acceptance_form_default_days)
+prove-import	Live proof	2026-09-30T15:57:46.8708479Z PROOF: P-IDEMPOTENT PASS run 2 -> exit 0, NO CHANGE, no CHANGED: line, System Settings byte-identical (jq -S) before and after
+prove-import	Live proof	2026-09-30T15:57:46.8719494Z
+prove-import	Live proof	2026-09-30T15:57:46.8719898Z === ci-importer dedup execution mode: async_wait (P-DEDUP-MODE) ===
+prove-import	Live proof	2026-09-30T15:57:46.9190109Z     ci-importer (id 2) has 0 contact-info row(s): POST deduplication_execution_mode=async_wait
+prove-import	Live proof	2026-09-30T15:57:47.0391945Z PROOF: P-DEDUP-MODE PASS POST -> 201; read-back: ci-importer's contact-info row 1 has deduplication_execution_mode=async_wait (harness only; security.yml unchanged)
+prove-import	Live proof	2026-09-30T15:57:47.0393769Z
+prove-import	Live proof	2026-09-30T15:57:47.0394040Z === branch-engagement dedup with a unique delta (P-DEDUP-BRANCH) ===
+prove-import	Live proof	2026-09-30T15:57:47.0921078Z     delta: removed CVE-2020-8203 lodash 4.17.15 (HIGH, 'fixtures/package-lock.json') from the ci/main copy of trivy-fs.json
+prove-import	Live proof	2026-09-30T15:57:47.0924583Z     import dedup-main: proof/dedup / ci/main (schedule) from reports-main-trimmed
+prove-import	Live proof	2026-09-30T15:57:58.0621883Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:57:58.0622551Z     | product=proof/dedup product_type=CI engagement=ci/main
+prove-import	Live proof	2026-09-30T15:57:58.0623840Z     | IMPORTED: semgrep-results.json scan_type=Semgrep JSON Report test=semgrep http=201 test_id=12 after_total=7
+prove-import	Live proof	2026-09-30T15:57:58.0625204Z     | IMPORTED: checkov-results.json scan_type=Checkov Scan test=checkov http=201 test_id=13 after_total=14
+prove-import	Live proof	2026-09-30T15:57:58.0626450Z     | IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=14 after_total=5
+prove-import	Live proof	2026-09-30T15:57:58.0627810Z     | IMPORTED: trivy-image.json scan_type=Trivy Scan test=trivy-image http=201 test_id=15 after_total=59
+prove-import	Live proof	2026-09-30T15:57:58.0628907Z     | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=16 after_total=18
+prove-import	Live proof	2026-09-30T15:57:58.0629697Z     | IMPORTED: npm-audit-1.json scan_type=NPM Audit v7+ Scan test=npm-audit-1 http=201 test_id=17 after_total=2
+prove-import	Live proof	2026-09-30T15:57:58.0630493Z     | IMPORTED: pip-audit-1.json scan_type=pip-audit Scan test=pip-audit-1 http=201 test_id=18 after_total=47
+prove-import	Live proof	2026-09-30T15:57:58.0631219Z     | IMPORTED: tflint.sarif scan_type=SARIF test=tflint http=201 test_id=19 after_total=3
+prove-import	Live proof	2026-09-30T15:57:58.0631708Z     | attempted=8 skipped=0 failed=0
+prove-import	Live proof	2026-09-30T15:57:58.0632189Z     import dedup-pr: proof/dedup / ci/proof/pr-delta (pull_request) from dd-reports
+prove-import	Live proof	2026-09-30T15:58:10.5611915Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:58:10.5612702Z     | product=proof/dedup product_type=CI engagement=ci/proof/pr-delta
+prove-import	Live proof	2026-09-30T15:58:10.5613867Z     | IMPORTED: semgrep-results.json scan_type=Semgrep JSON Report test=semgrep http=201 test_id=20 after_total=7
+prove-import	Live proof	2026-09-30T15:58:10.5614917Z     | IMPORTED: checkov-results.json scan_type=Checkov Scan test=checkov http=201 test_id=21 after_total=14
+prove-import	Live proof	2026-09-30T15:58:10.5615808Z     | IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=22 after_total=6
+prove-import	Live proof	2026-09-30T15:58:10.5616920Z     | IMPORTED: trivy-image.json scan_type=Trivy Scan test=trivy-image http=201 test_id=23 after_total=59
+prove-import	Live proof	2026-09-30T15:58:10.5617981Z     | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=24 after_total=18
+prove-import	Live proof	2026-09-30T15:58:10.5619027Z     | IMPORTED: npm-audit-1.json scan_type=NPM Audit v7+ Scan test=npm-audit-1 http=201 test_id=25 after_total=2
+prove-import	Live proof	2026-09-30T15:58:10.5620075Z     | IMPORTED: pip-audit-1.json scan_type=pip-audit Scan test=pip-audit-1 http=201 test_id=26 after_total=47
+prove-import	Live proof	2026-09-30T15:58:10.5621047Z     | IMPORTED: tflint.sarif scan_type=SARIF test=tflint http=201 test_id=27 after_total=3
+prove-import	Live proof	2026-09-30T15:58:10.5621616Z     | attempted=8 skipped=0 failed=0
+prove-import	Live proof	2026-09-30T15:58:17.9186278Z     dedup settled after 7 s: 155 duplicate of 156 findings in proof/dedup / ci/proof/pr-delta (unchanged across two snapshots 5 s apart)
+prove-import	Live proof	2026-09-30T15:58:20.2194638Z     counts: PR total 156, PR duplicates 155, main total 155, main duplicates 23
+prove-import	Live proof	2026-09-30T15:58:20.2195931Z PROOF: P-DEDUP-BRANCH PASS ci/proof/pr-delta holds 156 findings (at least 10, non-vacuous)
+prove-import	Live proof	2026-09-30T15:58:20.2198597Z PROOF: P-DEDUP-BRANCH PASS exactly one PR finding is non-duplicate and it is the active delta CVE-2020-8203 lodash 4.17.15: 1 non-duplicate (#387 Trivy Scan 'CVE-2020-8203 Lodash 4.17.15' dup=False active=True dup_of=None)
+prove-import	Live proof	2026-09-30T15:58:20.2201643Z PROOF: P-DEDUP-BRANCH PASS every other PR finding (155) is duplicate=true, active=false, with its original in ci/main
+prove-import	Live proof	2026-09-30T15:58:20.2202917Z PROOF: P-DEDUP-BRANCH PASS no ci/main finding has its original in the PR engagement (the older default-branch finding stays the original)
+prove-import	Live proof	2026-09-30T15:58:20.2204185Z
+prove-import	Live proof	2026-09-30T15:58:20.2204410Z === cross-tool SCA gap in ci/main (P-CROSSTOOL) ===
+prove-import	Live proof	2026-09-30T15:58:20.2521762Z PROOF: P-CROSSTOOL PASS ci/main holds findings of every SCA parser (Trivy Scan=64, pip-audit Scan=47, NPM Audit v7+ Scan=2)
+prove-import	Live proof	2026-09-30T15:58:20.2523429Z PROOF: P-CROSSTOOL PASS packages reported by both Trivy and pip-audit (non-vacuous gap): ['requests']
+prove-import	Live proof	2026-09-30T15:58:20.2524890Z PROOF: P-CROSSTOOL PASS 23 duplicate link(s) touch an SCA finding in ci/main; 0 cross scan types
+prove-import	Live proof	2026-09-30T15:58:20.2526764Z CROSSTOOL: scan_type='Trivy Scan' findings=64 with_vulnerability_ids=64 with_component_version=64 sample_components=['bsdutils', 'gzip', 'libacl1']
+prove-import	Live proof	2026-09-30T15:58:20.2528641Z CROSSTOOL: scan_type='pip-audit Scan' findings=47 with_vulnerability_ids=47 with_component_version=47 sample_components=['idna', 'jinja2', 'requests']
+prove-import	Live proof	2026-09-30T15:58:20.2530705Z CROSSTOOL: scan_type='NPM Audit v7+ Scan' findings=2 with_vulnerability_ids=0 with_component_version=0 sample_components=['node_modules/lodash', 'node_modules/minimist']
+prove-import	Live proof	2026-09-30T15:58:20.2533716Z CROSSTOOL: package=requests trivy_ids=['CVE-2018-18074'] pip_audit_ids=['PYSEC-2018-28', 'PYSEC-2023-74', 'PYSEC-2026-1872', 'PYSEC-2026-1873', 'PYSEC-2026-2275'] shared=[]
+prove-import	Live proof	2026-09-30T15:58:20.2535318Z
+prove-import	Live proof	2026-09-30T15:58:20.2535923Z === dispositions survive two default-branch reimports (P-DISPOSITION) ===
+prove-import	Live proof	2026-09-30T15:58:21.2559529Z         trivy-fs Test 14: 5 findings, 5 eligible (active, non-duplicate, undispositioned, unique title, no ci/main duplicate of it)
+prove-import	Live proof	2026-09-30T15:58:21.2560811Z         FP: #232 'CVE-2021-23337 Lodash 4.17.15'
+prove-import	Live proof	2026-09-30T15:58:21.2561439Z         OOS: #233 'CVE-2026-4800 Lodash 4.17.15'
+prove-import	Live proof	2026-09-30T15:58:21.2562226Z         RA: #234 'NSWG-ECO-516 Lodash 4.17.15'
+prove-import	Live proof	2026-09-30T15:58:21.2685571Z     selected: FP_ID=232 OOS_ID=233 RA_ID=234
+prove-import	Live proof	2026-09-30T15:58:21.3337547Z     RA owner: admin (id 1); expiration_date 2026-12-29T00:00:00Z
+prove-import	Live proof	2026-09-30T15:58:21.6318981Z     fp: PATCH /api/v2/findings/232/ -> 200
+prove-import	Live proof	2026-09-30T15:58:21.9606480Z     oos: PATCH /api/v2/findings/233/ -> 200
+prove-import	Live proof	2026-09-30T15:58:22.3511455Z     ra: POST /api/v2/risk_acceptance/ -> 201
+prove-import	Live proof	2026-09-30T15:58:23.5483387Z PROOF: P-DISPOSITION PASS before any reimport: FP #232 reads false_p=True active=False (false_p=True out_of_scope=False risk_accepted=False active=False is_mitigated=True)
+prove-import	Live proof	2026-09-30T15:58:23.5484869Z PROOF: P-DISPOSITION PASS before any reimport: OOS #233 reads out_of_scope=True active=False (false_p=False out_of_scope=True risk_accepted=False active=False is_mitigated=True)
+prove-import	Live proof	2026-09-30T15:58:23.5486506Z PROOF: P-DISPOSITION PASS before any reimport: RA #234 reads risk_accepted=True active=False (false_p=False out_of_scope=False risk_accepted=True active=False is_mitigated=False)
+prove-import	Live proof	2026-09-30T15:58:23.8432616Z     import disp-reimport-1: proof/dedup / ci/main (schedule) from reports-main-trimmed
+prove-import	Live proof	2026-09-30T15:58:30.9991239Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:58:30.9992017Z     | product=proof/dedup product_type=CI engagement=ci/main
+prove-import	Live proof	2026-09-30T15:58:30.9993326Z     | IMPORTED: semgrep-results.json scan_type=Semgrep JSON Report test=semgrep http=201 test_id=12 after_total=7
+prove-import	Live proof	2026-09-30T15:58:30.9994615Z     | IMPORTED: checkov-results.json scan_type=Checkov Scan test=checkov http=201 test_id=13 after_total=14
+prove-import	Live proof	2026-09-30T15:58:30.9995838Z     | IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=14 after_total=5
+prove-import	Live proof	2026-09-30T15:58:30.9997542Z     | IMPORTED: trivy-image.json scan_type=Trivy Scan test=trivy-image http=201 test_id=15 after_total=59
+prove-import	Live proof	2026-09-30T15:58:30.9999444Z     | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=16 after_total=18
+prove-import	Live proof	2026-09-30T15:58:31.0001256Z     | IMPORTED: npm-audit-1.json scan_type=NPM Audit v7+ Scan test=npm-audit-1 http=201 test_id=17 after_total=2
+prove-import	Live proof	2026-09-30T15:58:31.0002620Z     | IMPORTED: pip-audit-1.json scan_type=pip-audit Scan test=pip-audit-1 http=201 test_id=18 after_total=47
+prove-import	Live proof	2026-09-30T15:58:31.0004083Z     | IMPORTED: tflint.sarif scan_type=SARIF test=tflint http=201 test_id=19 after_total=3
+prove-import	Live proof	2026-09-30T15:58:31.0004585Z     | attempted=8 skipped=0 failed=0
+prove-import	Live proof	2026-09-30T15:58:31.3486371Z PROOF: P-DISPOSITION PASS reimport 1 of ci/main from the trimmed reports -> exit 0, Test count unchanged at 8 (in-place reimport)
+prove-import	Live proof	2026-09-30T15:58:32.0938553Z PROOF: P-DISPOSITION PASS after reimport 1: FP #232 is false_p=True out_of_scope=False risk_accepted=False active=False is_mitigated=True (expected false_p=True out_of_scope=False risk_accepted=False active=False is_mitigated=True), mitigated=2026-09-30T15:58:21.582976Z
+prove-import	Live proof	2026-09-30T15:58:32.0942478Z PROOF: P-DISPOSITION PASS after reimport 1: OOS #233 is false_p=False out_of_scope=True risk_accepted=False active=False is_mitigated=True (expected false_p=False out_of_scope=True risk_accepted=False active=False is_mitigated=True), mitigated=2026-09-30T15:58:21.918922Z
+prove-import	Live proof	2026-09-30T15:58:32.0946027Z PROOF: P-DISPOSITION PASS after reimport 1: RA #234 is false_p=False out_of_scope=False risk_accepted=True active=False is_mitigated=False (expected false_p=False out_of_scope=False risk_accepted=True active=False is_mitigated=False), mitigated=None
+prove-import	Live proof	2026-09-30T15:58:32.0951114Z     reimport 1 trivy-fs statistics.delta: {"closed": {"critical": {"active": 0, "duplicate": 0, "false_p": 0, "is_mitigated": 0, "out_of_scope": 0, "risk_accepted": 0, "total": 0, "verified": 0}, "high": {"active": 0, "duplicate": 0, "false_p": 0, "is_mitigated": 0, "out_of_scope": 0, "risk_accepted": 0, "total": 0, "verified": 0}, "info": {"active": 0, "duplicate": 0, "false_p": 0, "is_mitigated": 0, "out_of_scope": 0, "risk_accepted": 0, "total": 0, "verified": 0}, "low": {"active": 0, "duplicate": 0, "false_p": 0, "is_mitigated": 0, "out_of_scope": 0, "risk_accepted": 0, "total": 0, "verified": 0}, "medium": {"active": 0, "duplicate": 0, "false_p": 0, "is_mitigated": 0, "out_of_scope": 0, "risk_accepted": 0, "total": 0, "verified": 0}, "total": {"active": 0, "duplicate": 0, "false_p": 0, "is_mitigated": 0, "out_of_scope": 0, "r
+prove-import	Live proof	2026-09-30T15:58:32.0954546Z PROOF: P-DISPOSITION PASS reimport 1: trivy-fs statistics.delta.reactivated.total = 0 (expected 0)
+prove-import	Live proof	2026-09-30T15:58:32.0955265Z     import disp-reimport-2: proof/dedup / ci/main (schedule) from reports-main-trimmed
+prove-import	Live proof	2026-09-30T15:58:38.9098774Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:58:38.9099555Z     | product=proof/dedup product_type=CI engagement=ci/main
+prove-import	Live proof	2026-09-30T15:58:38.9100667Z     | IMPORTED: semgrep-results.json scan_type=Semgrep JSON Report test=semgrep http=201 test_id=12 after_total=7
+prove-import	Live proof	2026-09-30T15:58:38.9102126Z     | IMPORTED: checkov-results.json scan_type=Checkov Scan test=checkov http=201 test_id=13 after_total=14
+prove-import	Live proof	2026-09-30T15:58:38.9103643Z     | IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=14 after_total=5
+prove-import	Live proof	2026-09-30T15:58:38.9104896Z     | IMPORTED: trivy-image.json scan_type=Trivy Scan test=trivy-image http=201 test_id=15 after_total=59
+prove-import	Live proof	2026-09-30T15:58:38.9106256Z     | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=16 after_total=18
+prove-import	Live proof	2026-09-30T15:58:38.9107545Z     | IMPORTED: npm-audit-1.json scan_type=NPM Audit v7+ Scan test=npm-audit-1 http=201 test_id=17 after_total=2
+prove-import	Live proof	2026-09-30T15:58:38.9108760Z     | IMPORTED: pip-audit-1.json scan_type=pip-audit Scan test=pip-audit-1 http=201 test_id=18 after_total=47
+prove-import	Live proof	2026-09-30T15:58:38.9109854Z     | IMPORTED: tflint.sarif scan_type=SARIF test=tflint http=201 test_id=19 after_total=3
+prove-import	Live proof	2026-09-30T15:58:38.9110718Z     | attempted=8 skipped=0 failed=0
+prove-import	Live proof	2026-09-30T15:58:39.5361564Z PROOF: P-DISPOSITION PASS reimport 2 of ci/main from the trimmed reports -> exit 0, Test count unchanged at 8 (in-place reimport)
+prove-import	Live proof	2026-09-30T15:58:40.3708765Z PROOF: P-DISPOSITION PASS after reimport 2: FP #232 is false_p=True out_of_scope=False risk_accepted=False active=False is_mitigated=True (expected false_p=True out_of_scope=False risk_accepted=False active=False is_mitigated=True), mitigated=2026-09-30T15:58:21.582976Z
+prove-import	Live proof	2026-09-30T15:58:40.3712620Z PROOF: P-DISPOSITION PASS after reimport 2: OOS #233 is false_p=False out_of_scope=True risk_accepted=False active=False is_mitigated=True (expected false_p=False out_of_scope=True risk_accepted=False active=False is_mitigated=True), mitigated=2026-09-30T15:58:21.918922Z
+prove-import	Live proof	2026-09-30T15:58:40.3715765Z PROOF: P-DISPOSITION PASS after reimport 2: RA #234 is false_p=False out_of_scope=False risk_accepted=True active=False is_mitigated=False (expected false_p=False out_of_scope=False risk_accepted=True active=False is_mitigated=False), mitigated=None
+prove-import	Live proof	2026-09-30T15:58:40.3719982Z     reimport 2 trivy-fs statistics.delta: {"closed": {"critical": {"active": 0, "duplicate": 0, "false_p": 0, "is_mitigated": 0, "out_of_scope": 0, "risk_accepted": 0, "total": 0, "verified": 0}, "high": {"active": 0, "duplicate": 0, "false_p": 0, "is_mitigated": 0, "out_of_scope": 0, "risk_accepted": 0, "total": 0, "verified": 0}, "info": {"active": 0, "duplicate": 0, "false_p": 0, "is_mitigated": 0, "out_of_scope": 0, "risk_accepted": 0, "total": 0, "verified": 0}, "low": {"active": 0, "duplicate": 0, "false_p": 0, "is_mitigated": 0, "out_of_scope": 0, "risk_accepted": 0, "total": 0, "verified": 0}, "medium": {"active": 0, "duplicate": 0, "false_p": 0, "is_mitigated": 0, "out_of_scope": 0, "risk_accepted": 0, "total": 0, "verified": 0}, "total": {"active": 0, "duplicate": 0, "false_p": 0, "is_mitigated": 0, "out_of_scope": 0, "r
+prove-import	Live proof	2026-09-30T15:58:40.3723869Z PROOF: P-DISPOSITION PASS reimport 2: trivy-fs statistics.delta.reactivated.total = 0 (expected 0)
+prove-import	Live proof	2026-09-30T15:58:40.3724921Z PROOF: P-DISPOSITION PASS reimport 2 vs reimport 1: the three tuples and the FP/OOS mitigated timestamps (FP=2026-09-30T15:58:21.582976Z, OOS=2026-09-30T15:58:21.918922Z) are unchanged
+prove-import	Live proof	2026-09-30T15:58:40.3725602Z
+prove-import	Live proof	2026-09-30T15:58:40.3725819Z === dispositions on ci/main suppress new PR copies (P-SUPPRESS) ===
+prove-import	Live proof	2026-09-30T15:58:40.3726438Z     import suppress-pr: proof/dedup / ci/proof/pr-suppress (pull_request) from reports-main-trimmed
+prove-import	Live proof	2026-09-30T15:58:51.3602637Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:58:51.3603778Z     | product=proof/dedup product_type=CI engagement=ci/proof/pr-suppress
+prove-import	Live proof	2026-09-30T15:58:51.3604956Z     | IMPORTED: semgrep-results.json scan_type=Semgrep JSON Report test=semgrep http=201 test_id=28 after_total=7
+prove-import	Live proof	2026-09-30T15:58:51.3605791Z     | IMPORTED: checkov-results.json scan_type=Checkov Scan test=checkov http=201 test_id=29 after_total=14
+prove-import	Live proof	2026-09-30T15:58:51.3606566Z     | IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=30 after_total=5
+prove-import	Live proof	2026-09-30T15:58:51.3607462Z     | IMPORTED: trivy-image.json scan_type=Trivy Scan test=trivy-image http=201 test_id=31 after_total=59
+prove-import	Live proof	2026-09-30T15:58:51.3608205Z     | IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=32 after_total=18
+prove-import	Live proof	2026-09-30T15:58:51.3608964Z     | IMPORTED: npm-audit-1.json scan_type=NPM Audit v7+ Scan test=npm-audit-1 http=201 test_id=33 after_total=2
+prove-import	Live proof	2026-09-30T15:58:51.3609713Z     | IMPORTED: pip-audit-1.json scan_type=pip-audit Scan test=pip-audit-1 http=201 test_id=34 after_total=47
+prove-import	Live proof	2026-09-30T15:58:51.3610411Z     | IMPORTED: tflint.sarif scan_type=SARIF test=tflint http=201 test_id=35 after_total=3
+prove-import	Live proof	2026-09-30T15:58:51.3610888Z     | attempted=8 skipped=0 failed=0
+prove-import	Live proof	2026-09-30T15:58:58.7127016Z     dedup settled after 7 s: 155 duplicate of 155 findings in proof/dedup / ci/proof/pr-suppress (unchanged across two snapshots 5 s apart)
+prove-import	Live proof	2026-09-30T15:58:59.9332425Z PROOF: P-SUPPRESS PASS FP #232: 1 ci/proof/pr-suppress finding(s) have it as duplicate_finding (expected exactly 1, duplicate=true, active=false): #543 'CVE-2021-23337 Lodash 4.17.15' dup=True active=False dup_of=232
+prove-import	Live proof	2026-09-30T15:58:59.9335487Z PROOF: P-SUPPRESS PASS OOS #233: 1 ci/proof/pr-suppress finding(s) have it as duplicate_finding (expected exactly 1, duplicate=true, active=false): #544 'CVE-2026-4800 Lodash 4.17.15' dup=True active=False dup_of=233
+prove-import	Live proof	2026-09-30T15:58:59.9338048Z PROOF: P-SUPPRESS PASS RA #234: 1 ci/proof/pr-suppress finding(s) have it as duplicate_finding (expected exactly 1, duplicate=true, active=false): #545 'NSWG-ECO-516 Lodash 4.17.15' dup=True active=False dup_of=234
+prove-import	Live proof	2026-09-30T15:58:59.9340059Z PROOF: P-SUPPRESS PASS ci/proof/pr-suppress holds 155 findings, 0 active (expected 0: every finding in the trimmed set already exists on ci/main)
+prove-import	Live proof	2026-09-30T15:58:59.9341130Z
+prove-import	Live proof	2026-09-30T15:58:59.9341511Z === PR engagement delete re-parents ci/main findings (P-REPARENT) ===
+prove-import	Live proof	2026-09-30T15:58:59.9342603Z     import reparent-pr: proof/dedup-reparent / ci/proof/pr-first (pull_request) from reports-trivy-only
+prove-import	Live proof	2026-09-30T15:59:01.2362819Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:59:01.2363858Z     | product=proof/dedup-reparent product_type=CI engagement=ci/proof/pr-first
+prove-import	Live proof	2026-09-30T15:59:01.2365089Z     | SKIP: semgrep-results.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:59:01.2366043Z     | SKIP: checkov-results.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:59:01.2367020Z     | IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=36 after_total=6
+prove-import	Live proof	2026-09-30T15:59:01.2368664Z     | SKIP: trivy-image.json not in artifacts — no Dockerfile in this repository
+prove-import	Live proof	2026-09-30T15:59:01.2369386Z     | SKIP: gitleaks-results.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:59:01.2370005Z     | SKIP: npm-audit-*.json not in artifacts — no package-lock.json in this repository
+prove-import	Live proof	2026-09-30T15:59:01.2370729Z     | SKIP: pip-audit-*.json not in artifacts — no requirements file in this repository
+prove-import	Live proof	2026-09-30T15:59:01.2371506Z     | SKIP: tflint.sarif not in artifacts — no Terraform in this repository
+prove-import	Live proof	2026-09-30T15:59:01.2372070Z     | attempted=1 skipped=7 failed=0
+prove-import	Live proof	2026-09-30T15:59:01.2372649Z     import reparent-main: proof/dedup-reparent / ci/main (schedule) from reports-trivy-only
+prove-import	Live proof	2026-09-30T15:59:04.2596098Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:59:04.2596708Z     | product=proof/dedup-reparent product_type=CI engagement=ci/main
+prove-import	Live proof	2026-09-30T15:59:04.2597708Z     | SKIP: semgrep-results.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:59:04.2598309Z     | SKIP: checkov-results.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:59:04.2599317Z     | IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=37 after_total=6
+prove-import	Live proof	2026-09-30T15:59:04.2600577Z     | SKIP: trivy-image.json not in artifacts — no Dockerfile in this repository
+prove-import	Live proof	2026-09-30T15:59:04.2601598Z     | SKIP: gitleaks-results.json not in artifacts — report missing
+prove-import	Live proof	2026-09-30T15:59:04.2602504Z     | SKIP: npm-audit-*.json not in artifacts — no package-lock.json in this repository
+prove-import	Live proof	2026-09-30T15:59:04.2603958Z     | SKIP: pip-audit-*.json not in artifacts — no requirements file in this repository
+prove-import	Live proof	2026-09-30T15:59:04.2605115Z     | SKIP: tflint.sarif not in artifacts — no Terraform in this repository
+prove-import	Live proof	2026-09-30T15:59:04.2605785Z     | attempted=1 skipped=7 failed=0
+prove-import	Live proof	2026-09-30T15:59:10.7437221Z     dedup settled after 6 s: 6 duplicate of 6 findings in proof/dedup-reparent / ci/main (unchanged across two snapshots 5 s apart)
+prove-import	Live proof	2026-09-30T15:59:11.8647626Z PROOF: P-REPARENT PASS precondition: ci/proof/pr-first holds 6 findings, K=6 non-duplicate (0 of them not active); ci/main holds 6 findings, 0 not a duplicate of a PR finding
+prove-import	Live proof	2026-09-30T15:59:13.9353617Z     | TLS mode: verified-ca
+prove-import	Live proof	2026-09-30T15:59:13.9354576Z     | product='proof/dedup-reparent' target='ci/proof/pr-first' default_branch='main'
+prove-import	Live proof	2026-09-30T15:59:13.9355683Z     | DELETED: engagement id=8 name='ci/proof/pr-first' product=4
+prove-import	Live proof	2026-09-30T15:59:13.9356955Z     P-REPARENT timing: read 0 s after the DELETE returned
+prove-import	Live proof	2026-09-30T15:59:14.1305727Z PROOF: P-REPARENT PASS committed dd-delete body exited 0 with outcome deleted, as ci-importer; ci/proof/pr-first is gone from proof/dedup-reparent
+prove-import	Live proof	2026-09-30T15:59:14.1559319Z PROOF: P-REPARENT PASS immediately after the delete (no reimport): ci/main has 6 findings with duplicate=false and active=true (expected K=6); 6 total, 6 non-duplicate, 0 duplicate
+prove-import	Live proof	2026-09-30T15:59:14.1561167Z PROOF: P-REPARENT PASS every remaining ci/main duplicate (0) has its original inside ci/main
+prove-import	Live proof	2026-09-30T15:59:14.1563745Z PROOF: P-TLS PASS no curl in the live run read the hostile curlrc: curlrc-global-trace.txt and curlrc-global-libcurl.c were never created
+prove-import	Live proof	2026-09-30T15:59:14.1564745Z
+prove-import	Live proof	2026-09-30T15:59:14.1564938Z PROOF FAIL - 1 of 151
+prove-import	Live proof	2026-09-30T15:59:14.1569670Z ==> POST-HOOK: FAIL - /home/runner/work/security-platform/security-platform/scripts/defectdojo-import-proof.sh exited 1
+prove-import	Live proof	2026-09-30T15:59:14.1570637Z
+prove-import	Live proof	2026-09-30T15:59:14.1571156Z === Summary ===
+prove-import	Live proof	2026-09-30T15:59:14.1571795Z FAILED - one or more live checks did not produce the expected result:
+prove-import	Live proof	2026-09-30T15:59:14.1572951Z   - POST-HOOK: /home/runner/work/security-platform/security-platform/scripts/defectdojo-import-proof.sh exited 1
+prove-import	Live proof	2026-09-30T15:59:24.7168928Z ##[error]Process completed with exit code 1.
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	﻿2026-09-30T15:59:24.7322764Z Post job cleanup.
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8226994Z [command]/usr/bin/git version
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8271484Z git version 2.55.0
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8310080Z Temporarily overriding HOME='/home/runner/work/_temp/b816511d-8887-4874-80c0-e90db150b846' before making global git config changes
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8311749Z Adding repository directory to the temporary git global config as a safe directory
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8316863Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/security-platform/security-platform
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8352742Z Removing SSH command configuration
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8359440Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8399123Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8643637Z Removing HTTP extra header
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8649669Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8689033Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8927424Z Removing includeIf entries pointing to credentials config files
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8935197Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8963539Z includeif.gitdir:/home/runner/work/security-platform/security-platform/.git.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8964830Z includeif.gitdir:/home/runner/work/security-platform/security-platform/.git/worktrees/*.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8965866Z includeif.gitdir:/github/workspace/.git.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8966640Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.8974241Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/security-platform/security-platform/.git.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.9028038Z /home/runner/work/_temp/git-credentials-d9f2c47f-60c6-4592-a3d8-e77d7eb94abb.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.9039600Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/security-platform/security-platform/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-d9f2c47f\-60c6\-4592\-a3d8\-e77d7eb94abb\.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.9075995Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/security-platform/security-platform/.git/worktrees/*.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.9101158Z /home/runner/work/_temp/git-credentials-d9f2c47f-60c6-4592-a3d8-e77d7eb94abb.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.9112725Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/security-platform/security-platform/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-d9f2c47f\-60c6\-4592\-a3d8\-e77d7eb94abb\.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.9151529Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.9175515Z /github/runner_temp/git-credentials-d9f2c47f-60c6-4592-a3d8-e77d7eb94abb.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.9184490Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-d9f2c47f\-60c6\-4592\-a3d8\-e77d7eb94abb\.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.9217959Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.9240318Z /github/runner_temp/git-credentials-d9f2c47f-60c6-4592-a3d8-e77d7eb94abb.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.9251065Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-d9f2c47f\-60c6\-4592\-a3d8\-e77d7eb94abb\.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.9286313Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T15:59:24.9502846Z Removing credentials config '/home/runner/work/_temp/git-credentials-d9f2c47f-60c6-4592-a3d8-e77d7eb94abb.config'
+prove-import	Complete job	﻿2026-09-30T15:59:24.9661863Z Cleaning up orphan processes

@@ -1,0 +1,280 @@
+run: 36742180976 https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36742180976 head 415618cdf390483d48dbbb82d9efc3742ec97251 prove-import conclusion: failure (run attempt 1, job 109979666052)
+note: trailing whitespace stripped for the docs pre-commit git diff --check; content otherwise verbatim
+note: failed only at KIND-CELERY-PING (celery inspect ping exit 69) before --hook; 0 PROOF: lines emitted; the operator-pre-approved single rerun followed (see 29.2-07-proof-run.log)
+prove-import	Set up job	﻿2026-09-30T16:11:12.6316667Z Current runner version: '2.337.0'
+prove-import	Set up job	2026-09-30T16:11:12.6337621Z ##[group]Runner Image Provisioner
+prove-import	Set up job	2026-09-30T16:11:12.6338407Z Hosted Compute Agent
+prove-import	Set up job	2026-09-30T16:11:12.6338886Z Version: 20260828.587
+prove-import	Set up job	2026-09-30T16:11:12.6339435Z Commit: abac92662cab4cc7352de4f9f9d2e2419aad9c29
+prove-import	Set up job	2026-09-30T16:11:12.6340173Z Build Date: 2026-08-28T16:44:25Z
+prove-import	Set up job	2026-09-30T16:11:12.6340716Z Worker ID: {6b1219bc-5a5c-40be-a1eb-07a0b1ce930b}
+prove-import	Set up job	2026-09-30T16:11:12.6341353Z Azure Region: westus
+prove-import	Set up job	2026-09-30T16:11:12.6341822Z ##[endgroup]
+prove-import	Set up job	2026-09-30T16:11:12.6343072Z ##[group]Operating System
+prove-import	Set up job	2026-09-30T16:11:12.6343632Z Ubuntu
+prove-import	Set up job	2026-09-30T16:11:12.6344059Z 24.04.5
+prove-import	Set up job	2026-09-30T16:11:12.6344515Z LTS
+prove-import	Set up job	2026-09-30T16:11:12.6344939Z ##[endgroup]
+prove-import	Set up job	2026-09-30T16:11:12.6345376Z ##[group]Runner Image
+prove-import	Set up job	2026-09-30T16:11:12.6345975Z Image: ubuntu-24.04
+prove-import	Set up job	2026-09-30T16:11:12.6346441Z Version: 20260920.314.1
+prove-import	Set up job	2026-09-30T16:11:12.6347327Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260920.314/images/ubuntu/Ubuntu2404-Readme.md
+prove-import	Set up job	2026-09-30T16:11:12.6348677Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260920.314
+prove-import	Set up job	2026-09-30T16:11:12.6349568Z ##[endgroup]
+prove-import	Set up job	2026-09-30T16:11:12.6350491Z ##[group]GITHUB_TOKEN Permissions
+prove-import	Set up job	2026-09-30T16:11:12.6352039Z Actions: read
+prove-import	Set up job	2026-09-30T16:11:12.6352694Z Contents: read
+prove-import	Set up job	2026-09-30T16:11:12.6353380Z Metadata: read
+prove-import	Set up job	2026-09-30T16:11:12.6353834Z ##[endgroup]
+prove-import	Set up job	2026-09-30T16:11:12.6355432Z Secret source: Actions
+prove-import	Set up job	2026-09-30T16:11:12.6356295Z Cache mode: write
+prove-import	Set up job	2026-09-30T16:11:12.6356840Z Prepare workflow directory
+prove-import	Set up job	2026-09-30T16:11:12.6607873Z Prepare all required actions
+prove-import	Set up job	2026-09-30T16:11:12.6645592Z Getting action download info
+prove-import	Set up job	2026-09-30T16:11:13.0211737Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+prove-import	Set up job	2026-09-30T16:11:13.0971605Z Download action repository 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c' (SHA:3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c)
+prove-import	Set up job	2026-09-30T16:11:13.6130190Z Complete job name: prove-import
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	﻿2026-09-30T16:11:13.6695800Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6696614Z with:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6697030Z   repository: OttawaCloudConsulting/security-platform
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6700015Z   token: ***
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6700369Z   ssh-strict: true
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6700729Z   ssh-user: git
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6701088Z   persist-credentials: true
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6701479Z   clean: true
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6701834Z   sparse-checkout-cone-mode: true
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6702245Z   fetch-depth: 1
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6702726Z   fetch-tags: false
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6703080Z   show-progress: true
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6703432Z   lfs: false
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6703762Z   submodules: false
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6704115Z   set-safe-directory: true
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6704508Z   allow-unsafe-pr-checkout: false
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.6705057Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7486610Z Syncing repository: OttawaCloudConsulting/security-platform
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7488150Z ##[group]Getting Git version info
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7488837Z Working directory is '/home/runner/work/security-platform/security-platform'
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7489773Z [command]/usr/bin/git version
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7546059Z git version 2.55.0
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7560511Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7569357Z Temporarily overriding HOME='/home/runner/work/_temp/23031fcc-bee6-4d9e-8d8f-d10f9e5e21e1' before making global git config changes
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7571105Z Adding repository directory to the temporary git global config as a safe directory
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7574285Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/security-platform/security-platform
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7615251Z Deleting the contents of '/home/runner/work/security-platform/security-platform'
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7617720Z ##[group]Determining repository object format
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7618958Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7619882Z ##[group]Initializing the repository
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7622771Z [command]/usr/bin/git init /home/runner/work/security-platform/security-platform
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7713417Z hint: Using 'master' as the name for the initial branch. This default branch name
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7714690Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7715837Z hint: to use in all of your new repositories, which will suppress this warning,
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7716748Z hint: call:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7717227Z hint:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7717807Z hint: 	git config --global init.defaultBranch <name>
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7718301Z hint:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7718766Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7719498Z hint: 'development'. The just-created branch can be renamed via this command:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7720073Z hint:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7720528Z hint: 	git branch -m <name>
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7721083Z hint:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7721626Z hint: Disable this message with "git config set advice.defaultBranchName false"
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7722719Z Initialized empty Git repository in /home/runner/work/security-platform/security-platform/.git/
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7724757Z [command]/usr/bin/git remote add origin https://github.com/OttawaCloudConsulting/security-platform
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7768999Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7769626Z ##[group]Disabling automatic garbage collection
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7771353Z [command]/usr/bin/git config --local gc.auto 0
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7795974Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7796901Z ##[group]Setting up auth
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7797342Z Removing SSH command configuration
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7800351Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.7824780Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8114519Z Removing HTTP extra header
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8119105Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8145599Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8321799Z Removing includeIf entries pointing to credentials config files
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8325792Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8350185Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8529308Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-70558548-0a54-49c1-b282-7cc8ed6d69a7.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8557820Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/security-platform/security-platform/.git.path /home/runner/work/_temp/git-credentials-70558548-0a54-49c1-b282-7cc8ed6d69a7.config
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8582986Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/security-platform/security-platform/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-70558548-0a54-49c1-b282-7cc8ed6d69a7.config
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8611430Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-70558548-0a54-49c1-b282-7cc8ed6d69a7.config
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8636858Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-70558548-0a54-49c1-b282-7cc8ed6d69a7.config
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8659374Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8659974Z ##[group]Fetching the repository
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:13.8664787Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +ef64e05e539bceb453d1dffe228de830e17c4e06:refs/remotes/pull/27/merge
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.3883713Z From https://github.com/OttawaCloudConsulting/security-platform
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.3885329Z  * [new ref]         ef64e05e539bceb453d1dffe228de830e17c4e06 -> pull/27/merge
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.3887831Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.3888844Z ##[group]Determining the checkout info
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.3890974Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.3893605Z [command]/usr/bin/git sparse-checkout disable
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.3939706Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.3967231Z ##[group]Checking out the ref
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.3970212Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/27/merge
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4082796Z Note: switching to 'refs/remotes/pull/27/merge'.
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4084058Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4085004Z You are in 'detached HEAD' state. You can look around, make experimental
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4086279Z changes and commit them, and you can discard any commits you make in this
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4087394Z state without impacting any branches by switching back to a branch.
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4088303Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4088993Z If you want to create a new branch to retain commits you create, you may
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4090433Z do so (now or later) by using -c with the switch command. Example:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4091306Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4091699Z   git switch -c <new-branch-name>
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4092315Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4092844Z Or undo this operation with:
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4093423Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4093767Z   git switch -
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4094264Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4095068Z Turn off this advice by setting config variable advice.detachedHead to false
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4096176Z
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4097428Z HEAD is now at ef64e05 Merge 415618cdf390483d48dbbb82d9efc3742ec97251 into fdabac9464f2baaeaa276f8934dc8d353295b355
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4101103Z ##[endgroup]
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4127559Z [command]/usr/bin/git log -1 --format=%H
+prove-import	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:11:14.4147600Z ef64e05e539bceb453d1dffe228de830e17c4e06
+prove-import	Download scan reports	﻿2026-09-30T16:11:14.4408946Z ##[group]Run actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+prove-import	Download scan reports	2026-09-30T16:11:14.4410305Z with:
+prove-import	Download scan reports	2026-09-30T16:11:14.4410961Z   pattern: *-results
+prove-import	Download scan reports	2026-09-30T16:11:14.4411696Z   merge-multiple: true
+prove-import	Download scan reports	2026-09-30T16:11:14.4412429Z   path: dd-reports
+prove-import	Download scan reports	2026-09-30T16:11:14.4413487Z   repository: OttawaCloudConsulting/security-platform
+prove-import	Download scan reports	2026-09-30T16:11:14.4414535Z   run-id: 36742180976
+prove-import	Download scan reports	2026-09-30T16:11:14.4415282Z   skip-decompress: false
+prove-import	Download scan reports	2026-09-30T16:11:14.4416066Z   digest-mismatch: error
+prove-import	Download scan reports	2026-09-30T16:11:14.4416822Z ##[endgroup]
+prove-import	Download scan reports	2026-09-30T16:11:14.8342754Z Found 5 artifact(s)
+prove-import	Download scan reports	2026-09-30T16:11:14.8344333Z Filtering artifacts by pattern '*-results'
+prove-import	Download scan reports	2026-09-30T16:11:14.8357720Z Preparing to download the following artifacts:
+prove-import	Download scan reports	2026-09-30T16:11:14.8359728Z - gitleaks-results (ID: 11111210958, Size: 11564, Expected Digest: sha256:e11240fef7aac82c5575f43177439665eeee5d0939ce11373d609301810ffc70)
+prove-import	Download scan reports	2026-09-30T16:11:14.8363391Z - sca-results (ID: 11110638945, Size: 20452, Expected Digest: sha256:fc8ba22698d419baf428a5cab0ea610d5e6ec7c27480e82b2cdcc175ef862898)
+prove-import	Download scan reports	2026-09-30T16:11:14.8366449Z - trivy-image-results (ID: 11110369020, Size: 65747, Expected Digest: sha256:1762976d645d4d6c9066a8cb0a33e2cc46c5f0e52ed3bb033d1c4762f13db6ae)
+prove-import	Download scan reports	2026-09-30T16:11:14.8370120Z - semgrep-results (ID: 11109989558, Size: 202369, Expected Digest: sha256:7b9ef2887b2a4a252dd717cf75244f18d2694fdfe04df2939c3efc0d9cb83cc7)
+prove-import	Download scan reports	2026-09-30T16:11:14.8373206Z - checkov-results (ID: 11109724630, Size: 5187, Expected Digest: sha256:68b15e13963418750dc055ef2e4eec7e6def225dbe0696f011a16055af34226a)
+prove-import	Download scan reports	2026-09-30T16:11:15.3744820Z Redirecting to blob download url: https://productionresultssa2.blob.core.windows.net/actions-results/f7e18727-ad4e-8ccc-81c2-9d08e7009c80/workflow-job-run-2460280c-5d4c-59e3-9bab-d90d14a879c9/artifacts/d40db5eb328143e4f250f33b5c23c37c6493fbbce19fc26bc03ecf8707e30cdc.zip
+prove-import	Download scan reports	2026-09-30T16:11:15.3749275Z Starting download of artifact to: /home/runner/work/security-platform/security-platform/dd-reports
+prove-import	Download scan reports	2026-09-30T16:11:15.3780176Z Redirecting to blob download url: https://productionresultssa2.blob.core.windows.net/actions-results/f7e18727-ad4e-8ccc-81c2-9d08e7009c80/workflow-job-run-9ee7c9af-773e-507a-9617-634d0e139619/artifacts/ceae855e0a33d83c591870c5088bf87c0fac7ae7675b7688a79cb52f11953e1f.zip
+prove-import	Download scan reports	2026-09-30T16:11:15.3785699Z Starting download of artifact to: /home/runner/work/security-platform/security-platform/dd-reports
+prove-import	Download scan reports	2026-09-30T16:11:15.3831918Z Redirecting to blob download url: https://productionresultssa2.blob.core.windows.net/actions-results/f7e18727-ad4e-8ccc-81c2-9d08e7009c80/workflow-job-run-55995dcf-dccc-5ad1-afaf-c0ab7674adbd/artifacts/f6d5e86f6efa4dec7fc5e34597285a5a17bdfb0ccd650e0a00fe3f3653dddbf9.zip
+prove-import	Download scan reports	2026-09-30T16:11:15.3836241Z Starting download of artifact to: /home/runner/work/security-platform/security-platform/dd-reports
+prove-import	Download scan reports	2026-09-30T16:11:15.3920740Z Redirecting to blob download url: https://productionresultssa2.blob.core.windows.net/actions-results/f7e18727-ad4e-8ccc-81c2-9d08e7009c80/workflow-job-run-9d653cfa-7c14-5ee2-aa84-620154bf4958/artifacts/7a918f38da188c6de76b0c09e99e3e08b5d7ff8c86381063d125bda113497aee.zip
+prove-import	Download scan reports	2026-09-30T16:11:15.3926103Z Starting download of artifact to: /home/runner/work/security-platform/security-platform/dd-reports
+prove-import	Download scan reports	2026-09-30T16:11:15.3998598Z Redirecting to blob download url: https://productionresultssa2.blob.core.windows.net/actions-results/f7e18727-ad4e-8ccc-81c2-9d08e7009c80/workflow-job-run-025efd0d-4149-59fd-88e9-6c620613bf04/artifacts/f1b761662e96253e8d8aa9b0b5a2426b58a6bdbaeb645bc86569765d1014ea15.zip
+prove-import	Download scan reports	2026-09-30T16:11:15.4002911Z Starting download of artifact to: /home/runner/work/security-platform/security-platform/dd-reports
+prove-import	Download scan reports	2026-09-30T16:11:15.6588124Z (node:2145) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
+prove-import	Download scan reports	2026-09-30T16:11:15.6589467Z (Use `node --trace-deprecation ...` to show where the warning was created)
+prove-import	Download scan reports	2026-09-30T16:11:15.6671719Z SHA256 digest of downloaded artifact is 68b15e13963418750dc055ef2e4eec7e6def225dbe0696f011a16055af34226a
+prove-import	Download scan reports	2026-09-30T16:11:15.6672868Z Artifact download completed successfully.
+prove-import	Download scan reports	2026-09-30T16:11:15.6676932Z SHA256 digest of downloaded artifact is fc8ba22698d419baf428a5cab0ea610d5e6ec7c27480e82b2cdcc175ef862898
+prove-import	Download scan reports	2026-09-30T16:11:15.6677770Z Artifact download completed successfully.
+prove-import	Download scan reports	2026-09-30T16:11:15.6678351Z SHA256 digest of downloaded artifact is e11240fef7aac82c5575f43177439665eeee5d0939ce11373d609301810ffc70
+prove-import	Download scan reports	2026-09-30T16:11:15.6678929Z Artifact download completed successfully.
+prove-import	Download scan reports	2026-09-30T16:11:15.8059863Z SHA256 digest of downloaded artifact is 1762976d645d4d6c9066a8cb0a33e2cc46c5f0e52ed3bb033d1c4762f13db6ae
+prove-import	Download scan reports	2026-09-30T16:11:15.8726010Z Artifact download completed successfully.
+prove-import	Download scan reports	2026-09-30T16:11:15.8727047Z SHA256 digest of downloaded artifact is 7b9ef2887b2a4a252dd717cf75244f18d2694fdfe04df2939c3efc0d9cb83cc7
+prove-import	Download scan reports	2026-09-30T16:11:15.8728016Z Artifact download completed successfully.
+prove-import	Download scan reports	2026-09-30T16:11:15.8728795Z Total of 5 artifact(s) downloaded
+prove-import	Download scan reports	2026-09-30T16:11:15.8730236Z Download artifact has finished successfully
+prove-import	Install Helm v4.3.0	﻿2026-09-30T16:11:15.8850238Z ##[group]Run curl -sSfL -o helm.tar.gz https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:15.8851207Z ^[[36;1mcurl -sSfL -o helm.tar.gz https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:15.8851989Z ^[[36;1mecho "86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb  helm.tar.gz" \^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:15.8852945Z ^[[36;1m  | sha256sum -c -^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:15.8853533Z ^[[36;1msudo tar xzf helm.tar.gz -C /usr/local/bin --strip-components=1 linux-amd64/helm^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:15.8854135Z ^[[36;1mrm -f helm.tar.gz^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:15.8854595Z ^[[36;1mhelm_version="$(helm version --short)"^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:15.8855079Z ^[[36;1mecho "helm ${helm_version}"^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:15.8855752Z ^[[36;1mcase "$helm_version" in^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:15.8856201Z ^[[36;1m  v4.3.0*) ;;^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:15.8856721Z ^[[36;1m  *) echo "expected Helm v4.3.0, found ${helm_version}"; exit 1 ;;^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:15.8857252Z ^[[36;1mesac^[[0m
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:15.9085754Z shell: /usr/bin/bash -e {0}
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:15.9086305Z ##[endgroup]
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:16.0196815Z helm.tar.gz: OK
+prove-import	Install Helm v4.3.0	2026-09-30T16:11:16.4135134Z helm v4.3.0+gbec5b06
+prove-import	Live proof	﻿2026-09-30T16:11:16.4188267Z ##[group]Run bash scripts/defectdojo-import-proof.sh dd-reports
+prove-import	Live proof	2026-09-30T16:11:16.4188919Z ^[[36;1mbash scripts/defectdojo-import-proof.sh dd-reports^[[0m
+prove-import	Live proof	2026-09-30T16:11:16.4245494Z shell: /usr/bin/bash -e {0}
+prove-import	Live proof	2026-09-30T16:11:16.4245923Z ##[endgroup]
+prove-import	Live proof	2026-09-30T16:11:16.5538750Z PASS: defectdojo-import/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+prove-import	Live proof	2026-09-30T16:11:16.5540150Z PASS: defectdojo-import/dd-import: extracted (223 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_INSECURE', 'DD_PRODUCT', 'DD_PRODUCT_TYPE', 'DD_REPORTS_DIR', 'DD_RESULTS_FILE', 'DD_TOKEN', 'DD_URL']
+prove-import	Live proof	2026-09-30T16:11:16.5541466Z PASS: defectdojo-import/dd-verify: extracted (39 lines), no ${{, bash -n clean, env names match the contract ['DD_IMPORT_OUTCOME', 'DD_RESULTS_FILE']
+prove-import	Live proof	2026-09-30T16:11:16.5542460Z PASS: defectdojo-cleanup/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+prove-import	Live proof	2026-09-30T16:11:16.5543772Z PASS: defectdojo-cleanup/dd-delete: extracted (219 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_CLEANUP_RESULT_FILE', 'DD_DEFAULT_BRANCH', 'DD_INSECURE', 'DD_PRODUCT', 'DD_TOKEN', 'DD_URL']
+prove-import	Live proof	2026-09-30T16:11:16.5545126Z PASS: defectdojo-cleanup/dd-cleanup-verify: extracted (23 lines), no ${{, bash -n clean, env names match the contract ['DD_CLEANUP_RESULT_FILE', 'DD_DELETE_OUTCOME']
+prove-import	Live proof	2026-09-30T16:11:16.5546010Z PASS: DD-GATE-IDENTICAL: the import and cleanup dd-gate bodies are byte-identical
+prove-import	Live proof	2026-09-30T16:11:16.5546567Z extract: 7 passed, 0 failed
+prove-import	Live proof	2026-09-30T16:11:16.5580782Z EXTRACT PASS - .github/workflows/security.yml
+prove-import	Live proof	2026-09-30T16:11:16.5893075Z helm client: v4.3.0+gbec5b06
+prove-import	Live proof	2026-09-30T16:11:16.6006331Z     kubernetes/defectdojo/charts/defectdojo-1.9.53.tgz not vendored; running helm dependency build (needs network)
+prove-import	Live proof	2026-09-30T16:11:16.6906493Z Hang tight while we grab the latest from your chart repositories...
+prove-import	Live proof	2026-09-30T16:11:16.7353576Z ...Successfully got an update from the "defectdojo" chart repository
+prove-import	Live proof	2026-09-30T16:11:16.7354592Z Update Complete. ⎈Happy Helming!⎈
+prove-import	Live proof	2026-09-30T16:11:16.7581048Z Saving 1 charts
+prove-import	Live proof	2026-09-30T16:11:16.7581806Z Downloading defectdojo from repo https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/helm-charts
+prove-import	Live proof	2026-09-30T16:11:18.0339647Z Deleting outdated charts
+prove-import	Live proof	2026-09-30T16:11:18.0513543Z --- 1. kind cluster ---
+prove-import	Live proof	2026-09-30T16:11:18.4161164Z     creating cluster dd-smoke (cold image pulls follow; this is the slow part)
+prove-import	Live proof	2026-09-30T16:11:40.8536884Z ==> KIND-CLUSTER: PASS - cluster dd-smoke is up (context kind-dd-smoke)
+prove-import	Live proof	2026-09-30T16:11:40.8537437Z --- 2. cert-manager v1.21.2 ---
+prove-import	Live proof	2026-09-30T16:12:05.3489325Z ==> KIND-CERT-MANAGER: PASS - cert-manager v1.21.2 applied; cert-manager, cert-manager-webhook and cert-manager-cainjector rolled out
+prove-import	Live proof	2026-09-30T16:12:05.3490408Z --- 3. ingress-nginx controller-v1.15.1 (smoke-only; archived upstream) ---
+prove-import	Live proof	2026-09-30T16:12:25.3889503Z ==> KIND-INGRESS-NGINX: PASS - ingress-nginx controller-v1.15.1 rolled out; IngressClass nginx annotated is-default-class=true
+prove-import	Live proof	2026-09-30T16:12:25.3890118Z --- 4. CA ClusterIssuer ---
+prove-import	Live proof	2026-09-30T16:12:25.7447170Z ==> KIND-CA-ISSUER: PASS - ClusterIssuer selfsigned -> Certificate smoke-ca (isCA, Ready) -> ClusterIssuer smoke-ca
+prove-import	Live proof	2026-09-30T16:12:25.7448036Z --- 5. namespace and pre-created Secrets ---
+prove-import	Live proof	2026-09-30T16:12:25.9739576Z     Secrets defectdojo, defectdojo-postgresql-specific, defectdojo-valkey-specific applied from stdin
+prove-import	Live proof	2026-09-30T16:12:25.9740169Z --- 6. install (D-15: first install only) ---
+prove-import	Live proof	2026-09-30T16:15:01.8218992Z NAME: defectdojo
+prove-import	Live proof	2026-09-30T16:15:01.8244130Z LAST DEPLOYED: Wed Sep 30 16:12:26 2026
+prove-import	Live proof	2026-09-30T16:15:01.8244575Z NAMESPACE: defectdojo
+prove-import	Live proof	2026-09-30T16:15:01.8244870Z STATUS: deployed
+prove-import	Live proof	2026-09-30T16:15:01.8245106Z REVISION: 1
+prove-import	Live proof	2026-09-30T16:15:01.8245357Z DESCRIPTION: Install complete
+prove-import	Live proof	2026-09-30T16:15:01.8245723Z ==> KIND-INSTALL: exit=0 (PASS - completed successfully)
+prove-import	Live proof	2026-09-30T16:15:01.8246317Z --- 7. workloads ---
+prove-import	Live proof	2026-09-30T16:15:02.4439384Z ==> KIND-DEPLOYMENTS-READY: PASS - every Deployment in defectdojo is Available, including defectdojo-django defectdojo-celery-worker defectdojo-celery-beat
+prove-import	Live proof	2026-09-30T16:15:02.5777466Z ==> KIND-PG-PVC-BOUND: PASS - Postgres PVC(s) Bound: data-defectdojo-postgresql-0=Bound
+prove-import	Live proof	2026-09-30T16:15:02.5778699Z --- 8. ingress and certificate ---
+prove-import	Live proof	2026-09-30T16:15:02.7934610Z ==> KIND-CERT-READY: PASS - Certificate defectdojo-tls (created by ingress-shim from the annotation) is Ready
+prove-import	Live proof	2026-09-30T16:15:02.8945887Z ==> KIND-INGRESSCLASS-DEFAULTED: PASS - the live Ingress has ingressClassName nginx, set by DefaultIngressClass admission
+prove-import	Live proof	2026-09-30T16:15:02.8947036Z --- 9. verified TLS, login and broker ---
+prove-import	Live proof	2026-09-30T16:15:04.0838046Z ==> KIND-TLS-LOGIN-200: PASS - GET https://defectdojo.smoke.test:18443/login -> 200 with ssl_verify_result 0 against the issued ca.crt; served cert issuer CN = smoke-ca, SAN DNS:defectdojo.smoke.test
+prove-import	Live proof	2026-09-30T16:15:04.4418694Z ==> KIND-LOGIN: PASS - admin login POST (CSRF token + Referer) -> 302 to https://defectdojo.smoke.test:18443/; /dashboard with the session -> 200, all over verified TLS
+prove-import	Live proof	2026-09-30T16:15:10.3542875Z ==> KIND-CELERY-PING: FAIL - celery -A dojo inspect ping exited 69 without pong (broker unreachable or worker not replying): Error: No nodes replied within time constraint command terminated with exit code 69
+prove-import	Live proof	2026-09-30T16:15:10.3553629Z
+prove-import	Live proof	2026-09-30T16:15:10.3557192Z === Summary ===
+prove-import	Live proof	2026-09-30T16:15:10.3557674Z FAILED - one or more live checks did not produce the expected result:
+prove-import	Live proof	2026-09-30T16:15:10.3558918Z   - KIND-CELERY-PING: celery -A dojo inspect ping exited 69 without pong (broker unreachable or worker not replying): Error: No nodes replied within time constraint command terminated with exit code 69
+prove-import	Live proof	2026-09-30T16:15:25.6024628Z ##[error]Process completed with exit code 1.
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	﻿2026-09-30T16:15:25.6139028Z Post job cleanup.
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.6802488Z [command]/usr/bin/git version
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.6829838Z git version 2.55.0
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.6855498Z Temporarily overriding HOME='/home/runner/work/_temp/dead4652-97e9-4c59-9e94-f89c891d86d9' before making global git config changes
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.6856490Z Adding repository directory to the temporary git global config as a safe directory
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.6859782Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/security-platform/security-platform
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.6885035Z Removing SSH command configuration
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.6889613Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.6916308Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7098565Z Removing HTTP extra header
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7102380Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7129162Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7306309Z Removing includeIf entries pointing to credentials config files
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7310912Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7333768Z includeif.gitdir:/home/runner/work/security-platform/security-platform/.git.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7334677Z includeif.gitdir:/home/runner/work/security-platform/security-platform/.git/worktrees/*.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7335815Z includeif.gitdir:/github/workspace/.git.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7336383Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7341200Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/security-platform/security-platform/.git.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7359813Z /home/runner/work/_temp/git-credentials-70558548-0a54-49c1-b282-7cc8ed6d69a7.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7367397Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/security-platform/security-platform/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-70558548\-0a54\-49c1\-b282\-7cc8ed6d69a7\.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7397078Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/security-platform/security-platform/.git/worktrees/*.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7415425Z /home/runner/work/_temp/git-credentials-70558548-0a54-49c1-b282-7cc8ed6d69a7.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7421991Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/security-platform/security-platform/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-70558548\-0a54\-49c1\-b282\-7cc8ed6d69a7\.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7447918Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7464804Z /github/runner_temp/git-credentials-70558548-0a54-49c1-b282-7cc8ed6d69a7.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7470187Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-70558548\-0a54\-49c1\-b282\-7cc8ed6d69a7\.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7494922Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7511673Z /github/runner_temp/git-credentials-70558548-0a54-49c1-b282-7cc8ed6d69a7.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7518403Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-70558548\-0a54\-49c1\-b282\-7cc8ed6d69a7\.config
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7545549Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+prove-import	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-09-30T16:15:25.7721211Z Removing credentials config '/home/runner/work/_temp/git-credentials-70558548-0a54-49c1-b282-7cc8ed6d69a7.config'
+prove-import	Complete job	﻿2026-09-30T16:15:25.7861734Z Cleaning up orphan processes

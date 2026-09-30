@@ -1,0 +1,51 @@
+PR #27 https://github.com/OttawaCloudConsulting/security-platform/pull/27 head 35363b70ca87d6e76b9a6e5dd1987c302ab57ca0 - captured after proof run 36738325634 attempt 2 (failure)
+note: trailing whitespace stripped for the docs pre-commit git diff --check; content otherwise verbatim
+attempt 1 checks: 29.2-07-pr-checks-attempt1.txt
+
+$ gh pr checks 27
+prove-import	fail	7m4s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109971612024
+Checkov	pass	5s	https://github.com/OttawaCloudConsulting/security-platform/runs/109965971656
+GitGuardian Security Checks	pass	9m1s	https://dashboard.gitguardian.com
+Semgrep OSS	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/109965977659
+Trivy	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/109965917361
+gitleaks	pass	5s	https://github.com/OttawaCloudConsulting/security-platform/runs/109965856906
+scans / Container — Trivy Image	pass	35s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109971675446
+scans / DefectDojo Import	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109971613289
+scans / IaC — Checkov	pass	35s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109971664068
+scans / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109971681853
+tflint-errors	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/109966031069
+scans / SAST — Semgrep CE	pass	35s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109971610052
+scans / SCA — Trivy Filesystem	pass	46s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109971611077
+security / SCA — Trivy Filesystem	pass	39s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109965789581
+scans / Secrets — Gitleaks	pass	19s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109971610499
+tflint	pass	3s	https://github.com/OttawaCloudConsulting/security-platform/runs/109966029477
+security / Container — Trivy Image	pass	26s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109965789393
+security / DefectDojo Import	pass	13s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109966101046
+security / Secrets — Gitleaks	pass	16s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109965789577
+security / IaC — Checkov	pass	32s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109965789152
+security / SAST — Semgrep CE	pass	34s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109965789487
+security / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109965790929
+
+$ gh api .../commits/35363b70ca87d6e76b9a6e5dd1987c302ab57ca0/check-runs --paginate (filter=latest default)
+scans / DefectDojo Cleanup	completed	skipped
+scans / Container — Trivy Image	completed	success
+scans / IaC — Checkov	completed	success
+scans / DefectDojo Import	completed	success
+prove-import	completed	failure
+scans / SCA — Trivy Filesystem	completed	success
+scans / Secrets — Gitleaks	completed	success
+scans / SAST — Semgrep CE	completed	success
+GitGuardian Security Checks	completed	success
+security / DefectDojo Import	completed	success
+tflint-errors	completed	success
+tflint	completed	success
+Semgrep OSS	completed	success
+Checkov	completed	success
+Trivy	completed	success
+gitleaks	completed	success
+security / DefectDojo Cleanup	completed	skipped
+security / SCA — Trivy Filesystem	completed	success
+security / Secrets — Gitleaks	completed	success
+security / SAST — Semgrep CE	completed	success
+security / Container — Trivy Image	completed	success
+security / IaC — Checkov	completed	success

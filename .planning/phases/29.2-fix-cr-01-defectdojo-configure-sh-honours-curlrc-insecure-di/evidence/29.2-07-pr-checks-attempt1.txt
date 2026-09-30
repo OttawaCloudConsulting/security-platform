@@ -1,0 +1,43 @@
+prove-import	fail	4m51s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109966308874
+Checkov	pass	5s	https://github.com/OttawaCloudConsulting/security-platform/runs/109965971656
+Semgrep OSS	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/109965977659
+Trivy	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/109965917361
+gitleaks	pass	5s	https://github.com/OttawaCloudConsulting/security-platform/runs/109965856906
+scans / Container — Trivy Image	pass	35s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109965793467
+scans / DefectDojo Import	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109966156193
+scans / IaC — Checkov	pass	35s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109965793714
+scans / SAST — Semgrep CE	pass	35s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109965793272
+scans / SCA — Trivy Filesystem	pass	46s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109965793575
+scans / Secrets — Gitleaks	pass	19s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109965793779
+security / Container — Trivy Image	pass	26s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109965789393
+security / DefectDojo Import	pass	13s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109966101046
+security / IaC — Checkov	pass	32s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109965789152
+security / SAST — Semgrep CE	pass	34s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109965789487
+security / SCA — Trivy Filesystem	pass	39s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109965789581
+security / Secrets — Gitleaks	pass	16s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109965789577
+tflint	pass	3s	https://github.com/OttawaCloudConsulting/security-platform/runs/109966029477
+tflint-errors	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/109966031069
+scans / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325634/job/109965796695
+security / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36738325155/job/109965790929
+
+prove-import	completed	failure
+scans / DefectDojo Import	completed	success
+security / DefectDojo Import	completed	success
+tflint-errors	completed	success
+tflint	completed	success
+Semgrep OSS	completed	success
+Checkov	completed	success
+Trivy	completed	success
+gitleaks	completed	success
+scans / DefectDojo Cleanup	completed	skipped
+scans / Secrets — Gitleaks	completed	success
+scans / IaC — Checkov	completed	success
+scans / SCA — Trivy Filesystem	completed	success
+scans / Container — Trivy Image	completed	success
+scans / SAST — Semgrep CE	completed	success
+security / DefectDojo Cleanup	completed	skipped
+security / SCA — Trivy Filesystem	completed	success
+security / Secrets — Gitleaks	completed	success
+security / SAST — Semgrep CE	completed	success
+security / Container — Trivy Image	completed	success
+security / IaC — Checkov	completed	success

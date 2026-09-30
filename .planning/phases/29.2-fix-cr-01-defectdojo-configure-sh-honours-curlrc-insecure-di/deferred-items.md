@@ -20,3 +20,23 @@ PROOF: P-CURLRC FAIL dd-delete: no HANDSHAKE-FAIL at the listener; [listener CON
 **Why it was not fixed in 29.2-05.** The harness is outside plan 05's `files_modified`. Plan 05's verify requires exactly 5 commits above origin/main, and plan 06's requires exactly 6, so an extra harness commit here would break both.
 
 **Resolution (29.2-06, security-platform commit 35363b7).** The listener now logs `HANDSHAKE-OK` when a handshake completes, so every `CONNECT` ends in exactly one `HANDSHAKE-FAIL` or `HANDSHAKE-OK` line. `curlrc_counts` waits up to 3 s for `CONNECT == HANDSHAKE-FAIL + HANDSHAKE-OK` before it counts, and all four places that judge results call it. On the deadline it counts whatever is logged, adds `not settled after 3s` to the detail, and the existing assertions judge the result. The `HANDSHAKE-FAIL >= 1` assertion is unchanged. The suggested predicate `CONNECT == HANDSHAKE-FAIL + REQUEST` was refined because `openssl s_client` in homelab-validate completes the handshake and sends no request, so that predicate never holds for homelab (2 of its 6 connections). The race was not reproduced naturally in 78 instrumented runs. Injecting a 0.3 s delay into the listener reproduced the exact symptom without the fix, and the run passed with the fix. After the fix, 25 of 25 `--scheme-only` runs ended `PROOF PASS - 30 assertions`. Evidence: `evidence/29.2-06-di01-runs.txt`.
+
+## DI-02 (found in 29.2-07, deferred): P-INSECURE has no offline coverage
+
+P-INSECURE only runs in the live `--hook` path. `--scheme-only` (30 assertions) never reaches it, so the plan-06 regression (the hook-wide `DEFECTDOJO_RESOLVE` export tripped the dd-import host guard, exit 2) passed every offline gate and first surfaced on GitHub (run 36738325634 attempt 2, `PROOF FAIL - 1 of 151`). It was fixed in security-platform 415618c by passing `DEFECTDOJO_RESOLVE=` to the P-INSECURE `run_body` call. The gap is that nothing offline catches a future inherited-environment leak into that case. A candidate fix is to run P-INSECURE, which makes no request, in `--scheme-only` with the hook variable set, so the test proves the case clears it. Owner: a later harness plan, not 29.2.
+
+## DI-03 (found in 29.2-07, deferred): the smoke script's own curls are outside the hostile-curlrc assertion
+
+The final P-TLS assertion shows that no curl run in the proof process tree read the hostile `CURL_HOME` curlrc: `curlrc-global-trace.txt` and `curlrc-global-libcurl.c` were never created. Curls made by the kind smoke script (`KIND-*` checks) run in a child process with its own environment. They are only source-verified as passing `-q`, and no live assertion covers them. Owner: later harness plan.
+
+## DI-04 (found in 29.2-07, unverified): required status contexts
+
+`GitGuardian Security Checks` shows up on PR #27 as a check context. Branch protection or rulesets on `main` were not read during 29.2-07, so the must-have "required contexts unchanged" was not verified against the protection settings. It rests only on the fact that the `security / ...` contexts ran and passed. Plan 08 should read the required contexts (for example `gh api repos/OttawaCloudConsulting/security-platform/branches/main/protection` or the rulesets API) before it merges.
+
+## DI-05 (found in 29.2-07, owner 29.2-08): homelab engagement ci/fix/phase-29.2-curlrc
+
+`security / DefectDojo Import` runs against the homelab DefectDojo because the operator amended must-have #3, since `security-platform` does set `DEFECTDOJO_URL`. It has imported into engagement `ci/fix/phase-29.2-curlrc` twice: run 36738325155 (head 35363b7) and run 36742181020 (head 415618c). Each import was 8 reports, `http=201`, `TLS mode: verified-system`. Plan 08 must verify that `security / DefectDojo Cleanup` removes that engagement when the PR is merged or closed, however many tests it holds.
+
+## Note (29.2-07): plans 05/06 commit-count pins are historical
+
+Plan 05's verify pins exactly 5 commits above origin/main and plan 06's pins exactly 6. The operator approved a 7th commit (415618c, the P-INSECURE fix), so the branch now has 7. Those pins were correct when their plans ran and are now historical. This is a recorded deviation, not a violation. Re-running the plan 05 or 06 verify chain against the current branch will fail on the count alone.
