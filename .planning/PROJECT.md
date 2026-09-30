@@ -30,6 +30,8 @@ Every code change is automatically scanned for security issues, secrets, and sup
 - [x] DIST-08: Adoption docs cover both consumption modes — v2.0
 - [x] VAL-01: Full pipeline validated via branch-target PRs in canonical repo — v2.0
 - [x] VAL-02: Required-check enforcement exercised live on external repo (`terraform-pipelines`) — GitHub observably refused a merge with a red required check, then window closed and ruleset restored byte-identical — v2.0
+- [x] NEXUS-01: Public generic Nexus Helm chart (`kubernetes/nexus/`) renders npm/PyPI/Docker proxy repos by default and a Helm proxy when `repos.helm.remoteUrl` is set (D-05); live homelab Nexus lists all four proxies. Retroactively re-verified in `23-VERIFICATION.md` (passed, 30/30) against merge ea2770f and origin/main fdabac9. Validated in Phase 29.1: retroactive Phase 23 verification
+- [x] NEXUS-03: Nexus chart omits `storageClassName` by default so the cluster default applies (live PVC bound to `default`), and a consumer `--set`/values override reaches the PVC template verbatim; a mutation test proves the gate discriminates. Validated in Phase 29.1: retroactive Phase 23 verification
 - [x] NEXUS-05: Nexus chart validated live via private ArgoCD overlay on the homelab cluster — anonymous npm/PyPI/Docker/Helm pulls and anonymous write refusal measured, second sync idempotent (ADR-022). Validated in Phase 25: Nexus Live Validation
 - [x] DDOJO-01: Public DefectDojo Helm chart (`kubernetes/defectdojo/`, wraps upstream `defectdojo` 1.9.53 / app 3.3.200) with ingress and cert-manager TLS, generic for any cluster: host, issuer and Secrets are consumer-supplied; offline gate 20/20 and live kind smoke (verified TLS, admin login, Celery ping) pass (ADR-023, PRs #19/#20). Validated in Phase 26: DefectDojo Generic Chart
 - [x] DDOJO-02: `security-platform` scan jobs import their SARIF/JSON findings into a consumer's DefectDojo after each run (opt-in via `DEFECTDOJO_URL`/`DEFECTDOJO_API_TOKEN`, reimport per branch, ADR-024); `DEFECTDOJO_URL` must be https:// and curl is pinned to https (CR-01 fix, ADR-025, released as `v1.1.1`, `v1` moved). Live proof 88 assertions on kind. Validated in Phase 27: DefectDojo CI Auto-Import
@@ -91,7 +93,7 @@ Every code change is automatically scanned for security issues, secrets, and sup
 
 ## Current State
 
-**v3.0 K8s Infra & Dashboards: all phases complete, milestone ready for audit.** Phase 29 completed on 2026-09-29, with 20 plans and verification passed. The DefectDojo chart runs live on the homelab cluster through the private ArgoCD overlay, and security-platform CI imports into it on a repo-scoped ARC runner. Dedup, triage dispositions, PR cleanup and second-sync idempotency are proven live (DDOJO-05, ADR-027, ADR-028). security-platform `v1.2.0` was cut, and `v1` moved to fdabac9. Open follow-ups are in `29-deferred-items` (`.planning/phases/29-defectdojo-live-validation/deferred-items.md`): a fixed scan-image tag so trivy-image dedupes across branches, the unmeasured risk that trivy-image dispositions on ci/main are lost when main's commit changes (WR-04), and the helper-script hardening warnings WR-01 to WR-08 from `29-REVIEW.md`. Next: `/gsd:audit-milestone` for v3.0.
+**v3.0 K8s Infra & Dashboards: all phases complete, milestone ready for audit.** Phase 29 completed on 2026-09-29, with 20 plans and verification passed. The DefectDojo chart runs live on the homelab cluster through the private ArgoCD overlay, and security-platform CI imports into it on a repo-scoped ARC runner. Dedup, triage dispositions, PR cleanup and second-sync idempotency are proven live (DDOJO-05, ADR-027, ADR-028). security-platform `v1.2.0` was cut, and `v1` moved to fdabac9. Open follow-ups are in `29-deferred-items` (`.planning/phases/29-defectdojo-live-validation/deferred-items.md`): a fixed scan-image tag so trivy-image dedupes across branches, the unmeasured risk that trivy-image dispositions on ci/main are lost when main's commit changes (WR-04), and the helper-script hardening warnings WR-01 to WR-08 from `29-REVIEW.md`. Phase 29.1 (inserted gap closure, 2026-09-29) wrote the missing retroactive `23-VERIFICATION.md` (passed, 30/30), which closes the audit's orphaned NEXUS-01/NEXUS-03 gap without any chart or cluster change. Next: re-run `/gsd:audit-milestone` for v3.0.
 
 **Shipped: v2.0 CI/CD Security Pipeline** (2026-09-17) — Phases 14-22 (10 phases incl. inserted 20.1), 63 plans, 15/15 requirements.
 
@@ -175,4 +177,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-29 after Phase 29 (DefectDojo Live Validation)*
+*Last updated: 2026-09-29 after Phase 29.1 (retroactive Phase 23 verification)*
