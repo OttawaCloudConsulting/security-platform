@@ -27,7 +27,7 @@ P-INSECURE only runs in the live `--hook` path. `--scheme-only` (30 assertions) 
 
 ## DI-03 (found in 29.2-07, deferred): the smoke script's own curls are outside the hostile-curlrc assertion
 
-The final P-TLS assertion shows that no curl run in the proof process tree read the hostile `CURL_HOME` curlrc: `curlrc-global-trace.txt` and `curlrc-global-libcurl.c` were never created. Curls made by the kind smoke script (`KIND-*` checks) run in a child process with its own environment. They are only source-verified as passing `-q`, and no live assertion covers them. Owner: later harness plan.
+The final P-TLS assertion shows that no curl run in the proof process tree read the hostile `CURL_HOME` curlrc: `curlrc-global-trace.txt` and `curlrc-global-libcurl.c` were never created. Curls made by the kind smoke script (`KIND-*` checks) run in the parent smoke process, which starts the proof hook as a child, so the hook's hostile `CURL_HOME` export never reaches them. They do NOT pass `-q`: at 47319b2 `scripts/defectdojo-live-smoke.sh` lines 636, 673, 692 and 716 call `curl -sS` without `-q` and echo their stderr files. No live assertion covers them. (Corrected by the orchestrator after plan 09; the earlier wording said they were source-verified as passing `-q`.) Owner: later harness plan.
 
 ## DI-04 (found in 29.2-07, RESOLVED in 29.2-08): required status contexts
 
