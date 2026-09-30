@@ -4,8 +4,8 @@ milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
 stopped_at: Phase 29.2 context gathered
-last_updated: "2026-09-30T06:35:41.320Z"
-last_activity: 2026-09-30 -- Phase 29.2 planning complete
+last_updated: "2026-09-30T14:11:09.215Z"
+last_activity: 2026-09-30
 progress:
   total_phases: 7
   completed_phases: 7
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 29.2 — v3.0 tech-debt closure (29.2-29.7)
+**Current focus:** Phase 29.2 — fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di
 
 ## Current Position
 
-Phase: 29.2
-Plan: Not started
+Phase: 29.2 (fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di) — EXECUTING
+Plan: 2 of 9
 Status: Ready to execute
-Last activity: 2026-09-30 -- Phase 29.2 planning complete
+Last activity: 2026-09-30
 
 ## Performance Metrics
 
@@ -336,6 +336,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-19: ADR-028 records repository-scoped ARC registration (personal User account, no runner groups), the Administration RW fine-grained PAT as an accepted risk, and per-repo scale sets — D-07/D-08 amended 2026-09-26 by operator ruling; RESEARCH A6 verified by the 29-13 listener session
 - [Phase 29]: 29-19: D-12 cron-fired scheduled run observed (36553070357, success, import on ARC); DDOJO-05 marked Complete — Evidence 29-19-scheduled-runs.json and 29-19-cron-run-jobs.json
 - [Phase 29.1]: 29.1-01: NEXUS-01 SATISFIED with D-05 Helm opt-in disclosed (overrides_applied 0); NEXUS-03 override proven at render tier + mutation; 23-VERIFICATION.md passed 30/30
+- [Phase ?]: [Phase 29.2-01]: P-CURLRC RED recorded (b11f677 on security-platform fix/phase-29.2-curlrc, unpushed): all six target lines FAIL on unfixed code with the listener logging REQUEST ... auth=yes; --scheme-only is now 14 assertions (13 when kubectl is absent and homelab-token-get SKIPs). The unfixed dd-import loop sends both reports (2 CONNECTs), so the exactly-1-CONNECT condition also measures the fix's fail-fast behaviour.
 
 ### Pending Todos
 
@@ -488,12 +489,13 @@ Carried forward from v1.1 close:
 | Phase 29 P18 | ~15min (continuation) | 3 tasks | 7 files |
 | Phase 29 P19 | ~15min | 3 tasks | 7 files |
 | Phase 29.1 P01 | 30min | 2 tasks | 1 files |
+| Phase 29.2 P01 | 25min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-09-30T03:32:45.925Z
+Last session: 2026-09-30T14:11:03.265Z
 Stopped at: Phase 29.2 context gathered
-Resume file: .planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-CONTEXT.md
+Resume file: None
 
 ## Operator Next Steps
 

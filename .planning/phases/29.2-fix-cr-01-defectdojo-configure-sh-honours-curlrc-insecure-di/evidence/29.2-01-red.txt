@@ -1,0 +1,110 @@
+# 29.2-01 RED evidence: bash scripts/defectdojo-import-proof.sh --scheme-only
+# security-platform branch fix/phase-29.2-curlrc, harness from the RED commit on origin/main fdabac9 (targets unfixed)
+# host: Darwin arm64, curl 8.7.1, Python 3.12.0, OpenSSL 4.0.2; run 2026-09-30T14:09:54Z; exit code 1
+
+PASS: defectdojo-import/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+PASS: defectdojo-import/dd-import: extracted (187 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_INSECURE', 'DD_PRODUCT', 'DD_PRODUCT_TYPE', 'DD_REPORTS_DIR', 'DD_RESULTS_FILE', 'DD_TOKEN', 'DD_URL']
+PASS: defectdojo-import/dd-verify: extracted (39 lines), no ${{, bash -n clean, env names match the contract ['DD_IMPORT_OUTCOME', 'DD_RESULTS_FILE']
+PASS: defectdojo-cleanup/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+PASS: defectdojo-cleanup/dd-delete: extracted (180 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_CLEANUP_RESULT_FILE', 'DD_DEFAULT_BRANCH', 'DD_INSECURE', 'DD_PRODUCT', 'DD_TOKEN', 'DD_URL']
+PASS: defectdojo-cleanup/dd-cleanup-verify: extracted (23 lines), no ${{, bash -n clean, env names match the contract ['DD_CLEANUP_RESULT_FILE', 'DD_DELETE_OUTCOME']
+PASS: DD-GATE-IDENTICAL: the import and cleanup dd-gate bodies are byte-identical
+extract: 7 passed, 0 failed
+
+=== non-https DEFECTDOJO_URL is refused before any request (P-HTTP) ===
+    | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the API token over 'http'
+PROOF: P-HTTP PASS import-http: DD_URL=http://127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+    | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the API token over '(no scheme)'
+PROOF: P-HTTP PASS import-noscheme: DD_URL=127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+    | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the API token over 'http'
+PROOF: P-HTTP PASS delete-http: DD_URL=http://127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+
+=== defectdojo-configure.sh refuses a non-https URL and fails its preflight guards offline (P-HTTP, P-CONFIGURE-GUARD) ===
+    | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the admin token over 'http'
+PROOF: P-HTTP PASS configure-http: DEFECTDOJO_URL=http://127.0.0.1:9 -> exit 1, refused before the token file is read, no request, token absent
+    | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the admin token over '(no scheme)'
+PROOF: P-HTTP PASS configure-noscheme: DEFECTDOJO_URL=127.0.0.1:9 -> exit 1, refused before the token file is read, no request, token absent
+    | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE is not set (see the usage lines at the top of this script)
+PROOF: P-CONFIGURE-GUARD PASS configure-no-env: empty DEFECTDOJO_ADMIN_TOKEN_FILE -> exit 2, FATAL names the variable, no request
+    | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.uLQqzRCXro/proof/configure-dummy-loose.token' is readable by group or other (mode 644); chmod 600 it
+    | DefectDojo host: 127.0.0.1
+PROOF: P-CONFIGURE-GUARD PASS configure-loose-perms: 0644 token file -> exit 2, FATAL names the path, no request, token absent
+
+=== ambient curlrc is ignored; unverified peer refused before any request (P-CURLRC) ===
+PROOF: P-CURLRC PASS control: no -q curl read the hostile curlrc and reached the listener (REQUEST auth=yes; trace and libcurl files written)
+    | DefectDojo host: defectdojo.curlrc.test
+    | FAILED: GET /api/v2/system_settings/ http=500 body={"results": []}
+PROOF: P-CURLRC FAIL configure: no HANDSHAKE-FAIL at the listener; 1 REQUEST line(s) at the listener (1 REQUEST GET /api/v2/system_settings/ auth=yes;); no failure line containing 'TLS verification result'; trace-ascii file p-curlrc-trace.txt was written (the curlrc was read); libcurl file p-curlrc-libcurl.c was written (the curlrc was read); [listener CONNECT=1 HANDSHAKE-FAIL=0 REQUEST=1]
+    | ==> PREREQ-PRODUCT: FAIL - GET /api/v2/products/?name_exact=p-curlrc&limit=250&offset=0: curl exit 0, http 500 (expected 200): {"results": []}Warning: --trace-ascii overrides an earlier trace/verbose option
+    |
+    | === Summary ===
+    | SKIPPED - 1 sub-check(s) did not run. A SKIP IS NOT A PASS:
+    |   - the remaining snapshot assertions: not evaluated, they depend on PREREQ-PRODUCT
+    |
+    | FAILED - one or more live checks did not produce the expected result:
+    |   - PREREQ-PRODUCT: GET /api/v2/products/?name_exact=p-curlrc&limit=250&offset=0: curl exit 0, http 500 (expected 200): {"results": []}Warning: --trace-ascii overrides an earlier trace/verbose option
+PROOF: P-CURLRC FAIL lifecycle: no HANDSHAKE-FAIL at the listener; 1 REQUEST line(s) at the listener (1 REQUEST GET /api/v2/products/?name_exact=p-curlrc&limit=250&offset=0 auth=yes;); no failure line containing 'TLS verification result'; trace-ascii file p-curlrc-trace.txt was written (the curlrc was read); libcurl file p-curlrc-libcurl.c was written (the curlrc was read); [listener CONNECT=1 HANDSHAKE-FAIL=0 REQUEST=1]
+    | === defectdojo-homelab-validate: https://127.0.0.1:56073 + https://127.0.0.1:56073 (context p-curlrc-no-such-context, namespace p-curlrc, app argocd/p-curlrc, sync pass first) ===
+    |
+    | --- 1. TLS on both hostnames (system trust store) ---
+    | ==> HOMELAB-TLS-INFRA: FAIL - GET https://127.0.0.1:56073/login returned http_code 500, ssl_verify_result 18; expected '200 0'
+    | ==> HOMELAB-TLS-HOME: FAIL - GET https://127.0.0.1:56073/login returned http_code 500, ssl_verify_result 18; expected '200 0'
+    |
+    | --- 2. admin login with a browser-equivalent Origin, on both hostnames ---
+    | ==> HOMELAB-LOGIN-ORIGIN-INFRA: FAIL - no admin password to log in with: kubectl exited 1 reading Secret p-curlrc/defectdojo: error: context "p-curlrc-no-such-context" does not exist
+    | ==> HOMELAB-LOGIN-ORIGIN-HOME: FAIL - no admin password to log in with: kubectl exited 1 reading Secret p-curlrc/defectdojo: error: context "p-curlrc-no-such-context" does not exist
+    |
+    | --- 3. negative control: foreign Origin must be refused ---
+    | ==> HOMELAB-CSRF-FOREIGN-403: FAIL - GET https://127.0.0.1:56073/login for the CSRF token returned http_code 500 (curl exit 0): Warning: --trace-ascii overrides an earlier trace/verbose option
+    |
+    | --- 4. Celery broker round-trip ---
+    | ==> HOMELAB-CELERY-PING: FAIL - celery -A dojo inspect ping exited 1 without pong (broker unreachable or worker not replying): error: context "p-curlrc-no-such-context" does not exist
+    |
+    | --- 5. Argo CD: initializer hook phase and Application status ---
+    | ==> ARGOCD-HOOK-PHASE: FAIL - kubectl exited 1 reading Application argocd/p-curlrc on context p-curlrc-no-such-context: error: context "p-curlrc-no-such-context" does not exist
+    |
+    | --- 6. measuring state (initializer and ServiceAccount UIDs, revision, counts) ---
+    |     measurement gap: job/defectdojo-initializer uid: kubectl exit 1: error: context "p-curlrc-no-such-context" does not exist
+    |     measurement gap: sa/defectdojo uid: kubectl exit 1: error: context "p-curlrc-no-such-context" does not exist
+    |     measurement gap: app_revision: Application argocd/p-curlrc was not read (see ARGOCD-HOOK-PHASE)
+    |     measurement gap: GET /api/v2/products/?limit=1: http_code 500 (curl exit 0)
+    |     measurement gap: GET /api/v2/findings/?limit=1: http_code 500 (curl exit 0)
+    |     state written to /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.uLQqzRCXro/proof/curlrc-homelab-state.json
+    |     WARNING: 5 value(s) in the state file are null (see measurement gaps above); a second-sync run compared against it cannot assert them
+    |
+    | --- 7. second-sync idempotency ---
+    |     SKIPPED - --sync-pass first
+    |
+    |
+    | === Summary ===
+    | SKIPPED - 1 sub-check(s) did not run. A SKIP IS NOT A PASS:
+    |   - SECOND-SYNC-IDEMPOTENT: not evaluated on a --sync-pass first run; re-run this gate with --sync-pass second --pre-state <file> --token-file <file> after the second Argo CD sync of the same revision
+    |
+    | FAILED - one or more live checks did not produce the expected result:
+    |   - HOMELAB-TLS-INFRA: GET https://127.0.0.1:56073/login returned http_code 500, ssl_verify_result 18; expected '200 0'
+    |   - HOMELAB-TLS-HOME: GET https://127.0.0.1:56073/login returned http_code 500, ssl_verify_result 18; expected '200 0'
+    |   - HOMELAB-LOGIN-ORIGIN-INFRA: no admin password to log in with: kubectl exited 1 reading Secret p-curlrc/defectdojo: error: context "p-curlrc-no-such-context" does not exist
+    |   - HOMELAB-LOGIN-ORIGIN-HOME: no admin password to log in with: kubectl exited 1 reading Secret p-curlrc/defectdojo: error: context "p-curlrc-no-such-context" does not exist
+    |   - HOMELAB-CSRF-FOREIGN-403: GET https://127.0.0.1:56073/login for the CSRF token returned http_code 500 (curl exit 0): Warning: --trace-ascii overrides an earlier trace/verbose option
+    |   - HOMELAB-CELERY-PING: celery -A dojo inspect ping exited 1 without pong (broker unreachable or worker not replying): error: context "p-curlrc-no-such-context" does not exist
+    |   - ARGOCD-HOOK-PHASE: kubectl exited 1 reading Application argocd/p-curlrc on context p-curlrc-no-such-context: error: context "p-curlrc-no-such-context" does not exist
+PROOF: P-CURLRC FAIL homelab-tls-probe: no HANDSHAKE-FAIL at the listener; 5 REQUEST line(s) at the listener (1 REQUEST GET /api/v2/findings/?limit=1 auth=yes;1 REQUEST GET /api/v2/products/?limit=1 auth=yes;3 REQUEST GET /login auth=no;); no failure line containing 'TLS verification result'; trace-ascii file p-curlrc-trace.txt was written (the curlrc was read); libcurl file p-curlrc-libcurl.c was written (the curlrc was read); [listener CONNECT=7 HANDSHAKE-FAIL=0 REQUEST=5]
+PROOF: P-CURLRC FAIL homelab-token-get: no failure line naming GET /api/v2/products/?limit=1 together with 'TLS verification result'; the token GET reached the listener (REQUEST GET /api/v2/products/?limit=1 auth=yes); [listener CONNECT=7 HANDSHAKE-FAIL=0 REQUEST=5]
+    | TLS mode: verified-system
+    | product=proof/security-platform product_type=CI engagement=ci/proof/branch-a
+    | FAILED: semgrep-results.json http=500 body={"results": []}
+    | FAILED: checkov-results.json http=500 body={"results": []}
+    | SKIP: trivy-fs.json not in artifacts — report missing
+    | SKIP: trivy-image.json not in artifacts — no Dockerfile in this repository
+    | SKIP: gitleaks-results.json not in artifacts — report missing
+    | SKIP: npm-audit-*.json not in artifacts — no package-lock.json in this repository
+    | SKIP: pip-audit-*.json not in artifacts — no requirements file in this repository
+    | SKIP: tflint.sarif not in artifacts — no Terraform in this repository
+    | attempted=2 skipped=6 failed=2
+PROOF: P-CURLRC FAIL dd-import: no HANDSHAKE-FAIL at the listener; 2 REQUEST line(s) at the listener (2 REQUEST POST /api/v2/reimport-scan/ auth=yes;); no failure line containing 'TLS verification result'; trace-ascii file p-curlrc-trace.txt was written (the curlrc was read); libcurl file p-curlrc-libcurl.c was written (the curlrc was read); 2 CONNECT lines (expected exactly 1: the loop must stop at the first TLS failure); [listener CONNECT=2 HANDSHAKE-FAIL=0 REQUEST=2]
+    | TLS mode: verified-system
+    | product='proof/security-platform' target='ci/proof/branch-a' default_branch='main'
+    | FAILED: GET /api/v2/products/?name_exact=proof%2Fsecurity-platform&limit=100 http=500 body={"results": []}
+PROOF: P-CURLRC FAIL dd-delete: no HANDSHAKE-FAIL at the listener; 1 REQUEST line(s) at the listener (1 REQUEST GET /api/v2/products/?name_exact=proof%2Fsecurity-platform&limit=100 auth=yes;); no failure line containing 'TLS verification result'; trace-ascii file p-curlrc-trace.txt was written (the curlrc was read); libcurl file p-curlrc-libcurl.c was written (the curlrc was read); [listener CONNECT=1 HANDSHAKE-FAIL=0 REQUEST=1]
+
+PROOF FAIL - 6 of 14
