@@ -50,6 +50,10 @@ set -euo pipefail
 #                                    runs-on: ${{ vars.DEFECTDOJO_RUNS_ON || 'ubuntu-latest' }}
 #                                    (SHAPE_RUNS_ON), so an unset caller variable
 #                                    keeps them on ubuntu-latest
+# Phase 29.2 (Phase 28 CR-01 fix):
+#   CURLRC  the DefectDojo bodies ignore ambient curl config (-q is argv[1]), check
+#           ssl_verify_result, discard curl stderr, and never set DEFECTDOJO_RESOLVE
+#           (Phase 28 CR-01, ADR-029)
 #
 # Self-test overrides (optional, used only to point the gate at scratch copies):
 #   WORKFLOWS_DIR           default .github/workflows
@@ -659,12 +663,62 @@ for jid, step_id in (("defectdojo-import", "dd-import"), ("defectdojo-cleanup", 
              "— the token must never be staged for a non-https URL (CR-01)".format(
                  jid, step_id, SCHEME_REFUSAL, HEADER_WRITE))
 
+# ── 20. CURLRC (Phase 28 CR-01, ADR-029) ─────────────────────────────────────
+# A curlrc on the runner (hosted or self-hosted ARC) can turn TLS verification
+# off, add verbose/trace output or redirect the token. -q only works as curl's
+# first argument, so its position is asserted, not just its presence. Each body
+# must also read ssl_verify_result, discard curl stderr (never print it), and
+# read the DEFECTDOJO_RESOLVE test hook, which no step env: may ever set (D-07).
+CURLRC_HEAD = '["curl", "-q", "-sS"'
+CURLRC_OLD_HEAD = '["curl", "-sS"'
+for jid, step_id in (("defectdojo-import", "dd-import"), ("defectdojo-cleanup", "dd-delete")):
+    body = present.get(jid)
+    if body is None:
+        fail_absent("CURLRC", jid)
+        continue
+    matches = [s for s in steps_of(body) if s.get("id") == step_id]
+    if not matches:
+        fail("CURLRC", "jobs.{} has no step id={}".format(jid, step_id))
+        continue
+    run = str(matches[0].get("run") or "")
+    head_count = run.count(CURLRC_HEAD)
+    if head_count != 1:
+        fail("CURLRC",
+             "jobs.{} step {} run: {!r} occurs {} time(s), expected exactly 1 — -q must be curl's "
+             "first argument so no curlrc is read (Phase 28 CR-01, ADR-029)".format(
+                 jid, step_id, CURLRC_HEAD, head_count))
+    if CURLRC_OLD_HEAD in run:
+        fail("CURLRC",
+             "jobs.{} step {} run: contains {!r} — a curl call without -q as argv[1] reads the "
+             "runner's curlrc (Phase 28 CR-01, ADR-029)".format(jid, step_id, CURLRC_OLD_HEAD))
+    if "%{ssl_verify_result}" not in run:
+        fail("CURLRC",
+             "jobs.{} step {} run: does not read %{{ssl_verify_result}} — a request must fail "
+             "unless TLS verification succeeded (Phase 28 CR-01, ADR-029)".format(jid, step_id))
+    if "stderr=subprocess.DEVNULL" not in run:
+        fail("CURLRC",
+             "jobs.{} step {} run: curl stderr is not discarded (stderr=subprocess.DEVNULL) — "
+             "it can carry header or trace text (Phase 28 CR-01, ADR-029)".format(jid, step_id))
+    if "proc.stderr" in run:
+        fail("CURLRC",
+             "jobs.{} step {} run: reads proc.stderr — curl stderr must never be printed "
+             "(Phase 28 CR-01, ADR-029)".format(jid, step_id))
+    if "DEFECTDOJO_RESOLVE" not in run:
+        fail("CURLRC",
+             "jobs.{} step {} run: does not read the DEFECTDOJO_RESOLVE test hook, so the "
+             "offline proof cannot reach it (Phase 28 CR-01, ADR-029)".format(jid, step_id))
+    step_env = matches[0].get("env")
+    if isinstance(step_env, dict) and "DEFECTDOJO_RESOLVE" in step_env:
+        fail("CURLRC",
+             "jobs.{} step {} env: sets DEFECTDOJO_RESOLVE — it is a proof-harness test hook "
+             "that the workflow must never set (D-07, Phase 28 CR-01, ADR-029)".format(jid, step_id))
+
 # PERMISSIONS-CALLER, PERMISSIONS-CALLEE, PERMISSIONS-FORBIDDEN, SHA-PIN,
 # SARIF-CATEGORY, ARTIFACT-RETENTION, ARTIFACT-PATH-SAFETY, UPLOAD-VERIFY-PAIRING,
 # REDACT-RETAINED, JOB-SHAPE, SIDE-CHANNEL-NOT-REQUIRED, SIDE-CHANNEL-SHAPE,
 # OPTIONAL-SECRET, NO-INTERPOLATION, IMPORT-VERIFY-PAIRING, INSECURE-WARNING,
-# SCAN-JOB-CLOSED-SKIP, CALLER-WIRING, SCHEME.
-CHECK_COUNT = 19
+# SCAN-JOB-CLOSED-SKIP, CALLER-WIRING, SCHEME, CURLRC.
+CHECK_COUNT = 20
 
 if failures:
     for line in failures:
