@@ -74,9 +74,10 @@ set -euo pipefail
 # token file is read. The token file must be a regular readable file, be
 # non-empty, carry no group or other permission bits (the
 # defectdojo-configure.sh contract) and hold exactly one bare DefectDojo API
-# token: 40 lowercase hex characters on one line (one trailing CR/LF allowed),
-# no "Token " prefix. Anything else (a second line, a prefix, spaces) is refused
-# with exit 2 before any connection. The
+# token: 40 lowercase hex characters on one line (at most one trailing LF or
+# CRLF allowed; blank lines, a bare CR or NUL bytes are refused), no "Token "
+# prefix. Anything else (a second line, a prefix, spaces) is refused with exit
+# 2 before any connection. The
 # token is copied once into a 0600 header file created exclusively (noclobber)
 # inside a private mktemp -d directory, and is sent only as `-H @file`. Request
 # bodies are built with jq into 0600 files, sent with --data-binary @file and
@@ -89,7 +90,7 @@ set -euo pipefail
 #
 # CURL CONFIG (ADR-029, Phase 28 CR-01). Every curl call passes -q as its first
 # argument, so no curlrc is read (~/.curlrc, $CURL_HOME/.curlrc,
-# $XDG_CONFIG_HOME/.curlrc): an ambient `insecure`, `cacert`, `verbose` or
+# $XDG_CONFIG_HOME/curlrc): an ambient `insecure`, `cacert`, `verbose` or
 # `location-trusted` line cannot weaken TLS or leak the token. Every request
 # must end with curl exit 0 AND ssl_verify_result 0 before its HTTP code is
 # even considered; anything else is an API error and the run fails. curl
@@ -330,11 +331,35 @@ umask 077
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK" || true' EXIT
 HDR="${WORK}/auth-header"
-# `$(< file)` drops trailing newlines only; one trailing CR is stripped, and
-# the whole string must then be one 40-hex token, so a second line fails.
-cred="$(< "$CRED_FILE")"
-cred="${cred%$'\r'}"
-if [[ ! "$cred" =~ ^[0-9a-f]{40}$ ]]; then
+# read_token_file PATH: on success set cred to the one bare 40-hex token in
+# PATH and return 0; otherwise return non-zero with no output. This matches
+# defectdojo-configure.sh and ADR-029 decision 6: at most one trailing CRLF or
+# LF is stripped, and what remains must be exactly 40 lowercase hex characters,
+# so trailing blank lines, a bare trailing CR and a NUL byte are all refused.
+# `$(< file)` is not used because it strips every trailing newline and drops
+# NUL bytes. `read -d ''` always returns 1 at end of file, so its status says
+# nothing; the byte-count comparison with `wc -c` is what catches a NUL
+# (read stops or drops there) or any other short read, and that check is what
+# makes the `|| true` safe. `local LC_ALL=C` evaluates the length and the
+# [0-9a-f] range in the C locale and is restored when the function returns.
+read_token_file() {
+  local LC_ALL=C raw="" size
+  IFS= read -r -d '' raw < "$1" || true
+  size="$(wc -c < "$1")"
+  size="${size//[[:space:]]/}"
+  [[ "$size" == "${#raw}" ]] || return 1
+  if [[ "$raw" == *$'\r\n' ]]; then
+    raw="${raw%$'\r\n'}"
+  elif [[ "$raw" == *$'\n' ]]; then
+    raw="${raw%$'\n'}"
+  fi
+  [[ "$raw" =~ ^[0-9a-f]{40}$ ]] || return 1
+  cred="$raw"
+}
+# The token file is read byte-exact by read_token_file (one trailing CRLF or LF
+# stripped, nothing else), so a second line, blank lines, a bare CR, a NUL byte
+# or a prefix is refused here, before any connection.
+if ! read_token_file "$CRED_FILE"; then
   unset cred
   echo "ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix" >&2
   exit 2
