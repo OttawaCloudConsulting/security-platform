@@ -31,10 +31,15 @@ set -euo pipefail
 #
 # TLS (D-18): every call is verified against the kind CA (DEFECTDOJO_CA_CERT /
 # --cacert). TLS verification is never switched off, DD_INSECURE is empty on
-# every network-bound body run, and host resolution comes from a curlrc
-# `resolve` entry under CURL_HOME, not from a hosts-file edit and not from a
-# TLS bypass. The committed bodies call plain curl, so the curlrc reaches them
-# too and they need no harness-only branch.
+# every network-bound body run. In --hook the CURL_HOME curlrc is
+# deliberately hostile (insecure, verbose, trace-ascii, libcurl, a throwaway
+# cacert, location, location-trusted; no resolve line), and every DefectDojo
+# client and harness helper passes -q so it is never read (Phase 28 CR-01,
+# ADR-029, 29.2 D-09). Host resolution comes from DEFECTDOJO_RESOLVE
+# (host:port:127.0.0.1, passed as --resolve), not from a hosts-file edit and
+# not from a TLS bypass. The run ends by proving the curlrc's trace and
+# libcurl files were never created, so a missed -q anywhere on the live path
+# fails the proof.
 #
 # Modes:
 #   <reports-dir>   entry: preflight, the --extract-only checks, then run the
@@ -409,11 +414,16 @@ proof_abort() {
 
 # api_call OUTFILE ARGS...: a verified-TLS request against the smoke DefectDojo.
 # Prints "<http_code> <ssl_verify_result>"; the curl exit status is returned.
-# The resolve entry comes from the curlrc under CURL_HOME.
+# -q comes first so the (deliberately hostile, in --hook) CURL_HOME curlrc is
+# never read; host resolution comes from DEFECTDOJO_RESOLVE via --resolve.
 api_call() {
   local out="$1"
   shift
-  curl -sS --cacert "$DD_CA_FILE" -o "$out" -w '%{http_code} %{ssl_verify_result}' "$@"
+  local resolve_args=()
+  if [ -n "${DEFECTDOJO_RESOLVE:-}" ]; then
+    resolve_args=(--resolve "$DEFECTDOJO_RESOLVE")
+  fi
+  curl -q -sS --cacert "$DD_CA_FILE" ${resolve_args[@]+"${resolve_args[@]}"} -o "$out" -w '%{http_code} %{ssl_verify_result}' "$@"
 }
 
 # mint_token USER PWFILE TOKENFILE LABEL: POST /api/v2/api-token-auth/ with a
@@ -495,7 +505,7 @@ tally_assert_log() {
 }
 
 # write_read_py PATH: the read-side lookup script used after run 1 (admin
-# token, --cacert, the CURL_HOME resolve entry). Inputs come from the
+# token, --cacert, curl -q and --resolve DEFECTDOJO_RESOLVE). Inputs come from the
 # environment only, so a hostile engagement name is never part of any shell
 # string. Modes:
 #   engagements       READ_PRODUCT, READ_ENGAGEMENT -> JSON
@@ -519,8 +529,10 @@ resp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "read-respo
 
 def get(path, params, count_only=False):
     url = "{}{}?{}".format(base, path, urllib.parse.urlencode(params))
-    cmd = ["curl", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
+    cmd = ["curl", "-q", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
            "-w", "%{http_code} %{ssl_verify_result}", url]
+    if os.environ.get("DEFECTDOJO_RESOLVE"):
+        cmd += ["--resolve", os.environ["DEFECTDOJO_RESOLVE"]]
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     code, _, verify = (proc.stdout or "000 -").strip().partition(" ")
     body = ""
@@ -570,8 +582,15 @@ PY
 # write_tls_listener_py PATH: the offline TLS listener (29.2-RESEARCH "Tested
 # listener", measured on python 3.9.6/LibreSSL and 3.12.0). argv: CERT KEY
 # PORTFILE LOGFILE. Binds 127.0.0.1:0, writes its port atomically, and appends
-# one line per event to LOGFILE: `CONNECT`, `HANDSHAKE-FAIL <exception>`, and
-# `REQUEST <METHOD> <PATH> auth=yes|no` (every request is answered 500). It
+# one line per event to LOGFILE: `CONNECT`, then exactly one of
+# `HANDSHAKE-FAIL <exception>` or `HANDSHAKE-OK` for that connection, and
+# `REQUEST <METHOD> <PATH> auth=yes|no` (every request is answered 500). A
+# verifying client that rejects the cert ends in HANDSHAKE-FAIL; `openssl
+# s_client` (defectdojo-homelab-validate.sh's cert dump) does not verify, so
+# it ends in HANDSHAKE-OK and closes without a request. The listener logs
+# HANDSHAKE-FAIL only once it has processed the client's alert, which can be
+# after the client (and the body) exited, so curlrc_counts waits for every
+# CONNECT to get its terminal line before counting (29.2 DI-01). It
 # never logs a header value. Test-only; run it only as `python3 PATH ...`
 # (never chmod +x).
 write_tls_listener_py() {
@@ -616,11 +635,13 @@ class Server(http.server.HTTPServer):
         sock, addr = self.socket.accept()
         log("CONNECT")
         try:
-            return ctx.wrap_socket(sock, server_side=True), addr
+            tls = ctx.wrap_socket(sock, server_side=True)
         except (ssl.SSLError, OSError) as exc:
             log("HANDSHAKE-FAIL {}".format(type(exc).__name__))
             sock.close()
             raise          # socketserver swallows OSError from get_request and keeps serving
+        log("HANDSHAKE-OK")
+        return tls, addr
 
 
 httpd = Server(("127.0.0.1", 0), Handler)
@@ -642,7 +663,29 @@ CURLRC_LOG=""
 CURLRC_TRACE=""
 CURLRC_LIBCURL=""
 
-# curlrc_fixture_up: throwaway cert (a -config cnf; no -ext/-addext, Phase 29
+# gen_throwaway_cert DIR CN: a one-day self-signed CA:TRUE cert for CN (SAN
+# DNS:CN) as DIR/cert.pem with DIR/key.pem, from a -config cnf (no -ext or
+# -addext: LibreSSL on macOS lacks them, Phase 29 WR-06 precedent). Used by the
+# P-CURLRC fixture (the listener cert) and by P-TLS (the hostile curlrc's
+# cacert). Returns non-zero unless both files exist and are non-empty.
+gen_throwaway_cert() {
+  local dir="$1" cn="$2"
+  cat > "${dir}/san.cnf" <<CNF
+[req]
+distinguished_name=dn
+x509_extensions=v3
+prompt=no
+[dn]
+CN=${cn}
+[v3]
+subjectAltName=DNS:${cn}
+basicConstraints=critical,CA:TRUE
+CNF
+  openssl req -x509 -newkey rsa:2048 -nodes -days 1 -keyout "${dir}/key.pem" -out "${dir}/cert.pem" -config "${dir}/san.cnf" >/dev/null 2>&1 \
+    && [ -s "${dir}/cert.pem" ] && [ -s "${dir}/key.pem" ]
+}
+
+# curlrc_fixture_up: throwaway cert (gen_throwaway_cert; no -ext/-addext, Phase 29
 # WR-06 precedent), the listener in the background (PID in LISTENER_PID, port
 # in CURLRC_PORT) and the hostile curlrc. The curlrc names p-curlrc-* trace and
 # libcurl files so they never collide with the global live-run names (29.2
@@ -665,19 +708,7 @@ curlrc_fixture_up() {
     CURLRC_FIXTURE_ERR="could not create ${CURLRC_DIR} and ${CURLRC_HOME}"
     return 1
   fi
-  cat > "${CURLRC_DIR}/san.cnf" <<CNF
-[req]
-distinguished_name=dn
-x509_extensions=v3
-prompt=no
-[dn]
-CN=${CURLRC_HOST}
-[v3]
-subjectAltName=DNS:${CURLRC_HOST}
-basicConstraints=critical,CA:TRUE
-CNF
-  if ! openssl req -x509 -newkey rsa:2048 -nodes -days 1 -keyout "${CURLRC_DIR}/key.pem" -out "${CURLRC_DIR}/cert.pem" -config "${CURLRC_DIR}/san.cnf" >/dev/null 2>&1 \
-    || [ ! -s "${CURLRC_DIR}/cert.pem" ] || [ ! -s "${CURLRC_DIR}/key.pem" ]; then
+  if ! gen_throwaway_cert "$CURLRC_DIR" "$CURLRC_HOST"; then
     CURLRC_FIXTURE_ERR="openssl req -x509 -config did not produce cert.pem and key.pem"
     return 1
   fi
@@ -942,14 +973,29 @@ curlrc_show_log() {
   sed -e "s/${CURLRC_TOK}/<dummy-token>/g" -e 's/^/    | /' "$BODY_LOG"
 }
 
-# curlrc_counts: CURLRC_C / CURLRC_H / CURLRC_R = CONNECT, HANDSHAKE-FAIL and
-# REQUEST lines at the listener; CURLRC_COUNTS is the quoted summary and
-# CURLRC_REQS the distinct REQUEST lines (never a header value).
+# curlrc_counts: CURLRC_C / CURLRC_H / CURLRC_OK / CURLRC_R = CONNECT,
+# HANDSHAKE-FAIL, HANDSHAKE-OK and REQUEST lines at the listener; CURLRC_COUNTS
+# is the quoted summary and CURLRC_REQS the distinct REQUEST lines (never a
+# header value). It first waits up to 3s for the listener to settle, i.e. for
+# every CONNECT to have its HANDSHAKE-FAIL or HANDSHAKE-OK line (29.2 DI-01:
+# the listener can log HANDSHAKE-FAIL after the body exited). On the deadline
+# it counts what is there and the caller judges that, so a connection that
+# never settles still fails an assertion; nothing passes by default.
 curlrc_counts() {
-  CURLRC_C="$(grep -c '^CONNECT$' "$CURLRC_LOG" || true)"
-  CURLRC_H="$(grep -c '^HANDSHAKE-FAIL' "$CURLRC_LOG" || true)"
+  local i settled=0
+  for ((i = 0; i < 30; i++)); do
+    CURLRC_C="$(grep -c '^CONNECT$' "$CURLRC_LOG" || true)"
+    CURLRC_H="$(grep -c '^HANDSHAKE-FAIL' "$CURLRC_LOG" || true)"
+    CURLRC_OK="$(grep -c '^HANDSHAKE-OK$' "$CURLRC_LOG" || true)"
+    if [ "$CURLRC_C" -eq $((CURLRC_H + CURLRC_OK)) ]; then
+      settled=1
+      break
+    fi
+    sleep 0.1
+  done
   CURLRC_R="$(grep -c '^REQUEST ' "$CURLRC_LOG" || true)"
-  CURLRC_COUNTS="listener CONNECT=${CURLRC_C} HANDSHAKE-FAIL=${CURLRC_H} REQUEST=${CURLRC_R}"
+  CURLRC_COUNTS="listener CONNECT=${CURLRC_C} HANDSHAKE-FAIL=${CURLRC_H} HANDSHAKE-OK=${CURLRC_OK} REQUEST=${CURLRC_R}"
+  [ "$settled" -eq 1 ] || CURLRC_COUNTS="${CURLRC_COUNTS}, not settled after 3s"
   CURLRC_REQS="$(grep '^REQUEST ' "$CURLRC_LOG" | sort | uniq -c | sed 's/^ *//' | tr '\n' ';' || true)"
   CURLRC_REQS="${CURLRC_REQS:0:300}"
 }
@@ -1489,7 +1535,7 @@ prove_curlrc_refusal() {
 # ─────────────────────────────────────────────────────────────────────────────
 
 # write_dedup_py PATH: the Phase 28 read-side script (admin token, --cacert,
-# the CURL_HOME resolve entry; the same transport as write_read_py). Inputs
+# curl -q and --resolve DEFECTDOJO_RESOLVE; the same transport as write_read_py). Inputs
 # come from the environment only. Unlike write_read_py it pages list reads
 # with an explicit limit=250&offset=N until it holds `count` rows, and never
 # follows the returned `next` URL. It never defaults a missing field: a
@@ -1531,8 +1577,10 @@ def get(path, params=None):
     url = base + path
     if params:
         url += "?" + urllib.parse.urlencode(params)
-    cmd = ["curl", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
+    cmd = ["curl", "-q", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
            "-w", "%{http_code} %{ssl_verify_result}", url]
+    if os.environ.get("DEFECTDOJO_RESOLVE"):
+        cmd += ["--resolve", os.environ["DEFECTDOJO_RESOLVE"]]
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     code, _, verify = (proc.stdout or "000 -").strip().partition(" ")
     body = ""
@@ -2886,21 +2934,47 @@ mode_hook() {
   local b_cleanup_verify="${bodies}/defectdojo-cleanup__dd-cleanup-verify.sh"
 
   # ── P-TLS ─────────────────────────────────────────────────────────────────
+  # D-09 (Phase 28 CR-01): the global curlrc is deliberately hostile, so every
+  # live P-CONFIGURE, P-IDEMPOTENT, import and cleanup run is a curlrc test.
+  # Every DefectDojo client and harness helper passes -q and never reads it;
+  # host resolution comes from DEFECTDOJO_RESOLVE (inherited by every
+  # run_body subshell). There is no resolve line on purpose: a missed
+  # --resolve fails DNS for the smoke host instead of passing silently. The
+  # trace/libcurl names start with curlrc-global- so P-CURLRC's control, which
+  # writes p-curlrc-* files under its own CURL_HOME, never erases them
+  # (Pitfall 8); the end of this mode proves they were never created.
   local curlhome="${DD_SMOKE_OUT}/curlhome"
+  local global_trace="${DD_SMOKE_OUT}/curlrc-global-trace.txt"
+  local global_libcurl="${DD_SMOKE_OUT}/curlrc-global-libcurl.c"
   mkdir -p "$curlhome"
-  printf 'resolve = "%s:%s:127.0.0.1"\n' "$SMOKE_HOST" "$PF_PORT" > "${curlhome}/.curlrc"
-  export CURL_HOME="$curlhome"
-  if [ "$(wc -l < "${curlhome}/.curlrc" | tr -d ' ')" != "1" ] || grep -qiE 'insecure|(^|[[:space:]])-k' "${curlhome}/.curlrc"; then
-    proof_abort "P-TLS" "the curlrc must hold exactly one resolve line and nothing that disables verification"
+  if ! gen_throwaway_cert "$curlhome" "$SMOKE_HOST"; then
+    proof_abort "P-TLS" "openssl req -x509 -config did not produce the throwaway cert.pem for the hostile curlrc"
   fi
+  {
+    printf 'insecure\n'
+    printf 'verbose\n'
+    printf 'trace-ascii = "%s"\n' "$global_trace"
+    printf 'libcurl = "%s"\n' "$global_libcurl"
+    printf 'cacert = "%s"\n' "${curlhome}/cert.pem"
+    printf 'location\n'
+    printf 'location-trusted\n'
+  } > "${curlhome}/.curlrc"
+  export CURL_HOME="$curlhome"
+  export DEFECTDOJO_RESOLVE="${SMOKE_HOST}:${PF_PORT}:127.0.0.1"
+  local directive
+  for directive in '^insecure$' '^verbose$' '^trace-ascii = ' '^libcurl = ' '^cacert = ' '^location-trusted$'; do
+    if ! grep -qE "$directive" "${curlhome}/.curlrc" || grep -qE '^[[:space:]]*-?-?resolve' "${curlhome}/.curlrc"; then
+      proof_abort "P-TLS" "the CURL_HOME curlrc must be hostile (insecure, verbose, trace-ascii, libcurl, cacert, location-trusted) and hold no resolve line"
+    fi
+  done
   local rc=0 out code verify
-  out="$(api_call "${PROOF_DIR}/api-root.json" "${BASE_URL}/api/v2/" 2>"${PROOF_DIR}/api-root.err")" || rc=$?
+  out="$(api_call "${PROOF_DIR}/api-root.json" "${BASE_URL}/api/v2/" 2>/dev/null)" || rc=$?
   code="${out%% *}"
   verify="${out##* }"
   if [ "$rc" -ne 0 ] || [ "$verify" != "0" ] || [ "$code" = "000" ]; then
-    proof_abort "P-TLS" "GET ${BASE_URL}/api/v2/ via CURL_HOME resolve: curl exit ${rc} (60 = verification failed), http ${code:-none}, ssl_verify_result ${verify:-none}: $(tr '\n' ' ' < "${PROOF_DIR}/api-root.err")"
+    proof_abort "P-TLS" "GET ${BASE_URL}/api/v2/ with -q and --resolve DEFECTDOJO_RESOLVE: curl exit ${rc} (60 = verification failed, 6 = host not resolved), http ${code:-none}, ssl_verify_result ${verify:-none}"
   fi
-  proof_pass "P-TLS" "GET ${BASE_URL}/api/v2/ -> http ${code}, ssl_verify_result 0 against the kind CA; host resolved by the CURL_HOME curlrc"
+  proof_pass "P-TLS" "GET ${BASE_URL}/api/v2/ -> http ${code}, ssl_verify_result 0 against the kind CA; host resolved by DEFECTDOJO_RESOLVE; the hostile CURL_HOME curlrc was ignored"
 
   # ── P-ADMIN-TOKEN ─────────────────────────────────────────────────────────
   local admin_tok="${PROOF_DIR}/admin.token" admin_hdr="${PROOF_DIR}/admin.hdr"
@@ -3019,8 +3093,8 @@ mode_hook() {
   fi
 
   # ── P-CONTEXT / P-TESTS / P-COUNTS ────────────────────────────────────────
-  # Read side, admin token. Stdlib Python; curl for transport so the same
-  # CURL_HOME resolve entry and --cacert apply. Each assertion is printed as a
+  # Read side, admin token. Stdlib Python; curl -q for transport so the same
+  # --resolve DEFECTDOJO_RESOLVE and --cacert apply. Each assertion is printed as a
   # "PROOF: <ID> PASS|FAIL" line and tallied below.
   local assert_log="${PROOF_DIR}/assert-run1.log" py_rc=0
   # PROOF_PRODUCT / PROOF_PRODUCT_TYPE are readonly, and bash refuses a
@@ -3065,8 +3139,10 @@ class ApiError(Exception):
 
 def get(path, params, count_only=False):
     url = "{}{}?{}".format(base, path, urllib.parse.urlencode(params))
-    cmd = ["curl", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
+    cmd = ["curl", "-q", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
            "-w", "%{http_code} %{ssl_verify_result}", url]
+    if os.environ.get("DEFECTDOJO_RESOLVE"):
+        cmd += ["--resolve", os.environ["DEFECTDOJO_RESOLVE"]]
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     code, _, verify = (proc.stdout or "000 -").strip().partition(" ")
     body = ""
@@ -3663,6 +3739,22 @@ PY
   # ── Phase 28: dedup and triage (28-03) ────────────────────────────────────
   # After every Phase 27 assertion, which all ran with dedup still off.
   prove_dedup_triage "$bodies" "$admin_hdr" "$importer_tok" "$ca_pem"
+
+  # ── P-TLS (final): the hostile global curlrc was never read ───────────────
+  # D-09 / D-04 live: any curl on the live path (bodies, configure, harness
+  # helpers) that read the global curlrc would have created these files. Only
+  # the size is reported, never the content: it would hold the token.
+  local leaked=""
+  for v in "$global_trace" "$global_libcurl"; do
+    if [ -e "$v" ]; then
+      leaked="${leaked} ${v##*/} exists ($(wc -c < "$v" | tr -d ' ') bytes);"
+    fi
+  done
+  if [ -z "$leaked" ]; then
+    proof_pass "P-TLS" "no curl in the live run read the hostile curlrc: curlrc-global-trace.txt and curlrc-global-libcurl.c were never created"
+  else
+    proof_fail "P-TLS" "a curl in the live run read the hostile CURL_HOME curlrc:${leaked}"
+  fi
 
   proof_finish
 }
