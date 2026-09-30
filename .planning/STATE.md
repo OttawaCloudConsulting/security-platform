@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: milestone_complete
-stopped_at: Milestone complete (Phase 29.1 was final phase)
-last_updated: 2026-09-30T01:57:14.457Z
+status: planning
+stopped_at: Phase 29.2 context gathered
+last_updated: "2026-09-30T03:32:45.937Z"
 last_activity: 2026-09-30
 progress:
   total_phases: 7
   completed_phases: 7
   total_plans: 75
-  completed_plans: 77
+  completed_plans: 75
   percent: 100
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Milestone complete
+**Current focus:** Phase 29.2 — v3.0 tech-debt closure (29.2-29.7)
 
 ## Current Position
 
-Phase: 29.1
+Phase: 29.2
 Plan: Not started
-Status: Milestone complete
+Status: Ready to plan
 Last activity: 2026-09-30
 
 ## Performance Metrics
@@ -52,6 +52,12 @@ Last activity: 2026-09-30
 - Phase 21 edited: re-scoped from VERIFICATION.md backfill (already done by Phase 20.1) to docs-only: stale Grype ref, SARIF ceiling doc, stale checkout comments
 - Phase 22 added: branch-protection --apply live exercise (needs explicit target-repo confirm, irreversible-ish)
 - Phase 29.1 inserted after Phase 29: Close gap: NEXUS-01/NEXUS-03 — retroactive VERIFICATION.md for Phase 23 (URGENT)
+- Phase 29.2 inserted after Phase 29: Fix CR-01: defectdojo-configure.sh honours ~/.curlrc (insecure disables TLS) (URGENT)
+- Phase 29.3 inserted after Phase 29: Fix WR-05: chart gates fail closed on missing validate-tls.yaml and run in CI (URGENT)
+- Phase 29.4 inserted after Phase 29: Fix trivy-image cross-branch dedup: replace scan-target github.sha tag (v1 consumer impact check) (URGENT)
+- Phase 29.5 inserted after Phase 29: Fix WR-03: TRIAGE.md Under Review query hides verified=true Trivy findings (URGENT)
+- Phase 29.6 inserted after Phase 29: Close 27 UAT item 3 (closed-PR reopen race) and refresh stale 27-HUMAN-UAT.md (URGENT)
+- Phase 29.7 inserted after Phase 29: Bookkeeping: ROADMAP checkboxes, requirements-completed frontmatter, CLAUDE.md ADR range, gsd-sdk tooling ledger (URGENT)
 
 ### Decisions
 
@@ -485,9 +491,9 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-09-30T01:47:09.822Z
-Stopped at: Completed 29-19-PLAN.md; ADR-027/ADR-028 written, DDOJO-05 Complete; all 20/20 phase-29 plans done, awaiting phase verification
-Resume file: None
+Last session: 2026-09-30T03:32:45.925Z
+Stopped at: Phase 29.2 context gathered
+Resume file: .planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-CONTEXT.md
 
 ## Operator Next Steps
 
