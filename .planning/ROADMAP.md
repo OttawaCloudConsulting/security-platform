@@ -373,3 +373,20 @@ Phases execute in numeric order: 1 → 2 → ... → 29 (see milestone archives 
 ## Next Milestone
 
 Not yet defined. v3.0 (Phases 23-29) is in progress. Run `/gsd:new-milestone` after v3.0 ships. Candidate scope: Checkov baseline for existing repos, and the hardening bucket deferred from v3.0 (NetworkPolicy isolation, backup automation, monitoring/alerting).
+
+### Phase 29.1: Close gap: NEXUS-01/NEXUS-03 — retroactive VERIFICATION.md for Phase 23 (INSERTED)
+
+**Goal:** Phase 23 (Nexus Generic Chart) receives an independent, retroactive, read-only verification — `23-VERIFICATION.md` — that re-proves NEXUS-01 and NEXUS-03 against the chart on `security-platform` `origin/main`, the Phase 23 merge commit, and the live homelab deployment, so the v3.0 milestone audit's orphaned-requirement gap closes without any chart or cluster change.
+**Requirements**: NEXUS-01, NEXUS-03
+**Depends on:** Phase 29
+**Plans:** 2 plans
+
+**Success Criteria** (what must be TRUE):
+  1. `.planning/phases/23-nexus-generic-chart/23-VERIFICATION.md` exists with `status: passed` (or an explicit `failed` with gaps), scoring the union of Phase 23's plan must-haves on command-plus-output evidence, not SUMMARY prose.
+  2. NEXUS-01 is re-confirmed: the chart is public on `origin/main`; a default render emits npm/PyPI/Docker proxy bodies and a Helm body appears when `repos.helm.remoteUrl` is set (D-05, disclosed); the live homelab Nexus lists all four proxies.
+  3. NEXUS-03 is re-confirmed on both paths: the default render omits `storageClassName` and the live StatefulSet/PVC show the cluster default applied by Kubernetes; a consumer override (`--set` and a values file) reaches the PVC template verbatim, and a mutation test proves the gate discriminates.
+  4. The audit's 3-source cross-reference holds for both IDs: `23-VERIFICATION.md` names NEXUS-01 and NEXUS-03 in Requirements Coverage, `23-08-SUMMARY.md` lists them in `requirements-completed`, and REQUIREMENTS.md marks them `[x]`.
+
+Plans:
+- [ ] 29.1-01-PLAN.md — Pin the two-SHA snapshot, run offline + live read-only probes, author `23-VERIFICATION.md` (NEXUS-01, NEXUS-03)
+- [ ] 29.1-02-PLAN.md — Append the Phase 23 deferred-items re-check, create the 29.1 tooling ledger, run the coverage self-check (NEXUS-01, NEXUS-03)
