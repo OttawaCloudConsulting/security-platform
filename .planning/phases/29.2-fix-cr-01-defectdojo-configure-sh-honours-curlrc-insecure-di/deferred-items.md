@@ -44,3 +44,7 @@ The final P-TLS assertion shows that no curl run in the proof process tree read 
 ## Note (29.2-07): plans 05/06 commit-count pins are historical
 
 Plan 05's verify pins exactly 5 commits above origin/main and plan 06's pins exactly 6. The operator approved a 7th commit (415618c, the P-INSECURE fix), so the branch now has 7. Those pins were correct when their plans ran and are now historical. This is a recorded deviation, not a violation. Re-running the plan 05 or 06 verify chain against the current branch will fail on the count alone.
+
+## DI-06 (found in 29.2-11, open for plan 12): homelab engagement ci/fix/phase-29.2-token-newline
+
+PR #28 imported into homelab engagement `ci/fix/phase-29.2-token-newline` twice. Run 36772753866 attempt 1 (job 110083338254) imported 7 reports, because `security / Container - Trivy Image` had failed on the public.ecr.aws 429. Attempt 2 (job 110091235324), the operator-approved rerun, imported 8 reports: it reused test_ids 32-38 and added trivy-image test_id=39. Both were `http=201` under `TLS mode: verified-system`. Plan 12 must check that `security / DefectDojo Cleanup` deletes this engagement when PR #28 is merged or closed, as 29.2-08 did for DI-05.
