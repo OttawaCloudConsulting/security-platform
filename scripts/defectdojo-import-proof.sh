@@ -66,8 +66,14 @@ set -euo pipefail
 #                   no -q control proves the curlrc live. Inside the same
 #                   fixture, the preflight guard cases (P-CONFIGURE-GUARD
 #                   WR-01/WR-02, P-RESOLVE-GUARD, P-TOKEN-GUARD) must exit 2
-#                   with 0 CONNECT at the listener. --hook runs P-CURLRC
-#                   and the guard cases too, right after P-HTTP.
+#                   with 0 CONNECT at the listener; they include token files
+#                   with trailing blank lines, a bare trailing CR or a NUL
+#                   byte (ADR-029 decision 6, 29.2 review WR-01). The
+#                   P-TOKEN-ACCEPT cases (a token file ending in exactly one
+#                   LF or one CRLF) must get past the token check, reach the
+#                   listener and be refused at TLS with 0 REQUEST, for all
+#                   three operator scripts. --hook runs P-CURLRC and the
+#                   guard cases too, right after P-HTTP.
 #   --hook          live, called by the smoke: mint tokens, run the committed
 #                   bodies, assert run 1, the in-place reimport (run 2), the
 #                   schedule path, a hostile head ref, product-scoped cleanup,
@@ -97,7 +103,11 @@ set -euo pipefail
 # DefectDojo client; offline, in both modes); P-RESOLVE-GUARD and
 # P-TOKEN-GUARD (29.2 D-03/D-06/D-13: bad token files and bad
 # DEFECTDOJO_RESOLVE values are refused with exit 2 and 0 CONNECT; offline,
-# in both modes, inside the P-CURLRC fixture);
+# in both modes, inside the P-CURLRC fixture; token files with trailing blank
+# lines, a bare CR or a NUL byte are refused, 29.2 review WR-01);
+# P-TOKEN-ACCEPT (29.2 review WR-01, ADR-029 decision 6: a token file ending
+# in exactly one LF or CRLF is accepted past preflight by configure.sh,
+# lifecycle-assert.sh and homelab-validate.sh; same fixture);
 # P-CONFIGURE P-IDEMPOTENT P-DEDUP-MODE P-DEDUP-BRANCH P-CROSSTOOL
 # P-DISPOSITION P-SUPPRESS P-REPARENT (28-03/28-04, --hook only, after every
 # Phase 27 assertion, in fresh products).
@@ -1039,16 +1049,31 @@ GUARD_CASES=(
   "P-CONFIGURE-GUARD:configure-token-mode000"
   "P-CONFIGURE-GUARD:configure-token-multiline"
   "P-CONFIGURE-GUARD:configure-token-prefix"
+  "P-CONFIGURE-GUARD:configure-token-blanklines"
+  "P-CONFIGURE-GUARD:configure-token-barecr"
+  "P-CONFIGURE-GUARD:configure-token-nul"
+  "P-TOKEN-ACCEPT:configure-token-lf"
+  "P-TOKEN-ACCEPT:configure-token-crlf"
   "P-RESOLVE-GUARD:configure-resolve-host"
   "P-RESOLVE-GUARD:configure-resolve-wildcard"
   "P-TOKEN-GUARD:lifecycle-token-multiline"
   "P-TOKEN-GUARD:lifecycle-token-prefix"
   "P-TOKEN-GUARD:lifecycle-token-dir"
+  "P-TOKEN-GUARD:lifecycle-token-blanklines"
+  "P-TOKEN-GUARD:lifecycle-token-barecr"
+  "P-TOKEN-GUARD:lifecycle-token-nul"
+  "P-TOKEN-ACCEPT:lifecycle-token-lf"
+  "P-TOKEN-ACCEPT:lifecycle-token-crlf"
   "P-RESOLVE-GUARD:lifecycle-resolve-host"
   "P-RESOLVE-GUARD:lifecycle-resolve-wildcard"
   "P-TOKEN-GUARD:homelab-token-multiline"
   "P-TOKEN-GUARD:homelab-token-prefix"
   "P-TOKEN-GUARD:homelab-token-dir"
+  "P-TOKEN-GUARD:homelab-token-blanklines"
+  "P-TOKEN-GUARD:homelab-token-barecr"
+  "P-TOKEN-GUARD:homelab-token-nul"
+  "P-TOKEN-ACCEPT:homelab-token-lf"
+  "P-TOKEN-ACCEPT:homelab-token-crlf"
   "P-RESOLVE-GUARD:dd-import-resolve-host"
   "P-RESOLVE-GUARD:dd-delete-resolve-host"
 )
@@ -1075,6 +1100,16 @@ guard_not_evaluated() {
 #              (the WR-02 join gap)
 #   header     0600 file "<hex>\nX-Other: 1\n" (header injection)
 #   prefix     0600 file "Token <hex>"
+#   blanklines 0600 file "<hex>\n\n\n\n": trailing blank lines (29.2 review
+#              WR-01: `$(< file)` strips them all)
+#   barecr     0600 file "<hex>\r": a bare trailing CR, no LF
+#   nul        0600 file "<hex>\0": a NUL byte after the token (`$(< file)`
+#              drops it)
+#   lf         0600 file "<hex>\n": exactly one trailing LF (must be accepted)
+#   crlf       0600 file "<hex>\r\n": exactly one trailing CRLF (must be
+#              accepted)
+# The last five encode ADR-029 decision 6: at most one trailing CRLF or LF is
+# stripped, and what remains must be exactly one 40-hex token.
 guard_token() {
   local kind="$1" path="$2"
   CURLRC_TOK="$(od -An -tx1 -N20 /dev/urandom | tr -d ' \n')"
@@ -1099,6 +1134,26 @@ guard_token() {
       ;;
     prefix)
       printf 'Token %s' "$CURLRC_TOK" > "$path"
+      chmod 600 "$path"
+      ;;
+    blanklines)
+      printf '%s\n\n\n\n' "$CURLRC_TOK" > "$path"
+      chmod 600 "$path"
+      ;;
+    barecr)
+      printf '%s\r' "$CURLRC_TOK" > "$path"
+      chmod 600 "$path"
+      ;;
+    nul)
+      printf '%s\0' "$CURLRC_TOK" > "$path"
+      chmod 600 "$path"
+      ;;
+    lf)
+      printf '%s\n' "$CURLRC_TOK" > "$path"
+      chmod 600 "$path"
+      ;;
+    crlf)
+      printf '%s\r\n' "$CURLRC_TOK" > "$path"
       chmod 600 "$path"
       ;;
   esac
@@ -1151,6 +1206,33 @@ assert_guard_refused() {
   fi
 }
 
+# assert_guard_accepted ID LABEL DESC REGEX: judge the last run_body as a
+# token file that passed the preflight token check (the over-rejection guard
+# for ADR-029 decision 6). Passes only if it exited neither 0 nor 2, no line
+# matches REGEX (the script's token-refusal prefix), the listener saw >= 1
+# CONNECT (the script got past preflight and reached it) and 0 REQUEST lines
+# (nothing reached the unverified peer), and neither the dummy token nor
+# 'Authorization' appears in the log.
+assert_guard_accepted() {
+  local id="$1" label="$2" desc="$3" regex="$4" why=""
+  curlrc_counts
+  if [ "$BODY_RC" -eq 0 ] || [ "$BODY_RC" -eq 2 ]; then
+    why="${why} exit ${BODY_RC} (expected neither 0 nor 2);"
+  fi
+  if grep -qE -- "$regex" "$BODY_LOG"; then why="${why} a line matches the token-refusal prefix '${regex}';"; fi
+  [ "$CURLRC_C" -ge 1 ] || why="${why} no CONNECT at the listener (the script never got past preflight);"
+  if [ "$CURLRC_R" -ne 0 ]; then
+    why="${why} ${CURLRC_R} REQUEST line(s) at the listener (${CURLRC_REQS});"
+  fi
+  if grep -qF -- "$CURLRC_TOK" "$BODY_LOG"; then why="${why} the dummy token appears in the log;"; fi
+  if grep -q 'Authorization' "$BODY_LOG"; then why="${why} 'Authorization' appears in the log;"; fi
+  if [ -z "$why" ]; then
+    proof_pass "$id" "${label}: ${desc} -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (${CURLRC_COUNTS})"
+  else
+    proof_fail "$id" "${label}: ${desc}:${why} [${CURLRC_COUNTS}]"
+  fi
+}
+
 # prove_guard_refusal BODIES_DIR REPORTS_DIR URL RESOLVE: the GUARD_CASES,
 # run by prove_curlrc_refusal while the listener and the hostile curlrc are
 # live. Every target gets CURL_HOME=<hostile>, so a target whose guard is
@@ -1170,13 +1252,18 @@ prove_guard_refusal() {
   # 1. scripts/defectdojo-configure.sh (D-13 WR-01/WR-02, D-06). Token-file
   # refusals must be a FATAL line naming the path; RESOLVE refusals a FATAL
   # line naming DEFECTDOJO_RESOLVE.
-  for label in configure-token-dir configure-token-mode000 configure-token-multiline configure-token-prefix configure-resolve-host configure-resolve-wildcard; do
+  for label in configure-token-dir configure-token-mode000 configure-token-multiline configure-token-prefix configure-token-blanklines configure-token-barecr configure-token-nul configure-token-lf configure-token-crlf configure-resolve-host configure-resolve-wildcard; do
     case_resolve="$resolve"
     case "$label" in
       configure-token-dir) kind=dir; desc="the token path is a directory" ;;
       configure-token-mode000) kind=mode000; desc="a mode-000 token file" ;;
       configure-token-multiline) kind=header; desc="a two-line token file (40-hex, then 'X-Other: 1')" ;;
       configure-token-prefix) kind=prefix; desc="a 'Token '-prefixed token file" ;;
+      configure-token-blanklines) kind=blanklines; desc="a token file with four trailing LF (regression guard for the WR-01 review gap)" ;;
+      configure-token-barecr) kind=barecr; desc="a token file ending in a bare CR (regression guard)" ;;
+      configure-token-nul) kind=nul; desc="a token file with a NUL byte after the token (regression guard)" ;;
+      configure-token-lf) kind=lf; desc="a token file ending in exactly one LF" ;;
+      configure-token-crlf) kind=crlf; desc="a token file ending in exactly one CRLF" ;;
       configure-resolve-host) kind=valid; case_resolve="$bad_host"; desc="DEFECTDOJO_RESOLVE host differs from DEFECTDOJO_URL" ;;
       configure-resolve-wildcard) kind=valid; case_resolve="$bad_wild"; desc="a wildcard DEFECTDOJO_RESOLVE" ;;
     esac
@@ -1198,6 +1285,9 @@ prove_guard_refusal() {
       configure-resolve-*)
         assert_guard_refused "P-RESOLVE-GUARD" "$label" "$desc" '^FATAL: DEFECTDOJO_RESOLVE'
         ;;
+      configure-token-lf|configure-token-crlf)
+        assert_guard_accepted "P-TOKEN-ACCEPT" "$label" "$desc" '^FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE'
+        ;;
       *)
         assert_guard_refused "P-CONFIGURE-GUARD" "$label" "$desc" '^FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE' "$tokfile"
         ;;
@@ -1209,20 +1299,29 @@ prove_guard_refusal() {
   # the same 0600 snapshot wrapper as P-CURLRC. lifecycle-token-prefix and
   # lifecycle-token-dir are already refused by the unfixed code (the no-space
   # regex and the -f/-r check): regression guards, expected to PASS today.
-  local lc_out="${PROOF_DIR}/guard-lifecycle-out" lc_wrap="${PROOF_DIR}/guard-lifecycle.sh"
+  # The -lf and -crlf accept cases get past preflight, so each gets its own
+  # --out directory (the wrapper is written per case), removed afterwards.
+  local lc_out="${PROOF_DIR}/guard-lifecycle-out" lc_wrap="${PROOF_DIR}/guard-lifecycle.sh" lc_case_out
   mkdir -p "$lc_out"
-  printf 'exec bash %q snapshot --product p-curlrc --out %q --engagement ci/main --label guard\n' \
-    "${REPO_ROOT}/scripts/defectdojo-lifecycle-assert.sh" "$lc_out" > "$lc_wrap"
-  chmod 600 "$lc_wrap"
-  for label in lifecycle-token-multiline lifecycle-token-prefix lifecycle-token-dir lifecycle-resolve-host lifecycle-resolve-wildcard; do
+  for label in lifecycle-token-multiline lifecycle-token-prefix lifecycle-token-dir lifecycle-token-blanklines lifecycle-token-barecr lifecycle-token-nul lifecycle-token-lf lifecycle-token-crlf lifecycle-resolve-host lifecycle-resolve-wildcard; do
     case_resolve="$resolve"
+    lc_case_out="$lc_out"
     case "$label" in
       lifecycle-token-multiline) kind=multiline; desc="a two-line token file (two 40-hex lines, the WR-02 join gap)" ;;
       lifecycle-token-prefix) kind=prefix; desc="a 'Token '-prefixed token file (regression guard: refused before 29.2)" ;;
       lifecycle-token-dir) kind=dir; desc="the token path is a directory (regression guard: refused before 29.2)" ;;
+      lifecycle-token-blanklines) kind=blanklines; desc="a token file with four trailing LF (the WR-01 review gap)" ;;
+      lifecycle-token-barecr) kind=barecr; desc="a token file ending in a bare CR" ;;
+      lifecycle-token-nul) kind=nul; desc="a token file with a NUL byte after the token" ;;
+      lifecycle-token-lf) kind=lf; lc_case_out="${PROOF_DIR}/guard-${label}-out"; desc="a token file ending in exactly one LF" ;;
+      lifecycle-token-crlf) kind=crlf; lc_case_out="${PROOF_DIR}/guard-${label}-out"; desc="a token file ending in exactly one CRLF" ;;
       lifecycle-resolve-host) kind=valid; case_resolve="$bad_host"; desc="DEFECTDOJO_RESOLVE host differs from DEFECTDOJO_URL" ;;
       lifecycle-resolve-wildcard) kind=valid; case_resolve="$bad_wild"; desc="a wildcard DEFECTDOJO_RESOLVE" ;;
     esac
+    mkdir -p "$lc_case_out"
+    printf 'exec bash %q snapshot --product p-curlrc --out %q --engagement ci/main --label guard\n' \
+      "${REPO_ROOT}/scripts/defectdojo-lifecycle-assert.sh" "$lc_case_out" > "$lc_wrap"
+    chmod 600 "$lc_wrap"
     curlrc_reset
     tokfile="${PROOF_DIR}/guard-${label}.token"
     guard_token "$kind" "$tokfile"
@@ -1236,11 +1335,15 @@ prove_guard_refusal() {
       lifecycle-resolve-*)
         assert_guard_refused "P-RESOLVE-GUARD" "$label" "$desc" '^ERROR: DEFECTDOJO_RESOLVE'
         ;;
+      lifecycle-token-lf|lifecycle-token-crlf)
+        assert_guard_accepted "P-TOKEN-ACCEPT" "$label" "$desc" '^ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE'
+        ;;
       *)
         assert_guard_refused "P-TOKEN-GUARD" "$label" "$desc" '^ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE'
         ;;
     esac
     guard_token_rm "$tokfile"
+    if [ "$lc_case_out" != "$lc_out" ]; then rm -rf "$lc_case_out"; fi
   done
   rm -f "$lc_wrap"
 
@@ -1251,26 +1354,43 @@ prove_guard_refusal() {
   local hl_url="https://127.0.0.1:${CURLRC_PORT}"
   : > "$hl_kubeconfig"
   chmod 600 "$hl_kubeconfig"
-  for label in homelab-token-multiline homelab-token-prefix homelab-token-dir; do
+  # The -lf and -crlf accept cases get past preflight, so each gets its own
+  # --write-state path, removed afterwards.
+  local hl_state
+  for label in homelab-token-multiline homelab-token-prefix homelab-token-dir homelab-token-blanklines homelab-token-barecr homelab-token-nul homelab-token-lf homelab-token-crlf; do
+    hl_state="${PROOF_DIR}/guard-homelab-state.json"
     case "$label" in
       homelab-token-multiline) kind=multiline; desc="a two-line token file (two 40-hex lines, the WR-02 join gap)" ;;
       homelab-token-prefix) kind=prefix; desc="a 'Token '-prefixed token file" ;;
       homelab-token-dir) kind=dir; desc="the --token-file path is a directory" ;;
+      homelab-token-blanklines) kind=blanklines; desc="a token file with four trailing LF (the WR-01 review gap)" ;;
+      homelab-token-barecr) kind=barecr; desc="a token file ending in a bare CR" ;;
+      homelab-token-nul) kind=nul; desc="a token file with a NUL byte after the token" ;;
+      homelab-token-lf) kind=lf; hl_state="${PROOF_DIR}/guard-${label}-state.json"; desc="a token file ending in exactly one LF" ;;
+      homelab-token-crlf) kind=crlf; hl_state="${PROOF_DIR}/guard-${label}-state.json"; desc="a token file ending in exactly one CRLF" ;;
     esac
     curlrc_reset
     tokfile="${PROOF_DIR}/guard-${label}.token"
     guard_token "$kind" "$tokfile"
     printf 'exec bash %q --url %q --alt-url %q --context p-curlrc-no-such-context --namespace p-curlrc --app p-curlrc --sync-pass first --write-state %q --token-file %q\n' \
       "${REPO_ROOT}/scripts/defectdojo-homelab-validate.sh" "$hl_url" "$hl_url" \
-      "${PROOF_DIR}/guard-homelab-state.json" "$tokfile" > "$hl_wrap"
+      "$hl_state" "$tokfile" > "$hl_wrap"
     chmod 600 "$hl_wrap"
     run_body "guard-${label}" "$hl_wrap" \
       "KUBECONFIG=${hl_kubeconfig}" \
       "CURL_HOME=${CURLRC_HOME}" \
       "DEFECTDOJO_RESOLVE="
     guard_show_log
-    assert_guard_refused "P-TOKEN-GUARD" "$label" "$desc" '^ERROR: --token-file'
+    case "$label" in
+      homelab-token-lf|homelab-token-crlf)
+        assert_guard_accepted "P-TOKEN-ACCEPT" "$label" "$desc" '^ERROR: --token-file'
+        ;;
+      *)
+        assert_guard_refused "P-TOKEN-GUARD" "$label" "$desc" '^ERROR: --token-file'
+        ;;
+    esac
     guard_token_rm "$tokfile"
+    if [ "$hl_state" != "${PROOF_DIR}/guard-homelab-state.json" ]; then rm -f "$hl_state"; fi
   done
   rm -f "$hl_wrap" "$hl_kubeconfig" "${PROOF_DIR}/guard-homelab-state.json"
 
