@@ -95,3 +95,28 @@ Out-of-scope discoveries logged during execution. Nothing here was fixed in this
    `8/8 | Complete | 2026-09-19`, but left line 15's
    `- [ ] **Phase 23: Nexus Generic Chart** …` unchecked. Hand-edited to `[x]` with a
    `(completed 2026-09-19)` suffix to match how Phases 20/21/22 are recorded.
+
+## Status re-check 2026-09-29 (Phase 29.1)
+
+Re-checked against the pinned snapshot while authoring `23-VERIFICATION.md` (plan 29.1-01): PR `#14`,
+merge `ea2770fbf1f8a4bd532d131835d90fb86c6f5d54` (what Phase 23 shipped), `security-platform` `origin/main`
+`fdabac9464f2baaeaa276f8934dc8d353295b355`, overlay `occ-k8s-app-config` `origin/main` `bb1332b`. Full evidence
+is in that report's Gaps Summary; this table only carries the verdicts and the settling command. Items 6-8 were
+re-checked by inspection only: no mutating `gsd-sdk` state or roadmap handler was invoked to "reproduce" them,
+because a write would have polluted Phase 29.1's own bookkeeping. The in-place notes inside items 1-8 above
+are left exactly as Phases 23 and 24 wrote them.
+
+| # | Live status | Evidence |
+|---|---|---|
+| 1 | **OPEN**, unchanged | `grep -n 'ADR-001 through ADR-0' CLAUDE.md` → L10 still `ADR-018`, while `ls docs/adr` runs to `adr028` |
+| 2 | **RESOLVED** 2026-09-20 (24-02, `security-platform` `07c74e2`) | already recorded in item 2 above; no change |
+| 3 | **ACCEPTED** (ADR-021 decision 10) | already recorded in item 3 above; 24 latent findings restated, `required` guard not weakened |
+| 4 | **OPEN**, unchanged | `grep -n version repos/security-platform/kubernetes/nexus/Chart.lock` → L4 `version: 5.26.0` |
+| 5 | **OPEN**, still present, decision left to the operator | `git status --short .planning/config.json .planning/v2.0-MILESTONE-AUDIT.md` → ` M` / ` D`; `git log --oneline -1 -- .planning/v2.0-MILESTONE-AUDIT.md` → `c6ccf48` |
+| 6 | **OPEN** (inspection only) | handler not invoked; `state.update-progress` still carried by the v3.0 audit |
+| 7 | **OPEN** (inspection only) | handler not invoked; the flag form (`--phase --plan --duration`) remains the working form |
+| 8 | **OPEN** (inspection only) | handler not invoked; the 23-08 hand-edit fixed that one ROADMAP line, not the tool |
+
+**Net: 1 RESOLVED (2), 1 ACCEPTED (3), 6 still OPEN (1, 4, 5, 6, 7, 8).** None of the remaining OPEN items blocks
+NEXUS-01 or NEXUS-03: items 1 and 5 are documentation-repository housekeeping, item 4 is a repository-wide
+bot decision for `security-platform`, and items 6-8 are `gsd-sdk` tooling defects owned by its maintainers.
