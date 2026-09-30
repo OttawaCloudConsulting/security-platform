@@ -1370,6 +1370,19 @@ jobs:
       # is removed in a finally block. TLS is verified by default;
       # DEFECTDOJO_CA_CERT adds --cacert; DEFECTDOJO_INSECURE=true adds -k and
       # warns on every run (D-18).
+      #
+      # Runner curl config (ADR-029, Phase 28 CR-01): curl is called with -q as
+      # its first argument, so no curlrc on the runner (hosted or self-hosted
+      # ARC, ADR-028) is read; -q is ignored anywhere else on the command line.
+      # Every request must end with curl exit 0 and, unless
+      # DEFECTDOJO_INSECURE=true (where -k makes the result non-zero by design),
+      # ssl_verify_result 0; the first transport or TLS failure stops the
+      # import, so the token is not sent to that peer again. curl stderr is
+      # never read or printed; a failure line names curl's exit code, the HTTP
+      # code, the verify result and curl's one-line error message only.
+      # DEFECTDOJO_RESOLVE is a test hook for scripts/defectdojo-import-proof.sh
+      # (host:port:IPv4 matching DEFECTDOJO_URL, else exit 2); this workflow
+      # never sets it and it is not a consumer setting.
       - name: Import reports into DefectDojo (reimport-scan)
         id: dd-import
         if: steps.dd-gate.outputs.enabled == 'true'
@@ -1392,9 +1405,14 @@ jobs:
           import subprocess
           import sys
           import tempfile
+          import urllib.parse
 
           env = os.environ
           url = env.get("DD_URL", "").rstrip("/")
+          # Test hook: set only by scripts/defectdojo-import-proof.sh, unset in real use
+          # (never a step env:, input, variable or secret); validated in main().
+          resolve = env.get("DEFECTDOJO_RESOLVE", "")
+          RESOLVE_RE = re.compile(r"^([A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?):([0-9]{1,5}):((?:[0-9]{1,3}\.){3}[0-9]{1,3})$")
           reports_dir = env.get("DD_REPORTS_DIR", "dd-reports")
           results_file = env.get("DD_RESULTS_FILE", "dd-import-results.json")
           product = env.get("DD_PRODUCT", "")
@@ -1429,6 +1447,18 @@ jobs:
                   handle.write(text)
 
 
+          def resolve_matches_url():
+              match = RESOLVE_RE.fullmatch(resolve)
+              if not match:
+                  return False
+              parts = urllib.parse.urlsplit(url)
+              try:
+                  url_port = parts.port or 443
+              except ValueError:
+                  return False
+              return match.group(1).lower() == (parts.hostname or "") and int(match.group(2)) == url_port
+
+
           def number_of(path):
               match = re.search(r"-(\d+)\.json$", path)
               return int(match.group(1)) if match else 0
@@ -1440,6 +1470,11 @@ jobs:
                   print("FAILED: DEFECTDOJO_URL must be https:// — refusing to send the API token over {!r}".format(
                       url.split("://", 1)[0] if "://" in url else "(no scheme)"))
                   return 1
+              # Test hook (after the https refusal, before the TLS label and the token header).
+              if resolve and not resolve_matches_url():
+                  print("FAILED: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of "
+                        "DEFECTDOJO_URL (test hook; leave it unset)")
+                  return 2
               if insecure:
                   tls_mode = "insecure"
                   tls_args = ["-k"]
@@ -1478,6 +1513,7 @@ jobs:
                   "skipped": [],
               }
 
+              stopped = False
               for pattern, scan_type, title, reason in TABLE:
                   if "*" in pattern:
                       files = sorted(glob.glob(os.path.join(reports_dir, pattern)), key=number_of)
@@ -1509,14 +1545,19 @@ jobs:
                           "source_code_management_uri={}/{}".format(
                               env.get("GITHUB_SERVER_URL", ""), env.get("GITHUB_REPOSITORY", "")),
                       ]
-                      cmd = ["curl", "-sS", "--proto", "=https", "--proto-redir", "=https", "-o", resp_path, "-w", "%{http_code}"] + tls_args
+                      cmd = ["curl", "-q", "-sS", "--proto", "=https", "--proto-redir", "=https", "-o", resp_path, "-w", "%{http_code} %{ssl_verify_result} %{errormsg}"] + tls_args
+                      if resolve:
+                          cmd += ["--resolve", resolve]
                       cmd += ["-H", "@" + hdr_path, "-F", "file=@" + path]
                       for field in fields:
                           cmd += ["--form-string", field]
                       cmd.append(url + "/api/v2/reimport-scan/")
-                      proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                      proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                             universal_newlines=True)
-                      http_code = (proc.stdout or "").strip() or "000"
+                      out = ((proc.stdout or "").strip().split(" ", 2) + ["", "", ""])[:3]
+                      http_code = out[0] or "000"
+                      verify = out[1]
+                      errmsg = out[2].strip()
                       body = ""
                       if os.path.isfile(resp_path):
                           with open(resp_path, encoding="utf-8", errors="replace") as handle:
@@ -1532,6 +1573,13 @@ jobs:
                           "product_id": None,
                           "statistics": None,
                       }
+                      if proc.returncode != 0 or (tls_mode != "insecure" and verify != "0"):
+                          print("FAILED: {}: curl exit {}, http {}, TLS verification result {} (must be 0): {}".format(
+                              name, proc.returncode, http_code, verify or "none", errmsg or "no error message"))
+                          print("STOPPED: no further report is sent after a transport or TLS failure")
+                          results["attempted"].append(record)
+                          stopped = True
+                          break
                       if http_code == "201":
                           try:
                               data = json.loads(body)
@@ -1549,9 +1597,10 @@ jobs:
                           print("IMPORTED: {} scan_type={} test={} http=201 test_id={} after_total={}".format(
                               name, scan_type, test_title, record["test_id"], total.get("total")))
                       else:
-                          detail = body[:500] if body else (proc.stderr or "").strip()[:500]
-                          print("FAILED: {} http={} body={}".format(name, http_code, detail))
+                          print("FAILED: {} http={} body={}".format(name, http_code, body[:500]))
                       results["attempted"].append(record)
+                  if stopped:
+                      break
 
               with open(results_file, "w", encoding="utf-8") as handle:
                   json.dump(results, handle, indent=2)
@@ -1559,7 +1608,7 @@ jobs:
                      if r["http_code"] != "201" or r["test_id"] in (None, "")]
               print("attempted={} skipped={} failed={}".format(
                   len(results["attempted"]), len(results["skipped"]), len(bad)))
-              return 1 if bad else 0
+              return 1 if (bad or stopped) else 0
 
 
           try:
@@ -1721,6 +1770,17 @@ jobs:
       #
       # Same token header file (0600, -H @file, removed in finally) and the
       # same TLS rules and ::warning:: lines as dd-import (D-11, D-18).
+      #
+      # Runner curl config (ADR-029, Phase 28 CR-01), as in dd-import: curl is
+      # called with -q as its first argument, so no curlrc on the runner
+      # (hosted or self-hosted ARC, ADR-028) is read. Every request must end
+      # with curl exit 0 and, unless DEFECTDOJO_INSECURE=true (where -k makes
+      # the result non-zero by design), ssl_verify_result 0, else the step
+      # fails before any further request. curl stderr is never read or
+      # printed. DEFECTDOJO_RESOLVE is a test hook for
+      # scripts/defectdojo-import-proof.sh (host:port:IPv4 matching
+      # DEFECTDOJO_URL, else exit 2); this workflow never sets it and it is
+      # not a consumer setting.
       - name: Delete this PR's ci/<branch> DefectDojo engagement
         id: dd-delete
         if: steps.dd-gate.outputs.enabled == 'true'
@@ -1737,6 +1797,7 @@ jobs:
           python3 - <<'PY'
           import json
           import os
+          import re
           import subprocess
           import sys
           import tempfile
@@ -1748,6 +1809,10 @@ jobs:
           default_branch = env.get("DD_DEFAULT_BRANCH", "")
           head = env.get("GITHUB_HEAD_REF", "")
           result_file = env.get("DD_CLEANUP_RESULT_FILE", "dd-cleanup-result.json")
+          # Test hook: set only by scripts/defectdojo-import-proof.sh, unset in real use
+          # (never a step env:, input, variable or secret); validated in main().
+          resolve = env.get("DEFECTDOJO_RESOLVE", "")
+          RESOLVE_RE = re.compile(r"^([A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?):([0-9]{1,5}):((?:[0-9]{1,3}\.){3}[0-9]{1,3})$")
 
           insecure = env.get("DD_INSECURE", "") == "true"
           ca_cert = env.get("DD_CA_CERT", "")
@@ -1755,10 +1820,28 @@ jobs:
           hdr_path = os.path.join(tmpdir, "auth-header")
           ca_path = os.path.join(tmpdir, "ca.pem")
           resp_path = os.path.join(tmpdir, "response.json")
+          # Set once in main() before the first request; api() skips the verify check only when insecure.
+          tls_mode = ""
 
 
           class Failed(Exception):
               pass
+
+
+          class Preflight(Exception):
+              pass
+
+
+          def resolve_matches_url():
+              match = RESOLVE_RE.fullmatch(resolve)
+              if not match:
+                  return False
+              parts = urllib.parse.urlsplit(url)
+              try:
+                  url_port = parts.port or 443
+              except ValueError:
+                  return False
+              return match.group(1).lower() == (parts.hostname or "") and int(match.group(2)) == url_port
 
 
           def write_private(path, text):
@@ -1780,19 +1863,27 @@ jobs:
 
 
           def api(tls_args, method, path, expect):
-              cmd = ["curl", "-sS", "--proto", "=https", "--proto-redir", "=https", "-X", method, "-o", resp_path, "-w", "%{http_code}"] + tls_args
+              cmd = ["curl", "-q", "-sS", "--proto", "=https", "--proto-redir", "=https", "-X", method, "-o", resp_path, "-w", "%{http_code} %{ssl_verify_result} %{errormsg}"] + tls_args
+              if resolve:
+                  cmd += ["--resolve", resolve]
               cmd += ["-H", "@" + hdr_path, url + path]
-              proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+              proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                     universal_newlines=True)
-              code = (proc.stdout or "").strip() or "000"
+              out = ((proc.stdout or "").strip().split(" ", 2) + ["", "", ""])[:3]
+              code = out[0] or "000"
+              verify = out[1]
+              errmsg = out[2].strip()
               body = ""
               if os.path.isfile(resp_path):
                   with open(resp_path, encoding="utf-8", errors="replace") as handle:
                       body = handle.read()
                   os.remove(resp_path)
+              if proc.returncode != 0 or (tls_mode != "insecure" and verify != "0"):
+                  print("FAILED: {} {}: curl exit {}, http {}, TLS verification result {} (must be 0): {}".format(
+                      method, path, proc.returncode, code, verify or "none", errmsg or "no error message"))
+                  raise Failed()
               if code != expect:
-                  detail = body[:500] if body else (proc.stderr or "").strip()[:500]
-                  print("FAILED: {} {} http={} body={}".format(method, path, code, detail))
+                  print("FAILED: {} {} http={} body={}".format(method, path, code, body[:500]))
                   raise Failed()
               if expect != "200":
                   return None
@@ -1817,11 +1908,17 @@ jobs:
 
 
           def main():
+              global tls_mode
               # CR-01 / ADR-025: refuse a non-https URL before the TLS label, the token header and any request.
               if not url.lower().startswith("https://"):
                   print("FAILED: DEFECTDOJO_URL must be https:// — refusing to send the API token over {!r}".format(
                       url.split("://", 1)[0] if "://" in url else "(no scheme)"))
                   raise Failed()
+              # Test hook (after the https refusal, before the TLS label and the token header).
+              if resolve and not resolve_matches_url():
+                  print("FAILED: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of "
+                        "DEFECTDOJO_URL (test hook; leave it unset)")
+                  raise Preflight()
               # 1. Refuse before any request: empty head, unknown default, or the
               #    default branch itself.
               if not default_branch:
@@ -1905,6 +2002,8 @@ jobs:
           try:
               try:
                   rc = main()
+              except Preflight:
+                  rc = 2
               except Failed:
                   rc = 1
           finally:

@@ -25,7 +25,10 @@ set -euo pipefail
 # INTERFACE. Every subcommand needs the environment variables
 #   DEFECTDOJO_URL               https:// base URL of the DefectDojo instance
 #   DEFECTDOJO_ADMIN_TOKEN_FILE  file holding the operator's BARE superuser API
-#                                token (no "Token " prefix), mode 600
+#                                token (no "Token " prefix), mode 600: one line
+#                                of 40 lowercase hex characters
+# DEFECTDOJO_RESOLVE is a test hook set only by the proof harness; leave it
+# unset (see TLS below).
 # and the flags --product <name> and --out <evidence-dir>. No flag has a
 # default. The D-11 sequence and the subcommand for each step:
 #
@@ -68,8 +71,12 @@ set -euo pipefail
 # kept least-privilege (ADR-024).
 #
 # TOKEN HANDLING (T-29-03). DEFECTDOJO_URL is checked for https:// BEFORE the
-# token file is read. The token file must exist, be non-empty and carry no
-# group or other permission bits (the defectdojo-configure.sh contract). The
+# token file is read. The token file must be a regular readable file, be
+# non-empty, carry no group or other permission bits (the
+# defectdojo-configure.sh contract) and hold exactly one bare DefectDojo API
+# token: 40 lowercase hex characters on one line (one trailing CR/LF allowed),
+# no "Token " prefix. Anything else (a second line, a prefix, spaces) is refused
+# with exit 2 before any connection. The
 # token is copied once into a 0600 header file created exclusively (noclobber)
 # inside a private mktemp -d directory, and is sent only as `-H @file`. Request
 # bodies are built with jq into 0600 files, sent with --data-binary @file and
@@ -79,6 +86,20 @@ set -euo pipefail
 # TLS (T-29-08, ADR-025). Every curl call is pinned to https with --proto and
 # --proto-redir. TLS is always verified against the system trust store; there
 # is no option to switch verification off.
+#
+# CURL CONFIG (ADR-029, Phase 28 CR-01). Every curl call passes -q as its first
+# argument, so no curlrc is read (~/.curlrc, $CURL_HOME/.curlrc,
+# $XDG_CONFIG_HOME/.curlrc): an ambient `insecure`, `cacert`, `verbose` or
+# `location-trusted` line cannot weaken TLS or leak the token. Every request
+# must end with curl exit 0 AND ssl_verify_result 0 before its HTTP code is
+# even considered; anything else is an API error and the run fails. curl
+# stderr is discarded and never printed: failure lines carry only the path,
+# the curl exit, the HTTP code, the TLS verification result, curl's own
+# %{errormsg} and, for an HTTP-code mismatch, the response body. There is
+# exactly one curl call site (api_transport). DEFECTDOJO_RESOLVE is a test hook
+# set only by the proof harness: when set it must be host:port:IPv4 with the
+# host and port of DEFECTDOJO_URL (else exit 2) and is passed as one --resolve,
+# which keeps hostname verification.
 #
 # PAGINATION. List reads page with an explicit limit=250&offset=N until they
 # hold `count` rows, check that `count` did not change while paging, and NEVER
@@ -117,7 +138,8 @@ set -euo pipefail
 #   1  at least one assertion failed, an API read or write failed, or a
 #      prerequisite (product, engagement, pre-validation) did not hold
 #   2  usage or preflight error: a missing or unknown flag or subcommand, a
-#      non-https URL, a missing, empty or group/other-accessible token file, a
+#      non-https URL, a malformed DEFECTDOJO_RESOLVE, a missing, empty,
+#      group/other-accessible or malformed (not one 40-hex line) token file, a
 #      missing binary (curl, jq, python3), or an unreadable input JSON file
 #
 # No hostname, address or token appears anywhere in this file: every one of
@@ -147,7 +169,8 @@ Subcommands (every flag shown is REQUIRED; there are no defaults):
                        Writes step5-assert.json.
 
 --branch is the bare branch name; the engagement is ci/<b>.
-DEFECTDOJO_ADMIN_TOKEN_FILE holds the bare operator superuser token, mode 600.
+DEFECTDOJO_ADMIN_TOKEN_FILE holds the bare operator superuser token (one line,
+40 lowercase hex characters, no 'Token ' prefix), mode 600.
 Never the ci-importer token.
 
 Exit codes: 0 ALL PASS (or NOTHING RAN), 1 FAIL, 2 usage or preflight error.
@@ -254,6 +277,32 @@ if [[ "$DEFECTDOJO_URL" =~ [[:space:]?#] ]]; then
 fi
 BASE="${DEFECTDOJO_URL%/}"
 
+# DEFECTDOJO_RESOLVE is a test hook set only by the proof harness (ADR-029,
+# Phase 28 CR-01). When set it must be host:port:IPv4 naming exactly the host
+# and port of DEFECTDOJO_URL, and it is passed as one --resolve. Checked before
+# the token file is read; the value is never echoed.
+RESOLVE="${DEFECTDOJO_RESOLVE:-}"
+if [[ -n "$RESOLVE" ]]; then
+  resolve_re='^([A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?):([0-9]{1,5}):(([0-9]{1,3}\.){3}[0-9]{1,3})$'
+  url_re='^https://([^/:?#]+)(:([0-9]+))?(/.*)?$'
+  resolve_ok=0
+  if [[ "$RESOLVE" =~ $resolve_re ]]; then
+    r_host="$(printf '%s' "${BASH_REMATCH[1]}" | tr '[:upper:]' '[:lower:]')"
+    r_port="${BASH_REMATCH[3]}"
+    if [[ "$BASE" =~ $url_re ]]; then
+      u_host="$(printf '%s' "${BASH_REMATCH[1]}" | tr '[:upper:]' '[:lower:]')"
+      u_port="${BASH_REMATCH[3]:-443}"
+      if [[ ${#u_port} -le 5 && "$r_host" == "$u_host" ]] && (($((10#$r_port)) == $((10#$u_port)))); then
+        resolve_ok=1
+      fi
+    fi
+  fi
+  if [[ "$resolve_ok" -ne 1 ]]; then
+    echo "ERROR: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (a test hook; leave it unset)" >&2
+    exit 2
+  fi
+fi
+
 if [[ -z "${DEFECTDOJO_ADMIN_TOKEN_FILE:-}" ]]; then usage_error "DEFECTDOJO_ADMIN_TOKEN_FILE is not set"; fi
 CRED_FILE="$DEFECTDOJO_ADMIN_TOKEN_FILE"
 if [[ ! -f "$CRED_FILE" || ! -r "$CRED_FILE" ]]; then
@@ -281,10 +330,13 @@ umask 077
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK" || true' EXIT
 HDR="${WORK}/auth-header"
-cred="$(tr -d '\r\n' < "$CRED_FILE")"
-if [[ ! "$cred" =~ ^[A-Za-z0-9._-]+$ ]]; then
+# `$(< file)` drops trailing newlines only; one trailing CR is stripped, and
+# the whole string must then be one 40-hex token, so a second line fails.
+cred="$(< "$CRED_FILE")"
+cred="${cred%$'\r'}"
+if [[ ! "$cred" =~ ^[0-9a-f]{40}$ ]]; then
   unset cred
-  echo "ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE must hold only the bare token (no 'Token ' prefix, no spaces)" >&2
+  echo "ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix" >&2
   exit 2
 fi
 # noclobber makes the redirection an exclusive create (O_EXCL).
@@ -383,7 +435,7 @@ abort() {
 
 # ── API ──────────────────────────────────────────────────────────────────────
 API_ERROR=""
-REQ_N=0
+HTTP_CODE=""
 
 # snippet FILE...: up to 300 bytes of the FILEs, newlines flattened.
 snippet() {
@@ -395,24 +447,44 @@ uri() {
   jq -rn --arg v "$1" '$v | @uri'
 }
 
-# api_request METHOD PATH OUTFILE EXPECT [BODYFILE]: one verified-TLS request.
-# The admin header goes by path (-H @file); a body goes by path and is removed
-# after use. Returns 1 with API_ERROR set (path and code, never the token) when
-# curl fails or the HTTP code is not EXPECT.
-api_request() {
-  local method="$1" path="$2" out="$3" expect="$4" body="${5:-}" code rc=0 err
-  REQ_N=$((REQ_N + 1))
-  err="${WORK}/req-${REQ_N}.err"
+# api_transport METHOD PATH OUTFILE [BODYFILE]: the ONLY curl call in this
+# file. -q is curl's argv[1], so no curlrc is read (Phase 28 CR-01). The admin
+# header goes by path (-H @file); a body goes by path and is removed after use.
+# Sets HTTP_CODE. Returns 1 with API_ERROR set (path, curl exit, http code,
+# TLS verification result and curl's own %{errormsg}; never the token) unless
+# curl exited 0 AND ssl_verify_result is 0. curl stderr is discarded, never
+# read or printed: under a verbose config it would carry request headers.
+api_transport() {
+  local method="$1" path="$2" out="$3" body="${4:-}" wout="" rc=0 verify="" emsg=""
+  HTTP_CODE=""
   # The `=` in `--proto =https` is curl's exact-set operator, a literal here.
   # shellcheck disable=SC2191
-  local args=(-sS --proto =https --proto-redir =https -H @"$HDR" -X "$method" -o "$out" -w '%{http_code}')
+  local args=(-q -sS --proto =https --proto-redir =https -H @"$HDR" -X "$method" -o "$out" -w '%{http_code}|%{ssl_verify_result}|%{errormsg}')
+  if [[ -n "$RESOLVE" ]]; then
+    args+=(--resolve "$RESOLVE")
+  fi
   if [[ -n "$body" ]]; then
     args+=(-H 'Content-Type: application/json' --data-binary "@${body}")
   fi
-  code="$(curl "${args[@]}" "${BASE}${path}" 2> "$err")" || rc=$?
+  wout="$(curl "${args[@]}" "${BASE}${path}" 2> /dev/null)" || rc=$?
   if [[ -n "$body" ]]; then rm -f "$body"; fi
-  if [[ "$rc" -ne 0 || "$code" != "$expect" ]]; then
-    API_ERROR="${method} ${path}: curl exit ${rc}, http ${code:-none} (expected ${expect}): $(snippet "$out" "$err")"
+  IFS='|' read -r HTTP_CODE verify emsg <<< "$wout"
+  if [[ "$rc" -ne 0 || "$verify" != "0" ]]; then
+    API_ERROR="${method} ${path}: curl exit ${rc}, http ${HTTP_CODE:-none}, TLS verification result ${verify:-none} (must be 0): ${emsg}"
+    return 1
+  fi
+  return 0
+}
+
+# api_request METHOD PATH OUTFILE EXPECT [BODYFILE]: one verified-TLS request
+# whose HTTP code must be EXPECT. Returns 1 with API_ERROR set on a transport
+# failure (see api_transport) or on another HTTP code, then quoting only the
+# response body (D-18).
+api_request() {
+  local method="$1" path="$2" out="$3" expect="$4" body="${5:-}"
+  api_transport "$method" "$path" "$out" "$body" || return 1
+  if [[ "$HTTP_CODE" != "$expect" ]]; then
+    API_ERROR="${method} ${path}: http ${HTTP_CODE:-none} (expected ${expect}): $(snippet "$out")"
     return 1
   fi
   return 0
@@ -824,7 +896,7 @@ cmd_assert_dispositions() {
 cmd_assert_closed() {
   local name="ci/${BRANCH}" f="${WORK}/eng.json" out="${OUT_DIR}/step5-assert.json"
   local main_eid main_name engs="${WORK}/product-engagements.json" eid all="${WORK}/product-findings.rows"
-  local offenders oid code
+  local offenders oid
   resolve_product
   check_product_matches "$MAIN_SNAPSHOT" "--main-snapshot"
   check_product_matches "$DISPOSITIONS" "--dispositions"
@@ -882,9 +954,10 @@ cmd_assert_closed() {
   offenders="$(jq -r '.dangling[:10][] | .duplicate_finding // empty' "${WORK}/dangling.json")"
   : > "${WORK}/dangling-status.rows"
   for oid in $offenders; do
-    code="$(curl -sS --proto =https --proto-redir =https -H @"$HDR" -o /dev/null -w '%{http_code}' \
-      "${BASE}/api/v2/findings/${oid}/" 2> /dev/null || echo none)"
-    jq -n --argjson id "$oid" --arg c "$code" '{duplicate_finding: $id, http: $c}' >> "${WORK}/dangling-status.rows"
+    # Any HTTP code (200, 404, ...) is recorded; a transport failure (curl
+    # exit or TLS verification) aborts rather than being recorded as a code.
+    api_transport GET "/api/v2/findings/${oid}/" /dev/null || abort "D11-STEP5-READ" "$API_ERROR"
+    jq -n --argjson id "$oid" --arg c "$HTTP_CODE" '{duplicate_finding: $id, http: $c}' >> "${WORK}/dangling-status.rows"
   done
   jq --slurpfile st <(jq -s '.' "${WORK}/dangling-status.rows") '. + {referenced_status: $st[0]}' \
     "${WORK}/dangling.json" > "${WORK}/dangling-full.json"

@@ -37,8 +37,16 @@ set -euo pipefail
 # TLS (ADR-025): DEFECTDOJO_URL must be https://, checked before the token file
 # is read or any request is made. Every curl is pinned to https with --proto and
 # --proto-redir. TLS is always verified; there is no option to switch it off.
-# DEFECTDOJO_CA_FILE (optional) adds --cacert for a private CA. Plain curl is
-# called, so a curlrc under CURL_HOME is honoured.
+# DEFECTDOJO_CA_FILE (optional) adds --cacert for a private CA.
+#
+# CURL CONFIG (ADR-029, Phase 28 CR-01). Every curl passes -q as its first
+# argument, so no curlrc (~/.curlrc, $CURL_HOME/.curlrc, $XDG_CONFIG_HOME/curlrc)
+# is read: an operator curlrc with "insecure" or "cacert" cannot switch
+# verification off or swap the trust anchor. Each request must end with curl
+# exit 0 AND ssl_verify_result 0 before its HTTP code is even looked at;
+# otherwise the script stops with "TLS verification result". curl stderr is
+# discarded and never printed; a failure line carries only the method, path,
+# curl exit, HTTP code, verify result and curl's %{errormsg}.
 #
 # The token is read from a file (never argv, never echoed), written only to a
 # 0600 header file (O_EXCL) in a private temp dir, sent with -H @file, and the
@@ -49,15 +57,23 @@ set -euo pipefail
 #   DEFECTDOJO_ADMIN_TOKEN_FILE=/path/to/token \
 #     bash scripts/defectdojo-configure.sh
 # Optional: DEFECTDOJO_CA_FILE=/path/to/ca.pem
-# DEFECTDOJO_ADMIN_TOKEN_FILE holds the BARE token (no "Token " prefix) and must
-# not be readable by group or other (chmod 600).
+# Test hook: DEFECTDOJO_RESOLVE=host:port:IPv4 is set only by
+# scripts/defectdojo-import-proof.sh (passed to curl as one --resolve). Leave it
+# unset in real use. When set it must be host:port:IPv4 with the host and port
+# of DEFECTDOJO_URL, else exit 2.
+# DEFECTDOJO_ADMIN_TOKEN_FILE must be a regular file, not readable by group or
+# other (chmod 600), holding one BARE DefectDojo API token: 40 lowercase hex
+# characters on one line, no "Token " prefix (a single trailing newline is fine).
 #
 # Exit codes:
 #   0  the settings match (NO CHANGE, or CHANGED and verified)
-#   1  refusal (non-https URL) or an API / verification failure
+#   1  refusal (non-https URL), a transport failure (curl exit not 0 or TLS
+#      verification result not 0), or an API / settings verification failure
 #   2  preflight failure: an argument was given, a required env var or binary
-#      is missing, the token file is missing, empty or group/other-readable,
-#      or the CA file is missing
+#      is missing, DEFECTDOJO_RESOLVE is malformed or does not match
+#      DEFECTDOJO_URL, the token file is missing, not a regular file,
+#      group/other-readable, unreadable or not one bare 40-hex token, or the
+#      CA file is missing
 
 usage() {
   echo "usage: DEFECTDOJO_URL=https://... DEFECTDOJO_ADMIN_TOKEN_FILE=<file> [DEFECTDOJO_CA_FILE=<file>] bash scripts/defectdojo-configure.sh" >&2
@@ -89,6 +105,8 @@ umask 077
 python3 - <<'PY'
 import json
 import os
+import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -98,6 +116,10 @@ env = os.environ
 url = env.get("DEFECTDOJO_URL", "").rstrip("/")
 token_file = env.get("DEFECTDOJO_ADMIN_TOKEN_FILE", "")
 ca_file = env.get("DEFECTDOJO_CA_FILE", "")
+# Test hook: set only by scripts/defectdojo-import-proof.sh; validated in main().
+resolve = env.get("DEFECTDOJO_RESOLVE", "")
+RESOLVE_RE = re.compile(r"^([A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?):([0-9]{1,5}):((?:[0-9]{1,3}\.){3}[0-9]{1,3})$")
+TOKEN_RE = re.compile(r"[0-9a-f]{40}")
 
 DESIRED = {
     "enable_deduplication": True,
@@ -128,21 +150,35 @@ def write_private(path, text):
 
 
 def api(tls_args, method, path, expect, body=None):
-    cmd = ["curl", "-sS", "--proto", "=https", "--proto-redir", "=https", "-X", method, "-o", resp_path, "-w", "%{http_code}"] + tls_args
+    # -q MUST stay argv[1]: it stops curl reading any curlrc (ADR-029, Phase 28 CR-01).
+    cmd = ["curl", "-q", "-sS", "--proto", "=https", "--proto-redir", "=https", "-X", method, "-o", resp_path,
+           "-w", "%{http_code} %{ssl_verify_result} %{errormsg}"] + tls_args
+    if resolve:
+        cmd += ["--resolve", resolve]
     cmd += ["-H", "@" + hdr_path]
     if body is not None:
         cmd += ["-H", "Content-Type: application/json", "--data-binary", "@" + body]
     cmd += [url + path]
-    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    # curl stderr is discarded, never read or printed (it can carry verbose/trace output).
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                           universal_newlines=True)
-    code = (proc.stdout or "").strip() or "000"
+    # %{errormsg} is last because it may contain spaces.
+    code, verify, errmsg = ((proc.stdout or "").strip().split(" ", 2) + ["", "", ""])[:3]
+    code = code or "000"
     text = ""
     if os.path.isfile(resp_path):
         with open(resp_path, encoding="utf-8", errors="replace") as handle:
             text = handle.read()
         os.remove(resp_path)
+    # Transport first: the curl exit is tested before the verify result, because
+    # ssl_verify_result reads "0" on a refused connection.
+    if proc.returncode != 0 or verify != "0":
+        print("FAILED: {} {}: curl exit {}, http {}, TLS verification result {} (must be 0): {}".format(
+            method, path, proc.returncode, code, verify or "none", errmsg or "no error message"))
+        raise Failed()
     if code != expect:
-        detail = text[:500] if text else (proc.stderr or "").strip()[:500]
+        # Only the DefectDojo response body of a verified transfer is shown.
+        detail = text[:500] if text else "(empty)"
         print("FAILED: {} {} http={} body={}".format(method, path, code, detail))
         raise Failed()
     try:
@@ -175,22 +211,54 @@ def main():
             url.split("://", 1)[0] if "://" in url else "(no scheme)"))
         raise Failed()
 
+    # Test hook (after the https refusal, before the token file is read).
+    if resolve:
+        match = RESOLVE_RE.fullmatch(resolve)
+        ok = False
+        if match:
+            parts = urllib.parse.urlsplit(url)
+            try:
+                url_port = parts.port or 443
+            except ValueError:
+                url_port = None
+            ok = (url_port is not None and match.group(1).lower() == (parts.hostname or "")
+                  and int(match.group(2)) == url_port)
+        if not ok:
+            print("FATAL: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL "
+                  "(a test hook; leave it unset)", file=sys.stderr)
+            raise Preflight()
+
     print("DefectDojo host: {}".format(urllib.parse.urlsplit(url).hostname))
 
-    # Token file: must exist, be private to the owner and hold a non-empty token.
+    # Token file: a regular file, private to the owner, readable, holding one bare 40-hex token.
+    # FATAL lines name the path, never the content.
     try:
         st = os.stat(token_file)
     except OSError:
         print("FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE {!r} does not exist or cannot be read".format(token_file), file=sys.stderr)
         raise Preflight()
+    if not stat.S_ISREG(st.st_mode):
+        print("FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE {!r} is not a regular file".format(token_file), file=sys.stderr)
+        raise Preflight()
     if (st.st_mode & 0o077) != 0:
         print("FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE {!r} is readable by group or other (mode {:o}); chmod 600 it".format(
             token_file, st.st_mode & 0o777), file=sys.stderr)
         raise Preflight()
-    with open(token_file, encoding="utf-8") as handle:
-        token = handle.read().strip()
-    if not token:
-        print("FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE {!r} is empty".format(token_file), file=sys.stderr)
+    try:
+        with open(token_file, encoding="utf-8", errors="replace", newline="") as handle:
+            token = handle.read()
+    except OSError as exc:
+        print("FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE {!r} cannot be read: {}".format(token_file, exc.strerror),
+              file=sys.stderr)
+        raise Preflight()
+    # Strip at most one trailing line ending; anything else must fail the format check.
+    if token.endswith("\r\n"):
+        token = token[:-2]
+    elif token.endswith("\n"):
+        token = token[:-1]
+    if not TOKEN_RE.fullmatch(token):
+        print("FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE {!r} must hold one bare DefectDojo API token: "
+              "40 lowercase hex characters on one line, no 'Token ' prefix".format(token_file), file=sys.stderr)
         raise Preflight()
 
     tls_args = []

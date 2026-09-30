@@ -34,7 +34,10 @@
 # pull requests only when something it proves changes: the callable
 # workflow, either caller, this file, the harness, the kind smoke it builds
 # on, the System Settings bootstrap (scripts/defectdojo-configure.sh, Phase
-# 28), or the DefectDojo chart. workflow_dispatch runs it on demand.
+# 28), the two DefectDojo clients the P-CURLRC case exercises offline
+# (scripts/defectdojo-lifecycle-assert.sh and
+# scripts/defectdojo-homelab-validate.sh, Phase 29.2), or the DefectDojo
+# chart. workflow_dispatch runs it on demand.
 #
 # Security: `pull_request`, never `pull_request_target`; no secrets are
 # passed to `scans` (without the token the import job at most logs SKIP and
@@ -55,6 +58,8 @@ on:
       - scripts/defectdojo-import-proof.sh
       - scripts/defectdojo-live-smoke.sh
       - scripts/defectdojo-configure.sh
+      - scripts/defectdojo-lifecycle-assert.sh
+      - scripts/defectdojo-homelab-validate.sh
       - kubernetes/defectdojo/**
 
 # Workflow-level floor; each job restates what it needs.

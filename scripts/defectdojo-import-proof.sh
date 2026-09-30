@@ -31,10 +31,15 @@ set -euo pipefail
 #
 # TLS (D-18): every call is verified against the kind CA (DEFECTDOJO_CA_CERT /
 # --cacert). TLS verification is never switched off, DD_INSECURE is empty on
-# every network-bound body run, and host resolution comes from a curlrc
-# `resolve` entry under CURL_HOME, not from a hosts-file edit and not from a
-# TLS bypass. The committed bodies call plain curl, so the curlrc reaches them
-# too and they need no harness-only branch.
+# every network-bound body run. In --hook the CURL_HOME curlrc is
+# deliberately hostile (insecure, verbose, trace-ascii, libcurl, a throwaway
+# cacert, location, location-trusted; no resolve line), and every DefectDojo
+# client and harness helper passes -q so it is never read (Phase 28 CR-01,
+# ADR-029, 29.2 D-09). Host resolution comes from DEFECTDOJO_RESOLVE
+# (host:port:127.0.0.1, passed as --resolve), not from a hosts-file edit and
+# not from a TLS bypass. The run ends by proving the curlrc's trace and
+# libcurl files were never created, so a missed -q anywhere on the live path
+# fails the proof.
 #
 # Modes:
 #   <reports-dir>   entry: preflight, the --extract-only checks, then run the
@@ -51,6 +56,18 @@ set -euo pipefail
 #                   (27-11, CR-01). Also runs scripts/defectdojo-configure.sh
 #                   with a dummy token offline: its non-https refusal (P-HTTP)
 #                   and its preflight guards (P-CONFIGURE-GUARD, 28-02).
+#                   Then P-CURLRC (29.2, Phase 28 CR-01): a hostile
+#                   CURL_HOME curlrc (insecure, verbose, trace-ascii,
+#                   libcurl, cacert, location, location-trusted, resolve)
+#                   and a self-signed 127.0.0.1 listener; configure.sh,
+#                   lifecycle-assert.sh, homelab-validate.sh and the
+#                   committed dd-import and dd-delete bodies must each
+#                   refuse the unverified peer before any request, after a
+#                   no -q control proves the curlrc live. Inside the same
+#                   fixture, the preflight guard cases (P-CONFIGURE-GUARD
+#                   WR-01/WR-02, P-RESOLVE-GUARD, P-TOKEN-GUARD) must exit 2
+#                   with 0 CONNECT at the listener. --hook runs P-CURLRC
+#                   and the guard cases too, right after P-HTTP.
 #   --hook          live, called by the smoke: mint tokens, run the committed
 #                   bodies, assert run 1, the in-place reimport (run 2), the
 #                   schedule path, a hostile head ref, product-scoped cleanup,
@@ -76,6 +93,11 @@ set -euo pipefail
 # P-IMPORTER-TOKEN P-GATE P-RUN1 P-CONTEXT P-TESTS P-COUNTS (run 1, 27-05);
 # P-RUN2 P-SCHEDULE P-HOSTILE P-SCOPE P-CLEANUP P-REFUSE P-NOMATCH P-INSECURE
 # (27-06); P-HTTP (27-11, CR-01); P-CONFIGURE-GUARD (28-02);
+# P-CURLRC (29.2, Phase 28 CR-01: an ambient curlrc never reaches a
+# DefectDojo client; offline, in both modes); P-RESOLVE-GUARD and
+# P-TOKEN-GUARD (29.2 D-03/D-06/D-13: bad token files and bad
+# DEFECTDOJO_RESOLVE values are refused with exit 2 and 0 CONNECT; offline,
+# in both modes, inside the P-CURLRC fixture);
 # P-CONFIGURE P-IDEMPOTENT P-DEDUP-MODE P-DEDUP-BRANCH P-CROSSTOOL
 # P-DISPOSITION P-SUPPRESS P-REPARENT (28-03/28-04, --hook only, after every
 # Phase 27 assertion, in fresh products).
@@ -366,6 +388,11 @@ proof_fail() {
   PROOF_FAILED=$((PROOF_FAILED + 1))
   echo "PROOF: $1 FAIL $2"
 }
+# proof_skip ID DETAIL: a sub-check that could not run here. Printed, never
+# counted: PROOF_N and PROOF_FAILED are untouched, so a skip is never a pass.
+proof_skip() {
+  echo "PROOF: $1 SKIP $2"
+}
 
 # proof_finish: the terminal verdict.
 proof_finish() {
@@ -387,11 +414,16 @@ proof_abort() {
 
 # api_call OUTFILE ARGS...: a verified-TLS request against the smoke DefectDojo.
 # Prints "<http_code> <ssl_verify_result>"; the curl exit status is returned.
-# The resolve entry comes from the curlrc under CURL_HOME.
+# -q comes first so the (deliberately hostile, in --hook) CURL_HOME curlrc is
+# never read; host resolution comes from DEFECTDOJO_RESOLVE via --resolve.
 api_call() {
   local out="$1"
   shift
-  curl -sS --cacert "$DD_CA_FILE" -o "$out" -w '%{http_code} %{ssl_verify_result}' "$@"
+  local resolve_args=()
+  if [ -n "${DEFECTDOJO_RESOLVE:-}" ]; then
+    resolve_args=(--resolve "$DEFECTDOJO_RESOLVE")
+  fi
+  curl -q -sS --cacert "$DD_CA_FILE" ${resolve_args[@]+"${resolve_args[@]}"} -o "$out" -w '%{http_code} %{ssl_verify_result}' "$@"
 }
 
 # mint_token USER PWFILE TOKENFILE LABEL: POST /api/v2/api-token-auth/ with a
@@ -473,7 +505,7 @@ tally_assert_log() {
 }
 
 # write_read_py PATH: the read-side lookup script used after run 1 (admin
-# token, --cacert, the CURL_HOME resolve entry). Inputs come from the
+# token, --cacert, curl -q and --resolve DEFECTDOJO_RESOLVE). Inputs come from the
 # environment only, so a hostile engagement name is never part of any shell
 # string. Modes:
 #   engagements       READ_PRODUCT, READ_ENGAGEMENT -> JSON
@@ -497,8 +529,10 @@ resp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "read-respo
 
 def get(path, params, count_only=False):
     url = "{}{}?{}".format(base, path, urllib.parse.urlencode(params))
-    cmd = ["curl", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
+    cmd = ["curl", "-q", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
            "-w", "%{http_code} %{ssl_verify_result}", url]
+    if os.environ.get("DEFECTDOJO_RESOLVE"):
+        cmd += ["--resolve", os.environ["DEFECTDOJO_RESOLVE"]]
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     code, _, verify = (proc.stdout or "000 -").strip().partition(" ")
     body = ""
@@ -536,6 +570,195 @@ elif mode == "engagement-total":
 else:
     sys.exit("unknown read mode {!r}".format(mode))
 PY
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# P-CURLRC fixture (29.2, Phase 28 CR-01): an ambient curlrc must never reach a
+# DefectDojo client. Offline: a self-signed TLS listener on 127.0.0.1, a
+# hostile curlrc under a per-case CURL_HOME, and a control request that proves
+# the curlrc is live before any target is judged.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# write_tls_listener_py PATH: the offline TLS listener (29.2-RESEARCH "Tested
+# listener", measured on python 3.9.6/LibreSSL and 3.12.0). argv: CERT KEY
+# PORTFILE LOGFILE. Binds 127.0.0.1:0, writes its port atomically, and appends
+# one line per event to LOGFILE: `CONNECT`, then exactly one of
+# `HANDSHAKE-FAIL <exception>` or `HANDSHAKE-OK` for that connection, and
+# `REQUEST <METHOD> <PATH> auth=yes|no` (every request is answered 500). A
+# verifying client that rejects the cert ends in HANDSHAKE-FAIL; `openssl
+# s_client` (defectdojo-homelab-validate.sh's cert dump) does not verify, so
+# it ends in HANDSHAKE-OK and closes without a request. The listener logs
+# HANDSHAKE-FAIL only once it has processed the client's alert, which can be
+# after the client (and the body) exited, so curlrc_counts waits for every
+# CONNECT to get its terminal line before counting (29.2 DI-01). It
+# never logs a header value. Test-only; run it only as `python3 PATH ...`
+# (never chmod +x).
+write_tls_listener_py() {
+  cat > "$1" <<'PY'
+import http.server
+import os
+import ssl
+import sys
+
+cert, key, portfile, logfile = sys.argv[1:5]
+ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+ctx.load_cert_chain(cert, key)
+
+
+def log(line):
+    with open(logfile, "a", encoding="utf-8") as handle:
+        handle.write(line + "\n")
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def _any(self):
+        log("REQUEST {} {} auth={}".format(self.command, self.path,
+                                          "yes" if self.headers.get("Authorization") else "no"))
+        length = int(self.headers.get("Content-Length") or 0)
+        if length:
+            self.rfile.read(length)
+        body = b'{"results": []}'
+        self.send_response(500)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    do_GET = do_POST = do_PATCH = do_DELETE = do_PUT = _any
+
+    def log_message(self, *args):
+        pass
+
+
+class Server(http.server.HTTPServer):
+    def get_request(self):
+        sock, addr = self.socket.accept()
+        log("CONNECT")
+        try:
+            tls = ctx.wrap_socket(sock, server_side=True)
+        except (ssl.SSLError, OSError) as exc:
+            log("HANDSHAKE-FAIL {}".format(type(exc).__name__))
+            sock.close()
+            raise          # socketserver swallows OSError from get_request and keeps serving
+        log("HANDSHAKE-OK")
+        return tls, addr
+
+
+httpd = Server(("127.0.0.1", 0), Handler)
+with open(portfile + ".tmp", "w", encoding="utf-8") as handle:
+    handle.write(str(httpd.server_address[1]))
+os.replace(portfile + ".tmp", portfile)
+httpd.serve_forever()
+PY
+}
+
+# Fixture state. LISTENER_PID is also read by the --scheme-only EXIT trap.
+LISTENER_PID=""
+CURLRC_PORT=""
+CURLRC_FIXTURE_ERR=""
+readonly CURLRC_HOST="defectdojo.curlrc.test"
+CURLRC_DIR=""
+CURLRC_HOME=""
+CURLRC_LOG=""
+CURLRC_TRACE=""
+CURLRC_LIBCURL=""
+
+# gen_throwaway_cert DIR CN: a one-day self-signed CA:TRUE cert for CN (SAN
+# DNS:CN) as DIR/cert.pem with DIR/key.pem, from a -config cnf (no -ext or
+# -addext: LibreSSL on macOS lacks them, Phase 29 WR-06 precedent). Used by the
+# P-CURLRC fixture (the listener cert) and by P-TLS (the hostile curlrc's
+# cacert). Returns non-zero unless both files exist and are non-empty.
+gen_throwaway_cert() {
+  local dir="$1" cn="$2"
+  cat > "${dir}/san.cnf" <<CNF
+[req]
+distinguished_name=dn
+x509_extensions=v3
+prompt=no
+[dn]
+CN=${cn}
+[v3]
+subjectAltName=DNS:${cn}
+basicConstraints=critical,CA:TRUE
+CNF
+  openssl req -x509 -newkey rsa:2048 -nodes -days 1 -keyout "${dir}/key.pem" -out "${dir}/cert.pem" -config "${dir}/san.cnf" >/dev/null 2>&1 \
+    && [ -s "${dir}/cert.pem" ] && [ -s "${dir}/key.pem" ]
+}
+
+# curlrc_fixture_up: throwaway cert (gen_throwaway_cert; no -ext/-addext, Phase 29
+# WR-06 precedent), the listener in the background (PID in LISTENER_PID, port
+# in CURLRC_PORT) and the hostile curlrc. The curlrc names p-curlrc-* trace and
+# libcurl files so they never collide with the global live-run names (29.2
+# RESEARCH Pitfall 8). Its `resolve` line is deliberate: an unfixed target
+# ignores DEFECTDOJO_RESOLVE, and without the line it would fail DNS (curl
+# exit 6) and show zero requests for the wrong reason; with it an unfixed
+# target reaches the listener and reproduces the real token leak. A fixed
+# target passes -q, never reads it, and reaches the listener only through the
+# DEFECTDOJO_RESOLVE hook. Returns 1 with CURLRC_FIXTURE_ERR set on failure.
+curlrc_fixture_up() {
+  local i
+  CURLRC_FIXTURE_ERR=""
+  CURLRC_PORT=""
+  CURLRC_DIR="${PROOF_DIR}/curlrc"
+  CURLRC_HOME="${PROOF_DIR}/curlrc-hostile"
+  CURLRC_LOG="${CURLRC_DIR}/listener.log"
+  CURLRC_TRACE="${PROOF_DIR}/p-curlrc-trace.txt"
+  CURLRC_LIBCURL="${PROOF_DIR}/p-curlrc-libcurl.c"
+  if ! mkdir -p "$CURLRC_DIR" "$CURLRC_HOME"; then
+    CURLRC_FIXTURE_ERR="could not create ${CURLRC_DIR} and ${CURLRC_HOME}"
+    return 1
+  fi
+  if ! gen_throwaway_cert "$CURLRC_DIR" "$CURLRC_HOST"; then
+    CURLRC_FIXTURE_ERR="openssl req -x509 -config did not produce cert.pem and key.pem"
+    return 1
+  fi
+  write_tls_listener_py "${CURLRC_DIR}/listener.py"
+  : > "$CURLRC_LOG"
+  rm -f "${CURLRC_DIR}/port"
+  python3 "${CURLRC_DIR}/listener.py" "${CURLRC_DIR}/cert.pem" "${CURLRC_DIR}/key.pem" \
+    "${CURLRC_DIR}/port" "$CURLRC_LOG" > "${CURLRC_DIR}/listener.err" 2>&1 &
+  LISTENER_PID=$!
+  for ((i = 0; i < 50; i++)); do
+    [ -s "${CURLRC_DIR}/port" ] && break
+    kill -0 "$LISTENER_PID" 2>/dev/null || break
+    sleep 0.2
+  done
+  if [ ! -s "${CURLRC_DIR}/port" ]; then
+    CURLRC_FIXTURE_ERR="the listener wrote no port file within 10s: $(head -c 300 "${CURLRC_DIR}/listener.err" | tr '\n' ' ')"
+    return 1
+  fi
+  CURLRC_PORT="$(cat "${CURLRC_DIR}/port")"
+  if ! [[ "$CURLRC_PORT" =~ ^[0-9]+$ ]]; then
+    CURLRC_FIXTURE_ERR="the listener port file holds '${CURLRC_PORT}', not a port number"
+    return 1
+  fi
+  {
+    printf 'insecure\n'
+    printf 'verbose\n'
+    printf 'trace-ascii = "%s"\n' "$CURLRC_TRACE"
+    printf 'libcurl = "%s"\n' "$CURLRC_LIBCURL"
+    printf 'cacert = "%s"\n' "${CURLRC_DIR}/cert.pem"
+    printf 'location\n'
+    printf 'location-trusted\n'
+    printf 'resolve = "%s:%s:127.0.0.1"\n' "$CURLRC_HOST" "$CURLRC_PORT"
+  } > "${CURLRC_HOME}/.curlrc"
+  return 0
+}
+
+# curlrc_fixture_down: stop the listener (idempotent).
+curlrc_fixture_down() {
+  if [ -n "${LISTENER_PID:-}" ]; then
+    kill "$LISTENER_PID" 2>/dev/null || true
+    wait "$LISTENER_PID" 2>/dev/null || true
+    LISTENER_PID=""
+  fi
+}
+
+# curlrc_reset: empty the listener log and delete the p-curlrc trace/libcurl
+# files, so each target is judged only on its own traffic.
+curlrc_reset() {
+  : > "$CURLRC_LOG"
+  rm -f "$CURLRC_TRACE" "$CURLRC_LIBCURL"
 }
 
 # read_engagements PRODUCT NAME: exact-name engagements of NAME inside the
@@ -602,6 +825,7 @@ prove_http_refusal() {
     rm -f "$res"
     if [ "$label" = "delete-http" ]; then
       run_body "$label" "$b_delete" \
+        "DEFECTDOJO_RESOLVE=" \
         "DD_URL=${case_url}" \
         "DD_TOKEN=${tok}" \
         "DD_PRODUCT=${PROOF_PRODUCT}" \
@@ -612,6 +836,7 @@ prove_http_refusal() {
         "GITHUB_HEAD_REF=${PROOF_BRANCH_A}"
     else
       run_body "$label" "$b_import" \
+        "DEFECTDOJO_RESOLVE=" \
         "DD_URL=${case_url}" \
         "DD_TOKEN=${tok}" \
         "DD_PRODUCT=${PROOF_PRODUCT}" \
@@ -665,6 +890,7 @@ prove_http_refusal() {
       configure-http)
         case_url="http://127.0.0.1:9"
         run_body "$label" "$b_configure" \
+          "DEFECTDOJO_RESOLVE=" \
           "DEFECTDOJO_URL=${case_url}" \
           "DEFECTDOJO_ADMIN_TOKEN_FILE=${tokfile}" \
           "DEFECTDOJO_CA_FILE="
@@ -672,6 +898,7 @@ prove_http_refusal() {
       configure-noscheme)
         case_url="127.0.0.1:9"
         run_body "$label" "$b_configure" \
+          "DEFECTDOJO_RESOLVE=" \
           "DEFECTDOJO_URL=${case_url}" \
           "DEFECTDOJO_ADMIN_TOKEN_FILE=${tokfile}" \
           "DEFECTDOJO_CA_FILE="
@@ -679,6 +906,7 @@ prove_http_refusal() {
       configure-no-env)
         case_url="https://127.0.0.1:9"
         run_body "$label" "$b_configure" \
+          "DEFECTDOJO_RESOLVE=" \
           "DEFECTDOJO_URL=${case_url}" \
           "DEFECTDOJO_ADMIN_TOKEN_FILE=" \
           "DEFECTDOJO_CA_FILE="
@@ -686,6 +914,7 @@ prove_http_refusal() {
       configure-loose-perms)
         case_url="https://127.0.0.1:9"
         run_body "$label" "$b_configure" \
+          "DEFECTDOJO_RESOLVE=" \
           "DEFECTDOJO_URL=${case_url}" \
           "DEFECTDOJO_ADMIN_TOKEN_FILE=${loosefile}" \
           "DEFECTDOJO_CA_FILE="
@@ -729,12 +958,584 @@ prove_http_refusal() {
   rm -f "$tokfile" "$loosefile"
 }
 
+# curlrc_new_token FILE: a fresh 40-lowercase-hex dummy (the format DefectDojo
+# 3.3.200 / DRF mints) in CURLRC_TOK, also written to FILE (0600) with printf.
+CURLRC_TOK=""
+GUARD_TOK2=""
+curlrc_new_token() {
+  CURLRC_TOK="$(od -An -tx1 -N20 /dev/urandom | tr -d ' \n')"
+  printf '%s' "$CURLRC_TOK" > "$1"
+  chmod 600 "$1"
+}
+
+# curlrc_show_log: the last run_body log, dummy token masked, indented.
+curlrc_show_log() {
+  sed -e "s/${CURLRC_TOK}/<dummy-token>/g" -e 's/^/    | /' "$BODY_LOG"
+}
+
+# curlrc_counts: CURLRC_C / CURLRC_H / CURLRC_OK / CURLRC_R = CONNECT,
+# HANDSHAKE-FAIL, HANDSHAKE-OK and REQUEST lines at the listener; CURLRC_COUNTS
+# is the quoted summary and CURLRC_REQS the distinct REQUEST lines (never a
+# header value). It first waits up to 3s for the listener to settle, i.e. for
+# every CONNECT to have its HANDSHAKE-FAIL or HANDSHAKE-OK line (29.2 DI-01:
+# the listener can log HANDSHAKE-FAIL after the body exited). On the deadline
+# it counts what is there and the caller judges that, so a connection that
+# never settles still fails an assertion; nothing passes by default.
+curlrc_counts() {
+  local i settled=0
+  for ((i = 0; i < 30; i++)); do
+    CURLRC_C="$(grep -c '^CONNECT$' "$CURLRC_LOG" || true)"
+    CURLRC_H="$(grep -c '^HANDSHAKE-FAIL' "$CURLRC_LOG" || true)"
+    CURLRC_OK="$(grep -c '^HANDSHAKE-OK$' "$CURLRC_LOG" || true)"
+    if [ "$CURLRC_C" -eq $((CURLRC_H + CURLRC_OK)) ]; then
+      settled=1
+      break
+    fi
+    sleep 0.1
+  done
+  CURLRC_R="$(grep -c '^REQUEST ' "$CURLRC_LOG" || true)"
+  CURLRC_COUNTS="listener CONNECT=${CURLRC_C} HANDSHAKE-FAIL=${CURLRC_H} HANDSHAKE-OK=${CURLRC_OK} REQUEST=${CURLRC_R}"
+  [ "$settled" -eq 1 ] || CURLRC_COUNTS="${CURLRC_COUNTS}, not settled after 3s"
+  CURLRC_REQS="$(grep '^REQUEST ' "$CURLRC_LOG" | sort | uniq -c | sed 's/^ *//' | tr '\n' ';' || true)"
+  CURLRC_REQS="${CURLRC_REQS:0:300}"
+}
+
+# assert_curlrc_refused TARGET MARKER_REGEX [EXTRA_WHY]: judge the last
+# run_body against the listener (D-04, D-05, D-08, D-11). Passes only if the
+# target exited 1, the listener saw >=1 HANDSHAKE-FAIL and 0 REQUEST lines, no
+# success marker (MARKER_REGEX or http=200) was printed, the dummy token, any
+# Authorization text and any curl verbose line (^[<>*] ) are absent, a failure
+# line names 'TLS verification result', and neither p-curlrc trace/libcurl
+# file exists. EXTRA_WHY carries target-specific failures.
+assert_curlrc_refused() {
+  local target="$1" markers="$2" extra="${3:-}" why=""
+  curlrc_counts
+  [ "$BODY_RC" -eq 1 ] || why="${why} exit ${BODY_RC} (expected 1);"
+  [ "$CURLRC_H" -ge 1 ] || why="${why} no HANDSHAKE-FAIL at the listener;"
+  if [ "$CURLRC_R" -ne 0 ]; then
+    why="${why} ${CURLRC_R} REQUEST line(s) at the listener (${CURLRC_REQS});"
+  fi
+  if grep -qE "${markers}|http=200" "$BODY_LOG"; then why="${why} a success marker was printed;"; fi
+  if grep -qF -- "$CURLRC_TOK" "$BODY_LOG"; then why="${why} the dummy token appears in the log;"; fi
+  if grep -q 'Authorization' "$BODY_LOG"; then why="${why} 'Authorization' appears in the log;"; fi
+  if grep -qE '^[<>*] ' "$BODY_LOG"; then why="${why} curl verbose lines appear in the log;"; fi
+  grep -q 'TLS verification result' "$BODY_LOG" || why="${why} no failure line containing 'TLS verification result';"
+  if [ -e "$CURLRC_TRACE" ]; then why="${why} trace-ascii file ${CURLRC_TRACE##*/} was written (the curlrc was read);"; fi
+  if [ -e "$CURLRC_LIBCURL" ]; then why="${why} libcurl file ${CURLRC_LIBCURL##*/} was written (the curlrc was read);"; fi
+  why="${why}${extra}"
+  if [ -z "$why" ]; then
+    proof_pass "P-CURLRC" "${target}: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (${CURLRC_COUNTS})"
+  else
+    proof_fail "P-CURLRC" "${target}:${why} [${CURLRC_COUNTS}]"
+  fi
+}
+
+# Preflight guard cases (29.2 D-03, D-06, D-13; Phase 28 WR-01/WR-02). Each
+# "ID:label" pair below is one counted assertion, run inside the P-CURLRC
+# fixture with the hostile curlrc live, so "sends nothing" is measured as zero
+# CONNECT lines at the listener rather than inferred.
+GUARD_CASES=(
+  "P-CONFIGURE-GUARD:configure-token-dir"
+  "P-CONFIGURE-GUARD:configure-token-mode000"
+  "P-CONFIGURE-GUARD:configure-token-multiline"
+  "P-CONFIGURE-GUARD:configure-token-prefix"
+  "P-RESOLVE-GUARD:configure-resolve-host"
+  "P-RESOLVE-GUARD:configure-resolve-wildcard"
+  "P-TOKEN-GUARD:lifecycle-token-multiline"
+  "P-TOKEN-GUARD:lifecycle-token-prefix"
+  "P-TOKEN-GUARD:lifecycle-token-dir"
+  "P-RESOLVE-GUARD:lifecycle-resolve-host"
+  "P-RESOLVE-GUARD:lifecycle-resolve-wildcard"
+  "P-TOKEN-GUARD:homelab-token-multiline"
+  "P-TOKEN-GUARD:homelab-token-prefix"
+  "P-TOKEN-GUARD:homelab-token-dir"
+  "P-RESOLVE-GUARD:dd-import-resolve-host"
+  "P-RESOLVE-GUARD:dd-delete-resolve-host"
+)
+
+# guard_not_evaluated REASON: one FAIL per guard case (the fixture or the
+# control failed, so a zero CONNECT count would prove nothing).
+guard_not_evaluated() {
+  local c
+  for c in "${GUARD_CASES[@]}"; do
+    proof_fail "${c%%:*}" "${c#*:}: not evaluated: $1"
+  done
+}
+
+# guard_token KIND PATH: a guard-case token path. Always sets CURLRC_TOK (a
+# fresh 40-hex dummy, so the log mask never becomes an empty sed pattern) and
+# GUARD_TOK2 (a second 40-hex dummy, used only by multiline). Content is
+# written with the printf builtin, never an argv. KIND:
+#   valid      0600 file holding one bare 40-hex token
+#   dir        a 0700 directory at PATH (0700, not umask-dependent: an unfixed
+#              mode check must not refuse it first, or the case is vacuous)
+#   mode000    a 0000 file holding one bare 40-hex token
+#   multiline  0600 file "<hex-a>\n<hex-b>\n": two alphanumeric lines, the only
+#              payload that survives `tr -d '\r\n'` plus a no-space regex
+#              (the WR-02 join gap)
+#   header     0600 file "<hex>\nX-Other: 1\n" (header injection)
+#   prefix     0600 file "Token <hex>"
+guard_token() {
+  local kind="$1" path="$2"
+  CURLRC_TOK="$(od -An -tx1 -N20 /dev/urandom | tr -d ' \n')"
+  GUARD_TOK2="$(od -An -tx1 -N20 /dev/urandom | tr -d ' \n')"
+  rm -f "$path"
+  case "$kind" in
+    dir)
+      mkdir -m 700 "$path"
+      ;;
+    valid|mode000)
+      printf '%s' "$CURLRC_TOK" > "$path"
+      chmod 600 "$path"
+      if [ "$kind" = "mode000" ]; then chmod 000 "$path"; fi
+      ;;
+    multiline)
+      printf '%s\n%s\n' "$CURLRC_TOK" "$GUARD_TOK2" > "$path"
+      chmod 600 "$path"
+      ;;
+    header)
+      printf '%s\n%s\n' "$CURLRC_TOK" 'X-Other: 1' > "$path"
+      chmod 600 "$path"
+      ;;
+    prefix)
+      printf 'Token %s' "$CURLRC_TOK" > "$path"
+      chmod 600 "$path"
+      ;;
+  esac
+}
+
+# guard_token_rm PATH: remove a guard_token path (restoring a mode-000 file
+# first).
+guard_token_rm() {
+  if [ -d "$1" ]; then
+    rmdir "$1"
+  elif [ -e "$1" ]; then
+    chmod 600 "$1"
+    rm -f "$1"
+  fi
+}
+
+# guard_show_log: the last run_body log, both dummy tokens masked, indented.
+guard_show_log() {
+  sed -e "s/${CURLRC_TOK}/<dummy-token>/g" -e "s/${GUARD_TOK2}/<dummy-token-2>/g" -e 's/^/    | /' "$BODY_LOG"
+}
+
+# assert_guard_refused ID LABEL DESC REGEX [NEEDLE] [EXTRA_WHY]: judge the
+# last run_body as a preflight refusal. Passes only if it exited 2, a line
+# matches REGEX (and, when NEEDLE is set, that same line contains NEEDLE, the
+# token path), the listener saw 0 CONNECT lines, no http= line was printed,
+# and neither dummy token nor the injected X-Other header appears in the log.
+# EXTRA_WHY carries case-specific failures.
+assert_guard_refused() {
+  local id="$1" label="$2" desc="$3" regex="$4" needle="${5:-}" extra="${6:-}" why=""
+  curlrc_counts
+  [ "$BODY_RC" -eq 2 ] || why="${why} exit ${BODY_RC} (expected 2);"
+  if [ -n "$needle" ]; then
+    grep -E -- "$regex" "$BODY_LOG" | grep -qF -- "$needle" \
+      || why="${why} no line matching '${regex}' that names the path ${needle##*/};"
+  else
+    grep -qE -- "$regex" "$BODY_LOG" || why="${why} no line matching '${regex}';"
+  fi
+  if [ "$CURLRC_C" -ne 0 ]; then
+    why="${why} ${CURLRC_C} CONNECT line(s) at the listener (${CURLRC_REQS:-no REQUEST line});"
+  fi
+  if grep -q 'http=' "$BODY_LOG"; then why="${why} an 'http=' request line was printed;"; fi
+  if grep -qF -- "$CURLRC_TOK" "$BODY_LOG"; then why="${why} the dummy token appears in the log;"; fi
+  if grep -qF -- "$GUARD_TOK2" "$BODY_LOG"; then why="${why} the second dummy token appears in the log;"; fi
+  if grep -q 'X-Other' "$BODY_LOG"; then why="${why} the injected X-Other header appears in the log;"; fi
+  why="${why}${extra}"
+  if [ -z "$why" ]; then
+    proof_pass "$id" "${label}: ${desc} -> exit 2, refused before any request, 0 CONNECT, token absent (${CURLRC_COUNTS})"
+  else
+    proof_fail "$id" "${label}: ${desc}:${why} [${CURLRC_COUNTS}]"
+  fi
+}
+
+# prove_guard_refusal BODIES_DIR REPORTS_DIR URL RESOLVE: the GUARD_CASES,
+# run by prove_curlrc_refusal while the listener and the hostile curlrc are
+# live. Every target gets CURL_HOME=<hostile>, so a target whose guard is
+# missing reaches the listener through the curlrc resolve line and shows up
+# as a CONNECT. The token-file cases get a valid DEFECTDOJO_RESOLVE hook (where
+# the target takes one); the RESOLVE cases get a valid 0600 40-hex token.
+prove_guard_refusal() {
+  local bodies="$1" reports="$2" url="$3" resolve="$4"
+  local bad_host="other.${CURLRC_HOST#*.}:${CURLRC_PORT}:127.0.0.1"
+  local bad_wild="*:${CURLRC_PORT}:127.0.0.1"
+  local b_configure="${REPO_ROOT}/scripts/defectdojo-configure.sh"
+  local tokfile kind desc case_resolve label res extra
+
+  echo
+  echo "=== token-file and DEFECTDOJO_RESOLVE preflight guards send nothing (P-CONFIGURE-GUARD, P-RESOLVE-GUARD, P-TOKEN-GUARD) ==="
+
+  # 1. scripts/defectdojo-configure.sh (D-13 WR-01/WR-02, D-06). Token-file
+  # refusals must be a FATAL line naming the path; RESOLVE refusals a FATAL
+  # line naming DEFECTDOJO_RESOLVE.
+  for label in configure-token-dir configure-token-mode000 configure-token-multiline configure-token-prefix configure-resolve-host configure-resolve-wildcard; do
+    case_resolve="$resolve"
+    case "$label" in
+      configure-token-dir) kind=dir; desc="the token path is a directory" ;;
+      configure-token-mode000) kind=mode000; desc="a mode-000 token file" ;;
+      configure-token-multiline) kind=header; desc="a two-line token file (40-hex, then 'X-Other: 1')" ;;
+      configure-token-prefix) kind=prefix; desc="a 'Token '-prefixed token file" ;;
+      configure-resolve-host) kind=valid; case_resolve="$bad_host"; desc="DEFECTDOJO_RESOLVE host differs from DEFECTDOJO_URL" ;;
+      configure-resolve-wildcard) kind=valid; case_resolve="$bad_wild"; desc="a wildcard DEFECTDOJO_RESOLVE" ;;
+    esac
+    if [ "$kind" = "mode000" ] && [ "$(id -u)" -eq 0 ]; then
+      proof_skip "P-CONFIGURE-GUARD" "configure-token-mode000: running as root, which can read a mode-000 file"
+      continue
+    fi
+    curlrc_reset
+    tokfile="${PROOF_DIR}/guard-${label}.token"
+    guard_token "$kind" "$tokfile"
+    run_body "guard-${label}" "$b_configure" \
+      "DEFECTDOJO_URL=${url}" \
+      "DEFECTDOJO_ADMIN_TOKEN_FILE=${tokfile}" \
+      "DEFECTDOJO_CA_FILE=" \
+      "DEFECTDOJO_RESOLVE=${case_resolve}" \
+      "CURL_HOME=${CURLRC_HOME}"
+    guard_show_log
+    case "$label" in
+      configure-resolve-*)
+        assert_guard_refused "P-RESOLVE-GUARD" "$label" "$desc" '^FATAL: DEFECTDOJO_RESOLVE'
+        ;;
+      *)
+        assert_guard_refused "P-CONFIGURE-GUARD" "$label" "$desc" '^FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE' "$tokfile"
+        ;;
+    esac
+    guard_token_rm "$tokfile"
+  done
+
+  # 2. scripts/defectdojo-lifecycle-assert.sh (D-03 last bullet, D-06), through
+  # the same 0600 snapshot wrapper as P-CURLRC. lifecycle-token-prefix and
+  # lifecycle-token-dir are already refused by the unfixed code (the no-space
+  # regex and the -f/-r check): regression guards, expected to PASS today.
+  local lc_out="${PROOF_DIR}/guard-lifecycle-out" lc_wrap="${PROOF_DIR}/guard-lifecycle.sh"
+  mkdir -p "$lc_out"
+  printf 'exec bash %q snapshot --product p-curlrc --out %q --engagement ci/main --label guard\n' \
+    "${REPO_ROOT}/scripts/defectdojo-lifecycle-assert.sh" "$lc_out" > "$lc_wrap"
+  chmod 600 "$lc_wrap"
+  for label in lifecycle-token-multiline lifecycle-token-prefix lifecycle-token-dir lifecycle-resolve-host lifecycle-resolve-wildcard; do
+    case_resolve="$resolve"
+    case "$label" in
+      lifecycle-token-multiline) kind=multiline; desc="a two-line token file (two 40-hex lines, the WR-02 join gap)" ;;
+      lifecycle-token-prefix) kind=prefix; desc="a 'Token '-prefixed token file (regression guard: refused before 29.2)" ;;
+      lifecycle-token-dir) kind=dir; desc="the token path is a directory (regression guard: refused before 29.2)" ;;
+      lifecycle-resolve-host) kind=valid; case_resolve="$bad_host"; desc="DEFECTDOJO_RESOLVE host differs from DEFECTDOJO_URL" ;;
+      lifecycle-resolve-wildcard) kind=valid; case_resolve="$bad_wild"; desc="a wildcard DEFECTDOJO_RESOLVE" ;;
+    esac
+    curlrc_reset
+    tokfile="${PROOF_DIR}/guard-${label}.token"
+    guard_token "$kind" "$tokfile"
+    run_body "guard-${label}" "$lc_wrap" \
+      "DEFECTDOJO_URL=${url}" \
+      "DEFECTDOJO_ADMIN_TOKEN_FILE=${tokfile}" \
+      "DEFECTDOJO_RESOLVE=${case_resolve}" \
+      "CURL_HOME=${CURLRC_HOME}"
+    guard_show_log
+    case "$label" in
+      lifecycle-resolve-*)
+        assert_guard_refused "P-RESOLVE-GUARD" "$label" "$desc" '^ERROR: DEFECTDOJO_RESOLVE'
+        ;;
+      *)
+        assert_guard_refused "P-TOKEN-GUARD" "$label" "$desc" '^ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE'
+        ;;
+    esac
+    guard_token_rm "$tokfile"
+  done
+  rm -f "$lc_wrap"
+
+  # 3. scripts/defectdojo-homelab-validate.sh (planner decision, D-17): the
+  # WR-02 content check and a regular-file check on --token-file. Same argv
+  # and KUBECONFIG pinning as P-CURLRC; no DEFECTDOJO_RESOLVE hook.
+  local hl_wrap="${PROOF_DIR}/guard-homelab.sh" hl_kubeconfig="${PROOF_DIR}/guard-empty-kubeconfig"
+  local hl_url="https://127.0.0.1:${CURLRC_PORT}"
+  : > "$hl_kubeconfig"
+  chmod 600 "$hl_kubeconfig"
+  for label in homelab-token-multiline homelab-token-prefix homelab-token-dir; do
+    case "$label" in
+      homelab-token-multiline) kind=multiline; desc="a two-line token file (two 40-hex lines, the WR-02 join gap)" ;;
+      homelab-token-prefix) kind=prefix; desc="a 'Token '-prefixed token file" ;;
+      homelab-token-dir) kind=dir; desc="the --token-file path is a directory" ;;
+    esac
+    curlrc_reset
+    tokfile="${PROOF_DIR}/guard-${label}.token"
+    guard_token "$kind" "$tokfile"
+    printf 'exec bash %q --url %q --alt-url %q --context p-curlrc-no-such-context --namespace p-curlrc --app p-curlrc --sync-pass first --write-state %q --token-file %q\n' \
+      "${REPO_ROOT}/scripts/defectdojo-homelab-validate.sh" "$hl_url" "$hl_url" \
+      "${PROOF_DIR}/guard-homelab-state.json" "$tokfile" > "$hl_wrap"
+    chmod 600 "$hl_wrap"
+    run_body "guard-${label}" "$hl_wrap" \
+      "KUBECONFIG=${hl_kubeconfig}" \
+      "CURL_HOME=${CURLRC_HOME}" \
+      "DEFECTDOJO_RESOLVE="
+    guard_show_log
+    assert_guard_refused "P-TOKEN-GUARD" "$label" "$desc" '^ERROR: --token-file'
+    guard_token_rm "$tokfile"
+  done
+  rm -f "$hl_wrap" "$hl_kubeconfig" "${PROOF_DIR}/guard-homelab-state.json"
+
+  # 4. committed dd-import and dd-delete bodies (D-06): a DEFECTDOJO_RESOLVE
+  # host that differs from DD_URL. The refusal must come before the TLS label,
+  # and dd-import must write no results file.
+  curlrc_reset
+  guard_token valid "${PROOF_DIR}/guard-dd-import.token"
+  res="${PROOF_DIR}/results-guard-dd-import.json"
+  rm -f "$res"
+  run_body "guard-dd-import-resolve-host" "${bodies}/defectdojo-import__dd-import.sh" \
+    "DD_URL=${url}" \
+    "DD_TOKEN=${CURLRC_TOK}" \
+    "DD_PRODUCT=${PROOF_PRODUCT}" \
+    "DD_PRODUCT_TYPE=${PROOF_PRODUCT_TYPE}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=" \
+    "DD_REPORTS_DIR=${reports}" \
+    "DD_RESULTS_FILE=${res}" \
+    "GITHUB_ACTOR=proof-actor" \
+    "GITHUB_EVENT_NAME=pull_request" \
+    "GITHUB_HEAD_REF=${PROOF_BRANCH_A}" \
+    "GITHUB_REF_NAME=27/merge" \
+    "GITHUB_SHA=${PROOF_SHA}" \
+    "GITHUB_RUN_ID=${PROOF_RUN_ID}" \
+    "GITHUB_SERVER_URL=${PROOF_SERVER_URL}" \
+    "GITHUB_REPOSITORY=${PROOF_REPOSITORY}" \
+    "DEFECTDOJO_RESOLVE=${bad_host}" \
+    "CURL_HOME=${CURLRC_HOME}"
+  guard_show_log
+  extra=""
+  if grep -q 'TLS mode:' "$BODY_LOG"; then extra="${extra} a 'TLS mode:' line was printed;"; fi
+  if [ -e "$res" ]; then extra="${extra} results file ${res##*/} was written;"; fi
+  assert_guard_refused "P-RESOLVE-GUARD" "dd-import-resolve-host" "DEFECTDOJO_RESOLVE host differs from DD_URL" 'DEFECTDOJO_RESOLVE' "" "$extra"
+  guard_token_rm "${PROOF_DIR}/guard-dd-import.token"
+  rm -f "$res"
+
+  curlrc_reset
+  guard_token valid "${PROOF_DIR}/guard-dd-delete.token"
+  res="${PROOF_DIR}/results-guard-dd-delete.json"
+  rm -f "$res"
+  run_body "guard-dd-delete-resolve-host" "${bodies}/defectdojo-cleanup__dd-delete.sh" \
+    "DD_URL=${url}" \
+    "DD_TOKEN=${CURLRC_TOK}" \
+    "DD_PRODUCT=${PROOF_PRODUCT}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=" \
+    "DD_DEFAULT_BRANCH=${PROOF_DEFAULT_BRANCH}" \
+    "DD_CLEANUP_RESULT_FILE=${res}" \
+    "GITHUB_HEAD_REF=${PROOF_BRANCH_A}" \
+    "DEFECTDOJO_RESOLVE=${bad_host}" \
+    "CURL_HOME=${CURLRC_HOME}"
+  guard_show_log
+  extra=""
+  if grep -q 'TLS mode:' "$BODY_LOG"; then extra="${extra} a 'TLS mode:' line was printed;"; fi
+  assert_guard_refused "P-RESOLVE-GUARD" "dd-delete-resolve-host" "DEFECTDOJO_RESOLVE host differs from DD_URL" 'DEFECTDOJO_RESOLVE' "" "$extra"
+  guard_token_rm "${PROOF_DIR}/guard-dd-delete.token"
+  rm -f "$res"
+}
+
+# prove_curlrc_refusal BODIES_DIR REPORTS_DIR: P-CURLRC (29.2, Phase 28 CR-01).
+# Offline, in both modes. An ambient curlrc (here a hostile CURL_HOME holding
+# insecure, verbose, trace-ascii, libcurl, cacert, location, location-trusted
+# and a resolve line) must never reach a DefectDojo client: every target must
+# refuse the self-signed listener before sending any request. A no -q control
+# first proves the curlrc is live and the listener reachable, so no target can
+# pass vacuously. The listener is stopped on every return path.
+prove_curlrc_refusal() {
+  local bodies="$1" reports="$2"
+  local control_ok=0 ctl_tok ctl_hdr
+  local targets=(configure lifecycle homelab-tls-probe homelab-token-get dd-import dd-delete)
+  local t
+
+  echo
+  echo "=== ambient curlrc is ignored; unverified peer refused before any request (P-CURLRC) ==="
+  if ! curlrc_fixture_up; then
+    proof_fail "P-CURLRC" "fixture: ${CURLRC_FIXTURE_ERR}"
+    curlrc_fixture_down
+    for t in "${targets[@]}"; do
+      proof_fail "P-CURLRC" "${t}: not evaluated: control failed (the fixture did not come up)"
+    done
+    guard_not_evaluated "control failed (the fixture did not come up)"
+    return 0
+  fi
+
+  # Control: the dummy header goes by file, never argv.
+  ctl_tok="$(od -An -tx1 -N20 /dev/urandom | tr -d ' \n')"
+  ctl_hdr="${PROOF_DIR}/curlrc-control.hdr"
+  printf 'Authorization: Token %s\n' "$ctl_tok" > "$ctl_hdr"
+  chmod 600 "$ctl_hdr"
+  # The ONLY harness curl without -q, on purpose: it must read the hostile
+  # curlrc (its resolve, insecure, trace-ascii and libcurl lines) to prove it live.
+  CURL_HOME="$CURLRC_HOME" curl -sS -o /dev/null -H @"$ctl_hdr" "https://${CURLRC_HOST}:${CURLRC_PORT}/api/v2/" >/dev/null 2>&1 || true
+  rm -f "$ctl_hdr"
+  local ctl_why=""
+  grep -qx 'REQUEST GET /api/v2/ auth=yes' "$CURLRC_LOG" || ctl_why="${ctl_why} no 'REQUEST GET /api/v2/ auth=yes' line at the listener;"
+  [ -e "$CURLRC_TRACE" ] || ctl_why="${ctl_why} trace-ascii file ${CURLRC_TRACE##*/} not written;"
+  [ -e "$CURLRC_LIBCURL" ] || ctl_why="${ctl_why} libcurl file ${CURLRC_LIBCURL##*/} not written;"
+  if [ -z "$ctl_why" ]; then
+    control_ok=1
+    proof_pass "P-CURLRC" "control: no -q curl read the hostile curlrc and reached the listener (REQUEST auth=yes; trace and libcurl files written)"
+  else
+    proof_fail "P-CURLRC" "control: the hostile curlrc is not proven live:${ctl_why} listener log: $(head -c 300 "$CURLRC_LOG" | tr '\n' ' ')"
+  fi
+  curlrc_reset
+
+  if [ "$control_ok" -ne 1 ]; then
+    for t in "${targets[@]}"; do
+      proof_fail "P-CURLRC" "${t}: not evaluated: control failed"
+    done
+    guard_not_evaluated "control failed"
+    curlrc_fixture_down
+    return 0
+  fi
+
+  local url="https://${CURLRC_HOST}:${CURLRC_PORT}"
+  local resolve="${CURLRC_HOST}:${CURLRC_PORT}:127.0.0.1"
+  local tokfile res extra
+
+  # 1. scripts/defectdojo-configure.sh
+  curlrc_reset
+  tokfile="${PROOF_DIR}/curlrc-configure.token"
+  curlrc_new_token "$tokfile"
+  run_body "curlrc-configure" "${REPO_ROOT}/scripts/defectdojo-configure.sh" \
+    "DEFECTDOJO_URL=${url}" \
+    "DEFECTDOJO_ADMIN_TOKEN_FILE=${tokfile}" \
+    "DEFECTDOJO_CA_FILE=" \
+    "DEFECTDOJO_RESOLVE=${resolve}" \
+    "CURL_HOME=${CURLRC_HOME}"
+  curlrc_show_log
+  assert_curlrc_refused "configure" '^(NO CHANGE|CHANGED:|VERIFIED:)'
+  rm -f "$tokfile"
+
+  # 2. scripts/defectdojo-lifecycle-assert.sh (D-12). run_body passes no argv,
+  # so a 0600 one-line wrapper supplies the snapshot flags usage() requires.
+  # The first API call fails, which aborts with exit 1.
+  curlrc_reset
+  tokfile="${PROOF_DIR}/curlrc-lifecycle.token"
+  curlrc_new_token "$tokfile"
+  local lc_out="${PROOF_DIR}/curlrc-lifecycle-out" lc_wrap="${PROOF_DIR}/curlrc-lifecycle.sh"
+  mkdir -p "$lc_out"
+  printf 'exec bash %q snapshot --product p-curlrc --out %q --engagement ci/main --label curlrc\n' \
+    "${REPO_ROOT}/scripts/defectdojo-lifecycle-assert.sh" "$lc_out" > "$lc_wrap"
+  chmod 600 "$lc_wrap"
+  run_body "curlrc-lifecycle" "$lc_wrap" \
+    "DEFECTDOJO_URL=${url}" \
+    "DEFECTDOJO_ADMIN_TOKEN_FILE=${tokfile}" \
+    "DEFECTDOJO_RESOLVE=${resolve}" \
+    "CURL_HOME=${CURLRC_HOME}"
+  curlrc_show_log
+  assert_curlrc_refused "lifecycle" ': PASS -|ALL PASS|^snapshot '
+  rm -f "$tokfile"
+
+  # 3. scripts/defectdojo-homelab-validate.sh (D-17). A nonexistent --context
+  # and an empty KUBECONFIG under PROOF_DIR make every kubectl call fail fast,
+  # so kubectl never reads the operator's config (or, under --hook, the live
+  # kind context) and the admin password is never read or POSTed. --write-state
+  # still drives measure_count, the token GET. It gets NO DEFECTDOJO_RESOLVE
+  # hook (operators run it against real DNS); the harness reaches the listener
+  # by IP. openssl s_client in check_tls may complete a handshake (a CONNECT
+  # without a request), so the assertion is HANDSHAKE-FAIL >= 1 and REQUEST == 0.
+  curlrc_reset
+  tokfile="${PROOF_DIR}/curlrc-homelab.token"
+  curlrc_new_token "$tokfile"
+  local hl_wrap="${PROOF_DIR}/curlrc-homelab.sh" hl_kubeconfig="${PROOF_DIR}/curlrc-empty-kubeconfig"
+  local hl_url="https://127.0.0.1:${CURLRC_PORT}"
+  : > "$hl_kubeconfig"
+  chmod 600 "$hl_kubeconfig"
+  printf 'exec bash %q --url %q --alt-url %q --context p-curlrc-no-such-context --namespace p-curlrc --app p-curlrc --sync-pass first --write-state %q --token-file %q\n' \
+    "${REPO_ROOT}/scripts/defectdojo-homelab-validate.sh" "$hl_url" "$hl_url" \
+    "${PROOF_DIR}/curlrc-homelab-state.json" "$tokfile" > "$hl_wrap"
+  chmod 600 "$hl_wrap"
+  run_body "curlrc-homelab" "$hl_wrap" \
+    "KUBECONFIG=${hl_kubeconfig}" \
+    "CURL_HOME=${CURLRC_HOME}" \
+    "DEFECTDOJO_RESOLVE="
+  curlrc_show_log
+  assert_curlrc_refused "homelab-tls-probe" ': PASS -|ALL PASS|NOTHING RAN'
+  if ! command -v kubectl >/dev/null 2>&1; then
+    proof_skip "P-CURLRC" "homelab-token-get: kubectl not on PATH, measure_count unreachable"
+  else
+    extra=""
+    grep -F 'GET /api/v2/products/?limit=1' "$BODY_LOG" | grep -q 'TLS verification result' \
+      || extra="${extra} no failure line naming GET /api/v2/products/?limit=1 together with 'TLS verification result';"
+    if grep -q '^REQUEST [A-Z]* /api/v2/products/' "$CURLRC_LOG"; then
+      extra="${extra} the token GET reached the listener ($(grep -m1 '^REQUEST [A-Z]* /api/v2/products/' "$CURLRC_LOG"));"
+    fi
+    if grep -qF -- "$CURLRC_TOK" "$BODY_LOG"; then extra="${extra} the dummy token appears in the log;"; fi
+    curlrc_counts
+    if [ -z "$extra" ]; then
+      proof_pass "P-CURLRC" "homelab-token-get: the measure_count token GET was refused on TLS verification before any request (${CURLRC_COUNTS})"
+    else
+      proof_fail "P-CURLRC" "homelab-token-get:${extra} [${CURLRC_COUNTS}]"
+    fi
+  fi
+  rm -f "$tokfile"
+
+  # 4. committed dd-import body (extracted, never a copy). Two reports: the
+  # import loop must stop at the first TLS failure, so exactly one CONNECT.
+  curlrc_reset
+  tokfile="${PROOF_DIR}/curlrc-dd-import.token"
+  curlrc_new_token "$tokfile"
+  res="${PROOF_DIR}/results-curlrc-dd-import.json"
+  rm -f "$res"
+  run_body "curlrc-dd-import" "${bodies}/defectdojo-import__dd-import.sh" \
+    "DD_URL=${url}" \
+    "DD_TOKEN=${CURLRC_TOK}" \
+    "DD_PRODUCT=${PROOF_PRODUCT}" \
+    "DD_PRODUCT_TYPE=${PROOF_PRODUCT_TYPE}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=" \
+    "DD_REPORTS_DIR=${reports}" \
+    "DD_RESULTS_FILE=${res}" \
+    "GITHUB_ACTOR=proof-actor" \
+    "GITHUB_EVENT_NAME=pull_request" \
+    "GITHUB_HEAD_REF=${PROOF_BRANCH_A}" \
+    "GITHUB_REF_NAME=27/merge" \
+    "GITHUB_SHA=${PROOF_SHA}" \
+    "GITHUB_RUN_ID=${PROOF_RUN_ID}" \
+    "GITHUB_SERVER_URL=${PROOF_SERVER_URL}" \
+    "GITHUB_REPOSITORY=${PROOF_REPOSITORY}" \
+    "DEFECTDOJO_RESOLVE=${resolve}" \
+    "CURL_HOME=${CURLRC_HOME}"
+  curlrc_show_log
+  curlrc_counts
+  extra=""
+  [ "$CURLRC_C" -eq 1 ] || extra=" ${CURLRC_C} CONNECT lines (expected exactly 1: the loop must stop at the first TLS failure);"
+  assert_curlrc_refused "dd-import" '^IMPORTED:|http=201' "$extra"
+  rm -f "$tokfile" "$res"
+
+  # 5. committed dd-delete body. DD_DEFAULT_BRANCH and GITHUB_HEAD_REF differ,
+  # so the body reaches curl instead of finish("refused") with exit 0.
+  curlrc_reset
+  tokfile="${PROOF_DIR}/curlrc-dd-delete.token"
+  curlrc_new_token "$tokfile"
+  res="${PROOF_DIR}/results-curlrc-dd-delete.json"
+  rm -f "$res"
+  run_body "curlrc-dd-delete" "${bodies}/defectdojo-cleanup__dd-delete.sh" \
+    "DD_URL=${url}" \
+    "DD_TOKEN=${CURLRC_TOK}" \
+    "DD_PRODUCT=${PROOF_PRODUCT}" \
+    "DD_INSECURE=" \
+    "DD_CA_CERT=" \
+    "DD_DEFAULT_BRANCH=${PROOF_DEFAULT_BRANCH}" \
+    "DD_CLEANUP_RESULT_FILE=${res}" \
+    "GITHUB_HEAD_REF=${PROOF_BRANCH_A}" \
+    "DEFECTDOJO_RESOLVE=${resolve}" \
+    "CURL_HOME=${CURLRC_HOME}"
+  curlrc_show_log
+  assert_curlrc_refused "dd-delete" '^DELETED:|^NOTHING TO DELETE'
+  rm -f "$tokfile" "$res"
+
+  # 6. Preflight guard cases (P-CONFIGURE-GUARD, P-RESOLVE-GUARD, P-TOKEN-GUARD).
+  prove_guard_refusal "$bodies" "$reports" "$url" "$resolve"
+
+  curlrc_reset
+  curlrc_fixture_down
+}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Phase 28 (28-03): dedup and triage helpers, --hook only
 # ─────────────────────────────────────────────────────────────────────────────
 
 # write_dedup_py PATH: the Phase 28 read-side script (admin token, --cacert,
-# the CURL_HOME resolve entry; the same transport as write_read_py). Inputs
+# curl -q and --resolve DEFECTDOJO_RESOLVE; the same transport as write_read_py). Inputs
 # come from the environment only. Unlike write_read_py it pages list reads
 # with an explicit limit=250&offset=N until it holds `count` rows, and never
 # follows the returned `next` URL. It never defaults a missing field: a
@@ -776,8 +1577,10 @@ def get(path, params=None):
     url = base + path
     if params:
         url += "?" + urllib.parse.urlencode(params)
-    cmd = ["curl", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
+    cmd = ["curl", "-q", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
            "-w", "%{http_code} %{ssl_verify_result}", url]
+    if os.environ.get("DEFECTDOJO_RESOLVE"):
+        cmd += ["--resolve", os.environ["DEFECTDOJO_RESOLVE"]]
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     code, _, verify = (proc.stdout or "000 -").strip().partition(" ")
     body = ""
@@ -2063,11 +2866,14 @@ PY
 # --scheme-only (offline P-HTTP; no cluster, no network)
 # ─────────────────────────────────────────────────────────────────────────────
 mode_scheme_only() {
-  require_bins jq yq python3
+  require_bins curl jq openssl yq python3
   umask 077
   DD_SMOKE_OUT="$(mktemp -d)"
-  # shellcheck disable=SC2064  # expand now: the path is fixed for this run
-  trap "rm -rf '${DD_SMOKE_OUT}'" EXIT
+  # One trap only (a second would replace it). DD_SMOKE_OUT expands now (the
+  # path is fixed for this run); \$LISTENER_PID is escaped so it is read at
+  # trap time, and a P-CURLRC listener still running at exit is stopped first.
+  # shellcheck disable=SC2064
+  trap "if [ -n \"\${LISTENER_PID:-}\" ]; then kill \"\$LISTENER_PID\" 2>/dev/null || true; fi; rm -rf '${DD_SMOKE_OUT}'" EXIT
   PROOF_DIR="${DD_SMOKE_OUT}/proof"
   mkdir -p "$PROOF_DIR"
   local bodies="${PROOF_DIR}/bodies" reports="${PROOF_DIR}/reports" ex_rc=0
@@ -2080,6 +2886,7 @@ mode_scheme_only() {
   printf '{}\n' > "${reports}/semgrep-results.json"
   printf '{}\n' > "${reports}/checkov-results.json"
   prove_http_refusal "$bodies" "$reports"
+  prove_curlrc_refusal "$bodies" "$reports"
   proof_finish
 }
 
@@ -2091,7 +2898,7 @@ mode_hook() {
       exit 2
     fi
   done
-  require_bins curl jq yq python3
+  require_bins curl jq openssl yq python3
   for v in "$DD_CA_FILE" "$DD_ADMIN_PW_FILE"; do
     if [ ! -s "$v" ]; then
       echo "FATAL: --hook: ${v} is missing or empty" >&2
@@ -2127,21 +2934,47 @@ mode_hook() {
   local b_cleanup_verify="${bodies}/defectdojo-cleanup__dd-cleanup-verify.sh"
 
   # ── P-TLS ─────────────────────────────────────────────────────────────────
+  # D-09 (Phase 28 CR-01): the global curlrc is deliberately hostile, so every
+  # live P-CONFIGURE, P-IDEMPOTENT, import and cleanup run is a curlrc test.
+  # Every DefectDojo client and harness helper passes -q and never reads it;
+  # host resolution comes from DEFECTDOJO_RESOLVE (inherited by every
+  # run_body subshell). There is no resolve line on purpose: a missed
+  # --resolve fails DNS for the smoke host instead of passing silently. The
+  # trace/libcurl names start with curlrc-global- so P-CURLRC's control, which
+  # writes p-curlrc-* files under its own CURL_HOME, never erases them
+  # (Pitfall 8); the end of this mode proves they were never created.
   local curlhome="${DD_SMOKE_OUT}/curlhome"
+  local global_trace="${DD_SMOKE_OUT}/curlrc-global-trace.txt"
+  local global_libcurl="${DD_SMOKE_OUT}/curlrc-global-libcurl.c"
   mkdir -p "$curlhome"
-  printf 'resolve = "%s:%s:127.0.0.1"\n' "$SMOKE_HOST" "$PF_PORT" > "${curlhome}/.curlrc"
-  export CURL_HOME="$curlhome"
-  if [ "$(wc -l < "${curlhome}/.curlrc" | tr -d ' ')" != "1" ] || grep -qiE 'insecure|(^|[[:space:]])-k' "${curlhome}/.curlrc"; then
-    proof_abort "P-TLS" "the curlrc must hold exactly one resolve line and nothing that disables verification"
+  if ! gen_throwaway_cert "$curlhome" "$SMOKE_HOST"; then
+    proof_abort "P-TLS" "openssl req -x509 -config did not produce the throwaway cert.pem for the hostile curlrc"
   fi
+  {
+    printf 'insecure\n'
+    printf 'verbose\n'
+    printf 'trace-ascii = "%s"\n' "$global_trace"
+    printf 'libcurl = "%s"\n' "$global_libcurl"
+    printf 'cacert = "%s"\n' "${curlhome}/cert.pem"
+    printf 'location\n'
+    printf 'location-trusted\n'
+  } > "${curlhome}/.curlrc"
+  export CURL_HOME="$curlhome"
+  export DEFECTDOJO_RESOLVE="${SMOKE_HOST}:${PF_PORT}:127.0.0.1"
+  local directive
+  for directive in '^insecure$' '^verbose$' '^trace-ascii = ' '^libcurl = ' '^cacert = ' '^location-trusted$'; do
+    if ! grep -qE "$directive" "${curlhome}/.curlrc" || grep -qE '^[[:space:]]*-?-?resolve' "${curlhome}/.curlrc"; then
+      proof_abort "P-TLS" "the CURL_HOME curlrc must be hostile (insecure, verbose, trace-ascii, libcurl, cacert, location-trusted) and hold no resolve line"
+    fi
+  done
   local rc=0 out code verify
-  out="$(api_call "${PROOF_DIR}/api-root.json" "${BASE_URL}/api/v2/" 2>"${PROOF_DIR}/api-root.err")" || rc=$?
+  out="$(api_call "${PROOF_DIR}/api-root.json" "${BASE_URL}/api/v2/" 2>/dev/null)" || rc=$?
   code="${out%% *}"
   verify="${out##* }"
   if [ "$rc" -ne 0 ] || [ "$verify" != "0" ] || [ "$code" = "000" ]; then
-    proof_abort "P-TLS" "GET ${BASE_URL}/api/v2/ via CURL_HOME resolve: curl exit ${rc} (60 = verification failed), http ${code:-none}, ssl_verify_result ${verify:-none}: $(tr '\n' ' ' < "${PROOF_DIR}/api-root.err")"
+    proof_abort "P-TLS" "GET ${BASE_URL}/api/v2/ with -q and --resolve DEFECTDOJO_RESOLVE: curl exit ${rc} (60 = verification failed, 6 = host not resolved), http ${code:-none}, ssl_verify_result ${verify:-none}"
   fi
-  proof_pass "P-TLS" "GET ${BASE_URL}/api/v2/ -> http ${code}, ssl_verify_result 0 against the kind CA; host resolved by the CURL_HOME curlrc"
+  proof_pass "P-TLS" "GET ${BASE_URL}/api/v2/ -> http ${code}, ssl_verify_result 0 against the kind CA; host resolved by DEFECTDOJO_RESOLVE; the hostile CURL_HOME curlrc was ignored"
 
   # ── P-ADMIN-TOKEN ─────────────────────────────────────────────────────────
   local admin_tok="${PROOF_DIR}/admin.token" admin_hdr="${PROOF_DIR}/admin.hdr"
@@ -2260,8 +3093,8 @@ mode_hook() {
   fi
 
   # ── P-CONTEXT / P-TESTS / P-COUNTS ────────────────────────────────────────
-  # Read side, admin token. Stdlib Python; curl for transport so the same
-  # CURL_HOME resolve entry and --cacert apply. Each assertion is printed as a
+  # Read side, admin token. Stdlib Python; curl -q for transport so the same
+  # --resolve DEFECTDOJO_RESOLVE and --cacert apply. Each assertion is printed as a
   # "PROOF: <ID> PASS|FAIL" line and tallied below.
   local assert_log="${PROOF_DIR}/assert-run1.log" py_rc=0
   # PROOF_PRODUCT / PROOF_PRODUCT_TYPE are readonly, and bash refuses a
@@ -2306,8 +3139,10 @@ class ApiError(Exception):
 
 def get(path, params, count_only=False):
     url = "{}{}?{}".format(base, path, urllib.parse.urlencode(params))
-    cmd = ["curl", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
+    cmd = ["curl", "-q", "-sS", "--cacert", ca, "-H", "@" + hdr, "-o", resp_path,
            "-w", "%{http_code} %{ssl_verify_result}", url]
+    if os.environ.get("DEFECTDOJO_RESOLVE"):
+        cmd += ["--resolve", os.environ["DEFECTDOJO_RESOLVE"]]
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     code, _, verify = (proc.stdout or "000 -").strip().partition(" ")
     body = ""
@@ -2886,7 +3721,8 @@ PY
     "GITHUB_SHA=${PROOF_SHA}" \
     "GITHUB_RUN_ID=${PROOF_RUN_ID}" \
     "GITHUB_SERVER_URL=${PROOF_SERVER_URL}" \
-    "GITHUB_REPOSITORY=${PROOF_REPOSITORY}"
+    "GITHUB_REPOSITORY=${PROOF_REPOSITORY}" \
+    "DEFECTDOJO_RESOLVE="
   sed -e 's/^/    | /' "$BODY_LOG"
   insecure_state="$(jq -r '"\(.tls_mode) attempted=\(.attempted | length) skipped=\(.skipped | length)"' "$results_insecure" 2>/dev/null || echo "no-result-file")"
   if [ "$BODY_RC" -eq 0 ] && grep -q '::warning::' "$BODY_LOG" && grep -q 'TLS verification is OFF' "$BODY_LOG" \
@@ -2898,10 +3734,28 @@ PY
 
   # ── P-HTTP (27-11, CR-01) ─────────────────────────────────────────────────
   prove_http_refusal "$bodies" "$DD_PROOF_REPORTS"
+  # ── P-CURLRC (29.2, Phase 28 CR-01) ───────────────────────────────────────
+  prove_curlrc_refusal "$bodies" "$DD_PROOF_REPORTS"
 
   # ── Phase 28: dedup and triage (28-03) ────────────────────────────────────
   # After every Phase 27 assertion, which all ran with dedup still off.
   prove_dedup_triage "$bodies" "$admin_hdr" "$importer_tok" "$ca_pem"
+
+  # ── P-TLS (final): the hostile global curlrc was never read ───────────────
+  # D-09 / D-04 live: any curl on the live path (bodies, configure, harness
+  # helpers) that read the global curlrc would have created these files. Only
+  # the size is reported, never the content: it would hold the token.
+  local leaked=""
+  for v in "$global_trace" "$global_libcurl"; do
+    if [ -e "$v" ]; then
+      leaked="${leaked} ${v##*/} exists ($(wc -c < "$v" | tr -d ' ') bytes);"
+    fi
+  done
+  if [ -z "$leaked" ]; then
+    proof_pass "P-TLS" "no curl in the live run read the hostile curlrc: curlrc-global-trace.txt and curlrc-global-libcurl.c were never created"
+  else
+    proof_fail "P-TLS" "a curl in the live run read the hostile CURL_HOME curlrc:${leaked}"
+  fi
 
   proof_finish
 }
