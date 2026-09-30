@@ -116,6 +116,23 @@ set -euo pipefail
 # state file holds no credential, `set -x` is never enabled anywhere in this
 # file, and the EXIT trap removes the temp directory.
 #
+# CURL CONFIG (ADR-029, Phase 28 CR-01). Every curl call (the TLS probe, the
+# login-form GET, the login POST that carries the admin password, the dashboard
+# GET, the foreign-Origin POST and the API token GET) passes -q as its first
+# argument, so the operator's curlrc (~/.curlrc, $CURL_HOME/.curlrc,
+# $XDG_CONFIG_HOME/.curlrc) is ignored: an ambient `insecure`, `cacert`,
+# `verbose` or `location-trusted` line cannot weaken TLS or leak a credential.
+# Every request must end with curl exit 0 AND ssl_verify_result 0 before its
+# HTTP code is judged; otherwise the check fails (a failed token GET is the
+# HOMELAB-API-TLS check, and the token is not sent again). curl stderr is
+# discarded and never printed: failure lines carry the URL or path, the curl
+# exit, the HTTP code, the TLS verification result and curl's own %{errormsg}.
+# --token-file must be a regular readable file holding one bare DefectDojo API
+# token: 40 lowercase hex characters on one line (one trailing CR/LF allowed),
+# no "Token " prefix; anything else is exit 2 before any connection. There is
+# deliberately no host-resolution hook (no DEFECTDOJO_RESOLVE): operators run
+# this gate against real DNS, and --url/--alt-url name two hosts.
+#
 # No hostname, address, apex domain or kube-context name appears anywhere in
 # this file: every one of them is a runtime argument.
 
@@ -283,8 +300,8 @@ fi
 if [[ -n "$PRE_STATE" && ! -r "$PRE_STATE" ]]; then
   usage_error "--pre-state file '${PRE_STATE}' does not exist or is not readable"
 fi
-if [[ -n "$TOKEN_FILE" && ! -r "$TOKEN_FILE" ]]; then
-  usage_error "--token-file '${TOKEN_FILE}' does not exist or is not readable"
+if [[ -n "$TOKEN_FILE" && ( ! -f "$TOKEN_FILE" || ! -r "$TOKEN_FILE" ) ]]; then
+  usage_error "--token-file '${TOKEN_FILE}' does not exist or is not a readable regular file"
 fi
 
 # URL -> host[:port] for Origin/Referer, bare host for SNI and the SAN check,
@@ -419,14 +436,17 @@ if ! command -v kubectl &>/dev/null; then
 fi
 
 # The API token, as a curl header FILE (mode 0600). `$(< file)` strips trailing
-# newlines; printf is a shell builtin, so the token never reaches an argv.
+# newlines; one trailing CR is stripped, and what remains must be one 40-hex
+# token, so a second line or a "Token " prefix is refused (exit 2) before any
+# connection. printf is a shell builtin, so the token never reaches an argv.
 AUTH_HDR=""
 if [[ -n "$TOKEN_FILE" ]]; then
   AUTH_HDR="$OUT/auth-hdr"
-  token_val="$(tr -d '\r\n' < "$TOKEN_FILE")"
-  if [[ -z "$token_val" ]]; then
-    echo "ERROR: --token-file '${TOKEN_FILE}' is empty" >&2
-    exit 2
+  token_val="$(< "$TOKEN_FILE")"
+  token_val="${token_val%$'\r'}"
+  if [[ ! "$token_val" =~ ^[0-9a-f]{40}$ ]]; then
+    unset token_val
+    usage_error "--token-file '${TOKEN_FILE}' must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix"
   fi
   ( umask 077; printf 'Authorization: Token %s\n' "$token_val" > "$AUTH_HDR" )
   unset token_val
@@ -454,18 +474,17 @@ echo
 echo "--- 1. TLS on both hostnames (system trust store) ---"
 check_tls() {
   local id="$1" url="$2" host="$3" hostport="$4"
-  local tls_rc=0 tls_out="" tls_code="" tls_verify="" cert_rc=0 connect="$hostport"
+  local tls_rc=0 tls_out="" tls_code="" tls_verify="" tls_emsg="" cert_rc=0 connect="$hostport"
   if [[ "$connect" != *:* ]]; then
     connect="${connect}:443"
   fi
-  tls_out="$(curl -sS --proto =https -o /dev/null -w '%{http_code} %{ssl_verify_result}' "${url}/login" 2>"$OUT/${id}.err")" || tls_rc=$?
-  tls_code="${tls_out%% *}"
-  tls_verify="${tls_out##* }"
+  tls_out="$(curl -q -sS --proto =https -o /dev/null -w '%{http_code}|%{ssl_verify_result}|%{errormsg}' "${url}/login" 2>/dev/null)" || tls_rc=$?
+  IFS='|' read -r tls_code tls_verify tls_emsg <<< "$tls_out"
   openssl s_client -connect "$connect" -servername "$host" </dev/null 2>/dev/null \
     | openssl x509 -noout -ext subjectAltName > "$OUT/${id}-san.txt" 2>&1 || cert_rc=$?
-  if [ "$tls_rc" -ne 0 ]; then
-    fail "$id" "curl against ${url}/login exited ${tls_rc} (60 = certificate did not verify against the system trust store): $(tr '\n' ' ' < "$OUT/${id}.err")"
-  elif [ "$tls_code" != "200" ] || [ "$tls_verify" != "0" ]; then
+  if [ "$tls_rc" -ne 0 ] || [ "$tls_verify" != "0" ]; then
+    fail "$id" "GET ${url}/login: curl exit ${tls_rc}, http ${tls_code:-none}, TLS verification result ${tls_verify:-none} (must be 0; curl exit 60 = certificate did not verify against the system trust store): ${tls_emsg}"
+  elif [ "$tls_code" != "200" ]; then
     fail "$id" "GET ${url}/login returned http_code ${tls_code}, ssl_verify_result ${tls_verify}; expected '200 0'"
   elif [ "$cert_rc" -ne 0 ]; then
     fail "$id" "could not read the subjectAltName of the certificate served at ${connect} (SNI ${host}) with openssl (exit ${cert_rc}): $(tr '\n' ' ' < "$OUT/${id}-san.txt" | cut -c1-300)"
@@ -513,16 +532,19 @@ fi
 FORM_ERR=""
 FORM_TOKEN=""
 get_login_form() {
-  local url="$1" jar="$2" tag="$3" get_rc=0 get_code=""
+  local url="$1" jar="$2" tag="$3" get_rc=0 get_out="" get_code="" get_verify="" get_emsg=""
   FORM_ERR=""
   FORM_TOKEN=""
-  get_code="$(curl -sS --proto =https -c "$jar" -o "$OUT/${tag}-form.html" -w '%{http_code}' "${url}/login" 2>"$OUT/${tag}-get.err")" || get_rc=$?
+  get_out="$(curl -q -sS --proto =https -c "$jar" -o "$OUT/${tag}-form.html" -w '%{http_code}|%{ssl_verify_result}|%{errormsg}' "${url}/login" 2>/dev/null)" || get_rc=$?
+  IFS='|' read -r get_code get_verify get_emsg <<< "$get_out"
   if [ -f "$OUT/${tag}-form.html" ]; then
     FORM_TOKEN="$(sed -n 's/.*name="csrfmiddlewaretoken" value="\([^"]*\)".*/\1/p' "$OUT/${tag}-form.html")"
   fi
   FORM_TOKEN="${FORM_TOKEN%%$'\n'*}"
-  if [ "$get_rc" -ne 0 ] || [ "$get_code" != "200" ]; then
-    FORM_ERR="GET ${url}/login for the CSRF token returned http_code ${get_code:-none} (curl exit ${get_rc}): $(tr '\n' ' ' < "$OUT/${tag}-get.err")"
+  if [ "$get_rc" -ne 0 ] || [ "$get_verify" != "0" ]; then
+    FORM_ERR="GET ${url}/login for the CSRF token: curl exit ${get_rc}, http ${get_code:-none}, TLS verification result ${get_verify:-none} (must be 0): ${get_emsg}"
+  elif [ "$get_code" != "200" ]; then
+    FORM_ERR="GET ${url}/login for the CSRF token returned http_code ${get_code:-none}"
   elif [ -z "$FORM_TOKEN" ]; then
     FORM_ERR="the ${url}/login form carries no csrfmiddlewaretoken hidden field"
   elif ! grep -q 'csrftoken' "$jar"; then
@@ -549,7 +571,8 @@ csrf_reason_from_body() {
 echo "--- 2. admin login with a browser-equivalent Origin, on both hostnames ---"
 check_login_origin() {
   local id="$1" url="$2" hostport="$3"
-  local jar="$OUT/${id}-cookies.txt" post_rc=0 post_out="" post_code="" post_location="" reason="" dash_rc=0 dash_code=""
+  local jar="$OUT/${id}-cookies.txt" post_rc=0 post_out="" post_code="" post_verify="" post_location="" post_emsg="" reason=""
+  local dash_rc=0 dash_out="" dash_code="" dash_verify="" dash_emsg=""
   if [ "$KUBECTL_OK" -ne 1 ]; then
     return 0
   fi
@@ -562,17 +585,16 @@ check_login_origin() {
     fail "$id" "$FORM_ERR"
     return 0
   fi
-  post_out="$(curl -sS --proto =https -b "$jar" -c "$jar" \
+  post_out="$(curl -q -sS --proto =https -b "$jar" -c "$jar" \
     -H "Origin: https://${hostport}" \
     -H "Referer: https://${hostport}/login" \
     --data-urlencode "username=admin" \
     --data-urlencode "password@${ADMIN_PW_FILE}" \
     --data-urlencode "csrfmiddlewaretoken=${FORM_TOKEN}" \
-    -o "$OUT/${id}-post.html" -w '%{http_code} %{redirect_url}' "${url}/login" 2>"$OUT/${id}-post.err")" || post_rc=$?
-  post_code="${post_out%% *}"
-  post_location="${post_out#* }"
-  if [ "$post_rc" -ne 0 ]; then
-    fail "$id" "login POST: curl exited ${post_rc}: $(tr '\n' ' ' < "$OUT/${id}-post.err")"
+    -o "$OUT/${id}-post.html" -w '%{http_code}|%{ssl_verify_result}|%{redirect_url}|%{errormsg}' "${url}/login" 2>/dev/null)" || post_rc=$?
+  IFS='|' read -r post_code post_verify post_location post_emsg <<< "$post_out"
+  if [ "$post_rc" -ne 0 ] || [ "$post_verify" != "0" ]; then
+    fail "$id" "login POST ${url}/login: curl exit ${post_rc}, http ${post_code:-none}, TLS verification result ${post_verify:-none} (must be 0): ${post_emsg}"
   elif [ "$post_code" = "403" ]; then
     reason="$(csrf_reason_from_body "$OUT/${id}-post.html")"
     fail "$id" "login POST with Origin https://${hostport} returned 403, the browser-login failure D-05 exists to fix (is https://${hostport} in DD_CSRF_TRUSTED_ORIGINS?): ${reason}"
@@ -581,9 +603,10 @@ check_login_origin() {
   elif printf '%s' "$post_location" | grep -q '/login$'; then
     fail "$id" "login POST redirected back to the login page (${post_location}); the session was not established"
   else
-    dash_code="$(curl -sS --proto =https -b "$jar" -o /dev/null -w '%{http_code}' "${url}/dashboard" 2>"$OUT/${id}-dash.err")" || dash_rc=$?
-    if [ "$dash_rc" -ne 0 ]; then
-      fail "$id" "GET ${url}/dashboard: curl exited ${dash_rc}: $(tr '\n' ' ' < "$OUT/${id}-dash.err")"
+    dash_out="$(curl -q -sS --proto =https -b "$jar" -o /dev/null -w '%{http_code}|%{ssl_verify_result}|%{errormsg}' "${url}/dashboard" 2>/dev/null)" || dash_rc=$?
+    IFS='|' read -r dash_code dash_verify dash_emsg <<< "$dash_out"
+    if [ "$dash_rc" -ne 0 ] || [ "$dash_verify" != "0" ]; then
+      fail "$id" "GET ${url}/dashboard: curl exit ${dash_rc}, http ${dash_code:-none}, TLS verification result ${dash_verify:-none} (must be 0): ${dash_emsg}"
     elif [ "$dash_code" != "200" ]; then
       fail "$id" "login POST gave 302 but GET ${url}/dashboard with the session returned ${dash_code}, expected 200"
     else
@@ -607,7 +630,7 @@ echo "--- 3. negative control: foreign Origin must be refused ---"
 FOREIGN_ORIGIN="https://evil.example"
 check_csrf_foreign() {
   local id="HOMELAB-CSRF-FOREIGN-403" jar="$OUT/foreign-cookies.txt"
-  local post_rc=0 post_code="" pw_args=() log_rc=0 attributed=""
+  local post_rc=0 post_out="" post_code="" post_verify="" post_emsg="" pw_args=() log_rc=0 attributed=""
   get_login_form "$PRIMARY_URL" "$jar" "foreign"
   if [ -n "$FORM_ERR" ]; then
     fail "$id" "$FORM_ERR"
@@ -619,15 +642,16 @@ check_csrf_foreign() {
   if [ "$ADMIN_PW_OK" -eq 1 ]; then
     pw_args=(--data-urlencode "password@${ADMIN_PW_FILE}")
   fi
-  post_code="$(curl -sS --proto =https -b "$jar" -c "$jar" \
+  post_out="$(curl -q -sS --proto =https -b "$jar" -c "$jar" \
     -H "Origin: https://evil.example" \
     -H "Referer: https://${PRIMARY_HOSTPORT}/login" \
     --data-urlencode "username=admin" \
     ${pw_args[@]+"${pw_args[@]}"} \
     --data-urlencode "csrfmiddlewaretoken=${FORM_TOKEN}" \
-    -o "$OUT/foreign-post.html" -w '%{http_code}' "${PRIMARY_URL}/login" 2>"$OUT/foreign-post.err")" || post_rc=$?
-  if [ "$post_rc" -ne 0 ]; then
-    fail "$id" "foreign-Origin POST: curl exited ${post_rc}: $(tr '\n' ' ' < "$OUT/foreign-post.err")"
+    -o "$OUT/foreign-post.html" -w '%{http_code}|%{ssl_verify_result}|%{errormsg}' "${PRIMARY_URL}/login" 2>/dev/null)" || post_rc=$?
+  IFS='|' read -r post_code post_verify post_emsg <<< "$post_out"
+  if [ "$post_rc" -ne 0 ] || [ "$post_verify" != "0" ]; then
+    fail "$id" "foreign-Origin POST ${PRIMARY_URL}/login: curl exit ${post_rc}, http ${post_code:-none}, TLS verification result ${post_verify:-none} (must be 0): ${post_emsg}"
     return 0
   fi
   if [ "$post_code" = "302" ]; then
@@ -798,11 +822,23 @@ measure_uid() {
     UID_VAL=""
   fi
 }
+# A transport failure (curl exit != 0 or ssl_verify_result != 0) is a failed
+# check, HOMELAB-API-TLS, not a measurement gap: it may mean the token was about
+# to go to an unverified peer. It sets API_TLS_FAILED so measure_state does not
+# send the token to the same peer again.
+API_TLS_FAILED=0
 measure_count() {
-  local path="$1" tag="$2" rc=0 code=""
+  local path="$1" tag="$2" rc=0 out="" code="" verify="" emsg=""
   COUNT_VAL="null"
-  code="$(curl -sS --proto =https -H @"$AUTH_HDR" -o "$OUT/${tag}.json" -w '%{http_code}' "${PRIMARY_URL}${path}" 2>"$OUT/${tag}.err")" || rc=$?
-  if [ "$rc" -ne 0 ] || [ "$code" != "200" ]; then
+  out="$(curl -q -sS --proto =https -H @"$AUTH_HDR" -o "$OUT/${tag}.json" -w '%{http_code}|%{ssl_verify_result}|%{errormsg}' "${PRIMARY_URL}${path}" 2>/dev/null)" || rc=$?
+  IFS='|' read -r code verify emsg <<< "$out"
+  if [ "$rc" -ne 0 ] || [ "$verify" != "0" ]; then
+    API_TLS_FAILED=1
+    fail "HOMELAB-API-TLS" "GET ${path}: curl exit ${rc}, http ${code:-none}, TLS verification result ${verify:-none} (must be 0): ${emsg}"
+    MEAS_ERRORS+=("GET ${path}: transport failure (see HOMELAB-API-TLS)")
+    return 0
+  fi
+  if [ "$code" != "200" ]; then
     MEAS_ERRORS+=("GET ${path}: http_code ${code:-none} (curl exit ${rc})")
     return 0
   fi
@@ -829,8 +865,13 @@ measure_state() {
   if [ -n "$AUTH_HDR" ]; then
     measure_count '/api/v2/products/?limit=1' products
     MEAS_PRODUCTS="$COUNT_VAL"
-    measure_count '/api/v2/findings/?limit=1' findings
-    MEAS_FINDINGS="$COUNT_VAL"
+    if [ "$API_TLS_FAILED" -eq 1 ]; then
+      MEAS_FINDINGS="null"
+      MEAS_ERRORS+=("GET /api/v2/findings/?limit=1: not attempted after HOMELAB-API-TLS (the token is not sent to the same peer again)")
+    else
+      measure_count '/api/v2/findings/?limit=1' findings
+      MEAS_FINDINGS="$COUNT_VAL"
+    fi
   else
     MEAS_PRODUCTS="null"
     MEAS_FINDINGS="null"
