@@ -120,7 +120,7 @@ set -euo pipefail
 # login-form GET, the login POST that carries the admin password, the dashboard
 # GET, the foreign-Origin POST and the API token GET) passes -q as its first
 # argument, so the operator's curlrc (~/.curlrc, $CURL_HOME/.curlrc,
-# $XDG_CONFIG_HOME/.curlrc) is ignored: an ambient `insecure`, `cacert`,
+# $XDG_CONFIG_HOME/curlrc) is ignored: an ambient `insecure`, `cacert`,
 # `verbose` or `location-trusted` line cannot weaken TLS or leak a credential.
 # Every request must end with curl exit 0 AND ssl_verify_result 0 before its
 # HTTP code is judged; otherwise the check fails (a failed token GET is the
@@ -128,8 +128,9 @@ set -euo pipefail
 # discarded and never printed: failure lines carry the URL or path, the curl
 # exit, the HTTP code, the TLS verification result and curl's own %{errormsg}.
 # --token-file must be a regular readable file holding one bare DefectDojo API
-# token: 40 lowercase hex characters on one line (one trailing CR/LF allowed),
-# no "Token " prefix; anything else is exit 2 before any connection. There is
+# token: 40 lowercase hex characters on one line (at most one trailing LF or
+# CRLF allowed; blank lines, a bare CR or NUL bytes are refused), no "Token "
+# prefix; anything else is exit 2 before any connection. There is
 # deliberately no host-resolution hook (no DEFECTDOJO_RESOLVE): operators run
 # this gate against real DNS, and --url/--alt-url name two hosts.
 #
@@ -435,16 +436,41 @@ if ! command -v kubectl &>/dev/null; then
   SKIPPED+=("cluster-side checks (HOMELAB-LOGIN-ORIGIN-INFRA, HOMELAB-LOGIN-ORIGIN-HOME, the HOMELAB-CSRF-FOREIGN-403 log attribution, HOMELAB-CELERY-PING, ARGOCD-HOOK-PHASE, state capture, SECOND-SYNC-IDEMPOTENT): 'kubectl' not found on PATH")
 fi
 
-# The API token, as a curl header FILE (mode 0600). `$(< file)` strips trailing
-# newlines; one trailing CR is stripped, and what remains must be one 40-hex
-# token, so a second line or a "Token " prefix is refused (exit 2) before any
-# connection. printf is a shell builtin, so the token never reaches an argv.
+# read_token_file PATH: on success set token_val to the one bare 40-hex token in
+# PATH and return 0; otherwise return non-zero with no output. This matches
+# defectdojo-configure.sh and ADR-029 decision 6: at most one trailing CRLF or
+# LF is stripped, and what remains must be exactly 40 lowercase hex characters,
+# so trailing blank lines, a bare trailing CR and a NUL byte are all refused.
+# `$(< file)` is not used because it strips every trailing newline and drops
+# NUL bytes. `read -d ''` always returns 1 at end of file, so its status says
+# nothing; the byte-count comparison with `wc -c` is what catches a NUL
+# (read stops or drops there) or any other short read, and that check is what
+# makes the `|| true` safe. `local LC_ALL=C` evaluates the length and the
+# [0-9a-f] range in the C locale and is restored when the function returns.
+read_token_file() {
+  local LC_ALL=C raw="" size
+  IFS= read -r -d '' raw < "$1" || true
+  size="$(wc -c < "$1")"
+  size="${size//[[:space:]]/}"
+  [[ "$size" == "${#raw}" ]] || return 1
+  if [[ "$raw" == *$'\r\n' ]]; then
+    raw="${raw%$'\r\n'}"
+  elif [[ "$raw" == *$'\n' ]]; then
+    raw="${raw%$'\n'}"
+  fi
+  [[ "$raw" =~ ^[0-9a-f]{40}$ ]] || return 1
+  token_val="$raw"
+}
+
+# The API token, as a curl header FILE (mode 0600). read_token_file reads the
+# file byte-exact and strips at most one trailing CRLF or LF; what remains must
+# be one 40-hex token, so a second line, blank lines, a bare CR, a NUL byte or a
+# "Token " prefix is refused (exit 2) before any connection. printf is a shell
+# builtin, so the token never reaches an argv.
 AUTH_HDR=""
 if [[ -n "$TOKEN_FILE" ]]; then
   AUTH_HDR="$OUT/auth-hdr"
-  token_val="$(< "$TOKEN_FILE")"
-  token_val="${token_val%$'\r'}"
-  if [[ ! "$token_val" =~ ^[0-9a-f]{40}$ ]]; then
+  if ! read_token_file "$TOKEN_FILE"; then
     unset token_val
     usage_error "--token-file '${TOKEN_FILE}' must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix"
   fi
