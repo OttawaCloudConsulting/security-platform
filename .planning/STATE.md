@@ -347,7 +347,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 
 ### Pending Todos
 
-None.
+- **Phase 29.4 must release the Phase 29.2 `security.yml` change (D-02).** 29.4 cuts one additive v1.x tag and moves `v1` so that `v1` carries BOTH 29.4's own `security.yml` change and the Phase 29.2 `security.yml` change (Phase 28 CR-01: curl `-q` as argv[1], the `ssl_verify_result` check, no curl stderr in `dd-import`/`dd-delete`). The 29.2 change is merged to `security-platform` `main` at `47319b2ed56dfff4353f1fcf22a0b06663bda172` with no tag; `v1` and `v1.2.0` are still at `fdabac9`. ADR-029 records it.
 
 ### Blockers/Concerns
 
@@ -377,6 +377,7 @@ Carried forward from v1.1 close:
 |----------|------|--------|-------------|
 | Target-repo issue | `aws-zabbix-monitoring-solution` package-lock.json has 16 real npm vulns (1 critical: handlebars, 10 high); npm-audit hook correctly blocks commits | Deferred — target-repo remediation, not tooling | v1.1 close (2026-09-10) |
 | Known gap | ESLint hook uses `language: system`; if eslint is absent and a `.js`/`.ts` file is staged, hook errors rather than skipping | Accepted, not fixed | v1.1 close (2026-09-10) |
+| Tech debt (Phase 29.2 D-17) | scripts/defectdojo-live-smoke.sh calls curl without -q and echoes curl stderr (throwaway kind cluster, generated credentials only) | Deferred - out of 29.2 scope; see ADR-029 | 2026-09-30 |
 | Phase 14 P01 | 12min | 3 tasks | 3 files |
 | Phase 14 P02 | 7min | 2 tasks | 1 files |
 | Phase 15 P01 | 20min | 2 tasks | 6 files |
