@@ -1,0 +1,80 @@
+PR #28 https://github.com/OttawaCloudConsulting/security-platform/pull/28 head 34e345bbae11ae9215d2825a7ba178667ea04295 - captured after proof run 36772753821 attempt 1 (failure: KIND-CELERY-PING) and PR Security run 36772753866 attempt 1 (failure: security / Container - Trivy Image)
+note: trailing whitespace stripped for the docs pre-commit git diff --check; content otherwise verbatim
+
+$ gh pr checks 28 (exit 1)
+prove-import	fail	5m0s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753821/job/110083376926
+security / Container — Trivy Image	fail	12s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753866/job/110083000498
+Checkov	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/110083161530
+GitGuardian Security Checks	pass	0	https://dashboard.gitguardian.com
+Semgrep OSS	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/110083188762
+Trivy	pass	3s	https://github.com/OttawaCloudConsulting/security-platform/runs/110083123381
+gitleaks	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/110083061141
+scans / Container — Trivy Image	pass	31s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753821/job/110083005044
+scans / DefectDojo Import	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753821/job/110083309535
+scans / IaC — Checkov	pass	34s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753821/job/110083004709
+scans / SAST — Semgrep CE	pass	34s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753821/job/110083005094
+scans / SCA — Trivy Filesystem	pass	43s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753821/job/110083005171
+scans / Secrets — Gitleaks	pass	19s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753821/job/110083005308
+security / DefectDojo Import	pass	11s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753866/job/110083338254
+security / IaC — Checkov	pass	33s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753866/job/110083000451
+security / SAST — Semgrep CE	pass	42s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753866/job/110083000512
+security / SCA — Trivy Filesystem	pass	48s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753866/job/110083000085
+security / Secrets — Gitleaks	pass	18s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753866/job/110083000617
+tflint	pass	3s	https://github.com/OttawaCloudConsulting/security-platform/runs/110083232453
+scans / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753821/job/110083004848
+security / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36772753866/job/110083002634
+tflint-errors	pass	3s	https://github.com/OttawaCloudConsulting/security-platform/runs/110083233337
+
+$ gh api repos/OttawaCloudConsulting/security-platform/commits/34e345bbae11ae9215d2825a7ba178667ea04295/check-runs --paginate --jq '.check_runs[] | [.name, .status, .conclusion] | @tsv'
+prove-import	completed	failure
+security / DefectDojo Import	completed	success
+scans / DefectDojo Import	completed	success
+tflint-errors	completed	success
+tflint	completed	success
+Semgrep OSS	completed	success
+Checkov	completed	success
+Trivy	completed	success
+gitleaks	completed	success
+scans / Secrets — Gitleaks	completed	success
+scans / SCA — Trivy Filesystem	completed	success
+scans / SAST — Semgrep CE	completed	success
+scans / Container — Trivy Image	completed	success
+scans / DefectDojo Cleanup	completed	skipped
+scans / IaC — Checkov	completed	success
+security / DefectDojo Cleanup	completed	skipped
+security / Secrets — Gitleaks	completed	success
+security / SAST — Semgrep CE	completed	success
+security / Container — Trivy Image	completed	failure
+security / IaC — Checkov	completed	success
+security / SCA — Trivy Filesystem	completed	success
+GitGuardian Security Checks	completed	success
+
+$ gh run view 36772753866 --job 110083000498 --log | grep (security / Container - Trivy Image failure cause)
+security / Container — Trivy Image	UNKNOWN STEP	2026-09-30T20:27:35.4267586Z #2 ERROR: failed to copy: httpReadSeeker: failed open: unexpected status code https://public.ecr.aws/v2/docker/library/debian/manifests/sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171: 429 Too Many Requests - Server message: toomanyrequests: Data limit exceeded
+security / Container — Trivy Image	UNKNOWN STEP	2026-09-30T20:27:35.4521345Z ERROR: failed to build: failed to solve: public.ecr.aws/docker/library/debian:12-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171: failed to resolve source metadata for public.ecr.aws/docker/library/debian:12-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171: failed to copy: httpReadSeeker: failed open: unexpected status code https://public.ecr.aws/v2/docker/library/debian/manifests/sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171: 429 Too Many Requests - Server message: toomanyrequests: Data limit exceeded
+security / Container — Trivy Image	UNKNOWN STEP	2026-09-30T20:27:35.4565792Z ##[error]Process completed with exit code 1.
+security / Container — Trivy Image	UNKNOWN STEP	2026-09-30T20:27:35.5315820Z 2026-09-30T20:27:35Z	FATAL	Fatal error	file open error: open trivy-image.json: no such file or directory
+security / Container — Trivy Image	UNKNOWN STEP	2026-09-30T20:27:35.5352820Z ##[error]Process completed with exit code 1.
+security / Container — Trivy Image	UNKNOWN STEP	2026-09-30T20:27:35.5559750Z ##[error]Process completed with exit code 2.
+security / Container — Trivy Image	UNKNOWN STEP	2026-09-30T20:27:36.5009786Z ##[error]Path does not exist: trivy-image.sarif
+security / Container — Trivy Image	UNKNOWN STEP	2026-09-30T20:27:36.9200994Z ##[error]Process completed with exit code 1.
+security / Container — Trivy Image	UNKNOWN STEP	2026-09-30T20:27:37.0738761Z ##[error]No files were found with the provided path: trivy-image.json
+security / Container — Trivy Image	UNKNOWN STEP	2026-09-30T20:27:37.1045074Z ##[error]Process completed with exit code 1.
+
+$ gh run view 36772753866 --job 110083338254 --log | grep (security / DefectDojo Import: runs against homelab DefectDojo)
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T20:28:39.8993450Z TLS mode: verified-system
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T20:28:39.8994254Z product=OttawaCloudConsulting/security-platform product_type=CI engagement=ci/fix/phase-29.2-token-newline
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T20:28:39.8995095Z IMPORTED: semgrep-results.json scan_type=Semgrep JSON Report test=semgrep http=201 test_id=32 after_total=7
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T20:28:39.8995939Z IMPORTED: checkov-results.json scan_type=Checkov Scan test=checkov http=201 test_id=33 after_total=14
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T20:28:39.8996666Z IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=34 after_total=6
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T20:28:39.8998296Z IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=35 after_total=18
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T20:28:39.8999061Z IMPORTED: npm-audit-1.json scan_type=NPM Audit v7+ Scan test=npm-audit-1 http=201 test_id=36 after_total=2
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T20:28:39.8999800Z IMPORTED: pip-audit-1.json scan_type=pip-audit Scan test=pip-audit-1 http=201 test_id=37 after_total=47
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T20:28:39.9000492Z IMPORTED: tflint.sarif scan_type=SARIF test=tflint http=201 test_id=38 after_total=3
+security / DefectDojo Import	UNKNOWN STEP	2026-09-30T20:28:39.9647420Z DefectDojo import verified: 7 report(s) into OttawaCloudConsulting/security-platform / ci/fix/phase-29.2-token-newline
+
+$ gh api repos/OttawaCloudConsulting/security-platform/branches/main/protection
+gh: Branch not protected (HTTP 404)
+$ gh api repos/OttawaCloudConsulting/security-platform/rules/branches/main --jq '[.[].type]'
+["deletion","non_fast_forward"]
+(no required_status_checks rule on main)
