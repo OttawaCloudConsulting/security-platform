@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: milestone_complete
-stopped_at: Milestone complete (Phase 29 was final phase)
-last_updated: 2026-09-29T22:53:25.619Z
-last_activity: 2026-09-29
+status: executing
+stopped_at: Completed 29-19-PLAN.md; ADR-027/ADR-028 written, DDOJO-05 Complete; all 20/20 phase-29 plans done, awaiting phase verification
+last_updated: "2026-09-30T00:13:33.135Z"
+last_activity: 2026-09-30 -- Phase 29.1 planning complete
 progress:
   total_phases: 7
   completed_phases: 7
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 ## Current Position
 
-Phase: 29
-Plan: 20 of 20 (phase complete, verification passed)
-Status: Milestone complete
-Last activity: 2026-09-29
+Phase: 29.1
+Plan: Not planned yet
+Status: Ready to execute
+Last activity: 2026-09-30 -- Phase 29.1 planning complete
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Last activity: 2026-09-29
 - Phase 20.1 inserted after Phase 20: Close gap: Retroactive VERIFICATION.md for Phases 14, 17, 18 (CICD-02/03/04/05/06) (URGENT)
 - Phase 21 edited: re-scoped from VERIFICATION.md backfill (already done by Phase 20.1) to docs-only: stale Grype ref, SARIF ceiling doc, stale checkout comments
 - Phase 22 added: branch-protection --apply live exercise (needs explicit target-repo confirm, irreversible-ish)
+- Phase 29.1 inserted after Phase 29: Close gap: NEXUS-01/NEXUS-03 — retroactive VERIFICATION.md for Phase 23 (URGENT)
 
 ### Decisions
 
