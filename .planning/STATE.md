@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: ready_to_plan
-stopped_at: Phase 29.2 complete (12/12) — ready to discuss Phase 29.3
-last_updated: 2026-09-30T23:17:46.876Z
+status: planning
+stopped_at: Phase 29.3 context gathered
+last_updated: "2026-09-30T23:39:04.021Z"
 last_activity: 2026-09-30
 progress:
   total_phases: 7
   completed_phases: 7
   total_plans: 75
-  completed_plans: 89
+  completed_plans: 75
   percent: 100
 ---
 
@@ -517,9 +517,9 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-09-30T21:21:44.473Z
-Stopped at: Completed 29.2-12-PLAN.md
-Resume file: None
+Last session: 2026-09-30T23:39:04.011Z
+Stopped at: Phase 29.3 context gathered
+Resume file: .planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/29.3-CONTEXT.md
 
 ## Operator Next Steps
 
