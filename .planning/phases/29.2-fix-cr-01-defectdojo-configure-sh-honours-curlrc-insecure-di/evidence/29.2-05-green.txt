@@ -1,0 +1,257 @@
+# 29.2-05 GREEN: check-workflow-uploads.sh RED (before the body fix), scratch self-tests, then --scheme-only (uid 501, kubectl on PATH)
+## RED (unfixed bodies)
+check-workflow-uploads: parsing every workflow file in .github/workflows (*.yml, *.yaml)
+FAIL: CURLRC: jobs.defectdojo-import step dd-import run: '["curl", "-q", "-sS"' occurs 0 time(s), expected exactly 1 — -q must be curl's first argument so no curlrc is read (Phase 28 CR-01, ADR-029)
+FAIL: CURLRC: jobs.defectdojo-import step dd-import run: contains '["curl", "-sS"' — a curl call without -q as argv[1] reads the runner's curlrc (Phase 28 CR-01, ADR-029)
+FAIL: CURLRC: jobs.defectdojo-import step dd-import run: does not read %{ssl_verify_result} — a request must fail unless TLS verification succeeded (Phase 28 CR-01, ADR-029)
+FAIL: CURLRC: jobs.defectdojo-import step dd-import run: curl stderr is not discarded (stderr=subprocess.DEVNULL) — it can carry header or trace text (Phase 28 CR-01, ADR-029)
+FAIL: CURLRC: jobs.defectdojo-import step dd-import run: reads proc.stderr — curl stderr must never be printed (Phase 28 CR-01, ADR-029)
+FAIL: CURLRC: jobs.defectdojo-import step dd-import run: does not read the DEFECTDOJO_RESOLVE test hook, so the offline proof cannot reach it (Phase 28 CR-01, ADR-029)
+FAIL: CURLRC: jobs.defectdojo-cleanup step dd-delete run: '["curl", "-q", "-sS"' occurs 0 time(s), expected exactly 1 — -q must be curl's first argument so no curlrc is read (Phase 28 CR-01, ADR-029)
+FAIL: CURLRC: jobs.defectdojo-cleanup step dd-delete run: contains '["curl", "-sS"' — a curl call without -q as argv[1] reads the runner's curlrc (Phase 28 CR-01, ADR-029)
+FAIL: CURLRC: jobs.defectdojo-cleanup step dd-delete run: does not read %{ssl_verify_result} — a request must fail unless TLS verification succeeded (Phase 28 CR-01, ADR-029)
+FAIL: CURLRC: jobs.defectdojo-cleanup step dd-delete run: curl stderr is not discarded (stderr=subprocess.DEVNULL) — it can carry header or trace text (Phase 28 CR-01, ADR-029)
+FAIL: CURLRC: jobs.defectdojo-cleanup step dd-delete run: reads proc.stderr — curl stderr must never be printed (Phase 28 CR-01, ADR-029)
+FAIL: CURLRC: jobs.defectdojo-cleanup step dd-delete run: does not read the DEFECTDOJO_RESOLVE test hook, so the offline proof cannot reach it (Phase 28 CR-01, ADR-029)
+FAILED - 12 check(s)
+## Scratch self-tests (WORKFLOWS_DIR copies)
+== self-test 1
+check-workflow-uploads: parsing every workflow file in /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/6eceeb01-c5be-4d39-8507-accd5ba89dce/scratchpad/wf1 (*.yml, *.yaml)
+FAIL: CURLRC: jobs.defectdojo-cleanup step dd-delete run: '["curl", "-q", "-sS"' occurs 0 time(s), expected exactly 1 — -q must be curl's first argument so no curlrc is read (Phase 28 CR-01, ADR-029)
+FAIL: CURLRC: jobs.defectdojo-cleanup step dd-delete run: contains '["curl", "-sS"' — a curl call without -q as argv[1] reads the runner's curlrc (Phase 28 CR-01, ADR-029)
+FAILED - 2 check(s)
+exit 1
+== self-test 2
+check-workflow-uploads: parsing every workflow file in /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/6eceeb01-c5be-4d39-8507-accd5ba89dce/scratchpad/wf2 (*.yml, *.yaml)
+PASS - 20 checks, 0 failures
+exit 0
+== self-test 2 (DEFECTDOJO_RESOLVE: x in dd-import step env)
+check-workflow-uploads: parsing every workflow file in /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/6eceeb01-c5be-4d39-8507-accd5ba89dce/scratchpad/wf2 (*.yml, *.yaml)
+FAIL: CURLRC: jobs.defectdojo-import step dd-import env: sets DEFECTDOJO_RESOLVE — it is a proof-harness test hook that the workflow must never set (D-07, Phase 28 CR-01, ADR-029)
+FAILED - 1 check(s)
+exit 1
+## --scheme-only (first post-fix run)
+PASS: defectdojo-import/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+PASS: defectdojo-import/dd-import: extracted (223 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_INSECURE', 'DD_PRODUCT', 'DD_PRODUCT_TYPE', 'DD_REPORTS_DIR', 'DD_RESULTS_FILE', 'DD_TOKEN', 'DD_URL']
+PASS: defectdojo-import/dd-verify: extracted (39 lines), no ${{, bash -n clean, env names match the contract ['DD_IMPORT_OUTCOME', 'DD_RESULTS_FILE']
+PASS: defectdojo-cleanup/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+PASS: defectdojo-cleanup/dd-delete: extracted (219 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_CLEANUP_RESULT_FILE', 'DD_DEFAULT_BRANCH', 'DD_INSECURE', 'DD_PRODUCT', 'DD_TOKEN', 'DD_URL']
+PASS: defectdojo-cleanup/dd-cleanup-verify: extracted (23 lines), no ${{, bash -n clean, env names match the contract ['DD_CLEANUP_RESULT_FILE', 'DD_DELETE_OUTCOME']
+PASS: DD-GATE-IDENTICAL: the import and cleanup dd-gate bodies are byte-identical
+extract: 7 passed, 0 failed
+
+=== non-https DEFECTDOJO_URL is refused before any request (P-HTTP) ===
+    | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the API token over 'http'
+PROOF: P-HTTP PASS import-http: DD_URL=http://127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+    | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the API token over '(no scheme)'
+PROOF: P-HTTP PASS import-noscheme: DD_URL=127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+    | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the API token over 'http'
+PROOF: P-HTTP PASS delete-http: DD_URL=http://127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+
+=== defectdojo-configure.sh refuses a non-https URL and fails its preflight guards offline (P-HTTP, P-CONFIGURE-GUARD) ===
+    | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the admin token over 'http'
+PROOF: P-HTTP PASS configure-http: DEFECTDOJO_URL=http://127.0.0.1:9 -> exit 1, refused before the token file is read, no request, token absent
+    | FAILED: DEFECTDOJO_URL must be https:// — refusing to send the admin token over '(no scheme)'
+PROOF: P-HTTP PASS configure-noscheme: DEFECTDOJO_URL=127.0.0.1:9 -> exit 1, refused before the token file is read, no request, token absent
+    | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE is not set (see the usage lines at the top of this script)
+PROOF: P-CONFIGURE-GUARD PASS configure-no-env: empty DEFECTDOJO_ADMIN_TOKEN_FILE -> exit 2, FATAL names the variable, no request
+    | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.xI56Ccg8Ck/proof/configure-dummy-loose.token' is readable by group or other (mode 644); chmod 600 it
+    | DefectDojo host: 127.0.0.1
+PROOF: P-CONFIGURE-GUARD PASS configure-loose-perms: 0644 token file -> exit 2, FATAL names the path, no request, token absent
+
+=== ambient curlrc is ignored; unverified peer refused before any request (P-CURLRC) ===
+PROOF: P-CURLRC PASS control: no -q curl read the hostile curlrc and reached the listener (REQUEST auth=yes; trace and libcurl files written)
+    | DefectDojo host: defectdojo.curlrc.test
+    | FAILED: GET /api/v2/system_settings/: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self signed certificate
+PROOF: P-CURLRC PASS configure: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 REQUEST=0)
+    | ==> PREREQ-PRODUCT: FAIL - GET /api/v2/products/?name_exact=p-curlrc&limit=250&offset=0: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self signed certificate
+    |
+    | === Summary ===
+    | SKIPPED - 1 sub-check(s) did not run. A SKIP IS NOT A PASS:
+    |   - the remaining snapshot assertions: not evaluated, they depend on PREREQ-PRODUCT
+    |
+    | FAILED - one or more live checks did not produce the expected result:
+    |   - PREREQ-PRODUCT: GET /api/v2/products/?name_exact=p-curlrc&limit=250&offset=0: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self signed certificate
+PROOF: P-CURLRC PASS lifecycle: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 REQUEST=0)
+    | === defectdojo-homelab-validate: https://127.0.0.1:59560 + https://127.0.0.1:59560 (context p-curlrc-no-such-context, namespace p-curlrc, app argocd/p-curlrc, sync pass first) ===
+    |
+    | --- 1. TLS on both hostnames (system trust store) ---
+    | ==> HOMELAB-TLS-INFRA: FAIL - GET https://127.0.0.1:59560/login: curl exit 60, http 000, TLS verification result 18 (must be 0; curl exit 60 = certificate did not verify against the system trust store): SSL certificate problem: self signed certificate
+    | ==> HOMELAB-TLS-HOME: FAIL - GET https://127.0.0.1:59560/login: curl exit 60, http 000, TLS verification result 18 (must be 0; curl exit 60 = certificate did not verify against the system trust store): SSL certificate problem: self signed certificate
+    |
+    | --- 2. admin login with a browser-equivalent Origin, on both hostnames ---
+    | ==> HOMELAB-LOGIN-ORIGIN-INFRA: FAIL - no admin password to log in with: kubectl exited 1 reading Secret p-curlrc/defectdojo: error: context "p-curlrc-no-such-context" does not exist
+    | ==> HOMELAB-LOGIN-ORIGIN-HOME: FAIL - no admin password to log in with: kubectl exited 1 reading Secret p-curlrc/defectdojo: error: context "p-curlrc-no-such-context" does not exist
+    |
+    | --- 3. negative control: foreign Origin must be refused ---
+    | ==> HOMELAB-CSRF-FOREIGN-403: FAIL - GET https://127.0.0.1:59560/login for the CSRF token: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self signed certificate
+    |
+    | --- 4. Celery broker round-trip ---
+    | ==> HOMELAB-CELERY-PING: FAIL - celery -A dojo inspect ping exited 1 without pong (broker unreachable or worker not replying): error: context "p-curlrc-no-such-context" does not exist
+    |
+    | --- 5. Argo CD: initializer hook phase and Application status ---
+    | ==> ARGOCD-HOOK-PHASE: FAIL - kubectl exited 1 reading Application argocd/p-curlrc on context p-curlrc-no-such-context: error: context "p-curlrc-no-such-context" does not exist
+    |
+    | --- 6. measuring state (initializer and ServiceAccount UIDs, revision, counts) ---
+    | ==> HOMELAB-API-TLS: FAIL - GET /api/v2/products/?limit=1: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self signed certificate
+    |     measurement gap: job/defectdojo-initializer uid: kubectl exit 1: error: context "p-curlrc-no-such-context" does not exist
+    |     measurement gap: sa/defectdojo uid: kubectl exit 1: error: context "p-curlrc-no-such-context" does not exist
+    |     measurement gap: app_revision: Application argocd/p-curlrc was not read (see ARGOCD-HOOK-PHASE)
+    |     measurement gap: GET /api/v2/products/?limit=1: transport failure (see HOMELAB-API-TLS)
+    |     measurement gap: GET /api/v2/findings/?limit=1: not attempted after HOMELAB-API-TLS (the token is not sent to the same peer again)
+    |     state written to /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.xI56Ccg8Ck/proof/curlrc-homelab-state.json
+    |     WARNING: 5 value(s) in the state file are null (see measurement gaps above); a second-sync run compared against it cannot assert them
+    |
+    | --- 7. second-sync idempotency ---
+    |     SKIPPED - --sync-pass first
+    |
+    |
+    | === Summary ===
+    | SKIPPED - 1 sub-check(s) did not run. A SKIP IS NOT A PASS:
+    |   - SECOND-SYNC-IDEMPOTENT: not evaluated on a --sync-pass first run; re-run this gate with --sync-pass second --pre-state <file> --token-file <file> after the second Argo CD sync of the same revision
+    |
+    | FAILED - one or more live checks did not produce the expected result:
+    |   - HOMELAB-TLS-INFRA: GET https://127.0.0.1:59560/login: curl exit 60, http 000, TLS verification result 18 (must be 0; curl exit 60 = certificate did not verify against the system trust store): SSL certificate problem: self signed certificate
+    |   - HOMELAB-TLS-HOME: GET https://127.0.0.1:59560/login: curl exit 60, http 000, TLS verification result 18 (must be 0; curl exit 60 = certificate did not verify against the system trust store): SSL certificate problem: self signed certificate
+    |   - HOMELAB-LOGIN-ORIGIN-INFRA: no admin password to log in with: kubectl exited 1 reading Secret p-curlrc/defectdojo: error: context "p-curlrc-no-such-context" does not exist
+    |   - HOMELAB-LOGIN-ORIGIN-HOME: no admin password to log in with: kubectl exited 1 reading Secret p-curlrc/defectdojo: error: context "p-curlrc-no-such-context" does not exist
+    |   - HOMELAB-CSRF-FOREIGN-403: GET https://127.0.0.1:59560/login for the CSRF token: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self signed certificate
+    |   - HOMELAB-CELERY-PING: celery -A dojo inspect ping exited 1 without pong (broker unreachable or worker not replying): error: context "p-curlrc-no-such-context" does not exist
+    |   - ARGOCD-HOOK-PHASE: kubectl exited 1 reading Application argocd/p-curlrc on context p-curlrc-no-such-context: error: context "p-curlrc-no-such-context" does not exist
+    |   - HOMELAB-API-TLS: GET /api/v2/products/?limit=1: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self signed certificate
+PROOF: P-CURLRC PASS homelab-tls-probe: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=6 HANDSHAKE-FAIL=4 REQUEST=0)
+PROOF: P-CURLRC PASS homelab-token-get: the measure_count token GET was refused on TLS verification before any request (listener CONNECT=6 HANDSHAKE-FAIL=4 REQUEST=0)
+    | TLS mode: verified-system
+    | product=proof/security-platform product_type=CI engagement=ci/proof/branch-a
+    | FAILED: semgrep-results.json: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self signed certificate
+    | STOPPED: no further report is sent after a transport or TLS failure
+    | attempted=1 skipped=0 failed=1
+PROOF: P-CURLRC PASS dd-import: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 REQUEST=0)
+    | TLS mode: verified-system
+    | product='proof/security-platform' target='ci/proof/branch-a' default_branch='main'
+    | FAILED: GET /api/v2/products/?name_exact=proof%2Fsecurity-platform&limit=100: curl exit 60, http 000, TLS verification result 18 (must be 0): SSL certificate problem: self signed certificate
+PROOF: P-CURLRC PASS dd-delete: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 REQUEST=0)
+
+=== token-file and DEFECTDOJO_RESOLVE preflight guards send nothing (P-CONFIGURE-GUARD, P-RESOLVE-GUARD, P-TOKEN-GUARD) ===
+    | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.xI56Ccg8Ck/proof/guard-configure-token-dir.token' is not a regular file
+    | DefectDojo host: defectdojo.curlrc.test
+PROOF: P-CONFIGURE-GUARD PASS configure-token-dir: the token path is a directory -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.xI56Ccg8Ck/proof/guard-configure-token-mode000.token' cannot be read: Permission denied
+    | DefectDojo host: defectdojo.curlrc.test
+PROOF: P-CONFIGURE-GUARD PASS configure-token-mode000: a mode-000 token file -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.xI56Ccg8Ck/proof/guard-configure-token-multiline.token' must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix
+    | DefectDojo host: defectdojo.curlrc.test
+PROOF: P-CONFIGURE-GUARD PASS configure-token-multiline: a two-line token file (40-hex, then 'X-Other: 1') -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.xI56Ccg8Ck/proof/guard-configure-token-prefix.token' must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix
+    | DefectDojo host: defectdojo.curlrc.test
+PROOF: P-CONFIGURE-GUARD PASS configure-token-prefix: a 'Token '-prefixed token file -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | FATAL: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (a test hook; leave it unset)
+PROOF: P-RESOLVE-GUARD PASS configure-resolve-host: DEFECTDOJO_RESOLVE host differs from DEFECTDOJO_URL -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | FATAL: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (a test hook; leave it unset)
+PROOF: P-RESOLVE-GUARD PASS configure-resolve-wildcard: a wildcard DEFECTDOJO_RESOLVE -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix
+PROOF: P-TOKEN-GUARD PASS lifecycle-token-multiline: a two-line token file (two 40-hex lines, the WR-02 join gap) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix
+PROOF: P-TOKEN-GUARD PASS lifecycle-token-prefix: a 'Token '-prefixed token file (regression guard: refused before 29.2) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE is not a readable file
+PROOF: P-TOKEN-GUARD PASS lifecycle-token-dir: the token path is a directory (regression guard: refused before 29.2) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | ERROR: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (a test hook; leave it unset)
+PROOF: P-RESOLVE-GUARD PASS lifecycle-resolve-host: DEFECTDOJO_RESOLVE host differs from DEFECTDOJO_URL -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | ERROR: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (a test hook; leave it unset)
+PROOF: P-RESOLVE-GUARD PASS lifecycle-resolve-wildcard: a wildcard DEFECTDOJO_RESOLVE -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | ERROR: --token-file '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.xI56Ccg8Ck/proof/guard-homelab-token-multiline.token' must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix
+    | Usage: bash scripts/defectdojo-homelab-validate.sh --url <URL> --alt-url <URL> --context <kube-context> --namespace <ns> --app <name> --sync-pass <first|second> [options]
+    |
+    | Required (there are NO defaults for these — the gate refuses to guess):
+    |   --url <https://host>         Primary public URL of DefectDojo (checks named *-INFRA).
+    |   --alt-url <https://host>     Alternative public URL (DD_SITE_URL alternative host,
+    |                                checks named *-HOME). Both must start with https://.
+    |   --context <kube-context>     kubeconfig context every kubectl call is pinned to.
+    |                                KUBECONFIG is honoured from the environment.
+    |   --namespace <ns>             Namespace DefectDojo is deployed in.
+    |   --app <name>                 Argo CD Application name.
+    |   --sync-pass <first|second>   Which Argo CD sync this run follows. `second`
+    |                                evaluates SECOND-SYNC-IDEMPOTENT and needs
+    |                                --pre-state and --token-file.
+    |
+    | Optional:
+    |   --write-state <file>         Write the measured state (initializer and
+    |                                ServiceAccount UIDs, Application revision, product
+    |                                and finding counts) as JSON to <file>.
+    |   --pre-state <file>           State file written by an earlier run with
+    |                                --write-state (required with --sync-pass second).
+    |   --token-file <file>          File holding a DefectDojo API v2 token; used only
+    |                                for the product/finding counts (required with
+    |                                --sync-pass second).
+    |   --argocd-namespace <ns>      Namespace Argo CD runs in (default: argocd)
+    |   -h, --help                   Print this help and exit 0
+    |
+    | Exit codes: 0 all checks that ran passed (or NOTHING RAN), 1 a check failed or
+    | a hard-tier binary is missing, 2 usage or preflight error.
+PROOF: P-TOKEN-GUARD PASS homelab-token-multiline: a two-line token file (two 40-hex lines, the WR-02 join gap) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | ERROR: --token-file '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.xI56Ccg8Ck/proof/guard-homelab-token-prefix.token' must hold one bare DefectDojo API token: 40 lowercase hex characters on one line, no 'Token ' prefix
+    | Usage: bash scripts/defectdojo-homelab-validate.sh --url <URL> --alt-url <URL> --context <kube-context> --namespace <ns> --app <name> --sync-pass <first|second> [options]
+    |
+    | Required (there are NO defaults for these — the gate refuses to guess):
+    |   --url <https://host>         Primary public URL of DefectDojo (checks named *-INFRA).
+    |   --alt-url <https://host>     Alternative public URL (DD_SITE_URL alternative host,
+    |                                checks named *-HOME). Both must start with https://.
+    |   --context <kube-context>     kubeconfig context every kubectl call is pinned to.
+    |                                KUBECONFIG is honoured from the environment.
+    |   --namespace <ns>             Namespace DefectDojo is deployed in.
+    |   --app <name>                 Argo CD Application name.
+    |   --sync-pass <first|second>   Which Argo CD sync this run follows. `second`
+    |                                evaluates SECOND-SYNC-IDEMPOTENT and needs
+    |                                --pre-state and --token-file.
+    |
+    | Optional:
+    |   --write-state <file>         Write the measured state (initializer and
+    |                                ServiceAccount UIDs, Application revision, product
+    |                                and finding counts) as JSON to <file>.
+    |   --pre-state <file>           State file written by an earlier run with
+    |                                --write-state (required with --sync-pass second).
+    |   --token-file <file>          File holding a DefectDojo API v2 token; used only
+    |                                for the product/finding counts (required with
+    |                                --sync-pass second).
+    |   --argocd-namespace <ns>      Namespace Argo CD runs in (default: argocd)
+    |   -h, --help                   Print this help and exit 0
+    |
+    | Exit codes: 0 all checks that ran passed (or NOTHING RAN), 1 a check failed or
+    | a hard-tier binary is missing, 2 usage or preflight error.
+PROOF: P-TOKEN-GUARD PASS homelab-token-prefix: a 'Token '-prefixed token file -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | ERROR: --token-file '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.xI56Ccg8Ck/proof/guard-homelab-token-dir.token' does not exist or is not a readable regular file
+    | Usage: bash scripts/defectdojo-homelab-validate.sh --url <URL> --alt-url <URL> --context <kube-context> --namespace <ns> --app <name> --sync-pass <first|second> [options]
+    |
+    | Required (there are NO defaults for these — the gate refuses to guess):
+    |   --url <https://host>         Primary public URL of DefectDojo (checks named *-INFRA).
+    |   --alt-url <https://host>     Alternative public URL (DD_SITE_URL alternative host,
+    |                                checks named *-HOME). Both must start with https://.
+    |   --context <kube-context>     kubeconfig context every kubectl call is pinned to.
+    |                                KUBECONFIG is honoured from the environment.
+    |   --namespace <ns>             Namespace DefectDojo is deployed in.
+    |   --app <name>                 Argo CD Application name.
+    |   --sync-pass <first|second>   Which Argo CD sync this run follows. `second`
+    |                                evaluates SECOND-SYNC-IDEMPOTENT and needs
+    |                                --pre-state and --token-file.
+    |
+    | Optional:
+    |   --write-state <file>         Write the measured state (initializer and
+    |                                ServiceAccount UIDs, Application revision, product
+    |                                and finding counts) as JSON to <file>.
+    |   --pre-state <file>           State file written by an earlier run with
+    |                                --write-state (required with --sync-pass second).
+    |   --token-file <file>          File holding a DefectDojo API v2 token; used only
+    |                                for the product/finding counts (required with
+    |                                --sync-pass second).
+    |   --argocd-namespace <ns>      Namespace Argo CD runs in (default: argocd)
+    |   -h, --help                   Print this help and exit 0
+    |
+    | Exit codes: 0 all checks that ran passed (or NOTHING RAN), 1 a check failed or
+    | a hard-tier binary is missing, 2 usage or preflight error.
+PROOF: P-TOKEN-GUARD PASS homelab-token-dir: the --token-file path is a directory -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | FAILED: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (test hook; leave it unset)
+PROOF: P-RESOLVE-GUARD PASS dd-import-resolve-host: DEFECTDOJO_RESOLVE host differs from DD_URL -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+    | FAILED: DEFECTDOJO_RESOLVE must be host:port:IPv4 with the host and port of DEFECTDOJO_URL (test hook; leave it unset)
+PROOF: P-RESOLVE-GUARD PASS dd-delete-resolve-host: DEFECTDOJO_RESOLVE host differs from DD_URL -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 REQUEST=0)
+
+PROOF PASS - 30 assertions
