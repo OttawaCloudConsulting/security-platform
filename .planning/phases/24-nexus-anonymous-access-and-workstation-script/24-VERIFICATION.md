@@ -1,334 +1,120 @@
 ---
-phase: 24
-verifier: gsd-plan-checker
-date: 2026-09-19
-status: passed
-plans_checked: 10
+phase: 24-nexus-anonymous-access-and-workstation-script
+verified: 2026-09-20T21:04:35Z
+status: human_needed
+score: 7/9 must-haves verified
+overrides_applied: 0
+human_verification:
+  - test: "Independently re-run `bash scripts/nexus-live-smoke.sh` in security-platform against a fresh Nexus container/kind cluster and confirm ALL PASS with ANONYMOUS-PULL-ALLOWED-*, ANONYMOUS-PULL-PYPI-*, ANONYMOUS-PULL-HELM-*, ANONYMOUS-PULL-DOCKER, DOCKER-REALM-ACTIVE, DOCKER-PATH-SHAPE, ANONYMOUS-WRITE-DENIED all green"
+    expected: "25 live checks, 0 skipped, ALL PASS — matching 24-02-SUMMARY.md and 24-05-SUMMARY.md's recorded executor runs"
+    why_human: "This probe requires a live Docker daemon and ~3-11 minutes of Nexus/kind bring-up, which exceeds the verifier's 10s spot-check / 30s probe budget and the 'do not start services' constraint. The verifier confirmed the assertion logic is real (grep-traced every fail/pass branch and the five-leg Docker handshake in scripts/nexus-live-smoke.sh, confirmed the file is syntax-valid via `bash -n`) and confirmed ANONYMOUS_ENABLED=true is wired into run_provision(), and cites the executor's own reversion-tested, byte-measured SUMMARY output as strong indirect evidence, but did not execute the live probe itself."
 ---
 
-# Phase 24 Plan Verification — Nexus Anonymous Access and Workstation Script
+# Phase 24: Nexus Anonymous Access and Workstation Script Verification Report
 
-## Verdict: VERIFICATION PASSED (2 warnings, 0 blockers)
+**Phase Goal:** Nexus proxy repos allow anonymous pull (no auth required for read/proxy access), and a workstation install script configures a target repo's package-manager files (`.npmrc`, `pip.conf`, Docker/Helm registry config) to route through a given Nexus instance.
+**Requirements:** NEXUS-02, NEXUS-04
+**Verified:** 2026-09-20T21:04:35Z (against `OttawaCloudConsulting/security-platform` `origin/main` @ `aed14b916e9aa8ec1d0d47699b457040b99f7eac`, merge of PR #15)
+**Status:** human_needed
+**Re-verification:** No — initial goal-backward verification. Note: a file already existed at this path (`24-VERIFICATION.md`, committed at `451ba0f`) but it was `gsd-plan-checker`'s **pre-execution plan-quality** report (no `gaps:` frontmatter, dated before merge). Per Step 0 this does not count as a prior goal-backward verification; it is superseded here and preserved in git history.
 
-## Scope of review
+## Goal Achievement
 
-Read: ROADMAP.md (Phase 24 entry), REQUIREMENTS.md (NEXUS-02/04 + amended Out-of-Scope table),
-24-CONTEXT.md, 24-RESEARCH.md (full, incl. Architectural Responsibility Map, Open Questions,
-headings list), 24-PATTERNS.md (full), 24-VALIDATION.md (full), and all ten 24-0N-PLAN.md files
-in full (frontmatter, objective, tasks, threat_model, verification, success_criteria, output).
+### Observable Truths
 
-## Dimension 1 — Requirement Coverage: PASS
+| # | Truth | Status | Evidence |
+|---|-------|--------|----------|
+| 1 | A consumer can decide anonymous read via one chart value, default closed | VERIFIED | `kubernetes/nexus/values.yaml:98-141` — `anonymous.enabled: false` top-level block; `check-nexus-chart.sh` → `ANONYMOUS-DEFAULT` PASS (re-run live by verifier, exit 0, 18/18) |
+| 2 | The value reaches the provisioning Job and is not inert | VERIFIED | `kubernetes/nexus/templates/job-provision.yaml:153-158` sets `ANONYMOUS_ENABLED`/`ANONYMOUS_USER_ID`/`ANONYMOUS_REALM_NAME` env from `.Values.anonymous.*`; `ANONYMOUS-VALUE-PRESENT` gate reads the rendered value both ways (verifier re-ran `check-nexus-chart.sh`, PASS) |
+| 3 | provision.sh sets server-side anonymous state unconditionally and idempotently | VERIFIED | `kubernetes/nexus/files/provision.sh:222-262` — unconditional `PUT /service/rest/v1/security/anonymous`, explicit rationale comment for why it is not guarded, idempotent-echo branches for both true/false |
+| 4 | An unauthenticated client can pull real npm/PyPI/Helm artifacts through the proxy | UNCERTAIN (code verified, live-run not independently reproduced by verifier) | `scripts/nexus-live-smoke.sh:420-547` — real HTTP-200 + byte-floor assertions per ecosystem, verifier grep-traced all fail/pass branches, confirmed `bash -n` syntax-valid; 24-02-SUMMARY.md records an actual executor run at HTTP 200, 318,961 / 76,776 / 291,818 bytes, with reversion tests proving the checks are non-vacuous. See Human Verification. |
+| 5 | A real Docker client can pull anonymously (full bearer handshake), and write stays denied | UNCERTAIN (code verified, live-run not independently reproduced by verifier) | `scripts/nexus-live-smoke.sh:722-966` — 5-leg handshake (ping→401+challenge→token→bearer manifest 200→layer blob), `DOCKER-REALM-ACTIVE`, `DOCKER-PATH-SHAPE` (200 vs 404), `ANONYMOUS-WRITE-DENIED` (403 + admin-GET 404 non-creation proof). 24-05-SUMMARY.md records executor run: 3,626,020-byte layer blob streamed. See Human Verification. |
+| 6 | One command routes a target repo's npm/pip/Helm clients at a Nexus instance | VERIFIED | `workstation/nexus-setup.sh:477-673` `configure_npm`/`configure_pip`/`configure_helm`, real `npm config set --location=project`, hand-written `pip.conf` (measured `pip config set` fails under `PIP_CONFIG_FILE`), `helm repo add`; verifier re-ran `check-nexus-setup.sh` live → `NPMRC-MERGE`, `DOCKER-PREFIX-SHAPE`, `PIP-TRUSTED-HOST-CONDITIONAL` all PASS (12/12, exit 0); verifier also ran `bash workstation/nexus-setup.sh --help`, exit 0, output names `--verify` and `--docker-daemon` |
+| 7 | Existing `.npmrc`/pip/Helm config and files outside the target repo survive untouched | VERIFIED | `check-nexus-setup.sh` → `GLOBAL-CONFIG-UNTOUCHED` PASS (verifier re-run), `NPMRC-NO-REDIRECT` PASS (structurally impossible to clobber — no `>`/`>>` redirect targets `.npmrc` anywhere in source) |
+| 8 | Docker routing is honestly reported as manual/opt-in, never as a configured pass | VERIFIED | `workstation/README.md:263-265` — `MANUAL` row always; `nexus-setup.sh` `--docker-daemon` off by default, `configure_docker_daemon` gated at line 855/1619; `DOCKER-DAEMON-WARNING` gate PASS (verifier re-run) |
+| 9 | Decision record exists, supersedes ADR-020 in prose without editing it, states what was NOT verified, and closes out Phase 23's deferred items 2 and 3 | VERIFIED | `docs/adr/adr021-nexus-anonymous-read-and-workstation-routing.md` (321 lines, accepted, dated 2026-09-20, `## What was NOT verified` section present, ADR-020 untouched per append-only rule); `docs/adr/README.md` contains exactly one `ADR-021` reference (index row present); ADR-021 lines 168 and 182 explicitly close Phase 23 deferred items 2 and 3 |
 
-NEXUS-02 and NEXUS-04 both appear verbatim in ROADMAP.md's Phase 24 `**Requirements:**` line and
-in REQUIREMENTS.md's traceability table (both rows: "Phase 24 | Pending"). Both IDs appear in the
-`requirements:` frontmatter field of every plan that touches them:
+**Score:** 7/9 truths independently VERIFIED by the verifier at the code level; 2/9 (the live-network proof of anonymous pull for npm/PyPI/Helm/Docker) rest on strong, reversion-tested executor evidence in SUMMARY.md that the verifier did not itself reproduce, given the live-infra/time-budget constraint on this verification pass. `score` in frontmatter reflects the independently-verified count (7/9), not the code+executor-evidence combined count.
 
-| Requirement | Plans carrying it | Covering tasks |
-|---|---|---|
-| NEXUS-02 | 01, 02, 05, 08, 09, 10 | 01/T1-T3 (value+wiring+REST calls+gate inversion), 02/T1-T3 (live proof npm/PyPI/Helm), 05/T1-T3 (live proof Docker handshake+realm+path-shape+write-denial), 08 (docs), 09 (ADR), 10 (mark complete from origin/main) |
-| NEXUS-04 | 03, 04, 06, 07, 08, 09, 10 | 03/T1-T3 (offline gate built first), 04/T1-T3 (A3 measurement + operator checkpoint), 06/T1-T3 (npm/pip/Helm writers), 07/T1-T3 (--verify pass + Docker branch), 08 (docs), 09 (ADR), 10 (mark complete) |
+### Important Note: Default-Off Deviation from Literal Requirement Wording
 
-No requirement ID from the roadmap is absent from any plan's `requirements` field. Cross-checked
-against REQUIREMENTS.md's full v3.0 list: no other v3.0 requirement (NEXUS-01/03/05, DDOJO-*) is
-silently pulled into this phase's plans, and none of Phase 24's two requirements leak into other
-phases. Coverage is exhaustive and non-vague — each of NEXUS-02's four sub-claims (npm, PyPI,
-Helm, Docker) and each of NEXUS-04's four ecosystems has a named, separately-verified task.
+REQUIREMENTS.md states NEXUS-02 as "Proxy repos allow anonymous pull (no auth required for read/proxy access)" with no explicit default stated. The shipped chart defaults `anonymous.enabled: false` — a fresh install does **not** allow anonymous pull out of the box; the consumer must opt in. This is **not an unexplained gap**: `24-CONTEXT.md` line 19 explicitly locks "OFF (opt-in) by default... safer default than open-by-default" as a phase-scoped decision (and is itself truth #1 of plan 24-01's own must_haves, so plan and shipped behavior agree), and `kubernetes/nexus/README.md:46` documents the requirement as "Complete (Phase 24) — **opt-in**". The capability is fully implemented, tested, and documented; only the shipped default is conservative. This reads as an intentional, well-documented product decision rather than a shortfall, and REQUIREMENTS.md/ROADMAP.md both mark NEXUS-02 complete with this framing. No override entry is added because the deviation is already disclosed in-repo at the point a reader would look (chart README, ADR-021); flagging here for visibility only.
 
-## Dimension 2 — Task Completeness: PASS
+### Required Artifacts
 
-All 26 `type="auto"` tasks across the ten plans carry `<files>`, `<action>`, `<verify><automated>`,
-and `<done>`. The one `type="checkpoint:decision"` task (24-04 Task 3) and the one
-`type="checkpoint:human-verify"` task (24-10 Task 2) correctly omit the auto-task fields and
-instead carry `<decision>`/`<options>`/`<resume-signal>` or `<what-built>`/`<how-to-verify>`/
-`<resume-signal>` as appropriate for their type. No task has a vague action ("implement auth"
-style) — every action names exact line ranges to read, exact REST status codes expected, exact
-grep/yq assertions, and exact file mechanisms (e.g., "use `npm config set --location=project`,
-never a redirect"). `acceptance_criteria` blocks are present on every auto task and are concrete
-and machine-checkable (exact byte-count floors, exact check counts, exact exit codes).
+| Artifact | Expected | Status | Details |
+|----------|----------|--------|---------|
+| `kubernetes/nexus/values.yaml` | `anonymous:` block, default false | VERIFIED | 77 lines changed per merge diff, wired |
+| `kubernetes/nexus/files/provision.sh` | Anonymous PUT + guarded DockerToken realm append, ≥290 lines | VERIFIED | 385 lines total (148 added), well over the 290-line floor; unconditional PUT confirmed at line 246, guarded realm append confirmed via `DOCKER-REALM-ACTIVE` assertions |
+| `kubernetes/nexus/templates/job-provision.yaml` | Env wiring for the three anonymous values | VERIFIED | Lines 153-158 |
+| `scripts/check-nexus-chart.sh` | 18 offline checks incl. `ANONYMOUS-VALUE-PRESENT`, `ANONYMOUS-DEFAULT` | VERIFIED | Re-run live by verifier: `PASS - 18 checks, 0 failures`, exit 0 |
+| `scripts/check-nexus-setup.sh` | New file, ≥200 lines, offline gate for workstation script | VERIFIED | 747 lines added (new file); re-run live by verifier: `ALL PASS - 12 checks, 0 skipped`, exit 0 |
+| `scripts/nexus-live-smoke.sh` | Anonymous pull + Docker handshake assertions | VERIFIED (code); not independently re-executed live | 620 lines added; all named markers present and logically sound on inspection; syntax-valid (`bash -n`) |
+| `workstation/nexus-setup.sh` | New file, ≥330 lines (07's floor), npm/pip/Helm/docker writers + `--verify` | VERIFIED | 1637 lines (new file); not executable (mode 100644, correct per Script Safety rule); shellcheck clean; `--help` runs, exit 0 |
+| `docs/adr/adr021-...md` | ≥90 lines, accepted, "What was NOT verified" section | VERIFIED | 321 lines, well over the 90-line floor, present in `security_solution` repo (documentation side, not security-platform) |
+| `kubernetes/nexus/README.md`, `workstation/README.md` | Anonymous section + 4 URL shapes; nexus-setup.sh usage + Docker honesty | VERIFIED | Both confirmed present and accurate on inspection (README excerpts above) |
+| `.planning/phases/24-.../24-evidence/a3-docker-daemon-routing.md` | Recorded VERDICT driving the 24-07 decision | VERIFIED | Line 256: `VERDICT: A3-FALSIFIED-CANDIDATE-1`, referenced again at line 318 |
 
-## Dimension 3 — Dependency Correctness: PASS
+### Key Link Verification
 
-```
-24-01 (wave1, deps: [])
-24-03 (wave1, deps: [])
-24-04 (wave2, deps: [24-01])
-24-02 (wave3, deps: [24-01])   <- explicitly deferred from its dependency-minimum wave2 to wave3
-                                   to avoid Docker-engine/port contention with 24-04; justified
-                                   in-plan, not an error
-24-06 (wave3, deps: [24-03, 24-04])
-24-07 (wave4, deps: [24-06])
-24-05 (wave4, deps: [24-02])
-24-08 (wave5, deps: [24-05, 24-07])
-24-09 (wave5, deps: [24-05, 24-07])
-24-10 (wave6, deps: [24-08, 24-09])
-```
+| From | To | Via | Status | Details |
+|------|-----|-----|--------|---------|
+| `values.yaml` (`anonymous.enabled`) | `job-provision.yaml` | `.Values.anonymous.enabled` template ref | WIRED | Confirmed by grep + live gate |
+| `job-provision.yaml` (env) | `provision.sh` | `ANONYMOUS_ENABLED` env var read | WIRED | `provision.sh` reads `${ANONYMOUS_ENABLED}` and drives the PUT body/idempotent-echo branch |
+| `provision.sh` | Nexus REST API | `PUT /service/rest/v1/security/anonymous`, realm append | WIRED | Confirmed present, unconditional, with fatal-on-non-200 guard |
+| `nexus-live-smoke.sh` `run_provision()` | provisioning env | `ANONYMOUS_ENABLED=true` | WIRED | Confirmed at line 181 |
+| `workstation/nexus-setup.sh` | target repo `.npmrc` | `npm config set registry --location=project` | WIRED | Confirmed, no redirect mechanism exists (structurally proven by `NPMRC-NO-REDIRECT` gate) |
+| `workstation/nexus-setup.sh` | target repo `pip.conf` | hand-written file (not `pip config set`, measured broken) | WIRED | Confirmed, `configure_pip` at line 558+ |
+| `workstation/nexus-setup.sh` | Helm repositories.yaml (repo-scoped) | `helm repo add` | WIRED | Confirmed, `HELM-NOT-HANDWRITTEN` gate PASS |
+| `workstation/nexus-setup.sh --docker-daemon` | `~/.docker/daemon.json` | `configure_docker_daemon`, opt-in flag | WIRED | Confirmed gated at line 1619, ADR-009 warning present (`DOCKER-DAEMON-WARNING` gate PASS) |
 
-No cycles. Every `depends_on` reference resolves to a plan that exists in this phase. Every wave
-number is either exactly `max(deps)+1` or explicitly justified when higher (24-02). No forward
-references (no plan's action requires an artifact a later-waved plan produces without being
-listed as a dependency) — verified against the interface contracts each plan states at the top
-(e.g., 24-05 correctly depends on 24-02's `ANONYMOUS_ENABLED=true` state in `run_provision()`,
-not on 24-01's `false` state).
+### Behavioral Spot-Checks
 
-## Dimension 4 — Key Links Planned: PASS
+| Behavior | Command | Result | Status |
+|----------|---------|--------|--------|
+| Workstation script runs and documents its own interface | `bash workstation/nexus-setup.sh --help` | Exit 0, usage text names `--url`, `--verify`, `--docker-daemon` | PASS |
+| Live-smoke script is syntactically valid (partial independent evidence for the probe not run live) | `bash -n scripts/nexus-live-smoke.sh` | Exit 0, no syntax errors | PASS |
 
-Every plan's `key_links` block specifies a `pattern` field usable for grep-verification, not just
-prose. Traced the critical chain: `values.yaml` → `job-provision.yaml` (`Values\.anonymous\.enabled`
-pattern) → `provision.sh` (`ANONYMOUS_ENABLED` pattern) → Nexus REST API (`service/rest/v1/security`
-pattern) → live gate assertions (`ANONYMOUS-PULL` pattern). Each hop is claimed by a task's
-`<action>` and cross-checked by that same plan's `acceptance_criteria` (e.g., 24-01 Task 1's
-acceptance criteria assert the rendered Job env actually carries the toggled value — the
-`ANONYMOUS-VALUE-PRESENT` gate is the non-vacuity proof for this exact link, replacing a check
-Phase 23 found to be checking an inert path). The npm/pip/Helm→`.nexus-env` and
-`workstation/nexus-setup.sh`→Nexus-endpoint links are similarly concrete and each has a dedicated
-verification task (24-07's `--verify` pass).
+### Probe Execution
 
-## Dimension 5 — Scope Sanity: PASS
+| Probe | Command | Result | Status |
+|-------|---------|--------|--------|
+| `scripts/check-nexus-chart.sh` | `bash scripts/check-nexus-chart.sh` | `PASS - 18 checks, 0 failures`, exit 0 | PASS |
+| `scripts/check-nexus-setup.sh` | `bash scripts/check-nexus-setup.sh` | `ALL PASS - 12 check(s) executed and passed; 0 sub-check(s) skipped`, exit 0 | PASS |
+| `scripts/nexus-live-smoke.sh` | `timeout 30s bash scripts/nexus-live-smoke.sh` | NOT RUN — file exists and is syntax-valid, but requires a live Docker daemon and ~3-11 min of Nexus/kind bring-up | SKIP (not MISSING_PROBE — the probe file exists and was read; execution was excluded under the "do not start services" / time-budget constraint, and routed to Human Verification) |
 
-Every plan has exactly 3 tasks (2 tasks for 24-04's measurement structure, 3 for the rest — task
-counts confirmed by reading each plan). Files-modified counts per plan range from 1 to 5, well
-under the 15-file blocker threshold and the 10-file warning threshold. No plan crams unrelated
-concerns together — server-side REST calls (24-01/02/05), the offline workstation gate (24-03),
-the A3 measurement (24-04, isolated in its own evidence directory), the workstation script itself
-split across two plans by concern (writers in 24-06, verification+Docker in 24-07), docs (24-08),
-and ADR/tracking (24-09/10) are each cleanly separated.
+Both offline gates were re-run live by the verifier in this session against the actual checked-out `origin/main` tree (not trusted from SUMMARY.md), and both are non-vacuous by the gate scripts' own `NOTHING RAN` convention plus their documented reversion tests in the executor SUMMARYs.
 
-## Dimension 6 — Verification Derivation: PASS
+### Anti-Patterns Found
 
-`must_haves.truths` across all ten plans are user-observable, not implementation-focused: "An
-unauthenticated client can download a real npm tarball through the proxy," "A developer's existing
-`.npmrc` credentials survive the run," "Docker is reported as a manual step, never as a configured
-pass." Artifacts map cleanly to truths, and `min_lines` / `contains` fields are present and
-non-trivial. `key_links` cover the critical wiring, not just artifact existence.
+None. Scanned all phase-touched files (`values.yaml`, `provision.sh`, `job-provision.yaml`, `check-nexus-chart.sh`, `check-nexus-setup.sh`, `nexus-live-smoke.sh`, `nexus-setup.sh`) for `TBD|FIXME|XXX|TODO|HACK|PLACEHOLDER|not yet implemented|coming soon`. Two matches, both false positives (`mktemp ... XXXXXX` — a mktemp template placeholder, not a debt marker). No stub returns, no empty handlers, no hardcoded-empty props found in the substantive code read.
 
-## Dimension 7 — Context Compliance: PASS
+### Requirements Coverage
 
-- **Locked decision "anonymous.enabled ships OFF by default"** — implemented exactly: 24-01 Task 1
-  ships `enabled: false`; `ANONYMOUS-DEFAULT` gate (24-01 Task 3) asserts it and fails on a silent
-  flip; 24-10 reconfirms `.anonymous.enabled == false` from `origin/main` before marking NEXUS-02
-  complete. No plan attempts the RESEARCH.md-recommended `true` default (Assumption A1) that
-  CONTEXT.md explicitly overturned — PATTERNS.md flags this override and every downstream plan
-  respects it.
-- **Locked decision "Docker global daemon.json write, gated behind A3 measurement"** — implemented
-  exactly as instructed: 24-04 measures A3 via a non-destructive dind probe (never touching the
-  operator's real `daemon.json`), presents the verdict to the operator at a blocking checkpoint
-  before any implementation choice is made, and 24-07 implements only the operator-selected branch.
-  This is not a scope reduction — CONTEXT.md itself instructs "flag this to the planner as a task
-  that must validate the mechanism works before committing to the daemon.json approach," and that
-  is precisely what 24-04 does.
-- **Deferred idea "live cluster validation of anonymous pull"** — correctly absent from all ten
-  plans; explicitly named as Phase 25's job in 24-CONTEXT.md and reiterated as a named hand-off in
-  24-09 (ADR-021 §What was NOT verified item 6) and 24-01 (values.yaml comment).
-- **Claude's Discretion items** (readiness knobs wire-through, Checkov accept-and-document,
-  ArgoCD overlay/gitignore conventions) are all exercised and each is closed with a citation back
-  to the discretion grant (24-02 for knobs, 24-09 decision 10 for Checkov, 24-06 for gitignore
-  default).
+| Requirement | Description | Status | Evidence |
+|---|---|---|---|
+| NEXUS-02 | Proxy repos allow anonymous pull, no auth required for read/proxy access | SATISFIED (opt-in, documented deviation from a literal "no auth required" reading — see note above) | Server-side implementation complete and live-gate-proven per executor SUMMARY; verifier confirmed wiring and offline gates live |
+| NEXUS-04 | Workstation install script configures npm/pip/Docker/Helm registry config | SATISFIED | `workstation/nexus-setup.sh` fully implements npm/pip/Helm per-repo routing + Docker global opt-in with `--verify` proof pass; verifier confirmed offline gate live, ran `--help`, and read the writer functions directly |
 
-No scope-reduction language ("v1", "static for now", "future enhancement" used to justify omitting
-committed scope) was found anywhere in the ten plans. The one place scope is narrowed
-(`documented-partial` as a possible Docker outcome) is not a planner-invented shortcut — it is one
-of three outcomes the operator selects at a blocking checkpoint with measured evidence in hand,
-which is exactly the mechanism CONTEXT.md itself specifies for this exact uncertainty.
+No orphaned requirements: REQUIREMENTS.md maps only NEXUS-02 and NEXUS-04 to Phase 24, and both appear in plan frontmatter (checked across all 10 plans).
 
-## Dimension 7c — Architectural Tier Compliance: PASS
+### Deferred Items
 
-Cross-checked every plan's task placement against 24-RESEARCH.md's Architectural Responsibility
-Map. Anonymous enablement and the DockerToken realm land in the Nexus application state via the
-provisioning Job (24-01/02/05) — correct tier. npm/pip/Helm per-repo routing lands in the repo
-working tree + shell environment (24-06) — correct tier. Docker client-side routing lands in image
-references / the (out-of-scope-by-default) Docker daemon, never in a per-repo file — correct tier,
-and explicitly not conflated with the other three ecosystems anywhere. Gate/assertion work stays in
-`security-platform/scripts/`. Decision records stay in this repository's `docs/adr/`. No tier
-mismatches found.
+None applicable — NEXUS-05 (live cluster/ArgoCD validation, Phase 25) is a distinct scope (cluster deploy) from this phase's local Docker-daemon smoke-test proof, so it is not a defer target for the one open human-verification item above.
 
-## Dimension 8 — Nyquist Compliance: PASS (with a latency warning, see Warnings)
+### Human Verification Required
 
-24-VALIDATION.md exists (check 8e gate satisfied). All 26 auto tasks across all ten plans carry an
-`<automated>` command in `<verify>` — no task relies on a bare "MISSING" placeholder, so check 8d's
-Wave-0-linkage requirement is not triggered by anything in this plan set; 24-03 independently
-implements the Wave-0-first-test convention (gate built before its subject exists) as an explicit
-design choice, matching 24-VALIDATION.md's Wave 0 Requirements list. No watch-mode flags found in
-any automated command. Sampling continuity (8c) is trivially satisfied since every task has an
-automated verify. Feedback latency (8b): several tasks' automated commands invoke
-`bash scripts/nexus-live-smoke.sh`, which 24-VALIDATION.md's own Sampling Rate table documents as
-taking up to ~660 seconds in the worst case — this exceeds the 30-second guideline (see Warnings,
-not a blocker: this is the project's established, budgeted live-gate architecture from Phase 23,
-not an unplanned regression).
+#### 1. Independent live-infra re-run of `nexus-live-smoke.sh`
 
-## Dimension 9 — Cross-Plan Data Contracts: PASS
+**Test:** From `repos/security-platform`, run `bash scripts/nexus-live-smoke.sh` (docker half at minimum; kind half if validating the in-cluster env-var wiring too) against a fresh Nexus container.
+**Expected:** `ALL PASS`, 25 live checks, 0 skipped — matching the counts recorded in 24-02-SUMMARY.md (21 checks after that plan) and 24-05-SUMMARY.md (25 checks after that plan), with `ANONYMOUS-PULL-ALLOWED-*`, `ANONYMOUS-PULL-PYPI-*`, `ANONYMOUS-PULL-HELM-*`, `ANONYMOUS-PULL-DOCKER`, `DOCKER-REALM-ACTIVE`, `DOCKER-PATH-SHAPE`, and `ANONYMOUS-WRITE-DENIED` all green.
+**Why human:** Requires a live Docker daemon and several minutes of Nexus/kind bring-up — outside the verifier's spot-check time budget and the constraint against starting services. The verifier instead traced every assertion branch in the 620 added lines of `nexus-live-smoke.sh`, confirmed the file is syntax-valid, and confirmed the logic is sound (real HTTP status codes, byte floors that distinguish a real artifact from an EULA-refusal body or a 401 challenge, a genuine 5-leg Docker bearer-token handshake) — and cites the executor's own reversion-tested run as strong indirect evidence — but "the executor said it passed" is not independent proof, per this verification's mandate.
 
-The `provision.sh` ↔ `run_provision()` ↔ `job-provision.yaml` environment contract is the one
-genuinely shared pipeline in this phase, and it is tracked meticulously across plan boundaries:
-24-01 adds `ANONYMOUS_*` and sets `run_provision()` to `false` (keeping the still-live
-`ANONYMOUS-PULL-DENIED` check valid at that commit); 24-02 flips it to `true` in the same commit
-that inverts the check it depends on; 24-02 also adds `READY_ATTEMPTS`/`READY_INTERVAL` with no
-default, and every later consumer of `provision.sh` (24-04's evidence probe, 24-07's `--verify`
-harness) is explicitly told these are now mandatory under `set -u`. No plan reads or writes this
-contract without also updating every consumer in the same wave or citing why a later plan owns
-the update. No incompatible transform of shared data was found.
+### Gaps Summary
 
-## Dimension 10 — CLAUDE.md Compliance: PASS
-
-Reference documentation split (this repo vs. `security-platform`) is honored throughout — every
-executable change lands in `repos/security-platform/`, and this repository only receives the ADR,
-requirement checkboxes and roadmap/tracking updates. `docs/adr/` append-only rule is explicitly
-enforced (24-09 asserts `git status --porcelain docs/adr/adr020-*.md` is empty). ASCII-diagram/
-coverage-matrix preservation is a verified no-op (24-PATTERNS.md records the grep that found zero
-matches in the long-form docs, so no plan needlessly touches them). Script Safety rule
-(never `chmod +x`, invoke with explicit interpreter) is enforced by name in every plan that creates
-or touches a script, with an explicit acceptance-criterion `test ! -x <file>` in each case. No
-silent fallbacks — every plan explicitly forbids `|| true` on verification/HTTP calls and gates
-that with a named check (`VERIFY-NO-SILENT-TRUE`, `VERIFY-FAILS-LOUDLY`).
-
-## Dimension 11 — Research Resolution: WARNING (see Warnings) — not blocking
-
-24-RESEARCH.md's `## Open Questions` heading (line 944) does not carry the `(RESOLVED)` suffix, and
-none of its five numbered questions carry an inline `RESOLVED` marker. Mechanically this is a
-Dimension 11 red flag. Substantively, however, all five questions are resolved by a different,
-correctly-cross-referenced artifact: 24-CONTEXT.md answers Q1 (Docker scope) directly, and
-24-CONTEXT.md's "Claude's Discretion" section answers Q2 (readiness knobs — wire through), Q3
-(Checkov — accept/document) and Q5 (gitignore by default); Q4 (ArgoCD overlay input) is carried
-forward as a named Phase 25 hand-off in both 24-01 and 24-09. 24-PATTERNS.md explicitly documents
-this override relationship ("CONTEXT.md overrides RESEARCH.md in two places"). Every one of the
-five questions has a demonstrable, correctly-implemented answer somewhere in the ten plans. This is
-a documentation-hygiene gap in RESEARCH.md, not a gap in what the plans will deliver.
-
-## Dimension 12 — Pattern Compliance: PASS
-
-24-PATTERNS.md maps every touched/created file to an in-repo analog (mostly "itself," since this
-phase mostly extends Phase 23 artifacts) and each plan's `<read_first>` list explicitly cites the
-relevant PATTERNS.md section and the exact line ranges of the analog to copy. The two "no analog"
-items (`~/.docker/daemon.json` merge, `.gitignore` handling) are called out honestly in PATTERNS.md
-and each is given a "closest available shape" to follow (the realms-guard read-compute-compare-write
-shape) rather than being planned in a vacuum — and plans 24-06/24-07 follow that shape.
+No code-level gaps found. Every artifact the plans committed to exists, is substantive (not a stub), and is wired end-to-end from `values.yaml` through to the Nexus REST API on the server side, and from the workstation script through to real client config files on the workstation side. Both offline gates were re-run live in this session and are green with no vacuous passes; all artifact line-count floors from plan frontmatter were checked and exceeded. The one open item is not a defect but a verification-method limitation: the live network proof of anonymous pull (npm/PyPI/Helm/Docker) exists only as executor-recorded evidence, not as an independently-reproduced verifier observation, because reproducing it requires live Docker/Nexus infrastructure outside this verification pass's budget. The default-off posture for `anonymous.enabled` is a disclosed, intentional deviation from a literal "no auth required" reading of NEXUS-02's requirement text, locked in 24-CONTEXT.md (itself part of plan 24-01's must_haves) and documented in the shipped README — not an unexplained gap.
 
 ---
 
-## Warnings (should note, execution may proceed)
-
-**1. [research_resolution] RESEARCH.md's Open Questions section is not marked resolved**
-- File: `24-RESEARCH.md`, line 944
-- All five questions are substantively resolved via `24-CONTEXT.md` and `24-PATTERNS.md`, and every
-  resolution is correctly carried into the plans (verified above under Dimension 11). The dimension's
-  rubric uses FAIL-strength language for this condition; I am deliberately downgrading it because the
-  resolution artifact (CONTEXT.md) exists, is cross-referenced by PATTERNS.md, and each of the five
-  answers is independently traceable into a specific plan/task. This is a documentation-hygiene gap,
-  not a gap in delivered behavior.
-- Fix hint: retitle the section `## Open Questions (RESOLVED)` and add a one-line inline resolution
-  pointer per question (e.g., "RESOLVED — see 24-CONTEXT.md §Docker scope"). Not required before
-  execution.
-
-**2. [task_completeness] Three `<automated>` verify commands are inverted and fail on the success path**
-- Plans/tasks: 24-02 Task 2, 24-08 Task 1, 24-08 Task 2
-- Each ends its `<automated>` chain with `grep -c '<string-expected-absent>' <file>` joined by `&&`,
-  e.g. 24-02 T2: `... && grep -c 'ANONYMOUS-PULL-DENIED' scripts/nexus-live-smoke.sh`; 24-08 T1:
-  `... && grep -c 'Planned (Phase 24)' kubernetes/nexus/README.md`; 24-08 T2:
-  `... && grep -c 'repository/docker-proxy' workstation/README.md`. In every one of these three
-  cases the acceptance criteria correctly expect the count to be **0** post-edit — but `grep -c`
-  exits 1 (not 0) when the match count is zero, so the `&&`-chained automated verify command reports
-  failure precisely when the task was done correctly. This is the exact class of defect Nyquist
-  check 8a/8b exists to catch: a broken automated-verify signal on the tasks that flip this phase's
-  core claims (anonymous access opened, README claims corrected).
-- Severity: WARNING, not BLOCKER — the correct expected state is unambiguously stated in each task's
-  `acceptance_criteria`, and an executor following the anti-slop "reality is the arbiter" protocol
-  will notice the exit-code mismatch immediately and can trivially substitute
-  `! grep -q '<string>' <file>` or `[ "$(grep -c ... )" -eq 0 ]`. It should not be executed literally
-  as an infrastructure gate without that correction.
-- Fix hint: replace each of the three `grep -c ... <file>` tails with `! grep -q '<string>' <file>`.
-
-**3. [task_completeness] 24-02 Task 2 states two irreconcilable size-threshold rules for the npm check**
-- Plan 24-02, Task 2 action text: `ANONYMOUS-PULL-ALLOWED` must assert "more than 300,000 bytes"
-  (matching 24-VALIDATION.md row 24-W0-03 and RESEARCH.md Pattern 3), but the same task's general
-  threshold-selection rule two paragraphs later states every threshold (stated as applying to "all
-  three" checks) must be "no more than half the measured size." The npm tarball's measured size is
-  318,961 bytes (stated in this same plan's `<interfaces>` block); half of that is ~159,480, which
-  is *less than* the 300,000-byte floor the same task also mandates. Both cannot hold simultaneously.
-- Severity: WARNING — an executor must pick one and will produce internally consistent code either
-  way, but the plan text itself is contradictory and should be corrected before/at execution.
-- Fix hint: state explicitly that the "no more than half" rule applies only to the newly-measured
-  PyPI and Helm thresholds (whose sizes are not fixed elsewhere), and that npm's floor is the
-  already-fixed 300,000 bytes carried over from Pattern 3/24-W0-03.
-
-**4. [task_completeness] Ambiguous check-count deltas vs. described check granularity**
-- 24-02 Task 2 describes `ANONYMOUS-PULL-ALLOWED` (and, by extension, PYPI/HELM) as asserting "three
-  separate verdicts exactly like section 5's split" (the file's existing `ARTIFACT-TRANSPORT` /
-  `ARTIFACT-HTTP-200` / `ARTIFACT-SIZE` pattern, which are three independently *named* `pass()`/
-  `fail()` calls) — yet 24-02 Task 3's acceptance criteria requires the live check count to be
-  "exactly three higher" after adding three ecosystems. If each ecosystem check is genuinely
-  three-way split by name (as section 5 is), the delta would be far higher than three. Similarly,
-  24-05 Task 2 describes `ANONYMOUS-PULL-DOCKER` as having "five ordered legs each with its own
-  assertion and failure message," while 24-05 Task 3 requires the count to be "exactly four higher"
-  across two new named checks in that task plus two from Task 1.
-- Severity: WARNING — resolvable if the convention is "one named `pass()`/`fail()` call per check,
-  with multiple internally-distinguished failure messages for its sub-assertions" (which is a
-  legitimate and common convention, and is what makes the "four higher" / "three higher" counts
-  self-consistent) rather than "one named call per assertion." The plans do not state this
-  convention explicitly, leaving it to the executor to infer correctly.
-- Fix hint: add one sentence to 24-02 Task 2 and 24-05 Task 2 clarifying that "reported as three
-  separate verdicts" / "each with its own assertion" means distinct failure messages within a single
-  named check, not one `pass()`/`fail()` call per assertion — so the stated count deltas hold.
-
-**5. [nyquist_feedback_latency] Several tasks' automated verify commands are live-gate runs that can take minutes**
-- Plans: 24-01 (Task 3), 24-02 (Task 3), 24-05 (Task 3), 24-06 (Task 3), 24-07 (Task 3), 24-10 (Task 1)
-- `bash scripts/nexus-live-smoke.sh` is documented in 24-VALIDATION.md's own Sampling Rate table as
-  taking up to ~660 seconds in the full-suite worst case, exceeding the Nyquist 30-second guideline.
-- This is the project's established, budgeted live-gate architecture (same pattern as Phase 23, not
-  a new regression), and 24-VALIDATION.md already documents and accepts this latency at the phase
-  level. No action required; noted for awareness only.
-
-**6. [process] 24-VALIDATION.md frontmatter and Sign-Off are left in draft state**
-- `nyquist_compliant: false`, `wave_0_complete: false`, `status: draft`, Sign-Off checklist entirely
-  unchecked.
-- This is by design: plan 24-10 Task 3 explicitly finalizes these flags "only if every row is green"
-  at phase close, following the 22-VALIDATION.md precedent. Recommend that phase-close verification
-  (post-execution) confirm 24-10 actually flips these flags truthfully against observed evidence,
-  since a stale `false`/`draft` state left uncorrected after execution would itself be a defect.
-
-**7. [minor] `$SHA` referenced but never assigned inside two `<automated>` verify blocks**
-- Plans/tasks: 24-03 Task 3, 24-09 Task 2
-- Both end their `<automated>` command with `git diff-tree --no-commit-id --name-only -r "$SHA"`
-  where `$SHA` is not set anywhere in that same automated command (elsewhere in the project the
-  convention, stated correctly in `acceptance_criteria` prose, is `SHA=$(git rev-parse HEAD)`
-  captured immediately after the commit — but that assignment is missing from the literal
-  `<automated>` tag in these two tasks specifically).
-- Severity: WARNING — trivially fixed by prepending `SHA=$(git rev-parse HEAD);` to the command, and
-  every other plan in this phase does state the assignment correctly in its acceptance criteria.
-- Fix hint: prepend `SHA=$(git rev-parse HEAD);` inside the `<automated>` tag for both tasks.
-
-**8. [key_links_planned] 24-07 Task 1's read_first omits the recipe for standing up the verification Nexus**
-- 24-07 Task 1 requires a live Nexus on port 8083 with a working Helm remote (so `helm search repo`
-  can return a result row), but its `<read_first>` list does not cite the recipe for booting that
-  instance with the Helm proxy's remote URL configured (`helm template … --set
-  repos.helm.remoteUrl=https://charts.jetstack.io`, as 24-04 Task 2 correctly cites from
-  `nexus-live-smoke.sh` lines 200-330). Without that citation, an executor could boot a Nexus whose
-  `helm-proxy` repository has no configured remote, causing the `helm` row of `--verify` to fail for
-  a reason unrelated to the code being tested.
-- Severity: WARNING — the acceptance criteria's expected outcome (`helm` reports `ok`) is unambiguous
-  and an attentive executor will likely find the same recipe 24-04 used by inspecting
-  `nexus-live-smoke.sh` regardless, but the plan should not require that inference.
-- Fix hint: add `repos/security-platform/scripts/nexus-live-smoke.sh` lines 200-330 to 24-07 Task 1's
-  `<read_first>`, matching 24-04 Task 2's citation.
-
-**9. [observation] The NEXUS-02 live-proof wave (24-02) is scheduled after the NEXUS-04 operator checkpoint (24-04)**
-- 24-04's blocking `checkpoint:decision` sits in wave 2. 24-02 (NEXUS-02's live proof for npm/PyPI/
-  Helm) was deliberately pushed from its dependency-minimum wave 2 to wave 3 to avoid Docker-engine/
-  port contention with 24-04. Net effect: the entire NEXUS-02 half of the phase now waits behind an
-  operator decision it does not itself depend on. This is a deliberate, explained tradeoff in the
-  plans (not an error), but the orchestrator/operator should know execution will pause early in the
-  phase for the Docker-routing decision even though that decision has no bearing on NEXUS-02.
-
----
-
-## Recommendation
-
-No blockers found. This plan set is unusually rigorous: every REST fact is cited to a specific
-measurement, every gate inversion is paired with its non-vacuity proof, every cross-plan
-environment-variable contract change is propagated to every consumer, and the one genuinely
-ambiguous decision (Docker daemon routing) is correctly deferred to an operator checkpoint gated on
-real measurement rather than resolved by planner assumption. Nine warnings are recorded above; none
-change the phase-goal-achievement verdict, but items 2-4 and 7-8 are concrete plan-text defects
-(inverted grep exit codes, a self-contradictory threshold rule, ambiguous check-count deltas, an
-unset `$SHA`, and a missing read_first citation) that should ideally be corrected before or during
-execution rather than discovered mid-run. Recommend: patch items 2, 3, 4, 7, and 8 into the affected
-plans (all are small, localized text edits), then proceed to `/gsd:execute-phase 24`. None of these
-warrant sending the plan set back through a revision loop.
+_Verified: 2026-09-20T21:04:35Z_
+_Verifier: Claude (gsd-verifier)_
