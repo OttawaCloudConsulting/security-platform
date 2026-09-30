@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.2-10-PLAN.md
-last_updated: "2026-09-30T20:18:17.252Z"
+stopped_at: Completed 29.2-11-PLAN.md
+last_updated: "2026-09-30T20:55:02.800Z"
 last_activity: 2026-09-30
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.2 (fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di) — EXECUTING
-Plan: 11 of 12
+Plan: 12 of 12
 Status: Ready to execute
 Last activity: 2026-09-30
 
@@ -346,6 +346,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.2]: 29.2-08: PR #27 merged (--merge) as 47319b2 (parents fdabac9 + 415618c) on operator reply "approved - merge"; origin/main readbacks pass, v1* tags identical, no tag/v1 move (release left to 29.4). DI-04: main has no required status contexts (no protection, ruleset 14243983 = deletion + non_fast_forward only). DI-05: DefectDojo Cleanup run 36746622337 deleted engagement ci/fix/phase-29.2-curlrc via the hardened main body
 - [Phase 29.2]: 29.2-09: ADR-029 extends ADR-025 in prose (-q argv[1], exit 0 + verify 0 + HTTP code, D-16 insecure exception, harness-only DEFECTDOJO_RESOLVE, no curl stderr, 40-hex token files, CURLRC gate 20 checks); v1 carries it only after the Phase 29.4 release
 - [Phase 29.2]: 29.2-10: bash token read uses conditional CRLF-else-LF strip (not two-step, which accepts a bare CR); read_token_file (read -d '' + wc -c size check, local LC_ALL=C) in lifecycle-assert.sh and homelab-validate.sh
+- [Phase 29.2]: 29.2-11: PR #28 live proof PROOF PASS - 166 (151+15) after one operator-approved celery rerun; PR Security rerun once after ECR 429; v1 unchanged
 
 ### Pending Todos
 
@@ -509,11 +510,12 @@ Carried forward from v1.1 close:
 | Phase 29.2 P08 | 10min | 2 tasks | 2 files |
 | Phase 29.2 P09 | 20min | 2 tasks | 3 files |
 | Phase 29.2 P10 | 25min | 2 tasks | 4 files |
+| Phase 29.2 P11 | 40min | 2 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-09-30T20:17:52.245Z
-Stopped at: Completed 29.2-10-PLAN.md
+Last session: 2026-09-30T20:54:57.311Z
+Stopped at: Completed 29.2-11-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
