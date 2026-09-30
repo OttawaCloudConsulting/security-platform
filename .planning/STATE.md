@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.2-02-PLAN.md
-last_updated: "2026-09-30T14:20:36.687Z"
+stopped_at: Completed 29.2-03-PLAN.md
+last_updated: "2026-09-30T14:25:29.511Z"
 last_activity: 2026-09-30
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.2 (fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di) — EXECUTING
-Plan: 3 of 9
+Plan: 4 of 9
 Status: Ready to execute
 Last activity: 2026-09-30
 
@@ -338,6 +338,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.1]: 29.1-01: NEXUS-01 SATISFIED with D-05 Helm opt-in disclosed (overrides_applied 0); NEXUS-03 override proven at render tier + mutation; 23-VERIFICATION.md passed 30/30
 - [Phase ?]: [Phase 29.2-01]: P-CURLRC RED recorded (b11f677 on security-platform fix/phase-29.2-curlrc, unpushed): all six target lines FAIL on unfixed code with the listener logging REQUEST ... auth=yes; --scheme-only is now 14 assertions (13 when kubectl is absent and homelab-token-get SKIPs). The unfixed dd-import loop sends both reports (2 CONNECTs), so the exactly-1-CONNECT condition also measures the fix's fail-fast behaviour.
 - [Phase 29.2]: 29.2-02: guard cases (P-CONFIGURE-GUARD WR-01/WR-02, P-RESOLVE-GUARD, P-TOKEN-GUARD) run inside the P-CURLRC fixture; 0 CONNECT is the 'sends nothing' measure; RED is PROOF FAIL - 20 of 30
+- [Phase 29.2]: 29.2-03: configure.sh reads the token with errors='replace', newline='' so bad bytes fail the 40-hex check (exit 2), not a traceback
 
 ### Pending Todos
 
@@ -492,11 +493,12 @@ Carried forward from v1.1 close:
 | Phase 29.1 P01 | 30min | 2 tasks | 1 files |
 | Phase 29.2 P01 | 25min | 2 tasks | 3 files |
 | Phase 29.2 P02 | 20min | 2 tasks | 2 files |
+| Phase 29.2 P03 | 15min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-09-30T14:20:36.676Z
-Stopped at: Completed 29.2-02-PLAN.md
+Last session: 2026-09-30T14:25:29.500Z
+Stopped at: Completed 29.2-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
