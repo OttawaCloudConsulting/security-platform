@@ -1,0 +1,76 @@
+# 29.2-10 RED/GREEN evidence: token-file line-ending rule (29.2 review WR-01, ADR-029 decision 6)
+# Repository: repos/security-platform. Dummy 40-hex tokens masked as <dummy-token>.
+
+== RED (harness only; lifecycle-assert.sh and homelab-validate.sh as on origin/main 47319b2) ==
+branch: fix/phase-29.2-token-newline
+HEAD: 9ae6de0fe3a0 (test(29.2-10): ... RED ...)
+command: bash scripts/defectdojo-import-proof.sh --scheme-only  (exit 1)
+control on untouched origin/main before the edit: PROOF PASS - 30 assertions
+
+-- PROOF FAIL lines --
+PROOF: P-TOKEN-GUARD FAIL lifecycle-token-blanklines: a token file with four trailing LF (the WR-01 review gap): exit 1 (expected 2); no line matching '^ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE'; 1 CONNECT line(s) at the listener (no REQUEST line); [listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0]
+PROOF: P-TOKEN-GUARD FAIL lifecycle-token-barecr: a token file ending in a bare CR: exit 1 (expected 2); no line matching '^ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE'; 1 CONNECT line(s) at the listener (no REQUEST line); [listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0]
+PROOF: P-TOKEN-GUARD FAIL lifecycle-token-nul: a token file with a NUL byte after the token: exit 1 (expected 2); no line matching '^ERROR: DEFECTDOJO_ADMIN_TOKEN_FILE'; 1 CONNECT line(s) at the listener (no REQUEST line); [listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0]
+PROOF: P-TOKEN-GUARD FAIL homelab-token-blanklines: a token file with four trailing LF (the WR-01 review gap): exit 1 (expected 2); no line matching '^ERROR: --token-file'; 6 CONNECT line(s) at the listener (no REQUEST line); [listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0]
+PROOF: P-TOKEN-GUARD FAIL homelab-token-barecr: a token file ending in a bare CR: exit 1 (expected 2); no line matching '^ERROR: --token-file'; 6 CONNECT line(s) at the listener (no REQUEST line); [listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0]
+PROOF: P-TOKEN-GUARD FAIL homelab-token-nul: a token file with a NUL byte after the token: exit 1 (expected 2); no line matching '^ERROR: --token-file'; 6 CONNECT line(s) at the listener (no REQUEST line); [listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0]
+
+-- new-label PASS lines (configure regression guards and every P-TOKEN-ACCEPT case already pass) --
+PROOF: P-CONFIGURE-GUARD PASS configure-token-blanklines: a token file with four trailing LF (regression guard for the WR-01 review gap) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CONFIGURE-GUARD PASS configure-token-barecr: a token file ending in a bare CR (regression guard) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CONFIGURE-GUARD PASS configure-token-nul: a token file with a NUL byte after the token (regression guard) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS configure-token-lf: a token file ending in exactly one LF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS configure-token-crlf: a token file ending in exactly one CRLF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS lifecycle-token-lf: a token file ending in exactly one LF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS lifecycle-token-crlf: a token file ending in exactly one CRLF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS homelab-token-lf: a token file ending in exactly one LF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS homelab-token-crlf: a token file ending in exactly one CRLF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0)
+
+-- final line --
+PROOF FAIL - 6 of 45
+
+== GREEN (read_token_file in lifecycle-assert.sh and homelab-validate.sh) ==
+HEAD: 34e345bbae11
+
+-- git log --oneline origin/main..HEAD --
+34e345b fix(29.2-10): lifecycle-assert and homelab-validate strip at most one trailing line ending from the token file, under LC_ALL=C (ADR-029 decision 6, 29.2 review WR-01)
+9ae6de0 test(29.2-10): token files with trailing blank lines, a bare CR or a NUL byte must be refused; one LF or CRLF accepted (RED, 29.2 review WR-01)
+
+-- git diff --stat origin/main...HEAD --
+ scripts/defectdojo-homelab-validate.sh |  46 ++++++++---
+ scripts/defectdojo-import-proof.sh     | 144 ++++++++++++++++++++++++++++++---
+ scripts/defectdojo-lifecycle-assert.sh |  43 +++++++---
+ 3 files changed, 202 insertions(+), 31 deletions(-)
+
+-- run 1: PASS lines for the 15 new labels --
+PROOF: P-CONFIGURE-GUARD PASS configure-token-blanklines: a token file with four trailing LF (regression guard for the WR-01 review gap) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CONFIGURE-GUARD PASS configure-token-barecr: a token file ending in a bare CR (regression guard) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CONFIGURE-GUARD PASS configure-token-nul: a token file with a NUL byte after the token (regression guard) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS configure-token-lf: a token file ending in exactly one LF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS configure-token-crlf: a token file ending in exactly one CRLF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS lifecycle-token-blanklines: a token file with four trailing LF (the WR-01 review gap) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS lifecycle-token-barecr: a token file ending in a bare CR -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS lifecycle-token-nul: a token file with a NUL byte after the token -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS lifecycle-token-lf: a token file ending in exactly one LF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS lifecycle-token-crlf: a token file ending in exactly one CRLF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS homelab-token-blanklines: a token file with four trailing LF (the WR-01 review gap) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS homelab-token-barecr: a token file ending in a bare CR -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS homelab-token-nul: a token file with a NUL byte after the token -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS homelab-token-lf: a token file ending in exactly one LF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS homelab-token-crlf: a token file ending in exactly one CRLF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0)
+PROOF: FAIL lines in run 1: 0; run 2: 0
+
+-- final PROOF lines --
+run 1: PROOF PASS - 45 assertions
+run 2: PROOF PASS - 45 assertions
+
+-- offline gates --
+bash -n (both scripts): exit 0; shellcheck scripts/defectdojo-*.sh: exit 0
+--extract-only: EXTRACT PASS - .github/workflows/security.yml
+check-workflow-uploads.sh: PASS - 20 checks, 0 failures
+check-detector-parity.sh: check-detector-parity: PASSED 20 / FAILED 0
+actionlint: exit 0
+defectdojo-configure.sh and .github/workflows/security.yml: byte-identical to origin/main
+
+-- direct function check (read_token_file vs configure.sh Python rule, LC_ALL=en_US.UTF-8 caller) --
+bash 3.2.57 and 5.3.20: plain/LF/CRLF ACCEPT; 2xLF, bare CR, NUL, two lines, Token prefix, CRLF+LF REFUSE; LC_ALL restored after return; Python identical
