@@ -4,8 +4,8 @@ milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
 stopped_at: Completed 29-19-PLAN.md; ADR-027/ADR-028 written, DDOJO-05 Complete; all 20/20 phase-29 plans done, awaiting phase verification
-last_updated: "2026-09-30T00:13:33.135Z"
-last_activity: 2026-09-30 -- Phase 29.1 planning complete
+last_updated: "2026-09-30T01:47:09.888Z"
+last_activity: 2026-09-30
 progress:
   total_phases: 7
   completed_phases: 7
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Milestone complete
+**Current focus:** Phase 29.1 — close-gap-nexus-01-nexus-03-retroactive-verification-md-for-
 
 ## Current Position
 
-Phase: 29.1
-Plan: Not planned yet
+Phase: 29.1 (close-gap-nexus-01-nexus-03-retroactive-verification-md-for-) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-09-30 -- Phase 29.1 planning complete
+Last activity: 2026-09-30
 
 ## Performance Metrics
 
@@ -329,6 +329,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29]: 29-19: ADR-027 records DefectDojo exposure as deployed (ghostunnel native sidecar via overlay values, B1), the CSRF Origin mechanism, D-11/second-sync/netpol results, the trivy-image cross-branch dedup gap and the 2026-09-29 step-2 amendment — Plan 29-08a context note superseded the plan's standalone-Deployment wording; the trivy-image gap was measured live in 29-16
 - [Phase 29]: 29-19: ADR-028 records repository-scoped ARC registration (personal User account, no runner groups), the Administration RW fine-grained PAT as an accepted risk, and per-repo scale sets — D-07/D-08 amended 2026-09-26 by operator ruling; RESEARCH A6 verified by the 29-13 listener session
 - [Phase 29]: 29-19: D-12 cron-fired scheduled run observed (36553070357, success, import on ARC); DDOJO-05 marked Complete — Evidence 29-19-scheduled-runs.json and 29-19-cron-run-jobs.json
+- [Phase 29.1]: 29.1-01: NEXUS-01 SATISFIED with D-05 Helm opt-in disclosed (overrides_applied 0); NEXUS-03 override proven at render tier + mutation; 23-VERIFICATION.md passed 30/30
 
 ### Pending Todos
 
@@ -480,10 +481,11 @@ Carried forward from v1.1 close:
 | Phase 29 P17 | ~11h wall (~20 min active) | 2 tasks | 6 files |
 | Phase 29 P18 | ~15min (continuation) | 3 tasks | 7 files |
 | Phase 29 P19 | ~15min | 3 tasks | 7 files |
+| Phase 29.1 P01 | 30min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-29T22:29:30.209Z
+Last session: 2026-09-30T01:47:09.822Z
 Stopped at: Completed 29-19-PLAN.md; ADR-027/ADR-028 written, DDOJO-05 Complete; all 20/20 phase-29 plans done, awaiting phase verification
 Resume file: None
 
