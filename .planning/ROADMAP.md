@@ -379,7 +379,7 @@ Not yet defined. v3.0 (Phases 23-29) is in progress. Run `/gsd:new-milestone` af
 **Goal:** Phase 23 (Nexus Generic Chart) receives an independent, retroactive, read-only verification — `23-VERIFICATION.md` — that re-proves NEXUS-01 and NEXUS-03 against the chart on `security-platform` `origin/main`, the Phase 23 merge commit, and the live homelab deployment, so the v3.0 milestone audit's orphaned-requirement gap closes without any chart or cluster change.
 **Requirements**: NEXUS-01, NEXUS-03
 **Depends on:** Phase 29
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 **Success Criteria** (what must be TRUE):
   1. `.planning/phases/23-nexus-generic-chart/23-VERIFICATION.md` exists with `status: passed` (or an explicit `failed` with gaps), scoring the union of Phase 23's plan must-haves on command-plus-output evidence, not SUMMARY prose.
@@ -389,4 +389,4 @@ Not yet defined. v3.0 (Phases 23-29) is in progress. Run `/gsd:new-milestone` af
 
 Plans:
 - [x] 29.1-01-PLAN.md — Pin the two-SHA snapshot, run offline + live read-only probes, author `23-VERIFICATION.md` (NEXUS-01, NEXUS-03)
-- [ ] 29.1-02-PLAN.md — Append the Phase 23 deferred-items re-check, create the 29.1 tooling ledger, run the coverage self-check (NEXUS-01, NEXUS-03)
+- [x] 29.1-02-PLAN.md — Append the Phase 23 deferred-items re-check, create the 29.1 tooling ledger, run the coverage self-check (NEXUS-01, NEXUS-03)
