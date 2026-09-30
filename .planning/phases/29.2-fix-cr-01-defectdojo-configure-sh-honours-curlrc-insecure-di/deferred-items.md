@@ -29,13 +29,17 @@ P-INSECURE only runs in the live `--hook` path. `--scheme-only` (30 assertions) 
 
 The final P-TLS assertion shows that no curl run in the proof process tree read the hostile `CURL_HOME` curlrc: `curlrc-global-trace.txt` and `curlrc-global-libcurl.c` were never created. Curls made by the kind smoke script (`KIND-*` checks) run in a child process with its own environment. They are only source-verified as passing `-q`, and no live assertion covers them. Owner: later harness plan.
 
-## DI-04 (found in 29.2-07, unverified): required status contexts
+## DI-04 (found in 29.2-07, RESOLVED in 29.2-08): required status contexts
 
 `GitGuardian Security Checks` shows up on PR #27 as a check context. Branch protection or rulesets on `main` were not read during 29.2-07, so the must-have "required contexts unchanged" was not verified against the protection settings. It rests only on the fact that the `security / ...` contexts ran and passed. Plan 08 should read the required contexts (for example `gh api repos/OttawaCloudConsulting/security-platform/branches/main/protection` or the rulesets API) before it merges.
 
-## DI-05 (found in 29.2-07, owner 29.2-08): homelab engagement ci/fix/phase-29.2-curlrc
+**Resolution (29.2-08, read-only GETs before the merge).** `gh api .../branches/main/protection` returned HTTP 404 `Branch not protected`. `gh api .../rules/branches/main` returned one ruleset (14243983) with only `deletion` and `non_fast_forward` rules and no `required_status_checks` rule. So `main` has no required status contexts: neither `GitGuardian Security Checks` nor any `security / ...` context is required, and this phase changed nothing about them. `scripts/set-required-checks.sh` on origin/main is byte-identical to fdabac9. The fact that no context is enforced was already true before this phase, and fixing it is out of scope. Evidence: `evidence/29.2-08-post-merge.txt`.
+
+## DI-05 (found in 29.2-07, RESOLVED in 29.2-08): homelab engagement ci/fix/phase-29.2-curlrc
 
 `security / DefectDojo Import` runs against the homelab DefectDojo because the operator amended must-have #3, since `security-platform` does set `DEFECTDOJO_URL`. It has imported into engagement `ci/fix/phase-29.2-curlrc` twice: run 36738325155 (head 35363b7) and run 36742181020 (head 415618c). Each import was 8 reports, `http=201`, `TLS mode: verified-system`. Plan 08 must verify that `security / DefectDojo Cleanup` removes that engagement when the PR is merged or closed, however many tests it holds.
+
+**Resolution (29.2-08, observed only).** Merging PR #27 (merge 47319b2) fired `PR Security` on `pull_request: closed` as run 36746622337, which concluded success. Its job `security / DefectDojo Cleanup` (109994321686) ran `security.yml@refs/heads/main` 47319b2, which is the hardened dd-delete body, under `TLS mode: verified-system`. It logged `DELETED: engagement id=4 name='ci/fix/phase-29.2-curlrc' product=1` and `DefectDojo cleanup verified: outcome=deleted ... deleted_ids=[4]`. No one acted on DefectDojo by hand. Evidence: `evidence/29.2-08-post-merge.txt`.
 
 ## Note (29.2-07): plans 05/06 commit-count pins are historical
 

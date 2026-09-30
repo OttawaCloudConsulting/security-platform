@@ -1,0 +1,106 @@
+# 29.2-08 post-merge evidence (security-platform PR #27)
+# Captured 2026-09-30T16:45:54Z from repos/security-platform; all readbacks from origin, never the local tree
+# Operator approval (verbatim): "approved - merge" (approved head 415618cdf390483d48dbbb82d9efc3742ec97251; no decision a-f rejected)
+
+## PRE-MERGE
+$ gh pr view 27 --json state,mergeable,headRefOid,mergeStateStatus
+{"headRefOid":"415618cdf390483d48dbbb82d9efc3742ec97251","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","state":"OPEN"}
+
+$ git fetch origin --tags && git rev-parse origin/main   # pre-merge main tip
+fdabac9464f2baaeaa276f8934dc8d353295b355
+
+$ git ls-remote --tags origin 'v1*'   # pre-merge baseline
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+
+$ gh api repos/OttawaCloudConsulting/security-platform/branches/main/protection   # DI-04, read-only GET
+{"message":"Branch not protected","documentation_url":"https://docs.github.com/rest/branches/branch-protection#get-branch-protection","status":"404"}gh: Branch not protected (HTTP 404)
+
+$ gh api repos/OttawaCloudConsulting/security-platform/rules/branches/main   # DI-04, read-only GET
+[{"type":"deletion","ruleset_source_type":"Repository","ruleset_source":"OttawaCloudConsulting/security-platform","ruleset_id":14243983},{"type":"non_fast_forward","ruleset_source_type":"Repository","ruleset_source":"OttawaCloudConsulting/security-platform","ruleset_id":14243983}]
+## MERGE
+DOING: gh pr merge 27 --merge (no --delete-branch, no --squash, no --auto)
+EXPECT: PR state MERGED; merge commit with parents fdabac9464f2baaeaa276f8934dc8d353295b355 (main) and 415618cdf390483d48dbbb82d9efc3742ec97251 (head)
+IF MATCH: remote readbacks. IF MISMATCH: stop and report; no tag or branch action
+
+$ gh pr view 27 --json headRefOid -q .headRefOid   # re-check immediately before merge
+415618cdf390483d48dbbb82d9efc3742ec97251
+$ gh pr merge 27 --merge
+exit=0
+
+## POST-MERGE READBACKS (origin only)
+$ gh pr view 27 --json state,mergedAt,mergeCommit
+{"mergeCommit":{"oid":"47319b2ed56dfff4353f1fcf22a0b06663bda172"},"mergedAt":"2026-09-30T16:46:09Z","state":"MERGED"}
+$ git fetch origin --tags
+From https://github.com/OttawaCloudConsulting/security-platform
+   fdabac9..47319b2  main       -> origin/main
+$ git rev-parse origin/main
+47319b2ed56dfff4353f1fcf22a0b06663bda172
+$ git rev-list --parents -n1 47319b2ed56dfff4353f1fcf22a0b06663bda172
+47319b2ed56dfff4353f1fcf22a0b06663bda172 fdabac9464f2baaeaa276f8934dc8d353295b355 415618cdf390483d48dbbb82d9efc3742ec97251
+
+$ git show origin/main:.github/workflows/security.yml | grep -c '"curl", "-q", "-sS"'
+2
+$ git show origin/main:scripts/check-workflow-uploads.sh | grep 'CHECK_COUNT = 20'
+CHECK_COUNT = 20
+$ git show origin/main:scripts/defectdojo-import-proof.sh | grep -c 'P-CURLRC'
+24
+$ git show origin/main:scripts/defectdojo-configure.sh | grep -c '"curl", "-q"'
+1
+$ git show origin/main:scripts/set-required-checks.sh | shasum
+aa71d79a9fd700abdff469d7c8101e240e969400  -
+$ git show fdabac9:scripts/set-required-checks.sh | shasum
+aa71d79a9fd700abdff469d7c8101e240e969400  -
+
+$ git ls-remote --tags origin 'v1*'   # post-merge
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+$ git ls-remote --heads origin fix/phase-29.2-curlrc   # branch not deleted by us
+415618cdf390483d48dbbb82d9efc3742ec97251	refs/heads/fix/phase-29.2-curlrc
+
+## TAG COMPARISON (D-02)
+Pre-push table (29.2-07-SUMMARY / orchestrator): v1 fdabac9464f2baaeaa276f8934dc8d353295b355; v1.0.0 fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4 (^{} cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef); v1.1.0 414fd3beb5a6d79d52316150a192803a4b0ece78 (^{} 0f7e4e141d2a300d4be9a54efc137eb4510bb7ea); v1.1.1 c1565b35e88de4e70e61d79292943c15b3fe67f6 (^{} 917352c00987023fa5ff1e6cdabc16987eb114dd); v1.2.0 b8ae59df7dcf6aec798dac699ca334d68812939d (^{} fdabac9464f2baaeaa276f8934dc8d353295b355)
+$ diff <pre-push table> <post-merge ls-remote>
+IDENTICAL (9 refs; no tag created or moved)
+
+RESULT: merge 47319b2ed56dfff4353f1fcf22a0b06663bda172, parents fdabac9464f2baaeaa276f8934dc8d353295b355 (pre-merge main) + 415618cdf390483d48dbbb82d9efc3742ec97251 (approved head). MATCH: yes
+
+## DI-04 required contexts (read-only)
+classic branch protection on main: none (HTTP 404 'Branch not protected')
+rulesets applying to main: ruleset 14243983 with rules deletion + non_fast_forward only; no required_status_checks rule
+=> main has no required status contexts at all; GitGuardian Security Checks is not required; nothing about contexts was changed by this plan
+
+## DI-05 DefectDojo Cleanup (observe only)
+$ gh run list --limit 3 --json ... -q (select createdAt > 16:46:00Z; runs after merge 16:46:09Z)
+36746622337	PR Security	pull_request	fix/phase-29.2-curlrc	415618cdf390483d48dbbb82d9efc3742ec97251	completed	success	2026-09-30T16:46:13Z
+$ gh run view 36746622337 --json event,conclusion,jobs
+{"conclusion":"success","event":"pull_request","jobs":[{"conclusion":"success","databaseId":109994321686,"name":"security / DefectDojo Cleanup"},{"conclusion":"skipped","databaseId":109994323410,"name":"security / Secrets — Gitleaks"},{"conclusion":"skipped","databaseId":109994323433,"name":"security / IaC — Checkov"},{"conclusion":"skipped","databaseId":109994323517,"name":"security / DefectDojo Import"},{"conclusion":"skipped","databaseId":109994323529,"name":"security / Container — Trivy Image"},{"conclusion":"skipped","databaseId":109994357450,"name":"security / SAST — Semgrep CE"},{"conclusion":"skipped","databaseId":109994364268,"name":"security / SCA — Trivy Filesystem"}]}
+$ gh run view 36746622337 --job 109994321686 --log   (body output lines only; script echo and env secrets filtered)
+2026-09-30T16:46:20.4751127Z Uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@refs/heads/main (47319b2ed56dfff4353f1fcf22a0b06663bda172)
+2026-09-30T16:46:27.7900428Z TLS mode: verified-system
+2026-09-30T16:46:27.7901274Z product='OttawaCloudConsulting/security-platform' target='ci/fix/phase-29.2-curlrc' default_branch='main'
+2026-09-30T16:46:27.7902031Z DELETED: engagement id=4 name='ci/fix/phase-29.2-curlrc' product=1
+2026-09-30T16:46:27.8291955Z DefectDojo cleanup verified: outcome=deleted target=ci/fix/phase-29.2-curlrc product=OttawaCloudConsulting/security-platform product_id=1 deleted_ids=[4]
+=> DefectDojo Cleanup ran on the pull_request closed event (run 36746622337, job 109994321686), conclusion success, TLS mode verified-system, using security.yml@refs/heads/main 47319b2 (the hardened dd-delete body); engagement id=4 ci/fix/phase-29.2-curlrc DELETED. No manual DefectDojo action taken.
+
+## Post-merge main-branch workflow runs
+No workflow in security-platform triggers on push to main (pr-security.yml: pull_request; defectdojo-import-proof.yml: workflow_dispatch + pull_request paths; scheduled-security.yml: schedule + workflow_dispatch; security.yml: workflow_call).
+$ gh run list --branch main --limit 3 --json databaseId,workflowName,event,headSha,conclusion,createdAt
+36699956848	Scheduled Security	schedule	fdabac9464f2baaeaa276f8934dc8d353295b355	failure	2026-09-30T10:02:40Z
+36553070357	Scheduled Security	schedule	2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d	success	2026-09-29T10:02:41Z
+36510481745	Scheduled Security	workflow_dispatch	2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d	success	2026-09-29T01:59:33Z
+Note: 36699956848 (Scheduled Security, 10:02Z, head fdabac9) predates the merge; failing job 'security / Container — Trivy Image'. Pre-existing, not caused by this merge; not rerun. First post-merge scheduled run is the next 06:00 America/Toronto cron.
