@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: verifying
-stopped_at: Completed 29.2-12-PLAN.md
-last_updated: "2026-09-30T21:21:44.483Z"
+status: ready_to_plan
+stopped_at: Phase 29.2 complete (12/12) — ready to discuss Phase 29.3
+last_updated: 2026-09-30T23:17:46.876Z
 last_activity: 2026-09-30
 progress:
   total_phases: 7
   completed_phases: 7
   total_plans: 75
-  completed_plans: 75
+  completed_plans: 89
   percent: 100
 ---
 
@@ -21,20 +21,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 29.2 — fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di
+**Current focus:** Phase 29.3 — fix wr 05 chart gates fail closed on missing validate tls ya
 
 ## Current Position
 
-Phase: 29.2 (fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di) — EXECUTING
-Plan: 12 of 12
-Status: Phase complete — ready for verification
+Phase: 29.3
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-09-30
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 84 (v1.0 + v1.1)
+- Total plans completed: 96 (v1.0 + v1.1)
 - Total execution time: ~2h 40min
 
 **Recent Trend:**
