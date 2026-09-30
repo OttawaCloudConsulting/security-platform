@@ -3721,7 +3721,8 @@ PY
     "GITHUB_SHA=${PROOF_SHA}" \
     "GITHUB_RUN_ID=${PROOF_RUN_ID}" \
     "GITHUB_SERVER_URL=${PROOF_SERVER_URL}" \
-    "GITHUB_REPOSITORY=${PROOF_REPOSITORY}"
+    "GITHUB_REPOSITORY=${PROOF_REPOSITORY}" \
+    "DEFECTDOJO_RESOLVE="
   sed -e 's/^/    | /' "$BODY_LOG"
   insecure_state="$(jq -r '"\(.tls_mode) attempted=\(.attempted | length) skipped=\(.skipped | length)"' "$results_insecure" 2>/dev/null || echo "no-result-file")"
   if [ "$BODY_RC" -eq 0 ] && grep -q '::warning::' "$BODY_LOG" && grep -q 'TLS verification is OFF' "$BODY_LOG" \
