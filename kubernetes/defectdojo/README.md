@@ -230,7 +230,7 @@ Deduplication is **off** on a fresh DefectDojo 3.3.200 install. Until it is swit
 DEFECTDOJO_URL=https://defectdojo.example.com DEFECTDOJO_ADMIN_TOKEN_FILE=/path/to/superuser-token bash scripts/defectdojo-configure.sh
 ```
 
-Set `DEFECTDOJO_CA_FILE=/path/to/ca.pem` as well if the certificate is issued by a private CA. The URL must be `https://`, and TLS is always verified.
+Set `DEFECTDOJO_CA_FILE=/path/to/ca.pem` as well if the certificate is issued by a private CA. The URL must be `https://`, and TLS is always verified. The script passes curl `-q`, so your curlrc (`~/.curlrc`, `$CURL_HOME/.curlrc`) is ignored and cannot turn verification off.
 
 - **It needs a superuser token.** `/api/v2/system_settings/` is superuser-only. The token is held by the operator. It is **not** the CI `DEFECTDOJO_API_TOKEN`, which stays a staff, non-superuser importer, and it must **never** be stored as a GitHub secret. Put the bare token in a file with mode `0600`; the script refuses a file that group or other can read, and it never puts the token on a command line.
 - **It is idempotent.** It reads the settings and PATCHes only the keys that drifted. A rerun prints a line starting `NO CHANGE`. Measured on a fresh install: the first run changed `enable_deduplication` and `risk_acceptance_form_default_days`, and the rerun printed `NO CHANGE`.
