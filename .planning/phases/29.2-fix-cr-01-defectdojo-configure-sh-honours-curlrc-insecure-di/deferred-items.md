@@ -48,3 +48,19 @@ Plan 05's verify pins exactly 5 commits above origin/main and plan 06's pins exa
 ## DI-06 (found in 29.2-11, open for plan 12): homelab engagement ci/fix/phase-29.2-token-newline
 
 PR #28 imported into homelab engagement `ci/fix/phase-29.2-token-newline` twice. Run 36772753866 attempt 1 (job 110083338254) imported 7 reports, because `security / Container - Trivy Image` had failed on the public.ecr.aws 429. Attempt 2 (job 110091235324), the operator-approved rerun, imported 8 reports: it reused test_ids 32-38 and added trivy-image test_id=39. Both were `http=201` under `TLS mode: verified-system`. Plan 12 must check that `security / DefectDojo Cleanup` deletes this engagement when PR #28 is merged or closed, as 29.2-08 did for DI-05.
+
+**Resolution (29.2-12, observed only).** Merging PR #28 (merge 72cb174) fired `PR Security` on `pull_request: closed` as run 36778473590, which concluded success. Its job `security / DefectDojo Cleanup` (110102268352) ran `security.yml@refs/heads/main` 72cb174, whose `security.yml` is byte-identical to 47319b2, under `TLS mode: verified-system`. It logged `DELETED: engagement id=5 name='ci/fix/phase-29.2-token-newline' product=1` and `DefectDojo cleanup verified: outcome=deleted ... deleted_ids=[5]`, so both imports (7 then 8 reports) went with the engagement. No one acted on DefectDojo by hand. Evidence: `evidence/29.2-12-post-merge.txt`.
+
+## DI-07 (found in 29.2 verification, RESOLVED in 29.2-10..12): token-file trailing line endings
+
+(Numbered DI-07 because DI-06 was already taken by the homelab engagement item added in 29.2-11.)
+
+**Symptom.** REVIEW WR-01 and the VERIFICATION gap: `defectdojo-lifecycle-assert.sh` and `defectdojo-homelab-validate.sh` read the token file with `$(< file)`. Command substitution strips every trailing newline, so a file holding `<hex>\n\n\n\n` passed the 40-hex check. The same read also accepted a bare trailing CR and NUL bytes. `defectdojo-configure.sh` already rejected all three, so ADR-029 decision 6 held for one operator script out of three.
+
+**Fix (plan 10, security-platform 9ae6de0 RED harness cases, 34e345b fix).** Both bash scripts now use `read_token_file`: a byte-exact `read -d ''` plus a `wc -c` size check, under `local LC_ALL=C`. It strips at most one trailing CRLF, or else one LF (a conditional strip, not two steps, since two steps would accept a bare CR), and then applies the 40-hex check. Blank lines, a bare CR and NUL bytes now exit 2 before any request, which is what configure.sh already did.
+
+**Proof.** Offline: 15 new harness labels (P-TOKEN-GUARD lifecycle/homelab blanklines, barecr and nul; P-TOKEN-ACCEPT lifecycle/homelab/configure lf and crlf; P-CONFIGURE-GUARD configure blanklines, barecr and nul). `--scheme-only` ends `PROOF PASS - 45 assertions`, and it did so again from a detached origin/main checkout at 72cb174. Live: DefectDojo Import Proof run 36772753821 attempt 2 measured `PROOF PASS - 166 assertions` (151 + 15), and all 15 labels passed on ubuntu-24.04.
+
+**Merge.** PR #28 was merged with `--merge` as `72cb174539cca5e3a2841f7977a221a90c41326e` (parents 47319b2 + 34e345b). It touched scripts only. `security.yml`, `defectdojo-configure.sh` and `set-required-checks.sh` are byte-identical to 47319b2. No tag was created and `v1` did not move. ADR-029 is unchanged because it already stated the correct rule; the gap was in the implementation, not the record.
+
+**Not planned here.** REVIEW WR-02, WR-03, WR-04, IN-02, IN-03 and IN-04 are still open review findings. The verifier classed them as not gaps, and no 29.2 plan addresses them.

@@ -1,0 +1,127 @@
+# 29.2-12 post-merge evidence (security-platform PR #28, token-file gap fix)
+# Captured 2026-09-30T21:17Z-21:25Z from repos/security-platform; all readbacks from origin, never the local tree
+# Operator approval (verbatim): "approved - merge" (approved head 34e345bbae11ae9215d2825a7ba178667ea04295; no disclosure a-e rejected)
+
+## PRE-MERGE
+$ gh pr view 28 --json number,state,headRefOid,mergeable,mergeStateStatus
+{"headRefOid":"34e345bbae11ae9215d2825a7ba178667ea04295","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","number":28,"state":"OPEN"}
+
+$ git fetch origin --tags -q && git rev-parse origin/main   # pre-merge main tip
+47319b2ed56dfff4353f1fcf22a0b06663bda172
+
+$ git ls-remote --tags origin 'v1*'   # pre-merge baseline
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+
+## MERGE
+DOING: gh pr merge 28 --merge --match-head-commit 34e345bbae11ae9215d2825a7ba178667ea04295 (no --delete-branch, no --squash, no --auto)
+EXPECT: PR state MERGED; merge commit with parents 47319b2ed56dfff4353f1fcf22a0b06663bda172 (main) and 34e345bbae11ae9215d2825a7ba178667ea04295 (head)
+IF MATCH: remote readbacks. IF MISMATCH: stop and report; no tag or branch action
+
+$ date -u   # 2026-09-30T21:17:25Z
+$ gh pr view 28 --json headRefOid -q .headRefOid   # re-check immediately before merge
+34e345bbae11ae9215d2825a7ba178667ea04295
+$ gh pr merge 28 --merge --match-head-commit 34e345bbae11ae9215d2825a7ba178667ea04295
+exit=0
+
+## POST-MERGE READBACKS (origin only)
+$ gh pr view 28 --json state,mergedAt,mergeCommit
+{"mergeCommit":{"oid":"72cb174539cca5e3a2841f7977a221a90c41326e"},"mergedAt":"2026-09-30T21:17:29Z","state":"MERGED"}
+$ git fetch origin --tags
+From https://github.com/OttawaCloudConsulting/security-platform
+   47319b2..72cb174  main       -> origin/main
+$ git rev-parse origin/main
+72cb174539cca5e3a2841f7977a221a90c41326e
+$ git rev-list --parents -n1 72cb174539cca5e3a2841f7977a221a90c41326e
+72cb174539cca5e3a2841f7977a221a90c41326e 47319b2ed56dfff4353f1fcf22a0b06663bda172 34e345bbae11ae9215d2825a7ba178667ea04295
+
+$ git show origin/main:scripts/defectdojo-lifecycle-assert.sh | grep -v '^[[:space:]]*#' | grep -c '$(< "$CRED_FILE")'
+0
+$ git show origin/main:scripts/defectdojo-homelab-validate.sh | grep -v '^[[:space:]]*#' | grep -c '$(< "$TOKEN_FILE")'
+0
+$ git show origin/main:scripts/defectdojo-lifecycle-assert.sh | grep -n 'local LC_ALL=C'
+343:# makes the `|| true` safe. `local LC_ALL=C` evaluates the length and the
+346:  local LC_ALL=C raw="" size
+$ git show origin/main:scripts/defectdojo-homelab-validate.sh | grep -n 'local LC_ALL=C'
+448:# makes the `|| true` safe. `local LC_ALL=C` evaluates the length and the
+451:  local LC_ALL=C raw="" size
+
+$ for l in <15 labels>; do git show origin/main:scripts/defectdojo-import-proof.sh | grep -c -- "$l"; done
+lifecycle-token-blanklines: 3
+lifecycle-token-barecr: 3
+lifecycle-token-nul: 3
+homelab-token-blanklines: 3
+homelab-token-barecr: 3
+homelab-token-nul: 3
+lifecycle-token-lf: 4
+lifecycle-token-crlf: 4
+homelab-token-lf: 4
+homelab-token-crlf: 4
+configure-token-lf: 4
+configure-token-crlf: 4
+configure-token-blanklines: 3
+configure-token-barecr: 3
+configure-token-nul: 3
+=> all 15 labels present on origin/main
+
+$ git diff --quiet 47319b2 origin/main -- .github/workflows/security.yml scripts/defectdojo-configure.sh scripts/set-required-checks.sh
+diff-quiet-exit=0   (IDENTICAL to 47319b2)
+$ git diff --stat 47319b2 origin/main
+ scripts/defectdojo-homelab-validate.sh |  46 ++++++++---
+ scripts/defectdojo-import-proof.sh     | 144 ++++++++++++++++++++++++++++++---
+ scripts/defectdojo-lifecycle-assert.sh |  43 +++++++---
+ 3 files changed, 202 insertions(+), 31 deletions(-)
+$ git ls-remote --heads origin fix/phase-29.2-token-newline   # branch not deleted by us
+34e345bbae11ae9215d2825a7ba178667ea04295	refs/heads/fix/phase-29.2-token-newline
+
+## TAG COMPARISON (D-02)
+Pre-push listing (29.2-11-SUMMARY Task 1 record): v1 fdabac9464f2baaeaa276f8934dc8d353295b355; v1.0.0 fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4 (^{} cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef); v1.1.0 414fd3beb5a6d79d52316150a192803a4b0ece78 (^{} 0f7e4e141d2a300d4be9a54efc137eb4510bb7ea); v1.1.1 c1565b35e88de4e70e61d79292943c15b3fe67f6 (^{} 917352c00987023fa5ff1e6cdabc16987eb114dd); v1.2.0 b8ae59df7dcf6aec798dac699ca334d68812939d (^{} fdabac9464f2baaeaa276f8934dc8d353295b355)
+$ git ls-remote --tags origin 'v1*' > post.txt; diff pre.txt post.txt
+diff-exit=0
+IDENTICAL (9 refs; no tag created or moved)
+
+RESULT: merge 72cb174539cca5e3a2841f7977a221a90c41326e, parents 47319b2ed56dfff4353f1fcf22a0b06663bda172 (pre-merge main) + 34e345bbae11ae9215d2825a7ba178667ea04295 (approved head). MATCH: yes
+
+## OFFLINE PROOF FROM DETACHED origin/main
+$ git switch --detach origin/main && git rev-parse HEAD
+HEAD is now at 72cb174 Merge pull request #28 from OttawaCloudConsulting/fix/phase-29.2-token-newline
+72cb174539cca5e3a2841f7977a221a90c41326e
+$ bash scripts/defectdojo-import-proof.sh --scheme-only
+proof-exit=0
+PROOF PASS - 45 assertions
+(45 '^PROOF: ... PASS' lines, 0 '^PROOF: <case> FAIL' lines)
+$ git switch fix/phase-29.2-token-newline
+Switched to branch 'fix/phase-29.2-token-newline'
+Your branch is up to date with 'origin/fix/phase-29.2-token-newline'.
+$ git status --short
+(clean)
+
+## DI-06 DefectDojo Cleanup (observe only)
+$ gh run list --limit 6 ...   (first run after merge 21:17:29Z)
+36778473590	PR Security	pull_request	fix/phase-29.2-token-newline	34e345bbae11ae9215d2825a7ba178667ea04295	completed	success	2026-09-30T21:17:33Z
+$ gh run view 36778473590 --json event,conclusion,jobs
+{"conclusion":"success","event":"pull_request","jobs":[{"conclusion":"success","databaseId":110102268352,"name":"security / DefectDojo Cleanup"},{"conclusion":"skipped","databaseId":110102269717,"name":"security / IaC — Checkov"},{"conclusion":"skipped","databaseId":110102270029,"name":"security / Container — Trivy Image"},{"conclusion":"skipped","databaseId":110102270134,"name":"security / Secrets — Gitleaks"},{"conclusion":"skipped","databaseId":110102270309,"name":"security / SCA — Trivy Filesystem"},{"conclusion":"skipped","databaseId":110102270915,"name":"security / DefectDojo Import"},{"conclusion":"skipped","databaseId":110102327831,"name":"security / SAST — Semgrep CE"}]}
+$ gh run view 36778473590 --job 110102268352 --log   (body output lines only; script echo filtered)
+2026-09-30T21:17:41.1930301Z Uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@refs/heads/main (72cb174539cca5e3a2841f7977a221a90c41326e)
+2026-09-30T21:17:46.3968124Z TLS mode: verified-system
+2026-09-30T21:17:46.3970066Z product='OttawaCloudConsulting/security-platform' target='ci/fix/phase-29.2-token-newline' default_branch='main'
+2026-09-30T21:17:46.3970853Z DELETED: engagement id=5 name='ci/fix/phase-29.2-token-newline' product=1
+2026-09-30T21:17:46.4355086Z DefectDojo cleanup verified: outcome=deleted target=ci/fix/phase-29.2-token-newline product=OttawaCloudConsulting/security-platform product_id=1 deleted_ids=[5]
+=> DefectDojo Cleanup ran on the pull_request closed event (run 36778473590, job 110102268352), conclusion success, TLS mode verified-system, using security.yml@refs/heads/main 72cb174 (security.yml content identical to 47319b2); engagement id=5 ci/fix/phase-29.2-token-newline DELETED. No manual DefectDojo action taken.
+
+## Post-merge main-branch workflow runs
+No workflow in security-platform triggers on push to main (pr-security.yml: pull_request; defectdojo-import-proof.yml: workflow_dispatch + pull_request paths; scheduled-security.yml: schedule + workflow_dispatch; security.yml: workflow_call).
+$ gh run list --branch main --limit 3 --json databaseId,workflowName,event,headSha,conclusion,createdAt
+36699956848	Scheduled Security	schedule	fdabac9464f2baaeaa276f8934dc8d353295b355	failure	2026-09-30T10:02:40Z
+36553070357	Scheduled Security	schedule	2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d	success	2026-09-29T10:02:41Z
+36510481745	Scheduled Security	workflow_dispatch	2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d	success	2026-09-29T01:59:33Z
+$ gh run list --commit 72cb174539cca5e3a2841f7977a221a90c41326e
+(no runs)
+Note: 36699956848 predates both 29.2 merges (already recorded in 29.2-08); not rerun. First post-merge scheduled run is the next 06:00 America/Toronto cron.
