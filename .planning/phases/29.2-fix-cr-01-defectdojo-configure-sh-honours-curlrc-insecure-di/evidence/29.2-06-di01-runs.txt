@@ -1,0 +1,77 @@
+# 29.2-06 DI-01 evidence (2026-09-30, uid 501, macOS, python3 3.12.0, curl 8.7.1 LibreSSL)
+
+## 1. Natural reproduction attempts, before the fix (instrumented, not committed)
+
+A temporary diagnostic in curlrc_counts printed the log whenever CONNECT > HANDSHAKE-FAIL + REQUEST at count time.
+30 sequential runs plus 48 runs under 6-way parallel load: 78 runs, all PROOF PASS - 30 assertions.
+The late-HANDSHAKE-FAIL race was NOT observed naturally in these 78 runs (dd-import and dd-delete were always settled).
+The diagnostic fired in every run for one target, deterministically, and it is not a race:
+
+    RACE-DIAG proof-curlrc-homelab.log before C=6 H=4 R=0 log=[CONNECT|HANDSHAKE-FAIL SSLError|CONNECT|CONNECT|HANDSHAKE-FAIL SSLError|CONNECT|CONNECT|HANDSHAKE-FAIL SSLError|CONNECT|HANDSHAKE-FAIL SSLError|]
+    RACE-DIAG after C=6 H=4 R=0   (0.5 s later: unchanged)
+
+Cause: defectdojo-homelab-validate.sh:483 runs 'openssl s_client' (cert dump). It does not abort on a verify failure, so the
+server-side handshake completes and the client closes with no request. Those 2 connections never get a HANDSHAKE-FAIL line, so
+the orchestrator's predicate CONNECT == HANDSHAKE-FAIL + REQUEST never holds for homelab.
+
+## 2. Reproduced by injected delay (time.sleep(0.3) before log("HANDSHAKE-FAIL ...") in the listener), WITHOUT the settle fix
+
+    PROOF: P-CURLRC PASS control: no -q curl read the hostile curlrc and reached the listener (REQUEST auth=yes; trace and libcurl files written)
+    PROOF: P-CURLRC FAIL configure: no HANDSHAKE-FAIL at the listener; [listener CONNECT=1 HANDSHAKE-FAIL=0 REQUEST=0]
+    PROOF: P-CURLRC PASS lifecycle: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 REQUEST=0)
+    PROOF: P-CURLRC PASS homelab-tls-probe: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=6 HANDSHAKE-FAIL=4 REQUEST=0)
+    PROOF: P-CURLRC PASS homelab-token-get: the measure_count token GET was refused on TLS verification before any request (listener CONNECT=6 HANDSHAKE-FAIL=4 REQUEST=0)
+    PROOF: P-CURLRC PASS dd-import: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 REQUEST=0)
+    PROOF: P-CURLRC PASS dd-delete: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 REQUEST=0)
+        | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.0eo3xM9lwL/proof/guard-configure-token-dir.token' is not a regular file
+    PROOF: P-CONFIGURE-GUARD PASS configure-token-dir: the token path is a directory -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=1 REQUEST=0)
+    PROOF FAIL - 1 of 30
+
+The exact DI-01 symptom (CONNECT=1 HANDSHAKE-FAIL=0 REQUEST=0) appears on the first target. The late line then leaks into the
+next case after curlrc_reset (configure-token-dir shows CONNECT=0 HANDSHAKE-FAIL=1). This confirms the mechanism: a HANDSHAKE-FAIL
+logged after the body exits produces the observed failure. It does not prove this was the cause of the 29.2-05 flakes.
+
+## 3. Same injected delay WITH the fix (listener logs HANDSHAKE-OK; curlrc_counts waits up to 3 s for CONNECT == HANDSHAKE-FAIL + HANDSHAKE-OK)
+
+    PROOF: P-CURLRC PASS control: no -q curl read the hostile curlrc and reached the listener (REQUEST auth=yes; trace and libcurl files written)
+    PROOF: P-CURLRC PASS configure: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+    PROOF: P-CURLRC PASS lifecycle: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+    PROOF: P-CURLRC PASS homelab-tls-probe: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0)
+    PROOF: P-CURLRC PASS homelab-token-get: the measure_count token GET was refused on TLS verification before any request (listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0)
+    PROOF: P-CURLRC PASS dd-import: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+    PROOF: P-CURLRC PASS dd-delete: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+        | FATAL: DEFECTDOJO_ADMIN_TOKEN_FILE '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.BBQ5HPIuBK/proof/guard-configure-token-dir.token' is not a regular file
+    PROOF: P-CONFIGURE-GUARD PASS configure-token-dir: the token path is a directory -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+    PROOF PASS - 30 assertions
+
+The injected sleep was then removed. It is not in commit 35363b7.
+
+## 4. Stability on the tree committed as 35363b7 (no injected delay): 25 consecutive --scheme-only runs
+
+    run 1: PROOF PASS - 30 assertions
+    run 2: PROOF PASS - 30 assertions
+    run 3: PROOF PASS - 30 assertions
+    run 4: PROOF PASS - 30 assertions
+    run 5: PROOF PASS - 30 assertions
+    run 6: PROOF PASS - 30 assertions
+    run 7: PROOF PASS - 30 assertions
+    run 8: PROOF PASS - 30 assertions
+    run 9: PROOF PASS - 30 assertions
+    run 10: PROOF PASS - 30 assertions
+    run 11: PROOF PASS - 30 assertions
+    run 12: PROOF PASS - 30 assertions
+    run 13: PROOF PASS - 30 assertions
+    run 14: PROOF PASS - 30 assertions
+    run 15: PROOF PASS - 30 assertions
+    run 16: PROOF PASS - 30 assertions
+    run 17: PROOF PASS - 30 assertions
+    run 18: PROOF PASS - 30 assertions
+    run 19: PROOF PASS - 30 assertions
+    run 20: PROOF PASS - 30 assertions
+    run 21: PROOF PASS - 30 assertions
+    run 22: PROOF PASS - 30 assertions
+    run 23: PROOF PASS - 30 assertions
+    run 24: PROOF PASS - 30 assertions
+    run 25: PROOF PASS - 30 assertions
+
+Result: 25 of 25 PROOF PASS - 30 assertions; 0 'not settled' annotations; 0 FAIL lines.

@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.2-05-PLAN.md
-last_updated: "2026-09-30T15:01:52.000Z"
+stopped_at: Completed 29.2-06-PLAN.md
+last_updated: "2026-09-30T15:25:15.547Z"
 last_activity: 2026-09-30
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.2 (fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di) — EXECUTING
-Plan: 6 of 9
+Plan: 7 of 9
 Status: Ready to execute
 Last activity: 2026-09-30
 
@@ -341,6 +341,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.2]: 29.2-03: configure.sh reads the token with errors='replace', newline='' so bad bytes fail the 40-hex check (exit 2), not a traceback
 - [Phase 29.2]: 29.2-04: homelab-validate gets no DEFECTDOJO_RESOLVE hook; a token-GET transport failure is the HOMELAB-API-TLS failed check and the findings GET is not attempted
 - [Phase 29.2]: 29.2-05: security.yml dd-import/dd-delete use -q argv[1] and the exit-0 + verify-0 rule gated on tls_mode != insecure (D-16); dd-import stops at the first transport failure; CURLRC is gate check 20. --scheme-only PROOF PASS - 30, but a P-CURLRC listener race (HANDSHAKE-FAIL logged after the body exits, ~3 of 33 runs) is deferred to 29.2-06 (deferred-items.md DI-01)
+- [Phase 29.2]: 29.2-06: --hook global curlrc is hostile (no resolve line), every harness helper passes -q + --resolve DEFECTDOJO_RESOLVE, final P-TLS asserts curlrc-global-trace/libcurl absent; expected live count 151. DI-01 fixed: listener logs HANDSHAKE-OK and curlrc_counts settles on CONNECT == HANDSHAKE-FAIL + HANDSHAKE-OK (3s), since openssl s_client in homelab completes handshakes without a request; 25/25 --scheme-only PASS 30
 
 ### Pending Todos
 
@@ -498,11 +499,12 @@ Carried forward from v1.1 close:
 | Phase 29.2 P03 | 15min | 2 tasks | 2 files |
 | Phase 29.2 P04 | 20min | 2 tasks | 2 files |
 | Phase 29.2 P05 | 35min | 2 tasks | 2 files |
+| Phase 29.2 P06 | 50min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-09-30T15:01:44.252Z
-Stopped at: Completed 29.2-05-PLAN.md
+Last session: 2026-09-30T15:25:15.521Z
+Stopped at: Completed 29.2-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

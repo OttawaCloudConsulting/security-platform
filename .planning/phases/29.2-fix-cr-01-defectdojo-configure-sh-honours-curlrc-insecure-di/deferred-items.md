@@ -1,6 +1,6 @@
 # Phase 29.2 deferred items
 
-## DI-01 (found in 29.2-05, owner 29.2-06): P-CURLRC listener race, "no HANDSHAKE-FAIL at the listener"
+## DI-01 (found in 29.2-05, owner 29.2-06): P-CURLRC listener race, "no HANDSHAKE-FAIL at the listener" (RESOLVED in 29.2-06)
 
 **Symptom.** `bash scripts/defectdojo-import-proof.sh --scheme-only` sometimes ends `PROOF FAIL - 1 of 30` with one of:
 
@@ -18,3 +18,5 @@ PROOF: P-CURLRC FAIL dd-delete: no HANDSHAKE-FAIL at the listener; [listener CON
 **Suggested fix (for 29.2-06, which owns `defectdojo-import-proof.sh`).** After `run_body`, before `curlrc_counts` judges the result, poll `CURLRC_LOG` until `CONNECT == HANDSHAKE-FAIL + REQUEST` or a deadline of about 2 s passes, then count. Do not drop the `HANDSHAKE-FAIL >= 1` assertion. 29.2-06's own verify runs `--scheme-only | grep -q '^PROOF PASS - '`, so it will hit this race intermittently unless the fix lands first.
 
 **Why it was not fixed in 29.2-05.** The harness is outside plan 05's `files_modified`. Plan 05's verify requires exactly 5 commits above origin/main, and plan 06's requires exactly 6, so an extra harness commit here would break both.
+
+**Resolution (29.2-06, security-platform commit 35363b7).** The listener now logs `HANDSHAKE-OK` when a handshake completes, so every `CONNECT` ends in exactly one `HANDSHAKE-FAIL` or `HANDSHAKE-OK` line. `curlrc_counts` waits up to 3 s for `CONNECT == HANDSHAKE-FAIL + HANDSHAKE-OK` before it counts, and all four places that judge results call it. On the deadline it counts whatever is logged, adds `not settled after 3s` to the detail, and the existing assertions judge the result. The `HANDSHAKE-FAIL >= 1` assertion is unchanged. The suggested predicate `CONNECT == HANDSHAKE-FAIL + REQUEST` was refined because `openssl s_client` in homelab-validate completes the handshake and sends no request, so that predicate never holds for homelab (2 of its 6 connections). The race was not reproduced naturally in 78 instrumented runs. Injecting a 0.3 s delay into the listener reproduced the exact symptom without the fix, and the run passed with the fix. After the fix, 25 of 25 `--scheme-only` runs ended `PROOF PASS - 30 assertions`. Evidence: `evidence/29.2-06-di01-runs.txt`.
