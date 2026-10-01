@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.3-05-PLAN.md
-last_updated: "2026-10-01T04:06:04.000Z"
-last_activity: 2026-10-01 -- Phase 29.3 plan 05 complete
+stopped_at: Completed 29.3-06-PLAN.md
+last_updated: "2026-10-01T04:11:00.000Z"
+last_activity: 2026-10-01 -- Phase 29.3 plan 06 complete
 progress:
   total_phases: 7
   completed_phases: 7
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.3 (fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
-Last activity: 2026-10-01 -- Phase 29.3 plan 05 complete
+Last activity: 2026-10-01 -- Phase 29.3 plan 06 complete
 
 ## Performance Metrics
 
@@ -355,6 +355,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.3]: 29.3-03: offline proof extracts committed chart-gates.yml bodies at 36100a1 and passes 95/95 (16+1 mode matrix, deps, negatives, D-22); no body defect; every body run gets isolated Helm homes
 - [Phase 29.3]: 29.3-04: ADR-030 drafted as Proposed; merge-time identifiers left as literal FILL-AT-29.3-07; docs/adr/README.md row deferred to plan 07
 - [Phase 29.3]: 29.3-05: PR #29 opened on operator approval of 36100a1; live Chart Gates run 36813331164 green in both jobs under unset CHART_GATE_MODE (report-only), negatives (a)/(b) PASS; PR Security 36813331277 green; not merged, no tag, v1 unmoved
+- [Phase 29.3]: 29.3-06: PR #29 merged on operator approval ("approved - merge") as 30afdb9 via --match-head-commit 36100a1; push-to-main Chart Gates run 36813770305 green in both jobs (report-only, negatives (a)/(b) PASS); no tag, v1 unmoved, CHART_GATE_MODE unset, main rules unchanged
 
 ### Pending Todos
 
@@ -525,11 +526,12 @@ Carried forward from v1.1 close:
 | Phase 29.3 P03 | 10 min | 2 tasks | 2 files |
 | Phase 29.3 P04 | 10 min | 1 tasks | 1 files |
 | Phase 29.3 P05 | 15 min | 2 tasks | 2 files |
+| Phase 29.3 P06 | 5 min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-10-01T04:06:04.000Z
-Stopped at: Completed 29.3-05-PLAN.md
+Last session: 2026-10-01T04:11:00.000Z
+Stopped at: Completed 29.3-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
