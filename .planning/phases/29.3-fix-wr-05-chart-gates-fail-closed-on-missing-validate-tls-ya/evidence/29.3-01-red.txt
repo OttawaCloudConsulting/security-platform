@@ -1,0 +1,46 @@
+# 29.3-01 RED evidence: offline chart gates vacuously pass (SKIP, exit 0) on a missing guard template or chart directory (Phase 26 WR-05, D-21(1))
+# Repository: repos/security-platform (OttawaCloudConsulting/security-platform)
+# Branch: fix/phase-29.3-chart-gates (created from origin/main, no edits at capture time)
+# Base SHA: origin/main 72cb174539cca5e3a2841f7977a221a90c41326e
+# Method: git archive origin/main into a mktemp dir; one fresh cp -a copy per case; mutate the copy; run the COPY's script from / (RESEARCH Pitfall 3).
+# Interpreter: /opt/homebrew/bin/bash (GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin25.6.0))
+# Captured: 2026-10-01T00:49:45Z
+# Expected per case: a line starting SKIP: and exit status 0 (the defect).
+
+== dd-guard ==
+mutation: rm kubernetes/defectdojo/templates/validate-tls.yaml
+command: (cd / && bash <copy>/scripts/check-defectdojo-chart.sh)
+--- output ---
+SKIP: chart incomplete — kubernetes/defectdojo/templates/validate-tls.yaml does not exist yet
+--- end output ---
+rc=0
+
+== dd-dir ==
+mutation: mv kubernetes/defectdojo kubernetes/defectdojo.renamed
+command: (cd / && bash <copy>/scripts/check-defectdojo-chart.sh)
+--- output ---
+SKIP: chart not present yet — kubernetes/defectdojo does not exist (vacuous pass, by design)
+--- end output ---
+rc=0
+
+== nexus-guard ==
+mutation: rm kubernetes/nexus/templates/job-provision.yaml
+command: (cd / && bash <copy>/scripts/check-nexus-chart.sh)
+--- output ---
+SKIP: chart incomplete — kubernetes/nexus/templates/job-provision.yaml does not exist yet
+--- end output ---
+rc=0
+
+== nexus-dir ==
+mutation: mv kubernetes/nexus kubernetes/nexus.renamed
+command: (cd / && bash <copy>/scripts/check-nexus-chart.sh)
+--- output ---
+SKIP: chart not present yet — kubernetes/nexus does not exist (vacuous pass, by design)
+--- end output ---
+rc=0
+
+== clone state after the four cases ==
+command: git -C repos/security-platform status --porcelain
+output: (empty)
+command: git -C repos/security-platform diff origin/main --name-only
+output: (empty)
