@@ -228,7 +228,7 @@ job_env() {
 # The defectdojo gate body runs against a stub check-defectdojo-chart.sh; the
 # nexus body is the same bytes (BODY-IDENTICAL-gate).
 echo "== 2 GATE: mode x outcome matrix on the extracted gate body =="
-GJOB=chart-gate-defectdojo
+GJOB="chart-gate-defectdojo"
 GATE_BODY="$W/bodies/${GJOB}__gate.sh"
 GCHART="${JENV[${GJOB}.CHART]}"
 mapfile -t GJOB_ENV < <(job_env "$GJOB")
@@ -346,6 +346,190 @@ for mode in UNSET EMPTY report-only blocking Blocking; do
   done
 done
 gate_case UNSET O
+
+# ── Real-workspace helpers for Sections 3 and 4 ──────────────────────────────
+# new_case <sha>: a fresh `git clone --no-local` of the operator clone checked
+# out detached at <sha>, so `git status` works inside the bodies. Sets WS (the
+# workspace), RT (RUNNER_TEMP, a SIBLING of WS so cp -a never recurses), CD
+# (the case dir) and isolated Helm homes under CD/helm.
+CASE_SEQ=0
+new_case() {
+  CASE_SEQ=$((CASE_SEQ + 1))
+  CD="$W/case/${CASE_SEQ}"
+  mkdir -p "$CD/rt" "$CD/helm/config" "$CD/helm/cache" "$CD/helm/data"
+  git clone --quiet --no-local "$CLONE" "$CD/ws"
+  git -C "$CD/ws" checkout --quiet --detach "$1"
+  WS="$CD/ws"
+  RT="$CD/rt"
+}
+
+# run_body <job> <id> [NAME=value ...]: run an extracted body the way the
+# runner does (bash -e from the workspace root, job env + runner variables
+# only, isolated Helm homes). Sets RC and STDOUT.
+run_body() {
+  local job="$1" id="$2"
+  shift 2
+  local jenv
+  mapfile -t jenv < <(job_env "$job")
+  local envs=(PATH="$PATH" HOME="$HOME" "${jenv[@]}"
+    HELM_CONFIG_HOME="$CD/helm/config" HELM_CACHE_HOME="$CD/helm/cache" HELM_DATA_HOME="$CD/helm/data"
+    GITHUB_WORKSPACE="$WS" RUNNER_TEMP="$RT" GITHUB_STEP_SUMMARY="$RT/summary" "$@")
+  STDOUT="$CD/${id}.stdout"
+  RC=0
+  (cd "$WS" && env -i "${envs[@]}" bash -e "$W/bodies/${job}__${id}.sh") > "$STDOUT" 2>&1 || RC=$?
+}
+
+# ── 3. DEPS (D-18) and the real gate after a fresh-clone dependency build ────
+echo "== 3 DEPS: extracted deps body (isolated Helm homes, network) =="
+for chart in defectdojo nexus; do
+  job="chart-gate-${chart}"
+
+  new_case "$SHA"
+  rm -rf "$WS/kubernetes/${chart}"
+  run_body "$job" deps
+  [ "$RC" = 0 ] || err "rc ${RC}, expected 0"
+  has_prefix "$STDOUT" "::notice::kubernetes/${chart}/Chart.yaml is absent" || err "no ::notice naming kubernetes/${chart}/Chart.yaml"
+  [ ! -e "$CD/helm/config/repositories.yaml" ] || err "helm repo add ran"
+  verdict "DEPS-ABSENT-${chart}" "chart dir absent: deps body rc ${RC} with ::notice naming Chart.yaml, no helm repo add"
+done
+
+new_case "$SHA"
+yq -i '.dependencies[0].repository = "oci://example.invalid/charts"' "$WS/kubernetes/defectdojo/Chart.yaml"
+run_body chart-gate-defectdojo deps
+[ "$RC" = 1 ] || err "rc ${RC}, expected 1"
+has_prefix "$STDOUT" "::error::" || err "no ::error line"
+has "$STDOUT" "only https:// repositories are supported" || err "no 'only https:// repositories are supported'"
+[ ! -e "$CD/helm/config/repositories.yaml" ] || err "helm repo add ran before the https check"
+verdict "DEPS-NONHTTPS-defectdojo" "oci:// dependency repository: deps body rc ${RC}, ::error 'only https:// repositories are supported', no helm repo add"
+
+for chart in defectdojo nexus; do
+  job="chart-gate-${chart}"
+  new_case "$SHA"
+  run_body "$job" deps
+  [ "$RC" = 0 ] || err "rc ${RC}, expected 0 (last line: $(tail -n 1 "$STDOUT"))"
+  compgen -G "$WS/kubernetes/${chart}/charts/*.tgz" > /dev/null || err "no kubernetes/${chart}/charts/*.tgz"
+  git -C "$CLONE" show "${SHA}:kubernetes/${chart}/Chart.lock" > "$CD/Chart.lock.committed"
+  cmp -s "$CD/Chart.lock.committed" "$WS/kubernetes/${chart}/Chart.lock" || err "Chart.lock differs from the committed blob"
+  [ -s "$CD/helm/config/repositories.yaml" ] || err "isolated HELM_CONFIG_HOME has no repositories.yaml"
+  tgzs=("$WS/kubernetes/${chart}/charts/"*.tgz)
+  tgz="$(printf '%s ' "${tgzs[@]##*/}")"
+  verdict "DEPS-BUILD-${chart}" "fresh clone: deps body rc ${RC}, built ${tgz% }, Chart.lock identical to the committed blob, repo registered in the isolated Helm config"
+
+  run_body "$job" gate
+  [ "$RC" = 0 ] || err "rc ${RC}, expected 0"
+  has_prefix "$STDOUT" "chart-gate-${chart}: PASS" || err "no chart-gate-${chart}: PASS"
+  has_prefix "$STDOUT" "chart gate mode: report-only" || err "mode was not report-only with CHART_GATE_MODE unset"
+  ! has_prefix "$STDOUT" "::warning" || err "::warning emitted"
+  ! has_prefix "$STDOUT" "::error" || err "::error emitted"
+  last="$(tail -n 1 "$RT/chart-gate-${chart}.out" 2>/dev/null || true)"
+  case "$last" in 'PASS -'*) ;; *) err "real gate .out last line is '${last}'" ;; esac
+  verdict "REAL-GATE-${chart}" "real check-${chart}-chart.sh after the deps body, CHART_GATE_MODE unset: rc ${RC}, chart-gate-${chart}: PASS (${last})"
+done
+
+# ── 4. NEGATIVE (D-15) and D-22 ──────────────────────────────────────────────
+echo "== 4 NEGATIVE: extracted negative body =="
+# run_neg <job>: run the negative body and assert the invariants every case
+# shares: workspace git status identical before and after, and no neg-*
+# copies left in RUNNER_TEMP.
+run_neg() {
+  local before after
+  before="$(git -C "$WS" status --porcelain=v1)"
+  run_body "$1" negative
+  after="$(git -C "$WS" status --porcelain=v1)"
+  [ "$before" = "$after" ] || err "workspace git status changed during the body"
+  if compgen -G "$RT/neg-*" > /dev/null; then err "neg-* copies left in RUNNER_TEMP"; fi
+}
+# pos_out <chart> <line>: write the positive gate output the negative step reads.
+pos_out() { printf '%s\n' "$2" > "$RT/chart-gate-$1.out"; }
+rm_guard() { rm -- "$WS/kubernetes/$1/templates/${JENV[chart-gate-$1.GUARD_TEMPLATE]}"; }
+rm_dir() { rm -rf -- "$WS/kubernetes/$1"; }
+
+for chart in defectdojo nexus; do
+  job="chart-gate-${chart}"
+  glabel="${JENV[${job}.GUARD_LABEL]}"
+  clabel="${JENV[${job}.CHART_LABEL]}"
+
+  new_case "$SHA"
+  run_neg "$job"
+  [ "$RC" = 0 ] || err "rc ${RC}, expected 0"
+  has_prefix "$STDOUT" "negative (a) PASS" || err "no 'negative (a) PASS'"
+  has_prefix "$STDOUT" "negative (b) PASS" || err "no 'negative (b) PASS'"
+  ! has_prefix "$STDOUT" "::error" || err "::error emitted"
+  verdict "NEG-FIXED-${chart}" "fixed ${SHA:0:7}, no .out: rc ${RC}, negative (a) PASS and (b) PASS, status unchanged, RUNNER_TEMP clean"
+
+  new_case "$UNFIXED_SHA"
+  run_neg "$job"
+  [ "$RC" = 1 ] || err "rc ${RC}, expected 1"
+  has_prefix "$STDOUT" "::error::negative (a)" || err "no ::error::negative (a)"
+  has_prefix "$STDOUT" "::error::negative (b)" || err "no ::error::negative (b)"
+  verdict "NEG-UNFIXED-${chart}" "unfixed ${UNFIXED_SHA:0:7} (SKIP exit 0): rc ${RC}, ::error for (a) and (b), status unchanged, RUNNER_TEMP clean"
+
+  new_case "$SHA"
+  rm_guard "$chart"
+  pos_out "$chart" "FAIL: ${glabel}: x"
+  run_neg "$job"
+  [ "$RC" = 0 ] || err "rc ${RC}, expected 0"
+  has_prefix "$STDOUT" "::notice::negative (a)" || err "no ::notice::negative (a)"
+  has_prefix "$STDOUT" "negative (b) PASS" || err "no 'negative (b) PASS'"
+  ! has_prefix "$STDOUT" "::error" || err "::error emitted"
+  verdict "NEG-D22-GUARD-LABEL-${chart}" "guard template absent, .out has FAIL: ${glabel}: : rc ${RC}, ::notice (a), negative (b) PASS"
+
+  new_case "$SHA"
+  rm_dir "$chart"
+  pos_out "$chart" "FAIL: ${clabel}: x"
+  run_neg "$job"
+  [ "$RC" = 0 ] || err "rc ${RC}, expected 0"
+  has_prefix "$STDOUT" "::notice::negative (a)" || err "no ::notice::negative (a)"
+  has_prefix "$STDOUT" "::notice::negative (b)" || err "no ::notice::negative (b)"
+  ! has_prefix "$STDOUT" "::error" || err "::error emitted"
+  verdict "NEG-D22-DIR-LABEL-${chart}" "chart dir absent, .out has FAIL: ${clabel}: : rc ${RC}, ::notice (a) and (b)"
+done
+
+job="chart-gate-defectdojo"
+chart=defectdojo
+glabel="${JENV[${job}.GUARD_LABEL]}"
+clabel="${JENV[${job}.CHART_LABEL]}"
+
+new_case "$SHA"
+rm_guard "$chart"
+pos_out "$chart" "PASS - 22 checks, 0 failures"
+run_neg "$job"
+[ "$RC" = 1 ] || err "rc ${RC}, expected 1"
+has_prefix "$STDOUT" "::error::negative (a)" || err "no ::error::negative (a)"
+! has_prefix "$STDOUT" "::notice::negative (a)" || err "(a) skipped with ::notice"
+verdict "NEG-D22-GUARD-NOLABEL" "guard absent, .out without the label: rc ${RC}, ::error::negative (a)"
+
+new_case "$SHA"
+rm_guard "$chart"
+run_neg "$job"
+[ "$RC" = 1 ] || err "rc ${RC}, expected 1"
+has_prefix "$STDOUT" "::error::negative (a)" || err "no ::error::negative (a)"
+verdict "NEG-D22-GUARD-NOFILE" "guard absent, no .out file: rc ${RC}, ::error::negative (a)"
+
+new_case "$SHA"
+rm_dir "$chart"
+pos_out "$chart" "FAIL: ${glabel}: x"
+run_neg "$job"
+[ "$RC" = 1 ] || err "rc ${RC}, expected 1"
+has_prefix "$STDOUT" "::error::negative (b)" || err "no ::error::negative (b)"
+verdict "NEG-D22-DIR-WRONGLABEL" "chart dir absent, .out has only FAIL: ${glabel}: : rc ${RC}, ::error::negative (b)"
+
+new_case "$SHA"
+rm_guard "$chart"
+pos_out "$chart" "FAIL: ${clabel}: x"
+run_neg "$job"
+[ "$RC" = 1 ] || err "rc ${RC}, expected 1"
+has_prefix "$STDOUT" "::error::negative (a)" || err "no ::error::negative (a)"
+has_prefix "$STDOUT" "negative (b) PASS" || err "no 'negative (b) PASS'"
+verdict "NEG-D22-GUARD-CHARTLABEL-DIRPRESENT" "guard absent, chart dir present, .out has only FAIL: ${clabel}: : rc ${RC}, ::error::negative (a) (chart label accepted only when the dir is absent)"
+
+new_case "$SHA"
+rm_dir "$chart"
+run_neg "$job"
+[ "$RC" = 1 ] || err "rc ${RC}, expected 1"
+has_prefix "$STDOUT" "::error::negative (a)" || err "no ::error::negative (a)"
+has_prefix "$STDOUT" "::error::negative (b)" || err "no ::error::negative (b)"
+verdict "NEG-NOFILE-DIR" "chart dir absent, no .out file: rc ${RC}, ::error for (a) and (b)"
 
 # ── RESULT ───────────────────────────────────────────────────────────────────
 if [ "$F" -eq 0 ]; then

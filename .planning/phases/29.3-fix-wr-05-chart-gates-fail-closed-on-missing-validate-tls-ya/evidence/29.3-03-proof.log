@@ -1,0 +1,112 @@
+# 29.3-03 offline proof of chart-gates.yml step bodies (D-21(2), D-23, P-EXTRACT)
+# date:       2026-10-01T03:34:52Z
+# clone:      /Users/christian/git-repos/OCC-github/development_environment/security_solution/repos/security-platform
+# ref:        fix/phase-29.3-chart-gates
+# sha:        36100a18d214d9d4e73088c290925963dd0ffd45
+# unfixed:    72cb174539cca5e3a2841f7977a221a90c41326e (origin/main baseline)
+# bash:       /opt/homebrew/bin/bash 5.3.20(1)-release
+# helm:       v4.3.0+gbec5b06
+# yq:         yq (https://github.com/mikefarah/yq/) version v4.54.1
+# jq:         jq-1.8.2
+# shellcheck: 0.11.0
+# git:        git version 2.54.0 (Apple Git-157)
+== 1 EXTRACT: committed blob 36100a18d214d9d4e73088c290925963dd0ffd45:.github/workflows/chart-gates.yml ==
+PASS: EXTRACT-chart-gate-defectdojo-tools-NONEMPTY: exactly one step with id tools and a non-empty run body (13 lines)
+PASS: EXTRACT-chart-gate-defectdojo-tools-NO-EXPR: run body contains no ${{ expression
+PASS: EXTRACT-chart-gate-defectdojo-tools-NO-SHELL: step has no shell: key (runner default bash -e)
+PASS: EXTRACT-chart-gate-defectdojo-tools-BASH-N: bash -n clean
+PASS: EXTRACT-chart-gate-defectdojo-tools-SHELLCHECK: shellcheck -s bash clean
+PASS: EXTRACT-chart-gate-defectdojo-deps-NONEMPTY: exactly one step with id deps and a non-empty run body (19 lines)
+PASS: EXTRACT-chart-gate-defectdojo-deps-NO-EXPR: run body contains no ${{ expression
+PASS: EXTRACT-chart-gate-defectdojo-deps-NO-SHELL: step has no shell: key (runner default bash -e)
+PASS: EXTRACT-chart-gate-defectdojo-deps-BASH-N: bash -n clean
+PASS: EXTRACT-chart-gate-defectdojo-deps-SHELLCHECK: shellcheck -s bash clean
+PASS: EXTRACT-chart-gate-defectdojo-gate-NONEMPTY: exactly one step with id gate and a non-empty run body (47 lines)
+PASS: EXTRACT-chart-gate-defectdojo-gate-NO-EXPR: run body contains no ${{ expression
+PASS: EXTRACT-chart-gate-defectdojo-gate-NO-SHELL: step has no shell: key (runner default bash -e)
+PASS: EXTRACT-chart-gate-defectdojo-gate-BASH-N: bash -n clean
+PASS: EXTRACT-chart-gate-defectdojo-gate-SHELLCHECK: shellcheck -s bash clean
+PASS: EXTRACT-chart-gate-defectdojo-negative-NONEMPTY: exactly one step with id negative and a non-empty run body (69 lines)
+PASS: EXTRACT-chart-gate-defectdojo-negative-NO-EXPR: run body contains no ${{ expression
+PASS: EXTRACT-chart-gate-defectdojo-negative-NO-SHELL: step has no shell: key (runner default bash -e)
+PASS: EXTRACT-chart-gate-defectdojo-negative-BASH-N: bash -n clean
+PASS: EXTRACT-chart-gate-defectdojo-negative-SHELLCHECK: shellcheck -s bash clean
+PASS: EXTRACT-chart-gate-nexus-tools-NONEMPTY: exactly one step with id tools and a non-empty run body (13 lines)
+PASS: EXTRACT-chart-gate-nexus-tools-NO-EXPR: run body contains no ${{ expression
+PASS: EXTRACT-chart-gate-nexus-tools-NO-SHELL: step has no shell: key (runner default bash -e)
+PASS: EXTRACT-chart-gate-nexus-tools-BASH-N: bash -n clean
+PASS: EXTRACT-chart-gate-nexus-tools-SHELLCHECK: shellcheck -s bash clean
+PASS: EXTRACT-chart-gate-nexus-deps-NONEMPTY: exactly one step with id deps and a non-empty run body (19 lines)
+PASS: EXTRACT-chart-gate-nexus-deps-NO-EXPR: run body contains no ${{ expression
+PASS: EXTRACT-chart-gate-nexus-deps-NO-SHELL: step has no shell: key (runner default bash -e)
+PASS: EXTRACT-chart-gate-nexus-deps-BASH-N: bash -n clean
+PASS: EXTRACT-chart-gate-nexus-deps-SHELLCHECK: shellcheck -s bash clean
+PASS: EXTRACT-chart-gate-nexus-gate-NONEMPTY: exactly one step with id gate and a non-empty run body (47 lines)
+PASS: EXTRACT-chart-gate-nexus-gate-NO-EXPR: run body contains no ${{ expression
+PASS: EXTRACT-chart-gate-nexus-gate-NO-SHELL: step has no shell: key (runner default bash -e)
+PASS: EXTRACT-chart-gate-nexus-gate-BASH-N: bash -n clean
+PASS: EXTRACT-chart-gate-nexus-gate-SHELLCHECK: shellcheck -s bash clean
+PASS: EXTRACT-chart-gate-nexus-negative-NONEMPTY: exactly one step with id negative and a non-empty run body (69 lines)
+PASS: EXTRACT-chart-gate-nexus-negative-NO-EXPR: run body contains no ${{ expression
+PASS: EXTRACT-chart-gate-nexus-negative-NO-SHELL: step has no shell: key (runner default bash -e)
+PASS: EXTRACT-chart-gate-nexus-negative-BASH-N: bash -n clean
+PASS: EXTRACT-chart-gate-nexus-negative-SHELLCHECK: shellcheck -s bash clean
+PASS: BODY-IDENTICAL-tools: tools body byte-identical across chart-gate-defectdojo and chart-gate-nexus
+PASS: BODY-IDENTICAL-deps: deps body byte-identical across chart-gate-defectdojo and chart-gate-nexus
+PASS: BODY-IDENTICAL-gate: gate body byte-identical across chart-gate-defectdojo and chart-gate-nexus
+PASS: BODY-IDENTICAL-negative: negative body byte-identical across chart-gate-defectdojo and chart-gate-nexus
+PASS: ENV-GATE-chart-gate-defectdojo: gate step env keys == [CHART_GATE_MODE], value == ${{ vars.CHART_GATE_MODE }}
+PASS: ENV-NONE-chart-gate-defectdojo-deps: deps step has no env: key
+PASS: ENV-NONE-chart-gate-defectdojo-negative: negative step has no env: key
+PASS: ENV-JOB-chart-gate-defectdojo: job env keys == [CHART, CHART_LABEL, GUARD_LABEL, GUARD_TEMPLATE], literal values (CHART=defectdojo GUARD_LABEL=TLS-GUARD-PRESENT GUARD_TEMPLATE=validate-tls.yaml CHART_LABEL=CHART-DIR-PRESENT)
+PASS: NEG-IF-chart-gate-defectdojo: negative step if: == ${{ !cancelled() }}
+PASS: ENV-GATE-chart-gate-nexus: gate step env keys == [CHART_GATE_MODE], value == ${{ vars.CHART_GATE_MODE }}
+PASS: ENV-NONE-chart-gate-nexus-deps: deps step has no env: key
+PASS: ENV-NONE-chart-gate-nexus-negative: negative step has no env: key
+PASS: ENV-JOB-chart-gate-nexus: job env keys == [CHART, CHART_LABEL, GUARD_LABEL, GUARD_TEMPLATE], literal values (CHART=nexus GUARD_LABEL=PROVISION-JOB-PRESENT GUARD_TEMPLATE=job-provision.yaml CHART_LABEL=CHART-DIR-PRESENT)
+PASS: NEG-IF-chart-gate-nexus: negative step if: == ${{ !cancelled() }}
+== 2 GATE: mode x outcome matrix on the extracted gate body ==
+PASS: GATE-UNSET-P: mode report-only, gate rc0 + PASS line: rc 0, PASS, no annotations, no summary, stop-commands enclosed
+PASS: GATE-UNSET-V: mode report-only, chart-defect bucket (rc0 without PASS): rc 0, 1 ::warning line(s), summary written
+PASS: GATE-UNSET-F: mode report-only, chart-defect bucket (rc1): rc 0, 3 ::warning line(s) incl. 100%25 encoding, summary written
+PASS: GATE-UNSET-I: mode report-only, always-red bucket (gate rc2): rc 1, preflight ::error
+PASS: GATE-EMPTY-P: mode report-only, gate rc0 + PASS line: rc 0, PASS, no annotations, no summary, stop-commands enclosed
+PASS: GATE-EMPTY-V: mode report-only, chart-defect bucket (rc0 without PASS): rc 0, 1 ::warning line(s), summary written
+PASS: GATE-EMPTY-F: mode report-only, chart-defect bucket (rc1): rc 0, 3 ::warning line(s) incl. 100%25 encoding, summary written
+PASS: GATE-EMPTY-I: mode report-only, always-red bucket (gate rc2): rc 1, preflight ::error
+PASS: GATE-report-only-P: mode report-only, gate rc0 + PASS line: rc 0, PASS, no annotations, no summary, stop-commands enclosed
+PASS: GATE-report-only-V: mode report-only, chart-defect bucket (rc0 without PASS): rc 0, 1 ::warning line(s), summary written
+PASS: GATE-report-only-F: mode report-only, chart-defect bucket (rc1): rc 0, 3 ::warning line(s) incl. 100%25 encoding, summary written
+PASS: GATE-report-only-I: mode report-only, always-red bucket (gate rc2): rc 1, preflight ::error
+PASS: GATE-blocking-P: mode blocking, gate rc0 + PASS line: rc 0, PASS, no annotations, no summary, stop-commands enclosed
+PASS: GATE-blocking-V: mode blocking, chart-defect bucket (rc0 without PASS): rc 1, ::error, summary written
+PASS: GATE-blocking-F: mode blocking, chart-defect bucket (rc1): rc 1, ::error, summary written
+PASS: GATE-blocking-I: mode blocking, always-red bucket (gate rc2): rc 1, preflight ::error
+PASS: GATE-Blocking-P: typo mode exits 1 before the gate runs (rc 1, stub not invoked, no .out)
+PASS: GATE-Blocking-V: typo mode exits 1 before the gate runs (rc 1, stub not invoked, no .out)
+PASS: GATE-Blocking-F: typo mode exits 1 before the gate runs (rc 1, stub not invoked, no .out)
+PASS: GATE-Blocking-I: typo mode exits 1 before the gate runs (rc 1, stub not invoked, no .out)
+PASS: GATE-UNSET-O: mode report-only, always-red bucket (gate rc3): rc 1, 'exited 3' ::error
+== 3 DEPS: extracted deps body (isolated Helm homes, network) ==
+PASS: DEPS-ABSENT-defectdojo: chart dir absent: deps body rc 0 with ::notice naming Chart.yaml, no helm repo add
+PASS: DEPS-ABSENT-nexus: chart dir absent: deps body rc 0 with ::notice naming Chart.yaml, no helm repo add
+PASS: DEPS-NONHTTPS-defectdojo: oci:// dependency repository: deps body rc 1, ::error 'only https:// repositories are supported', no helm repo add
+PASS: DEPS-BUILD-defectdojo: fresh clone: deps body rc 0, built defectdojo-1.9.53.tgz, Chart.lock identical to the committed blob, repo registered in the isolated Helm config
+PASS: REAL-GATE-defectdojo: real check-defectdojo-chart.sh after the deps body, CHART_GATE_MODE unset: rc 0, chart-gate-defectdojo: PASS (PASS - 22 checks, 0 failures)
+PASS: DEPS-BUILD-nexus: fresh clone: deps body rc 0, built nexus3-5.26.0.tgz, Chart.lock identical to the committed blob, repo registered in the isolated Helm config
+PASS: REAL-GATE-nexus: real check-nexus-chart.sh after the deps body, CHART_GATE_MODE unset: rc 0, chart-gate-nexus: PASS (PASS - 18 checks, 0 failures)
+== 4 NEGATIVE: extracted negative body ==
+PASS: NEG-FIXED-defectdojo: fixed 36100a1, no .out: rc 0, negative (a) PASS and (b) PASS, status unchanged, RUNNER_TEMP clean
+PASS: NEG-UNFIXED-defectdojo: unfixed 72cb174 (SKIP exit 0): rc 1, ::error for (a) and (b), status unchanged, RUNNER_TEMP clean
+PASS: NEG-D22-GUARD-LABEL-defectdojo: guard template absent, .out has FAIL: TLS-GUARD-PRESENT: : rc 0, ::notice (a), negative (b) PASS
+PASS: NEG-D22-DIR-LABEL-defectdojo: chart dir absent, .out has FAIL: CHART-DIR-PRESENT: : rc 0, ::notice (a) and (b)
+PASS: NEG-FIXED-nexus: fixed 36100a1, no .out: rc 0, negative (a) PASS and (b) PASS, status unchanged, RUNNER_TEMP clean
+PASS: NEG-UNFIXED-nexus: unfixed 72cb174 (SKIP exit 0): rc 1, ::error for (a) and (b), status unchanged, RUNNER_TEMP clean
+PASS: NEG-D22-GUARD-LABEL-nexus: guard template absent, .out has FAIL: PROVISION-JOB-PRESENT: : rc 0, ::notice (a), negative (b) PASS
+PASS: NEG-D22-DIR-LABEL-nexus: chart dir absent, .out has FAIL: CHART-DIR-PRESENT: : rc 0, ::notice (a) and (b)
+PASS: NEG-D22-GUARD-NOLABEL: guard absent, .out without the label: rc 1, ::error::negative (a)
+PASS: NEG-D22-GUARD-NOFILE: guard absent, no .out file: rc 1, ::error::negative (a)
+PASS: NEG-D22-DIR-WRONGLABEL: chart dir absent, .out has only FAIL: TLS-GUARD-PRESENT: : rc 1, ::error::negative (b)
+PASS: NEG-D22-GUARD-CHARTLABEL-DIRPRESENT: guard absent, chart dir present, .out has only FAIL: CHART-DIR-PRESENT: : rc 1, ::error::negative (a) (chart label accepted only when the dir is absent)
+PASS: NEG-NOFILE-DIR: chart dir absent, no .out file: rc 1, ::error for (a) and (b)
+PROOF PASS - 95 checks
