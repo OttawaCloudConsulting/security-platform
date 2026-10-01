@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.3-01-PLAN.md
-last_updated: "2026-10-01T00:54:30.134Z"
-last_activity: 2026-10-01 -- Phase 29.3 plan 01 complete
+stopped_at: Completed 29.3-02-PLAN.md
+last_updated: "2026-10-01T03:26:23.416Z"
+last_activity: 2026-10-01 -- Phase 29.3 plan 02 complete
 progress:
   total_phases: 7
   completed_phases: 7
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.3 (fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
-Last activity: 2026-10-01 -- Phase 29.3 plan 01 complete
+Last activity: 2026-10-01 -- Phase 29.3 plan 02 complete
 
 ## Performance Metrics
 
@@ -351,6 +351,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.2]: 29.2-12: PR #28 merged as 72cb174; Cleanup deleted ci/fix/phase-29.2-token-newline; WR-01 closure is DI-07; no tag, v1 unmoved
 - [Phase 29.3]: 29.3-01: chart gates fail closed (exit 1) on missing chart dir or guard template; labels CHART-DIR-PRESENT / TLS-GUARD-PRESENT / PROVISION-JOB-PRESENT; counts 22/18 unchanged
 - [Phase 29.3]: 29.3-01: exit-2 hint derives helm repo name/URL from Chart.yaml .dependencies[0] via yq -r; no URL literal in either gate
+- [Phase 29.3]: 29.3-02: chart-gates.yml has two named jobs (no matrix); CHART_GATE_MODE unset = report-only, typo = red before the gate runs; exit 2/other codes, deps failures and failed negatives always red; D-22 case (a) also accepts CHART-DIR-PRESENT
 
 ### Pending Todos
 
@@ -517,11 +518,12 @@ Carried forward from v1.1 close:
 | Phase 29.2 P11 | 40min | 2 tasks | 5 files |
 | Phase 29.2 P12 | 15min | 2 tasks | 3 files |
 | Phase 29.3 P01 | 12 min | 3 tasks | 5 files |
+| Phase 29.3 P02 | 15 min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-10-01T00:52:20.373Z
-Stopped at: Completed 29.3-01-PLAN.md
+Last session: 2026-10-01T03:26:23.398Z
+Stopped at: Completed 29.3-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
