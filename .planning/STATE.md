@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Phase 29.3 context gathered
-last_updated: "2026-10-01T00:35:18.983Z"
-last_activity: 2026-10-01 -- Phase 29.3 planning complete
+stopped_at: Completed 29.3-01-PLAN.md
+last_updated: "2026-10-01T00:54:30.134Z"
+last_activity: 2026-10-01
 progress:
   total_phases: 7
   completed_phases: 7
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 29.3 — fix wr 05 chart gates fail closed on missing validate tls ya
+**Current focus:** Phase 29.3 — fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya
 
 ## Current Position
 
-Phase: 29.3
-Plan: Not started
+Phase: 29.3 (fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-10-01 -- Phase 29.3 planning complete
+Last activity: 2026-10-01
 
 ## Performance Metrics
 
@@ -349,6 +349,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.2]: 29.2-11: PR #28 live proof PROOF PASS - 166 (151+15) after one operator-approved celery rerun; PR Security rerun once after ECR 429; v1 unchanged
 - [Phase 29.2]: 29.2-10..12: WR-01 token-file gap closed. PR #28 was merged (--merge, --match-head-commit) as 72cb174 (parents 47319b2 + 34e345b) on the operator's reply "approved - merge". Live proof: run 36772753821 attempt 2, PROOF PASS - 166. From detached origin/main: --scheme-only PROOF PASS - 45. security.yml, configure.sh and set-required-checks.sh are identical to 47319b2. Cleanup run 36778473590 deleted engagement id=5 ci/fix/phase-29.2-token-newline (DI-06). The token-file closure is recorded as DI-07. No tag; v1 unmoved; ADR-029 unedited
 - [Phase 29.2]: 29.2-12: PR #28 merged as 72cb174; Cleanup deleted ci/fix/phase-29.2-token-newline; WR-01 closure is DI-07; no tag, v1 unmoved
+- [Phase 29.3]: 29.3-01: chart gates fail closed (exit 1) on missing chart dir or guard template; labels CHART-DIR-PRESENT / TLS-GUARD-PRESENT / PROVISION-JOB-PRESENT; counts 22/18 unchanged
+- [Phase 29.3]: 29.3-01: exit-2 hint derives helm repo name/URL from Chart.yaml .dependencies[0] via yq -r; no URL literal in either gate
 
 ### Pending Todos
 
@@ -514,12 +516,13 @@ Carried forward from v1.1 close:
 | Phase 29.2 P10 | 25min | 2 tasks | 4 files |
 | Phase 29.2 P11 | 40min | 2 tasks | 5 files |
 | Phase 29.2 P12 | 15min | 2 tasks | 3 files |
+| Phase 29.3 P01 | 12 min | 3 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-09-30T23:39:04.011Z
-Stopped at: Phase 29.3 context gathered
-Resume file: .planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/29.3-CONTEXT.md
+Last session: 2026-10-01T00:52:20.373Z
+Stopped at: Completed 29.3-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
