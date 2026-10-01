@@ -138,9 +138,10 @@ That reference is the one that routes. The full anonymous client handshake behin
 
 ## Install
 
-The subchart tarball is not committed (`kubernetes/*/charts/*.tgz` is gitignored), so a fresh clone must resolve dependencies first:
+The subchart tarball is not committed (`kubernetes/*/charts/*.tgz` is gitignored), so a fresh clone must resolve dependencies first. `helm dependency build` only downloads from repositories registered with `helm repo add`, so register the Nexus subchart repository once per machine:
 
 ```bash
+helm repo add nexus3 https://stevehipwell.github.io/helm-charts/
 helm dependency build kubernetes/nexus
 ```
 

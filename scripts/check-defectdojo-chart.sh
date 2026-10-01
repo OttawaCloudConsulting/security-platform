@@ -22,7 +22,8 @@ set -euo pipefail
 #
 # Exit codes — deliberately three, not two:
 #   0  every check passed
-#   1  at least one assertion failed  (a CHART defect — fix the chart)
+#   1  at least one assertion failed, or the chart directory or the TLS guard
+#      template is missing  (a CHART defect — fix the chart)
 #   2  preflight failed: a required binary or the vendored subchart tarball is
 #      missing (an INFRASTRUCTURE problem on this machine, not a chart
 #      defect). The two must never be conflated, and there is deliberately NO
@@ -32,17 +33,16 @@ set -euo pipefail
 # Never set the executable bit on this file (project rule). Invoke as:
 #   bash scripts/check-defectdojo-chart.sh
 #
-# INTERMEDIATE-COMMIT CONVENTION — VACUOUS-PASS (as in check-nexus-chart.sh,
-# NOT the expected-red convention of check-detector-parity.sh). This gate is
-# created in plan 26-01, before the chart it asserts against exists, and it
-# must exit 0 at every intermediate commit of the phase. It therefore opens
-# with two named SKIP guards:
-#   - kubernetes/defectdojo absent                         -> SKIP, exit 0
-#   - kubernetes/defectdojo/templates/validate-tls.yaml    -> SKIP, exit 0
-# Both print a line beginning `SKIP:` so a vacuous pass is never mistaken for
-# a real one. The anti-vacuity guard lives later in the phase, which asserts
-# the literal terminal `PASS - ... checks, 0 failures` line. Do not add further
-# SKIP conditions, and do not "complete" this script by deleting these two.
+# FAIL-CLOSED CONVENTION (ADR-030, as in check-nexus-chart.sh). The gate opens
+# with two named guards that FAIL with exit 1:
+#   - kubernetes/defectdojo absent                       -> FAIL: CHART-DIR-PRESENT
+#   - kubernetes/defectdojo/templates/validate-tls.yaml  -> FAIL: TLS-GUARD-PRESENT
+# A missing chart or a missing guard template is a chart defect, never a
+# vacuous pass. The earlier SKIP convention (VACUOUS-PASS, introduced in plan
+# 26-01 after plan 23-01) let a change that deleted the chart or its issuer
+# guard exit 0; Phase 29.3 removed it to close Phase 26 WR-05 (ADR-030). The
+# labels are matched by .github/workflows/chart-gates.yml, so do not rename
+# them without changing that workflow, and do not add SKIP conditions.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
@@ -50,16 +50,16 @@ cd "$REPO_ROOT"
 CHART_DIR="kubernetes/defectdojo"
 VALUES="${CHART_DIR}/values.yaml"
 
-# ── Guard 1. Chart not created yet (plans 26-01/26-02) ───────────────────────
+# ── Guard 1. The chart directory must exist (fail closed, ADR-030) ───────────
 if [ ! -d "$CHART_DIR" ]; then
-  echo "SKIP: chart not present yet — ${CHART_DIR} does not exist (vacuous pass, by design)"
-  exit 0
+  echo "FAIL: CHART-DIR-PRESENT: ${CHART_DIR} does not exist — the chart was deleted or renamed"
+  exit 1
 fi
 
-# ── Guard 2. Chart present but the TLS guard template is not (pre-26-03) ─────
+# ── Guard 2. The TLS guard template must exist (fail closed, ADR-030) ────────
 if [ ! -f "${CHART_DIR}/templates/validate-tls.yaml" ]; then
-  echo "SKIP: chart incomplete — ${CHART_DIR}/templates/validate-tls.yaml does not exist yet"
-  exit 0
+  echo "FAIL: TLS-GUARD-PRESENT: ${CHART_DIR}/templates/validate-tls.yaml is missing — the issuer guard is gone"
+  exit 1
 fi
 
 # ── Preflight 3. Required binaries. Exit 2 — infrastructure, not a defect. ───
@@ -74,7 +74,11 @@ done
 # .gitignore excludes kubernetes/*/charts/*.tgz (it is `helm dependency build`
 # output, not source), so a FRESH CLONE has an empty charts/ directory and both
 # `helm lint` and `helm template` fail with "found in Chart.yaml, but missing in
-# charts/ directory". That is machine state, not a chart defect.
+# charts/ directory". That is machine state, not a chart defect. A fresh clone
+# also needs the subchart repository registered with `helm repo add` before
+# `helm dependency build` can download it; the command printed below is
+# derived from Chart.yaml (.dependencies[0] name and repository), so it never
+# drifts from the chart.
 #
 # The tarball name is DERIVED from Chart.yaml rather than hardcoded, so a
 # deliberate subchart bump (the README's manual bump procedure) needs no edit
@@ -89,7 +93,15 @@ DEP_VERSION="${DEP_VERSION#\"}"
 DEP_TGZ="${CHART_DIR}/charts/defectdojo-${DEP_VERSION}.tgz"
 if [ ! -f "$DEP_TGZ" ]; then
   echo "PREFLIGHT FAIL: subchart not vendored — ${DEP_TGZ} does not exist"
-  echo "run: helm dependency build ${CHART_DIR}"
+  if ! DEP_NAME=$(yq -r '.dependencies[0].name' "${CHART_DIR}/Chart.yaml"); then
+    echo "PREFLIGHT FAIL: yq could not read .dependencies[0].name from ${CHART_DIR}/Chart.yaml"
+    exit 2
+  fi
+  if ! DEP_REPO=$(yq -r '.dependencies[0].repository' "${CHART_DIR}/Chart.yaml"); then
+    echo "PREFLIGHT FAIL: yq could not read .dependencies[0].repository from ${CHART_DIR}/Chart.yaml"
+    exit 2
+  fi
+  echo "run: helm repo add ${DEP_NAME} ${DEP_REPO} && helm dependency build ${CHART_DIR}"
   exit 2
 fi
 
