@@ -1,0 +1,77 @@
+PR #29 https://github.com/OttawaCloudConsulting/security-platform/pull/29 head 36100a18d214d9d4e73088c290925963dd0ffd45 - captured after Chart Gates run 36813331164 (success) and PR Security run 36813331277 (success)
+note: trailing whitespace stripped for the docs pre-commit git diff --check; content otherwise verbatim
+
+$ gh pr checks 29
+Checkov	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/110213025721
+GitGuardian Security Checks	pass	14s	https://dashboard.gitguardian.com
+Semgrep OSS	pass	3s	https://github.com/OttawaCloudConsulting/security-platform/runs/110213039590
+Trivy	pass	3s	https://github.com/OttawaCloudConsulting/security-platform/runs/110213009070
+chart-gate-defectdojo	pass	10s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36813331164/job/110212950016
+chart-gate-nexus	pass	8s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36813331164/job/110212950101
+gitleaks	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/110212983210
+security / Container — Trivy Image	pass	23s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36813331277/job/110212943194
+security / DefectDojo Import	pass	13s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36813331277/job/110213137563
+security / IaC — Checkov	pass	29s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36813331277/job/110212943076
+security / SAST — Semgrep CE	pass	32s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36813331277/job/110212943202
+security / SCA — Trivy Filesystem	pass	48s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36813331277/job/110212943151
+security / Secrets — Gitleaks	pass	18s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36813331277/job/110212943250
+tflint	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/110213088274
+security / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36813331277/job/110212944353
+tflint-errors	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/runs/110213088956
+
+$ gh api repos/OttawaCloudConsulting/security-platform/commits/36100a18d214d9d4e73088c290925963dd0ffd45/check-runs --paginate --jq '.check_runs[] | [.name, .status, .conclusion] | @tsv'
+security / DefectDojo Import	completed	success
+tflint-errors	completed	success
+tflint	completed	success
+Semgrep OSS	completed	success
+Checkov	completed	success
+Trivy	completed	success
+gitleaks	completed	success
+chart-gate-nexus	completed	success
+chart-gate-defectdojo	completed	success
+security / DefectDojo Cleanup	completed	skipped
+security / Secrets — Gitleaks	completed	success
+security / SAST — Semgrep CE	completed	success
+security / Container — Trivy Image	completed	success
+security / SCA — Trivy Filesystem	completed	success
+security / IaC — Checkov	completed	success
+GitGuardian Security Checks	completed	success
+
+$ gh run list --branch fix/phase-29.3-chart-gates --json databaseId,workflowName,headSha,event,status,conclusion --jq ...
+36813331277	PR Security	36100a18d214d9d4e73088c290925963dd0ffd45	pull_request	completed	success
+36813331164	Chart Gates	36100a18d214d9d4e73088c290925963dd0ffd45	pull_request	completed	success
+
+$ gh run list --workflow defectdojo-import-proof.yml --branch fix/phase-29.3-chart-gates  (expect empty: D-24, no kubernetes/defectdojo/** change)
+(exit 0; empty output above means no run)
+
+$ gh variable list -R OttawaCloudConsulting/security-platform  (expect no CHART_GATE_MODE: run used the default, report-only)
+DEFECTDOJO_RUNS_ON	occ-homelab-defectdojo	2026-09-29T00:14:11Z
+DEFECTDOJO_URL	https://defectdojo.infra.ottawacloudconsulting.com	2026-09-29T00:14:11Z
+
+$ git ls-remote --tags origin 'v1*'  (pre-push, recorded in Task 1)
+v1 -> fdabac9464f2baaeaa276f8934dc8d353295b355 (lightweight, = v1.2.0^{})
+v1.0.0 fabc3e35... ^{} cdf2c211...
+v1.1.0 414fd3be... ^{} 0f7e4e14...
+v1.1.1 c1565b35... ^{} 917352c0...
+v1.2.0 b8ae59df... ^{} fdabac94...
+
+$ git ls-remote --tags origin 'v1*'  (post-push)
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+
+$ gh api repos/OttawaCloudConsulting/security-platform/rules/branches/main --jq ...  (post-push readback; Task 1 baseline: only deletion + non_fast_forward from ruleset 14243983, no required status checks, classic protection 404)
+deletion	OttawaCloudConsulting/security-platform	14243983
+non_fast_forward	OttawaCloudConsulting/security-platform	14243983
+
+$ gh api repos/OttawaCloudConsulting/security-platform/branches/main/protection
+{"message":"Branch not protected","documentation_url":"https://docs.github.com/rest/branches/branch-protection#get-branch-protection","status":"404"}gh: Branch not protected (HTTP 404)
+
+$ gh pr view 29 --json state,isDraft,mergedAt,headRefOid
+{"headRefOid":"36100a18d214d9d4e73088c290925963dd0ffd45","isDraft":false,"mergedAt":null,"state":"OPEN"}

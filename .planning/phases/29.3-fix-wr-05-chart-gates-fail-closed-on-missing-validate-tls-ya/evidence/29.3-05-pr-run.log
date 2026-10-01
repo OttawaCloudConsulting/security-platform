@@ -1,0 +1,51 @@
+Chart Gates run 36813331164 https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36813331164
+PR #29 https://github.com/OttawaCloudConsulting/security-platform/pull/29 head 36100a18d214d9d4e73088c290925963dd0ffd45 event pull_request
+note: trailing whitespace stripped for the docs pre-commit git diff --check; output lines otherwise verbatim; echoed script source, env and group lines omitted
+
+$ gh run view 36813331164 --json headSha,event,status,conclusion,jobs --jq ...
+headSha=36100a18d214d9d4e73088c290925963dd0ffd45 event=pull_request status=completed conclusion=success
+job chart-gate-defectdojo 110212950016 completed success https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36813331164/job/110212950016
+job chart-gate-nexus 110212950101 completed success https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36813331164/job/110212950101
+
+$ gh run view 36813331164 --log  (output lines of the Install Helm, Check yq and jq, Build chart dependencies, Chart gate and Negative cases steps)
+chart-gate-defectdojo	Install Helm v4.3.0	2026-10-01T04:03:33.6186886Z helm.tar.gz: OK
+chart-gate-defectdojo	Install Helm v4.3.0	2026-10-01T04:03:34.1170094Z helm v4.3.0+gbec5b06
+chart-gate-defectdojo	Check yq and jq	2026-10-01T04:03:34.1868200Z yq (https://github.com/mikefarah/yq/) version v4.53.6
+chart-gate-defectdojo	Check yq and jq	2026-10-01T04:03:34.1886147Z jq-1.7
+chart-gate-defectdojo	Build chart dependencies	2026-10-01T04:03:34.3676432Z "defectdojo" has been added to your repositories
+chart-gate-defectdojo	Build chart dependencies	2026-10-01T04:03:34.4041495Z Hang tight while we grab the latest from your chart repositories...
+chart-gate-defectdojo	Build chart dependencies	2026-10-01T04:03:34.5206253Z ...Successfully got an update from the "defectdojo" chart repository
+chart-gate-defectdojo	Build chart dependencies	2026-10-01T04:03:34.5207194Z Update Complete. ⎈Happy Helming!⎈
+chart-gate-defectdojo	Build chart dependencies	2026-10-01T04:03:34.5468131Z Saving 1 charts
+chart-gate-defectdojo	Build chart dependencies	2026-10-01T04:03:34.5468973Z Downloading defectdojo from repo https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/helm-charts
+chart-gate-defectdojo	Build chart dependencies	2026-10-01T04:03:34.8266457Z Deleting outdated charts
+chart-gate-defectdojo	Chart gate	2026-10-01T04:03:34.8496930Z chart gate mode: report-only
+chart-gate-defectdojo	Chart gate	2026-10-01T04:03:37.3661106Z ::stop-commands::***
+chart-gate-defectdojo	Chart gate	2026-10-01T04:03:37.3665505Z check-defectdojo-chart: asserting 22 offline invariants against kubernetes/defectdojo
+chart-gate-defectdojo	Chart gate	2026-10-01T04:03:37.3676549Z PASS - 22 checks, 0 failures
+chart-gate-defectdojo	Chart gate	2026-10-01T04:03:37.3677905Z ::***::
+chart-gate-defectdojo	Chart gate	2026-10-01T04:03:37.3687697Z chart-gate-defectdojo: PASS
+chart-gate-defectdojo	Negative cases	2026-10-01T04:03:37.4226686Z negative (a) PASS: exit 1 with FAIL: TLS-GUARD-PRESENT:
+chart-gate-defectdojo	Negative cases	2026-10-01T04:03:37.4543837Z negative (b) PASS: exit 1 with FAIL: CHART-DIR-PRESENT:
+chart-gate-nexus	Install Helm v4.3.0	2026-10-01T04:03:32.1953197Z helm.tar.gz: OK
+chart-gate-nexus	Install Helm v4.3.0	2026-10-01T04:03:32.6810022Z helm v4.3.0+gbec5b06
+chart-gate-nexus	Check yq and jq	2026-10-01T04:03:32.7441771Z yq (https://github.com/mikefarah/yq/) version v4.53.6
+chart-gate-nexus	Check yq and jq	2026-10-01T04:03:32.7458642Z jq-1.7
+chart-gate-nexus	Build chart dependencies	2026-10-01T04:03:33.6417406Z "nexus3" has been added to your repositories
+chart-gate-nexus	Build chart dependencies	2026-10-01T04:03:33.6746985Z Hang tight while we grab the latest from your chart repositories...
+chart-gate-nexus	Build chart dependencies	2026-10-01T04:03:34.0428747Z ...Successfully got an update from the "nexus3" chart repository
+chart-gate-nexus	Build chart dependencies	2026-10-01T04:03:34.0430326Z Update Complete. ⎈Happy Helming!⎈
+chart-gate-nexus	Build chart dependencies	2026-10-01T04:03:34.1328348Z Saving 1 charts
+chart-gate-nexus	Build chart dependencies	2026-10-01T04:03:34.1329792Z Downloading nexus3 from repo https://stevehipwell.github.io/helm-charts/
+chart-gate-nexus	Build chart dependencies	2026-10-01T04:03:34.5440343Z Deleting outdated charts
+chart-gate-nexus	Chart gate	2026-10-01T04:03:34.5721898Z chart gate mode: report-only
+chart-gate-nexus	Chart gate	2026-10-01T04:03:35.5023543Z ::stop-commands::***
+chart-gate-nexus	Chart gate	2026-10-01T04:03:35.5024323Z check-nexus-chart: asserting 18 offline invariants against kubernetes/nexus
+chart-gate-nexus	Chart gate	2026-10-01T04:03:35.5025021Z PASS - 18 checks, 0 failures
+chart-gate-nexus	Chart gate	2026-10-01T04:03:35.5026169Z ::***::
+chart-gate-nexus	Chart gate	2026-10-01T04:03:35.5043933Z chart-gate-nexus: PASS
+chart-gate-nexus	Negative cases	2026-10-01T04:03:35.5558029Z negative (a) PASS: exit 1 with FAIL: PROVISION-JOB-PRESENT:
+chart-gate-nexus	Negative cases	2026-10-01T04:03:35.5860552Z negative (b) PASS: exit 1 with FAIL: CHART-DIR-PRESENT:
+
+$ gh run view 36813331164 --log | (emitted warning, error and notice workflow-command annotations, excluding echoed script source)
+(none)
