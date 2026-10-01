@@ -37,3 +37,4 @@ For the full findings that prompted ADR-001 through ADR-012, see [`red-team/00-c
 | [ADR-027](adr027-defectdojo-homelab-live-validation.md) | DefectDojo Validated Live on the Homelab via an ArgoCD Overlay, an L4 TLS Proxy and a Self-Hosted Import Runner | 2026-09-29 | Accepted |
 | [ADR-028](adr028-repo-scoped-arc-runner-for-private-defectdojo-import.md) | A Repository-Scoped actions-runner-controller Scale Set Carries DefectDojo Import to a Private Instance | 2026-09-29 | Accepted |
 | [ADR-029](adr029-defectdojo-api-clients-ignore-ambient-curl-config.md) | DefectDojo API Clients Ignore Ambient curl Configuration and Require a Verified TLS Result | 2026-09-30 | Accepted |
+| [ADR-030](adr030-standing-chart-gates-fail-closed-and-run-in-ci.md) | Standing Chart Gates Fail Closed and Run in CI | 2026-10-01 | Accepted |

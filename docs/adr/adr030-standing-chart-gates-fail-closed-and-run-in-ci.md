@@ -1,7 +1,7 @@
 # ADR-030: Standing Chart Gates Fail Closed and Run in CI
 
-**Status:** Proposed
-**Date:** 2026-09-30
+**Status:** Accepted
+**Date:** 2026-10-01
 **Addresses:** Phase 26 WR-05 (26-REVIEW) — the chart gates exited 0 with SKIP when the chart or its guard
 template was missing and ran in no workflow — and Phase 26 WR-04 (the preflight hint did not work on a fresh clone)
 
@@ -9,9 +9,10 @@ This record lives in this documentation repository. The two gate script headers
 (`scripts/check-defectdojo-chart.sh`, `scripts/check-nexus-chart.sh`) and the header of
 `.github/workflows/chart-gates.yml` in the public `security-platform` repository cite it by number, so a reader of
 the public repository cannot follow the link. That is the arrangement ADR-022 to ADR-029 recorded. Every measured
-value below is quoted from a Phase 29.3 plan summary (29.3-01 to 29.3-03) or from a file in that phase's `evidence/`
-directory, and each is attributed where it appears. Values that can exist only after the merge (the PR number, the
-merge SHA and the live run IDs) are written as `FILL-AT-29.3-07` and are filled in when this record is accepted.
+value below is quoted from a Phase 29.3 plan summary (29.3-01 to 29.3-06) or from a file in that phase's `evidence/`
+directory, and each is attributed where it appears. The values that could exist only after the merge (the PR number,
+the merge SHA and the live run IDs) were filled in from the 29.3-05 and 29.3-06 evidence when this record was
+accepted.
 "Phase 26 WR-05" is this record's trigger; the findings called WR-05 in Phases 13, 25, 27 and 29 are unrelated.
 
 ## Context
@@ -162,9 +163,30 @@ merge SHA and the live run IDs) are written as `FILL-AT-29.3-07` and are filled 
     the step itself is red (`rc 1`) because the SKIP exits 0; the D-22 label paths skip with `::notice`; the
     no-label, no-file, wrong-label and chart-label-with-directory-present paths are red. The workspace status is
     unchanged in every case.
-- **Live PR run (29.3-07):** security-platform PR #FILL-AT-29.3-07, Chart Gates run FILL-AT-29.3-07 under the
-  default (unset) mode: both jobs and all four negative cases.
-- **Merge (29.3-07):** merge commit `FILL-AT-29.3-07`; push-to-`main` Chart Gates run FILL-AT-29.3-07.
+- **Live PR run (29.3-05, `evidence/29.3-05-pr-run.log` and `evidence/29.3-05-pr-checks.txt`):** security-platform
+  PR #29 (https://github.com/OttawaCloudConsulting/security-platform/pull/29), approved head
+  `36100a18d214d9d4e73088c290925963dd0ffd45`. Chart Gates `pull_request` run 36813331164 under the default (unset)
+  mode concluded success: `chart-gate-defectdojo` (job 110212950016) success and `chart-gate-nexus` (job
+  110212950101) success. Both jobs printed `chart gate mode: report-only`; the gates ended
+  `PASS - 22 checks, 0 failures` and `PASS - 18 checks, 0 failures` under Helm v4.3.0; all four negative cases
+  printed PASS (`FAIL: TLS-GUARD-PRESENT:`, `FAIL: PROVISION-JOB-PRESENT:` and `FAIL: CHART-DIR-PRESENT:` twice,
+  each with exit 1). The run emitted no warning, error or notice annotations. PR Security run 36813331277 concluded
+  success, and the DefectDojo Import Proof did not trigger.
+- **Merge (29.3-06, `evidence/29.3-06-post-merge.txt`):** merge commit `30afdb9fb56516c6b06c5275212b42bcac30cc94`,
+  parents `72cb174539cca5e3a2841f7977a221a90c41326e` (pre-merge `main`) and
+  `36100a18d214d9d4e73088c290925963dd0ffd45` (approved head), merged 2026-10-01T04:09:05Z with
+  `gh pr merge 29 --merge --match-head-commit 36100a18d214d9d4e73088c290925963dd0ffd45`. Push-to-`main` Chart Gates
+  run 36813770305 on `30afdb9` concluded success: `chart-gate-defectdojo` (job 110214282058) and `chart-gate-nexus`
+  (job 110214282246) both success, both `report-only`, `PASS - 22 checks, 0 failures` and
+  `PASS - 18 checks, 0 failures`, all four negative cases PASS. Unlike the PR run, each push-run job carried one
+  annotation, a GitHub platform notice that the `ubuntu-latest` label will migrate to Ubuntu 26 beginning
+  October 19, 2026; it does not come from the gates.
+- **No release (29.3-06, `evidence/29.3-06-post-merge.txt`):** the post-merge `git ls-remote --tags origin 'v1*'`
+  listing is identical to the pre-push listing (`v1` still `fdabac9464f2baaeaa276f8934dc8d353295b355`, equal to
+  `v1.2.0^{}`); no tag was created. `gh variable list` shows only `DEFECTDOJO_RUNS_ON` and `DEFECTDOJO_URL`, so
+  `CHART_GATE_MODE` is not set and the gates run in `report-only`. The `main` rules are unchanged (`deletion` and
+  `non_fast_forward` from ruleset 14243983). `security.yml`, `pr-security.yml`, `scheduled-security.yml`,
+  `set-required-checks.sh` and `kubernetes/defectdojo` are byte-identical across the merge.
 
 ## Consequences
 
@@ -210,7 +232,9 @@ charts fail `helm dependency build` on a fresh Helm configuration without `helm 
    blocking.
 3. **Annotation escaping (RESEARCH A2).** The workflow encodes `%` as `%25` in annotation data. The offline proof
    checks the encoding; that the runner decodes it back was assumed, not observed.
-4. **The Ubuntu 26.04 image.** The jobs have run (FILL-AT-29.3-07) only on the current `ubuntu-latest`. Behaviour
+4. **The Ubuntu 26.04 image.** The jobs have run (PR run 36813331164 and push-to-`main` run 36813770305, both on
+   2026-10-01) only on the current `ubuntu-latest`, before the migration announced for October 19, 2026; the exact
+   image version was not captured in the evidence. Behaviour
    after the 26.04 migration is covered by the version asserts, not by a run.
 5. **Lock digest verification.** That `helm dependency build` verifies the downloaded tarball against the
    `Chart.lock` digest is a research assumption. What was measured is that `Chart.lock` stays byte-identical after
