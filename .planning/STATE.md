@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.3-03-PLAN.md
-last_updated: "2026-10-01T03:36:18.258Z"
-last_activity: 2026-10-01 -- Phase 29.3 plan 03 complete
+stopped_at: Completed 29.3-04-PLAN.md
+last_updated: "2026-10-01T03:40:53.503Z"
+last_activity: 2026-10-01 -- Phase 29.3 plan 04 complete
 progress:
   total_phases: 7
   completed_phases: 7
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.3 (fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
-Last activity: 2026-10-01 -- Phase 29.3 plan 03 complete
+Last activity: 2026-10-01 -- Phase 29.3 plan 04 complete
 
 ## Performance Metrics
 
@@ -353,6 +353,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.3]: 29.3-01: exit-2 hint derives helm repo name/URL from Chart.yaml .dependencies[0] via yq -r; no URL literal in either gate
 - [Phase 29.3]: 29.3-02: chart-gates.yml has two named jobs (no matrix); CHART_GATE_MODE unset = report-only, typo = red before the gate runs; exit 2/other codes, deps failures and failed negatives always red; D-22 case (a) also accepts CHART-DIR-PRESENT
 - [Phase 29.3]: 29.3-03: offline proof extracts committed chart-gates.yml bodies at 36100a1 and passes 95/95 (16+1 mode matrix, deps, negatives, D-22); no body defect; every body run gets isolated Helm homes
+- [Phase 29.3]: 29.3-04: ADR-030 drafted as Proposed; merge-time identifiers left as literal FILL-AT-29.3-07; docs/adr/README.md row deferred to plan 07
 
 ### Pending Todos
 
@@ -521,11 +522,12 @@ Carried forward from v1.1 close:
 | Phase 29.3 P01 | 12 min | 3 tasks | 5 files |
 | Phase 29.3 P02 | 15 min | 2 tasks | 1 files |
 | Phase 29.3 P03 | 10 min | 2 tasks | 2 files |
+| Phase 29.3 P04 | 10 min | 1 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-10-01T03:36:18.248Z
-Stopped at: Completed 29.3-03-PLAN.md
+Last session: 2026-10-01T03:40:45.675Z
+Stopped at: Completed 29.3-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
