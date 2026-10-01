@@ -1,0 +1,531 @@
+---
+# Chart Gates (Phase 29.3, ADR-030). Fixes Phase 26 WR-05: the two offline
+# chart gates, scripts/check-defectdojo-chart.sh and
+# scripts/check-nexus-chart.sh, used to SKIP with exit 0 when the chart or its
+# guard template was missing, and neither gate ran in CI. Plan 29.3-01 made
+# both gates fail closed; this workflow is their CI home.
+#
+# WHAT EACH GATE PROVES. Each gate renders its chart offline with Helm 4 (no
+# cluster) and asserts the chart's invariants. check-defectdojo-chart.sh
+# asserts 22 checks, including the validate-tls.yaml guard that refuses an
+# install without verified TLS. check-nexus-chart.sh asserts 18 checks,
+# including the job-provision.yaml provisioning Job. A clean run ends with a
+# terminal line `PASS - N checks, 0 failures` and exit 0.
+#
+# WHY FAIL CLOSED. A missing chart directory or guard template is a chart
+# defect (exit 1), never a skip. The gates print these stable labels, and
+# the negative step below matches them literally, so rename them together
+# (scripts and this file) or not at all:
+#   FAIL: CHART-DIR-PRESENT:      both charts, kubernetes/<chart> is missing
+#   FAIL: TLS-GUARD-PRESENT:      defectdojo, templates/validate-tls.yaml missing
+#   FAIL: PROVISION-JOB-PRESENT:  nexus, templates/job-provision.yaml missing
+#
+# CHART_GATE_MODE. The only setting that changes how a chart defect is
+# reported, set with
+#   gh variable set CHART_GATE_MODE --body blocking -R OttawaCloudConsulting/security-platform
+# never by editing this YAML. Unset or empty means report-only, the default,
+# which needs no action. `blocking` and `report-only` are the only accepted
+# values; any other value (a typo) turns the job red before the gate runs, so
+# a typo can never silently disable blocking. This is a separate variable
+# from GATE_MODE (pr-security.yml), which governs the scanner gate. It
+# concerns this host repository only, because consumers never run this
+# workflow, so it is documented here and in ADR-030, not in the adoption
+# guide or cicd/README.md.
+#
+# BUCKETS (D-13). PASS means the gate exited 0 AND its last line starts with
+# `PASS -`. The chart-defect bucket follows the mode: exit 1, or exit 0
+# without a terminal `PASS -` line (a vacuous pass). In report-only mode the
+# job stays green with one ::warning per FAIL line plus a job-summary entry;
+# in blocking mode it writes the summary and goes red. The always-red bucket
+# ignores the mode: exit 2 (preflight failed, the gate never ran), any other
+# exit code, a failed helm repo add or helm dependency build (Chart.lock
+# drift included), a non-https dependency repository in Chart.yaml, an
+# invalid CHART_GATE_MODE, and any failed negative case. The gate scripts
+# stay mode-agnostic; only this workflow reads the mode.
+#
+# NEGATIVE CASES (D-15). Every run proves that the gate still discriminates.
+# After the positive run, the negative step copies the checkout to
+# RUNNER_TEMP (cp -a, never touching the workspace), runs the COPY's script,
+# and expects exit 1 plus a `FAIL: <label>: ` line for (a) the guard
+# template removed and (b) the chart directory renamed. It is red if the
+# workspace git status changes during the step.
+# D-22: when a case's precondition is already absent in the checkout (the
+# PR itself deleted the guard template or the chart directory), the case
+# skips with a ::notice only if the positive output in
+# RUNNER_TEMP/chart-gate-<chart>.out already carries the matching
+# `FAIL: <label>: ` line, so the mode decides the colour as D-13 says. Case
+# (a) also accepts CHART-DIR-PRESENT when kubernetes/<chart> itself is
+# absent, because deleting the chart removes the guard template too. A
+# missing positive output file (the gate step stopped at the mode check, or
+# the dependency build failed) counts as label absent, and the case is red.
+#
+# WHY TWO JOBS, NOT A MATRIX (D-09). Two named jobs give two stable check
+# names, and each job builds only its own chart's dependencies. The step
+# bodies are byte-identical between the jobs and parameterised only by the
+# job-level env literals, so the offline proof (plan 29.3-03) can extract
+# them from this file and compare them.
+#
+# NOT `security` AS A JOB ID. That job id is the frozen prefix of the five
+# required check contexts (`security / <job name>`) in pr-security.yml. The
+# ids here (`chart-gate-defectdojo`, `chart-gate-nexus`) can never collide
+# with, or satisfy, a required context.
+#
+# NOT A REQUIRED CHECK (D-10). The triggers are path-filtered, and a
+# path-filtered required check stays pending forever on a PR that does not
+# touch those paths. set-required-checks.sh and the branch ruleset are
+# unchanged.
+#
+# Security: `pull_request`, never `pull_request_target`; no secrets are
+# passed or read; the workflow-level permissions are contents: read only.
+# The checkout sets persist-credentials: false, because the negative cases
+# copy the tree including .git. Values reach the run: bodies only through
+# env:, never through an expression inside a run: body.
+
+name: Chart Gates
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - kubernetes/**
+      - scripts/check-*-chart.sh
+      - .github/workflows/chart-gates.yml
+  push:
+    branches: [main]
+    paths:
+      - kubernetes/**
+      - scripts/check-*-chart.sh
+      - .github/workflows/chart-gates.yml
+
+# Workflow-level floor; neither job needs more.
+permissions:
+  contents: read
+
+jobs:
+  chart-gate-defectdojo:
+    name: chart-gate-defectdojo
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Literals only; the step bodies read these.
+    env:
+      CHART: defectdojo
+      CHART_LABEL: CHART-DIR-PRESENT
+      GUARD_LABEL: TLS-GUARD-PRESENT
+      GUARD_TEMPLATE: validate-tls.yaml
+    steps:
+      # Hardening: the negative cases cp -a the tree including .git, so no
+      # GITHUB_TOKEN is persisted in .git/config.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The gates rely on Helm 4 (see the --namespace note in
+      # check-defectdojo-chart.sh), and ubuntu-latest may ship Helm 3.x.
+      # Download-then-verify-then-extract, never curl | sh
+      # (the same shape as the Gitleaks install in security.yml).
+      - name: Install Helm v4.3.0
+        run: |
+          curl -sSfL -o helm.tar.gz https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz
+          echo "86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb  helm.tar.gz" \
+            | sha256sum -c -
+          sudo tar xzf helm.tar.gz -C /usr/local/bin --strip-components=1 linux-amd64/helm
+          rm -f helm.tar.gz
+          helm_version="$(helm version --short)"
+          echo "helm ${helm_version}"
+          case "$helm_version" in
+            v4.3.0*) ;;
+            *) echo "expected Helm v4.3.0, found ${helm_version}"; exit 1 ;;
+          esac
+
+      # The gates read Chart.yaml and values with mikefarah yq v4 and parse
+      # rendered JSON with jq; both come from the runner image, so assert
+      # them instead of trusting the image.
+      - name: Check yq and jq
+        id: tools
+        run: |
+          yq_version="$(yq --version)"
+          echo "$yq_version"
+          case "$yq_version" in
+            *mikefarah*" v4."*) ;;
+            *) echo "::error::expected mikefarah yq v4, found: ${yq_version}"; exit 1 ;;
+          esac
+          jq_version="$(jq --version)"
+          echo "$jq_version"
+          case "$jq_version" in
+            jq-1.*) ;;
+            *) echo "::error::expected jq 1.x, found: ${jq_version}"; exit 1 ;;
+          esac
+
+      # D-18: the subchart repositories come from this chart's Chart.yaml,
+      # never from this YAML; only https:// repositories are accepted. A
+      # failed repo add or dependency build (Chart.lock drift included) is
+      # always red. A missing Chart.yaml skips the build so the gate itself
+      # reports the missing chart.
+      - name: Build chart dependencies
+        id: deps
+        run: |
+          chart_dir="kubernetes/${CHART}"
+          if [ ! -f "${chart_dir}/Chart.yaml" ]; then
+            echo "::notice::${chart_dir}/Chart.yaml is absent; skipping the dependency build so the gate reports the missing chart"
+            exit 0
+          fi
+          n="$(yq -r '.dependencies | length' "${chart_dir}/Chart.yaml")"
+          i=0
+          while [ "$i" -lt "$n" ]; do
+            name="$(yq -r ".dependencies[${i}].name" "${chart_dir}/Chart.yaml")"
+            repo="$(yq -r ".dependencies[${i}].repository" "${chart_dir}/Chart.yaml")"
+            case "$repo" in
+              https://*) ;;
+              *) echo "::error::${chart_dir}/Chart.yaml dependency ${name} has repository '${repo}'; only https:// repositories are supported"; exit 1 ;;
+            esac
+            helm repo add "$name" "$repo"
+            i=$((i + 1))
+          done
+          helm dependency build "$chart_dir"
+
+      # D-11..D-14, D-16: the mode is validated before the gate runs; the
+      # gate script stays mode-agnostic and only its exit code and last line
+      # are read. Raw gate output is printed between a random stop-commands
+      # token pair so it cannot issue workflow commands. The output file is
+      # shared with the negative step (D-22).
+      - name: Chart gate
+        id: gate
+        env:
+          CHART_GATE_MODE: ${{ vars.CHART_GATE_MODE }}
+        run: |
+          case "${CHART_GATE_MODE}" in
+            '') mode=report-only ;;
+            blocking|report-only) mode="${CHART_GATE_MODE}" ;;
+            *) echo "::error::CHART_GATE_MODE=${CHART_GATE_MODE} is not blocking|report-only"; exit 1 ;;
+          esac
+          echo "chart gate mode: ${mode}"
+          out="${RUNNER_TEMP}/chart-gate-${CHART}.out"
+          rc=0
+          bash "scripts/check-${CHART}-chart.sh" > "$out" 2>&1 || rc=$?
+          token="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
+          echo "::stop-commands::${token}"
+          cat "$out"
+          echo "::${token}::"
+          last="$(tail -n 1 "$out")"
+          case "$rc" in
+            0)
+              case "$last" in
+                'PASS -'*) echo "chart-gate-${CHART}: PASS"; exit 0 ;;
+              esac
+              why="exit 0 without a terminal 'PASS -' line (vacuous pass)" ;;
+            1) why="chart defect (exit 1)" ;;
+            2) echo "::error::check-${CHART}-chart.sh preflight failed (exit 2): the gate never ran"; exit 1 ;;
+            *) echo "::error::check-${CHART}-chart.sh exited ${rc} (expected 0, 1 or 2)"; exit 1 ;;
+          esac
+          {
+            echo "### chart-gate-${CHART}: ${why} (mode: ${mode})"
+            echo '```'
+            if grep -q '^FAIL' "$out"; then
+              grep '^FAIL' "$out"
+            else
+              tail -n 5 "$out"
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$mode" = blocking ]; then
+            echo "::error::chart-gate-${CHART}: ${why}; CHART_GATE_MODE=blocking"
+            exit 1
+          fi
+          cr=$'\r'
+          while IFS= read -r line; do
+            line="${line//%/%25}"
+            line="${line//${cr}/%0D}"
+            echo "::warning title=chart-gate-${CHART}::${line}"
+          done < <(grep '^FAIL' "$out" || true)
+          echo "::warning title=chart-gate-${CHART}::${why}; report-only (set CHART_GATE_MODE=blocking to fail the job)"
+          exit 0
+
+      # D-15 + D-22: two standing negative cases in throwaway copies under
+      # RUNNER_TEMP, run against the COPY's script (the gates resolve their
+      # repo root from their own path). Runs even when the gate step failed.
+      - name: Negative cases
+        id: negative
+        if: ${{ !cancelled() }}
+        run: |
+          before="$(git -C "$GITHUB_WORKSPACE" status --porcelain=v1)"
+          pos="${RUNNER_TEMP}/chart-gate-${CHART}.out"
+          failed=0
+          for case_id in a b; do
+            dir="${RUNNER_TEMP}/neg-${CHART}-${case_id}"
+            rm -rf "$dir"
+            cp -a "$GITHUB_WORKSPACE" "$dir"
+            if [ "$case_id" = a ]; then
+              rel="kubernetes/${CHART}/templates/${GUARD_TEMPLATE}"
+              target="${dir}/${rel}"
+              label="$GUARD_LABEL"
+              present=0
+              if [ -f "$target" ]; then present=1; fi
+            else
+              rel="kubernetes/${CHART}"
+              target="${dir}/${rel}"
+              label="$CHART_LABEL"
+              present=0
+              if [ -d "$target" ]; then present=1; fi
+            fi
+            if [ "$present" -eq 0 ]; then
+              # D-22: skip only if the positive run already reports the
+              # matching label; case (a) also accepts the chart-dir label
+              # when the chart directory itself is absent.
+              matched=''
+              if [ -f "$pos" ] && grep -q "^FAIL: ${label}: " "$pos"; then
+                matched="$label"
+              elif [ "$case_id" = a ] && [ ! -d "${dir}/kubernetes/${CHART}" ] && [ -f "$pos" ] && grep -q "^FAIL: ${CHART_LABEL}: " "$pos"; then
+                matched="$CHART_LABEL"
+              fi
+              if [ -n "$matched" ]; then
+                echo "::notice::negative (${case_id}): ${rel} is absent in the checkout; the positive run already reports FAIL: ${matched}: , so the mode decides (ADR-030, D-22)"
+              else
+                echo "::error::negative (${case_id}): precondition failed, ${rel} is absent in the checkout and ${pos} does not carry FAIL: ${label}: "
+                failed=1
+              fi
+              rm -rf "$dir"
+              continue
+            fi
+            if [ "$case_id" = a ]; then
+              rm "$target"
+            else
+              mv "$target" "${target}.renamed-by-negative-case"
+            fi
+            rc=0
+            out="$(bash "${dir}/scripts/check-${CHART}-chart.sh" 2>&1)" || rc=$?
+            if [ "$rc" -eq 1 ] && grep -q "^FAIL: ${label}: " <<< "$out"; then
+              echo "negative (${case_id}) PASS: exit 1 with FAIL: ${label}:"
+            else
+              echo "::error::negative (${case_id}): expected exit 1 and 'FAIL: ${label}:', got exit ${rc}"
+              token="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
+              echo "::stop-commands::${token}"
+              printf '%s\n' "$out"
+              echo "::${token}::"
+              failed=1
+            fi
+            rm -rf "$dir"
+          done
+          after="$(git -C "$GITHUB_WORKSPACE" status --porcelain=v1)"
+          if [ "$before" != "$after" ]; then
+            echo "::error::the workspace changed during the negative cases"
+            echo "before:"
+            printf '%s\n' "$before"
+            echo "after:"
+            printf '%s\n' "$after"
+            failed=1
+          fi
+          exit "$failed"
+
+  chart-gate-nexus:
+    name: chart-gate-nexus
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Literals only; the step bodies read these.
+    env:
+      CHART: nexus
+      CHART_LABEL: CHART-DIR-PRESENT
+      GUARD_LABEL: PROVISION-JOB-PRESENT
+      GUARD_TEMPLATE: job-provision.yaml
+    steps:
+      # Hardening: the negative cases cp -a the tree including .git, so no
+      # GITHUB_TOKEN is persisted in .git/config.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The gates rely on Helm 4 (see the --namespace note in
+      # check-defectdojo-chart.sh), and ubuntu-latest may ship Helm 3.x.
+      # Download-then-verify-then-extract, never curl | sh
+      # (the same shape as the Gitleaks install in security.yml).
+      - name: Install Helm v4.3.0
+        run: |
+          curl -sSfL -o helm.tar.gz https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz
+          echo "86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb  helm.tar.gz" \
+            | sha256sum -c -
+          sudo tar xzf helm.tar.gz -C /usr/local/bin --strip-components=1 linux-amd64/helm
+          rm -f helm.tar.gz
+          helm_version="$(helm version --short)"
+          echo "helm ${helm_version}"
+          case "$helm_version" in
+            v4.3.0*) ;;
+            *) echo "expected Helm v4.3.0, found ${helm_version}"; exit 1 ;;
+          esac
+
+      # The gates read Chart.yaml and values with mikefarah yq v4 and parse
+      # rendered JSON with jq; both come from the runner image, so assert
+      # them instead of trusting the image.
+      - name: Check yq and jq
+        id: tools
+        run: |
+          yq_version="$(yq --version)"
+          echo "$yq_version"
+          case "$yq_version" in
+            *mikefarah*" v4."*) ;;
+            *) echo "::error::expected mikefarah yq v4, found: ${yq_version}"; exit 1 ;;
+          esac
+          jq_version="$(jq --version)"
+          echo "$jq_version"
+          case "$jq_version" in
+            jq-1.*) ;;
+            *) echo "::error::expected jq 1.x, found: ${jq_version}"; exit 1 ;;
+          esac
+
+      # D-18: the subchart repositories come from this chart's Chart.yaml,
+      # never from this YAML; only https:// repositories are accepted. A
+      # failed repo add or dependency build (Chart.lock drift included) is
+      # always red. A missing Chart.yaml skips the build so the gate itself
+      # reports the missing chart.
+      - name: Build chart dependencies
+        id: deps
+        run: |
+          chart_dir="kubernetes/${CHART}"
+          if [ ! -f "${chart_dir}/Chart.yaml" ]; then
+            echo "::notice::${chart_dir}/Chart.yaml is absent; skipping the dependency build so the gate reports the missing chart"
+            exit 0
+          fi
+          n="$(yq -r '.dependencies | length' "${chart_dir}/Chart.yaml")"
+          i=0
+          while [ "$i" -lt "$n" ]; do
+            name="$(yq -r ".dependencies[${i}].name" "${chart_dir}/Chart.yaml")"
+            repo="$(yq -r ".dependencies[${i}].repository" "${chart_dir}/Chart.yaml")"
+            case "$repo" in
+              https://*) ;;
+              *) echo "::error::${chart_dir}/Chart.yaml dependency ${name} has repository '${repo}'; only https:// repositories are supported"; exit 1 ;;
+            esac
+            helm repo add "$name" "$repo"
+            i=$((i + 1))
+          done
+          helm dependency build "$chart_dir"
+
+      # D-11..D-14, D-16: the mode is validated before the gate runs; the
+      # gate script stays mode-agnostic and only its exit code and last line
+      # are read. Raw gate output is printed between a random stop-commands
+      # token pair so it cannot issue workflow commands. The output file is
+      # shared with the negative step (D-22).
+      - name: Chart gate
+        id: gate
+        env:
+          CHART_GATE_MODE: ${{ vars.CHART_GATE_MODE }}
+        run: |
+          case "${CHART_GATE_MODE}" in
+            '') mode=report-only ;;
+            blocking|report-only) mode="${CHART_GATE_MODE}" ;;
+            *) echo "::error::CHART_GATE_MODE=${CHART_GATE_MODE} is not blocking|report-only"; exit 1 ;;
+          esac
+          echo "chart gate mode: ${mode}"
+          out="${RUNNER_TEMP}/chart-gate-${CHART}.out"
+          rc=0
+          bash "scripts/check-${CHART}-chart.sh" > "$out" 2>&1 || rc=$?
+          token="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
+          echo "::stop-commands::${token}"
+          cat "$out"
+          echo "::${token}::"
+          last="$(tail -n 1 "$out")"
+          case "$rc" in
+            0)
+              case "$last" in
+                'PASS -'*) echo "chart-gate-${CHART}: PASS"; exit 0 ;;
+              esac
+              why="exit 0 without a terminal 'PASS -' line (vacuous pass)" ;;
+            1) why="chart defect (exit 1)" ;;
+            2) echo "::error::check-${CHART}-chart.sh preflight failed (exit 2): the gate never ran"; exit 1 ;;
+            *) echo "::error::check-${CHART}-chart.sh exited ${rc} (expected 0, 1 or 2)"; exit 1 ;;
+          esac
+          {
+            echo "### chart-gate-${CHART}: ${why} (mode: ${mode})"
+            echo '```'
+            if grep -q '^FAIL' "$out"; then
+              grep '^FAIL' "$out"
+            else
+              tail -n 5 "$out"
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$mode" = blocking ]; then
+            echo "::error::chart-gate-${CHART}: ${why}; CHART_GATE_MODE=blocking"
+            exit 1
+          fi
+          cr=$'\r'
+          while IFS= read -r line; do
+            line="${line//%/%25}"
+            line="${line//${cr}/%0D}"
+            echo "::warning title=chart-gate-${CHART}::${line}"
+          done < <(grep '^FAIL' "$out" || true)
+          echo "::warning title=chart-gate-${CHART}::${why}; report-only (set CHART_GATE_MODE=blocking to fail the job)"
+          exit 0
+
+      # D-15 + D-22: two standing negative cases in throwaway copies under
+      # RUNNER_TEMP, run against the COPY's script (the gates resolve their
+      # repo root from their own path). Runs even when the gate step failed.
+      - name: Negative cases
+        id: negative
+        if: ${{ !cancelled() }}
+        run: |
+          before="$(git -C "$GITHUB_WORKSPACE" status --porcelain=v1)"
+          pos="${RUNNER_TEMP}/chart-gate-${CHART}.out"
+          failed=0
+          for case_id in a b; do
+            dir="${RUNNER_TEMP}/neg-${CHART}-${case_id}"
+            rm -rf "$dir"
+            cp -a "$GITHUB_WORKSPACE" "$dir"
+            if [ "$case_id" = a ]; then
+              rel="kubernetes/${CHART}/templates/${GUARD_TEMPLATE}"
+              target="${dir}/${rel}"
+              label="$GUARD_LABEL"
+              present=0
+              if [ -f "$target" ]; then present=1; fi
+            else
+              rel="kubernetes/${CHART}"
+              target="${dir}/${rel}"
+              label="$CHART_LABEL"
+              present=0
+              if [ -d "$target" ]; then present=1; fi
+            fi
+            if [ "$present" -eq 0 ]; then
+              # D-22: skip only if the positive run already reports the
+              # matching label; case (a) also accepts the chart-dir label
+              # when the chart directory itself is absent.
+              matched=''
+              if [ -f "$pos" ] && grep -q "^FAIL: ${label}: " "$pos"; then
+                matched="$label"
+              elif [ "$case_id" = a ] && [ ! -d "${dir}/kubernetes/${CHART}" ] && [ -f "$pos" ] && grep -q "^FAIL: ${CHART_LABEL}: " "$pos"; then
+                matched="$CHART_LABEL"
+              fi
+              if [ -n "$matched" ]; then
+                echo "::notice::negative (${case_id}): ${rel} is absent in the checkout; the positive run already reports FAIL: ${matched}: , so the mode decides (ADR-030, D-22)"
+              else
+                echo "::error::negative (${case_id}): precondition failed, ${rel} is absent in the checkout and ${pos} does not carry FAIL: ${label}: "
+                failed=1
+              fi
+              rm -rf "$dir"
+              continue
+            fi
+            if [ "$case_id" = a ]; then
+              rm "$target"
+            else
+              mv "$target" "${target}.renamed-by-negative-case"
+            fi
+            rc=0
+            out="$(bash "${dir}/scripts/check-${CHART}-chart.sh" 2>&1)" || rc=$?
+            if [ "$rc" -eq 1 ] && grep -q "^FAIL: ${label}: " <<< "$out"; then
+              echo "negative (${case_id}) PASS: exit 1 with FAIL: ${label}:"
+            else
+              echo "::error::negative (${case_id}): expected exit 1 and 'FAIL: ${label}:', got exit ${rc}"
+              token="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
+              echo "::stop-commands::${token}"
+              printf '%s\n' "$out"
+              echo "::${token}::"
+              failed=1
+            fi
+            rm -rf "$dir"
+          done
+          after="$(git -C "$GITHUB_WORKSPACE" status --porcelain=v1)"
+          if [ "$before" != "$after" ]; then
+            echo "::error::the workspace changed during the negative cases"
+            echo "before:"
+            printf '%s\n' "$before"
+            echo "after:"
+            printf '%s\n' "$after"
+            failed=1
+          fi
+          exit "$failed"
