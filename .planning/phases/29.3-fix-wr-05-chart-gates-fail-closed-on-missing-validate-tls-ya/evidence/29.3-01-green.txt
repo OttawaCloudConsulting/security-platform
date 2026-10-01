@@ -1,0 +1,116 @@
+# 29.3-01 GREEN evidence: chart gates fail closed (D-01..D-04), 0/1/2 contract and counts unchanged (D-02, D-05), derived repo-add hint works on a fresh Helm config (D-17) — Phase 26 WR-05 / WR-04
+# Repository: repos/security-platform (OttawaCloudConsulting/security-platform)
+# Branch: fix/phase-29.3-chart-gates
+# HEAD: 5198bc060c95e118cc1adedc39bcfa169dc4791d (docs(29.3-01): nexus README registers the subchart repo before dependency build (ADR-023 item 8))
+# Base: origin/main 72cb174539cca5e3a2841f7977a221a90c41326e
+# Method: git archive HEAD into a mktemp dir; one fresh cp -a copy per case; run the COPY's script from / (RESEARCH Pitfall 3).
+# Interpreter: /opt/homebrew/bin/bash (GNU bash, version 5.3.20(1)-release (aarch64-apple-darwin25.6.0)); v4.3.0+gbec5b06; yq (https://github.com/mikefarah/yq/) version v4.54.1
+# Captured: 2026-10-01T00:51:38Z
+
+== dd-guard ==
+mutation: rm kubernetes/defectdojo/templates/validate-tls.yaml
+command: (cd / && bash <copy>/scripts/check-defectdojo-chart.sh)
+expected: exit 1, first line starts 'FAIL: TLS-GUARD-PRESENT: ', no PREFLIGHT line
+--- output ---
+FAIL: TLS-GUARD-PRESENT: kubernetes/defectdojo/templates/validate-tls.yaml is missing — the issuer guard is gone
+--- end output ---
+rc=1
+first-line-label: match
+PREFLIGHT lines: 0
+
+== dd-dir ==
+mutation: mv kubernetes/defectdojo kubernetes/defectdojo.renamed
+command: (cd / && bash <copy>/scripts/check-defectdojo-chart.sh)
+expected: exit 1, first line starts 'FAIL: CHART-DIR-PRESENT: ', no PREFLIGHT line
+--- output ---
+FAIL: CHART-DIR-PRESENT: kubernetes/defectdojo does not exist — the chart was deleted or renamed
+--- end output ---
+rc=1
+first-line-label: match
+PREFLIGHT lines: 0
+
+== nexus-guard ==
+mutation: rm kubernetes/nexus/templates/job-provision.yaml
+command: (cd / && bash <copy>/scripts/check-nexus-chart.sh)
+expected: exit 1, first line starts 'FAIL: PROVISION-JOB-PRESENT: ', no PREFLIGHT line
+--- output ---
+FAIL: PROVISION-JOB-PRESENT: kubernetes/nexus/templates/job-provision.yaml is missing — the required rootPassword guard is gone
+--- end output ---
+rc=1
+first-line-label: match
+PREFLIGHT lines: 0
+
+== nexus-dir ==
+mutation: mv kubernetes/nexus kubernetes/nexus.renamed
+command: (cd / && bash <copy>/scripts/check-nexus-chart.sh)
+expected: exit 1, first line starts 'FAIL: CHART-DIR-PRESENT: ', no PREFLIGHT line
+--- output ---
+FAIL: CHART-DIR-PRESENT: kubernetes/nexus does not exist — the chart was deleted or renamed
+--- end output ---
+rc=1
+first-line-label: match
+PREFLIGHT lines: 0
+
+== fresh-defectdojo (D-05 exit-2 path + D-17 derived hint, unmutated fresh copy, isolated Helm env) ==
+helm env: HELM_CONFIG_HOME/HELM_CACHE_HOME/HELM_DATA_HOME under a fresh mktemp dir (no repos registered)
+step 1 command: (cd / && bash <copy>/scripts/check-defectdojo-chart.sh)
+--- output ---
+PREFLIGHT FAIL: subchart not vendored — kubernetes/defectdojo/charts/defectdojo-1.9.53.tgz does not exist
+run: helm repo add defectdojo https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/helm-charts && helm dependency build kubernetes/defectdojo
+--- end output ---
+rc=2
+step 2 command (printed hint, 'run: ' stripped, eval'd from the copy root): helm repo add defectdojo https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/helm-charts && helm dependency build kubernetes/defectdojo
+--- output ---
+"defectdojo" has been added to your repositories
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "defectdojo" chart repository
+Update Complete. ⎈Happy Helming!⎈
+Saving 1 charts
+Downloading defectdojo from repo https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/helm-charts
+Deleting outdated charts
+--- end output ---
+eval-rc=0
+step 3: cmp <copy>/kubernetes/defectdojo/Chart.lock <committed Chart.lock>: identical
+step 4 command: (cd / && bash <copy>/scripts/check-defectdojo-chart.sh)  (rerun)
+--- output (last 3 lines) ---
+check-defectdojo-chart: asserting 22 offline invariants against kubernetes/defectdojo
+PASS - 22 checks, 0 failures
+--- end output ---
+rc=0
+
+== fresh-nexus (D-05 exit-2 path + D-17 derived hint, unmutated fresh copy, isolated Helm env) ==
+helm env: HELM_CONFIG_HOME/HELM_CACHE_HOME/HELM_DATA_HOME under a fresh mktemp dir (no repos registered)
+step 1 command: (cd / && bash <copy>/scripts/check-nexus-chart.sh)
+--- output ---
+PREFLIGHT FAIL: subchart not vendored — no kubernetes/nexus/charts/*.tgz
+run: helm repo add nexus3 https://stevehipwell.github.io/helm-charts/ && helm dependency build kubernetes/nexus
+--- end output ---
+rc=2
+step 2 command (printed hint, 'run: ' stripped, eval'd from the copy root): helm repo add nexus3 https://stevehipwell.github.io/helm-charts/ && helm dependency build kubernetes/nexus
+--- output ---
+"nexus3" has been added to your repositories
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "nexus3" chart repository
+Update Complete. ⎈Happy Helming!⎈
+Saving 1 charts
+Downloading nexus3 from repo https://stevehipwell.github.io/helm-charts/
+Deleting outdated charts
+--- end output ---
+eval-rc=0
+step 3: cmp <copy>/kubernetes/nexus/Chart.lock <committed Chart.lock>: identical
+step 4 command: (cd / && bash <copy>/scripts/check-nexus-chart.sh)  (rerun)
+--- output (last 3 lines) ---
+check-nexus-chart: asserting 18 offline invariants against kubernetes/nexus
+PASS - 18 checks, 0 failures
+--- end output ---
+rc=0
+
+== branch diff vs origin/main (D-24 scope) ==
+command: git -C repos/security-platform diff origin/main --name-only
+kubernetes/nexus/README.md
+scripts/check-defectdojo-chart.sh
+scripts/check-nexus-chart.sh
+command: ... | grep -c '^kubernetes/defectdojo/'
+count: 0
+command: git -C repos/security-platform status --porcelain
+output: (empty)
