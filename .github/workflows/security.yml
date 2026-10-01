@@ -124,7 +124,7 @@ jobs:
         id: sarif-semgrep
         if: always()                     # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
-        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2  # v4.38.2
         with:
           sarif_file: semgrep.sarif
           category: semgrep         # MANDATORY — distinguishes this analysis
@@ -290,7 +290,7 @@ jobs:
         id: sarif-checkov
         if: always()                     # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
-        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2  # v4.38.2
         with:
           sarif_file: checkov.sarif
           category: checkov         # MANDATORY — distinguishes this analysis
@@ -562,7 +562,7 @@ jobs:
         id: sarif-trivy-fs
         if: always()                     # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
-        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2  # v4.38.2
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs       # MANDATORY — distinguishes this analysis
@@ -811,7 +811,7 @@ jobs:
         id: sarif-tflint
         if: always() && steps.tf.outputs.found == 'true'
         continue-on-error: true          # ADR-001: upload failures must not block
-        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2  # v4.38.2
         with:
           sarif_file: tflint.sarif
           category: tflint         # MANDATORY — distinguishes this analysis
@@ -1013,7 +1013,7 @@ jobs:
         id: sarif-trivy-image
         if: always() && steps.docker.outputs.found == 'true'  # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
-        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2  # v4.38.2
         with:
           sarif_file: trivy-image.sarif
           category: trivy-image     # MANDATORY — distinguishes this analysis
@@ -1163,7 +1163,7 @@ jobs:
         id: sarif-gitleaks
         if: always()                     # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
-        uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd  # v4.38.1
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2  # v4.38.2
         with:
           sarif_file: gitleaks.sarif
           category: gitleaks        # MANDATORY — distinguishes this analysis
