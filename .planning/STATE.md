@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: executing
-stopped_at: Completed 29.3-06-PLAN.md
-last_updated: "2026-10-01T04:11:00.000Z"
-last_activity: 2026-10-01 -- Phase 29.3 plan 06 complete
+status: verifying
+stopped_at: Completed 29.3-07-PLAN.md
+last_updated: "2026-10-01T04:13:28.674Z"
+last_activity: 2026-10-01 -- Phase 29.3 plan 07 complete
 progress:
   total_phases: 7
   completed_phases: 7
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 Phase: 29.3 (fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
-Last activity: 2026-10-01 -- Phase 29.3 plan 06 complete
+Status: Phase complete — ready for verification
+Last activity: 2026-10-01 -- Phase 29.3 plan 07 complete
 
 ## Performance Metrics
 
@@ -357,6 +357,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.3]: 29.3-05: PR #29 opened on operator approval of 36100a1; live Chart Gates run 36813331164 green in both jobs under unset CHART_GATE_MODE (report-only), negatives (a)/(b) PASS; PR Security 36813331277 green; not merged, no tag, v1 unmoved
 - [Phase 29.3]: 29.3-06: PR #29 merged on operator approval ("approved - merge") as 30afdb9 via --match-head-commit 36100a1; push-to-main Chart Gates run 36813770305 green in both jobs (report-only, negatives (a)/(b) PASS); no tag, v1 unmoved, CHART_GATE_MODE unset, main rules unchanged
 - [Phase 29.3]: Phase 26 WR-05 fixed: both chart gates fail closed (CHART-DIR-PRESENT, TLS-GUARD-PRESENT, PROVISION-JOB-PRESENT, exit 1); Phase 26 WR-04 hint and Nexus README fixed; chart-gates.yml runs both gates on PR/push-to-main/dispatch with standing negative cases; CHART_GATE_MODE unset = report-only (not set live; blocking proven offline only); merged at 30afdb9fb56516c6b06c5275212b42bcac30cc94 untagged (D-20); ADR-030 Accepted
+- [Phase 29.3]: 29.3-07: ADR-030 Accepted (2026-10-01) quoting PR #29, run 36813331164, merge 30afdb9, push run 36813770305; README index row; 29.4 release scope unchanged
 
 ### Pending Todos
 
@@ -528,11 +529,12 @@ Carried forward from v1.1 close:
 | Phase 29.3 P04 | 10 min | 1 tasks | 1 files |
 | Phase 29.3 P05 | 15 min | 2 tasks | 2 files |
 | Phase 29.3 P06 | 5 min | 2 tasks | 1 files |
+| Phase 29.3 P07 | 10 min | 2 tasks | 3 files |
 
 ## Session Continuity
 
 Last session: 2026-10-01T04:11:00.000Z
-Stopped at: Completed 29.3-06-PLAN.md
+Stopped at: Completed 29.3-07-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
