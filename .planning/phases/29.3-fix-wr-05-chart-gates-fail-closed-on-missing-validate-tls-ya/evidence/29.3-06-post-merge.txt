@@ -1,0 +1,135 @@
+# 29.3-06 post-merge evidence (security-platform PR #29, Phase 26 WR-05 chart gates fail closed)
+# Captured 2026-10-01 from repos/security-platform; all readbacks from origin or the GitHub API, never the local tree
+# Operator approval (verbatim): "approved - merge" (approved head 36100a18d214d9d4e73088c290925963dd0ffd45; no disclosure a-f rejected)
+
+## PRE-MERGE
+$ date -u   # 2026-10-01T04:08:36Z
+$ gh pr view 29 --json number,state,headRefOid,mergeable,mergeStateStatus,url
+{"headRefOid":"36100a18d214d9d4e73088c290925963dd0ffd45","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","number":29,"state":"OPEN","url":"https://github.com/OttawaCloudConsulting/security-platform/pull/29"}
+
+$ git fetch origin --tags -q && git rev-parse origin/main   # pre-merge main tip
+72cb174539cca5e3a2841f7977a221a90c41326e
+
+$ git ls-remote --tags origin 'v1*'   # pre-merge baseline (matches 29.3-05 pre-push and post-push listings)
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+
+$ gh api repos/OttawaCloudConsulting/security-platform/rules/branches/main --jq '.[] | [.type, .ruleset_source, .ruleset_id] | @tsv'   # pre-merge (= 29.3-05 baseline)
+deletion	OttawaCloudConsulting/security-platform	14243983
+non_fast_forward	OttawaCloudConsulting/security-platform	14243983
+
+## MERGE
+DOING: gh pr merge 29 --merge --match-head-commit 36100a18d214d9d4e73088c290925963dd0ffd45 (no --delete-branch, no --squash, no --auto)
+EXPECT: PR state MERGED; merge commit with parents 72cb174539cca5e3a2841f7977a221a90c41326e (main, or main's tip at merge time) and 36100a18d214d9d4e73088c290925963dd0ffd45 (approved head); a push-to-main Chart Gates run on the merge SHA
+IF MATCH: origin/main readbacks, tag/ruleset/variable comparison, wait for the push-to-main run
+IF MISMATCH: stop and report; no retry, no tag, no branch action, no variable or ruleset change
+
+$ date -u   # 2026-10-01T04:09:02Z
+$ gh pr view 29 --json headRefOid,state   # re-check immediately before merge
+OPEN 36100a18d214d9d4e73088c290925963dd0ffd45
+$ gh pr merge 29 --merge --match-head-commit 36100a18d214d9d4e73088c290925963dd0ffd45
+exit=0
+
+## POST-MERGE READBACKS (origin / GitHub API only)
+$ gh pr view 29 --json state,mergedAt,mergeCommit
+{"mergeCommit":{"oid":"30afdb9fb56516c6b06c5275212b42bcac30cc94"},"mergedAt":"2026-10-01T04:09:05Z","state":"MERGED"}
+$ git fetch origin --tags
+From https://github.com/OttawaCloudConsulting/security-platform
+   72cb174..30afdb9  main       -> origin/main
+$ git rev-parse origin/main
+30afdb9fb56516c6b06c5275212b42bcac30cc94
+$ git rev-list --parents -n1 30afdb9fb56516c6b06c5275212b42bcac30cc94
+30afdb9fb56516c6b06c5275212b42bcac30cc94 72cb174539cca5e3a2841f7977a221a90c41326e 36100a18d214d9d4e73088c290925963dd0ffd45
+=> two parents: first = pre-merge main 72cb174, second = approved head 36100a1
+
+$ git show origin/main:scripts/check-defectdojo-chart.sh | grep -c 'FAIL: TLS-GUARD-PRESENT:'
+1
+$ git show origin/main:scripts/check-nexus-chart.sh | grep -c 'FAIL: PROVISION-JOB-PRESENT:'
+1
+$ git show origin/main:scripts/check-defectdojo-chart.sh origin/main:scripts/check-nexus-chart.sh | grep -c 'echo "SKIP:'
+0
+$ git show origin/main:.github/workflows/chart-gates.yml | grep -c CHART_GATE_MODE
+15
+$ git show origin/main:kubernetes/nexus/README.md | grep -c 'helm repo add nexus3'
+1
+
+$ git diff --quiet 30afdb9^1 30afdb9 -- .github/workflows/security.yml .github/workflows/pr-security.yml .github/workflows/scheduled-security.yml scripts/set-required-checks.sh kubernetes/defectdojo
+diff-quiet-exit=0   (IDENTICAL across the merge, D-10/D-20)
+$ git diff --stat 30afdb9^1 30afdb9
+ .github/workflows/chart-gates.yml | 531 ++++++++++++++++++++++++++++++++++++++
+ kubernetes/nexus/README.md        |   3 +-
+ scripts/check-defectdojo-chart.sh |  52 ++--
+ scripts/check-nexus-chart.sh      |  53 ++--
+ 4 files changed, 598 insertions(+), 41 deletions(-)
+=> exactly the four files (matches 29.3-05 diff stat)
+$ git ls-remote --heads origin fix/phase-29.3-chart-gates   # branch not deleted by us
+36100a18d214d9d4e73088c290925963dd0ffd45	refs/heads/fix/phase-29.3-chart-gates
+
+## TAG COMPARISON (D-20: no tag, no v1 move)
+Pre-push listing (29.3-05 Task 1 record / evidence/29.3-05-pr-checks.txt): v1 fdabac9464f2baaeaa276f8934dc8d353295b355; v1.0.0 fabc3e35 (^{} cdf2c211); v1.1.0 414fd3be (^{} 0f7e4e14); v1.1.1 c1565b35 (^{} 917352c0); v1.2.0 b8ae59df (^{} fdabac94)
+$ git ls-remote --tags origin 'v1*' > post.txt; cat post.txt   # post-merge listing
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+$ diff pre-merge.txt post.txt
+diff-exit=0
+IDENTICAL (9 refs; equal to the pre-merge listing above and to every 29.3-05 pre-push prefix; no tag created or moved)
+
+## RULESET / PROTECTION / VARIABLE COMPARISON (D-10, D-12)
+$ gh api repos/OttawaCloudConsulting/security-platform/rules/branches/main --jq '.[] | [.type, .ruleset_source, .ruleset_id] | @tsv'
+deletion	OttawaCloudConsulting/security-platform	14243983
+non_fast_forward	OttawaCloudConsulting/security-platform	14243983
+$ diff pre-merge-rules.txt post-rules.txt
+rules-diff-exit=0   (IDENTICAL to the 29.3-05 baseline: deletion + non_fast_forward from 14243983, no required status checks)
+$ gh api repos/OttawaCloudConsulting/security-platform/branches/main/protection
+{"message":"Branch not protected","documentation_url":"https://docs.github.com/rest/branches/branch-protection#get-branch-protection","status":"404"}gh: Branch not protected (HTTP 404)
+$ gh variable list -R OttawaCloudConsulting/security-platform
+DEFECTDOJO_RUNS_ON	occ-homelab-defectdojo	2026-09-29T00:14:11Z
+DEFECTDOJO_URL	https://defectdojo.infra.ottawacloudconsulting.com	2026-09-29T00:14:11Z
+=> CHART_GATE_MODE not set (report-only default), identical to the 29.3-05 list
+
+## PUSH-TO-MAIN CHART GATES RUN
+$ gh run list --workflow chart-gates.yml --branch main --json databaseId,headSha,event,status,conclusion
+[{"conclusion":"success","databaseId":36813770305,"event":"push","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"}]
+=> filtered to headSha == merge (30afdb9) and event == push: run 36813770305 (already completed on first poll, no wait needed)
+$ gh run view 36813770305 --json event,headSha,headBranch,conclusion,url,jobs
+{"conclusion":"success","event":"push","headBranch":"main","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","jobs":[{"conclusion":"success","databaseId":110214282058,"name":"chart-gate-defectdojo"},{"conclusion":"success","databaseId":110214282246,"name":"chart-gate-nexus"}],"url":"https://github.com/OttawaCloudConsulting/security-platform/actions/runs/36813770305"}
+chart-gate-defectdojo	110214282058	success
+chart-gate-nexus	110214282246	success
+$ gh run view 36813770305 --log | grep -E 'chart gate mode:|PASS - [0-9]+ checks|negative \((a|b)\) (PASS|FAIL)|::(error|warning)'   (output lines only; script echo filtered)
+chart-gate-defectdojo	Chart gate	2026-10-01T04:09:14.1878449Z chart gate mode: report-only
+chart-gate-defectdojo	Chart gate	2026-10-01T04:09:16.5796004Z PASS - 22 checks, 0 failures
+chart-gate-defectdojo	Negative cases	2026-10-01T04:09:16.6336620Z negative (a) PASS: exit 1 with FAIL: TLS-GUARD-PRESENT:
+chart-gate-defectdojo	Negative cases	2026-10-01T04:09:16.6639589Z negative (b) PASS: exit 1 with FAIL: CHART-DIR-PRESENT:
+chart-gate-nexus	Chart gate	2026-10-01T04:09:15.3511471Z chart gate mode: report-only
+chart-gate-nexus	Chart gate	2026-10-01T04:09:16.0776991Z PASS - 18 checks, 0 failures
+chart-gate-nexus	Negative cases	2026-10-01T04:09:16.1109431Z negative (a) PASS: exit 1 with FAIL: PROVISION-JOB-PRESENT:
+chart-gate-nexus	Negative cases	2026-10-01T04:09:16.1256601Z negative (b) PASS: exit 1 with FAIL: CHART-DIR-PRESENT:
+(no ::error / ::warning output lines)
+$ gh api repos/OttawaCloudConsulting/security-platform/check-runs/{110214282058,110214282246}/annotations
+notice		"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"   (one per job; GitHub platform notice, not from the gates)
+$ gh run list --commit 30afdb9fb56516c6b06c5275212b42bcac30cc94
+36813770305	Chart Gates	push	completed	success
+=> the only run on the merge commit
+
+## PR-CLOSED PR Security run (observe only)
+$ gh run view 36813770952 --json event,conclusion,jobs
+{"conclusion":"success","event":"pull_request","jobs":[{"conclusion":"success","databaseId":110214284528,"name":"security / DefectDojo Cleanup"},{"conclusion":"skipped",...Checkov, DefectDojo Import, Trivy Filesystem, Gitleaks, Semgrep CE, Trivy Image all skipped}]}
+=> DefectDojo Cleanup ran on the pull_request closed event and succeeded; no manual DefectDojo action taken.
+
+RESULT: merge 30afdb9fb56516c6b06c5275212b42bcac30cc94, parents 72cb174539cca5e3a2841f7977a221a90c41326e (pre-merge main) + 36100a18d214d9d4e73088c290925963dd0ffd45 (approved head); origin/main carries both FAIL labels, chart-gates.yml with CHART_GATE_MODE, the nexus3 repo-add line and no SKIP echo; consumer files byte-identical; tags, rules and variables unchanged; push-to-main Chart Gates run 36813770305 green in both jobs with all four negative PASS lines.
+MATCH: yes
+No tag, no v1 move, no branch deletion, no variable set, no ruleset change.
