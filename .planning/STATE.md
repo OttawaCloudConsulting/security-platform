@@ -5,7 +5,7 @@ milestone_name: K8s Infra & Dashboards
 status: executing
 stopped_at: Completed 29.3-01-PLAN.md
 last_updated: "2026-10-01T00:54:30.134Z"
-last_activity: 2026-10-01
+last_activity: 2026-10-01 -- Phase 29.3 plan 01 complete
 progress:
   total_phases: 7
   completed_phases: 7
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 Phase: 29.3 (fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya) — EXECUTING
 Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-10-01
+Last activity: 2026-10-01 -- Phase 29.3 plan 01 complete
 
 ## Performance Metrics
 
