@@ -20,7 +20,8 @@ set -euo pipefail
 #
 # Exit codes — deliberately three, not two:
 #   0  every check passed
-#   1  at least one assertion failed  (a CHART defect — fix the chart)
+#   1  at least one assertion failed, or the chart directory or the
+#      provisioning Job template is missing  (a CHART defect — fix the chart)
 #   2  preflight failed: a required binary or the vendored subchart tarball is
 #      missing (an INFRASTRUCTURE problem on this machine, not a chart
 #      defect). The two must never be conflated, and there is deliberately NO
@@ -30,17 +31,17 @@ set -euo pipefail
 # Never set the executable bit on this file (project rule). Invoke as:
 #   bash scripts/check-nexus-chart.sh
 #
-# INTERMEDIATE-COMMIT CONVENTION — VACUOUS-PASS (the 17-01 lesson, as in
-# check-workflow-uploads.sh, NOT the expected-red convention of
-# check-detector-parity.sh). This gate is created in plan 23-01, before the
-# chart it asserts against exists, and it must exit 0 at every intermediate
-# commit of the phase. It therefore opens with two named SKIP guards:
-#   - kubernetes/nexus absent                        -> SKIP, exit 0
-#   - kubernetes/nexus/templates/job-provision.yaml  -> SKIP, exit 0
-# Both print a line beginning `SKIP:` so a vacuous pass is never mistaken for
-# a real one. The anti-vacuity guard lives in plan 23-06 T1, which asserts the
-# literal terminal line `PASS - 18 checks, 0 failures`. Do not add further
-# SKIP conditions, and do not "complete" this script by deleting these two.
+# FAIL-CLOSED CONVENTION (ADR-030, as in check-defectdojo-chart.sh). The gate
+# opens with two named guards that FAIL with exit 1:
+#   - kubernetes/nexus absent                        -> FAIL: CHART-DIR-PRESENT
+#   - kubernetes/nexus/templates/job-provision.yaml  -> FAIL: PROVISION-JOB-PRESENT
+# A missing chart or a missing guard template is a chart defect, never a
+# vacuous pass. The earlier SKIP convention (VACUOUS-PASS, introduced in plan
+# 23-01) let a change that deleted the chart or its provisioning Job (and with
+# it the required rootPassword guard) exit 0; Phase 29.3 removed it to close
+# Phase 26 WR-05 (ADR-030). The labels are matched by
+# .github/workflows/chart-gates.yml, so do not rename them without changing
+# that workflow, and do not add SKIP conditions.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
@@ -48,16 +49,16 @@ cd "$REPO_ROOT"
 CHART_DIR="kubernetes/nexus"
 VALUES="${CHART_DIR}/values.yaml"
 
-# ── Guard 1. Chart not created yet (plans 23-01/23-02) ───────────────────────
+# ── Guard 1. The chart directory must exist (fail closed, ADR-030) ───────────
 if [ ! -d "$CHART_DIR" ]; then
-  echo "SKIP: chart not present yet — ${CHART_DIR} does not exist (vacuous pass, by design)"
-  exit 0
+  echo "FAIL: CHART-DIR-PRESENT: ${CHART_DIR} does not exist — the chart was deleted or renamed"
+  exit 1
 fi
 
-# ── Guard 2. Chart present but the provisioning Job is not (pre-23-04) ───────
+# ── Guard 2. The provisioning Job template must exist (fail closed, ADR-030) ─
 if [ ! -f "${CHART_DIR}/templates/job-provision.yaml" ]; then
-  echo "SKIP: chart incomplete — ${CHART_DIR}/templates/job-provision.yaml does not exist yet"
-  exit 0
+  echo "FAIL: PROVISION-JOB-PRESENT: ${CHART_DIR}/templates/job-provision.yaml is missing — the required rootPassword guard is gone"
+  exit 1
 fi
 
 # ── Preflight 3. Required binaries. Exit 2 — infrastructure, not a defect. ───
@@ -72,10 +73,22 @@ done
 # .gitignore excludes kubernetes/*/charts/*.tgz (it is `helm dependency build`
 # output, not source), so a FRESH CLONE has an empty charts/ directory and both
 # `helm lint` and `helm template` fail with "found in Chart.yaml, but missing in
-# charts/ directory". That is machine state, not a chart defect.
+# charts/ directory". That is machine state, not a chart defect. A fresh clone
+# also needs the subchart repository registered with `helm repo add` before
+# `helm dependency build` can download it; the command printed below is
+# derived from Chart.yaml (.dependencies[0] name and repository), so it never
+# drifts from the chart.
 if ! compgen -G "${CHART_DIR}/charts/*.tgz" >/dev/null; then
   echo "PREFLIGHT FAIL: subchart not vendored — no ${CHART_DIR}/charts/*.tgz"
-  echo "run: helm dependency build ${CHART_DIR}"
+  if ! DEP_NAME=$(yq -r '.dependencies[0].name' "${CHART_DIR}/Chart.yaml"); then
+    echo "PREFLIGHT FAIL: yq could not read .dependencies[0].name from ${CHART_DIR}/Chart.yaml"
+    exit 2
+  fi
+  if ! DEP_REPO=$(yq -r '.dependencies[0].repository' "${CHART_DIR}/Chart.yaml"); then
+    echo "PREFLIGHT FAIL: yq could not read .dependencies[0].repository from ${CHART_DIR}/Chart.yaml"
+    exit 2
+  fi
+  echo "run: helm repo add ${DEP_NAME} ${DEP_REPO} && helm dependency build ${CHART_DIR}"
   exit 2
 fi
 
