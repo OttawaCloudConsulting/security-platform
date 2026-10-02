@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: ready_to_plan
-stopped_at: Phase 29.3 complete (7/7) — ready to discuss Phase 29.4
-last_updated: 2026-10-01T20:46:31.164Z
-last_activity: 2026-10-01 -- Phase 29.3 plan 07 complete
+status: planning
+stopped_at: Phase 29.4 context gathered
+last_updated: "2026-10-02T00:22:51.625Z"
+last_activity: 2026-10-01
 progress:
   total_phases: 7
   completed_phases: 7
   total_plans: 75
-  completed_plans: 96
+  completed_plans: 75
   percent: 100
 ---
 
@@ -533,9 +533,9 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-10-01T04:13:28.674Z
-Stopped at: Completed 29.3-07-PLAN.md
-Resume file: None
+Last session: 2026-10-02T00:22:51.593Z
+Stopped at: Phase 29.4 context gathered
+Resume file: .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/29.4-CONTEXT.md
 
 ## Operator Next Steps
 
