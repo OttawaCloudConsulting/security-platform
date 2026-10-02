@@ -390,3 +390,89 @@ Not yet defined. v3.0 (Phases 23-29) is in progress. Run `/gsd:new-milestone` af
 Plans:
 - [x] 29.1-01-PLAN.md — Pin the two-SHA snapshot, run offline + live read-only probes, author `23-VERIFICATION.md` (NEXUS-01, NEXUS-03)
 - [x] 29.1-02-PLAN.md — Append the Phase 23 deferred-items re-check, create the 29.1 tooling ledger, run the coverage self-check (NEXUS-01, NEXUS-03)
+
+### Phase 29.2: Fix CR-01: defectdojo-configure.sh honours ~/.curlrc (insecure disables TLS) (INSERTED)
+
+**Goal:** Ambient curl configuration (`~/.curlrc`, `$CURL_HOME/.curlrc`) can no longer cause a DefectDojo API token to be sent to a peer whose TLS certificate was not verified (Phase 28 CR-01, plus WR-01/WR-02). Covers every DefectDojo API client in `security-platform` (configure, lifecycle-assert, homelab-validate, the security.yml dd-import/dd-delete bodies), proven by an offline hostile-curlrc negative case and a live proof run; merged to `main` untagged (release batched with 29.4).
+**Requirements**: none (decision-driven: 29.2-CONTEXT.md D-01..D-18)
+**Depends on:** Phase 29
+**Plans:** 12/12 plans complete
+
+Plans:
+- [x] 29.2-01-PLAN.md — Branch; P-CURLRC offline negative case (python ssl listener, hostile curlrc, control, 5 targets); proof path triggers; RED
+- [x] 29.2-02-PLAN.md — Guard cases: WR-01/WR-02 token files and DEFECTDOJO_RESOLVE validation; RED
+- [x] 29.2-03-PLAN.md — Fix defectdojo-configure.sh (-q, verify result, no stderr, hook, token checks) + README line
+- [x] 29.2-04-PLAN.md — Fix defectdojo-lifecycle-assert.sh and defectdojo-homelab-validate.sh
+- [x] 29.2-05-PLAN.md — Fix security.yml dd-import/dd-delete (D-16 insecure gate) + CURLRC gate check 20; offline suite green
+- [x] 29.2-06-PLAN.md — Hostile live curlrc, DEFECTDOJO_RESOLVE for resolution, harness helpers -q, inverted P-TLS, trace-absence assertion
+- [x] 29.2-07-PLAN.md — Operator-approved push, PR, live proof run capture
+- [x] 29.2-08-PLAN.md — Operator-approved merge, origin/main readbacks, no tag / no v1 move
+- [x] 29.2-09-PLAN.md — ADR-029 + index row; STATE.md 29.4 release hand-off and live-smoke tech debt
+- [x] 29.2-10-PLAN.md — Gap closure (WR-01): token-file line-ending cases RED, then lifecycle-assert/homelab-validate strip at most one CRLF/LF under LC_ALL=C (ADR-029 decision 6)
+- [x] 29.2-11-PLAN.md — Gap closure: operator-approved push, PR, live proof run capture
+- [x] 29.2-12-PLAN.md — Gap closure: operator-approved merge, origin/main readbacks, DI-06, STATE 29.4 hand-off
+
+### Phase 29.3: Fix WR-05: chart gates fail closed on missing validate-tls.yaml and run in CI (INSERTED)
+
+**Goal:** The two offline chart gates in `security-platform` fail closed and run in CI (Phase 26 WR-05, plus WR-04): deleting or renaming a chart directory or its guard template (`kubernetes/defectdojo/templates/validate-tls.yaml`, `kubernetes/nexus/templates/job-provision.yaml`) turns the gate red, and a new `chart-gates.yml` workflow runs both gates on every relevant change with a `CHART_GATE_MODE` switch (default report-only) and standing negative cases that prove the gate still discriminates; merged to `main` untagged.
+**Requirements**: none (decision-driven: 29.3-CONTEXT.md D-01..D-24)
+**Depends on:** Phase 29
+**Plans:** 7/7 plans complete
+
+Plans:
+- [x] 29.3-01-PLAN.md — Branch; RED (SKIP exit 0) before any edit; both gates fail closed with stable labels; derived repo-add hint; Nexus README; GREEN evidence
+- [x] 29.3-02-PLAN.md — chart-gates.yml: pinned Helm, Chart.yaml-derived deps, CHART_GATE_MODE buckets, standing negative cases with the D-22 precondition rule
+- [x] 29.3-03-PLAN.md — Phase-local offline proof of the committed workflow bodies (16+1 mode cases, deps, negatives, D-22)
+- [x] 29.3-04-PLAN.md — ADR-030 draft (Proposed) with all pre-merge decisions and measured values
+- [x] 29.3-05-PLAN.md — Operator-approved push, PR, live Chart Gates run capture (default mode)
+- [x] 29.3-06-PLAN.md — Operator-approved merge (--match-head-commit), origin/main readbacks, push-to-main run, no tag
+- [x] 29.3-07-PLAN.md — ADR-030 accepted with merge-time identifiers + index row; STATE (29.4 hand-off unchanged)
+
+### Phase 29.4: Fix trivy-image cross-branch dedup: replace scan-target github.sha tag (v1 consumer impact check) (INSERTED)
+
+**Goal:** security.yml tags the scanned image with the fixed literal `scan-target:ci` instead of `${{ github.sha }}`, so trivy-image findings on PR engagements dedupe against `ci/main` and `ci/main` trivy-image findings (with dispositions) persist across main SHAs, proven on kind and live; then release `v1.3.0` (also carrying the Phase 29.2 TLS hardening) and move `v1` after a full consumer impact check
+**Requirements**: DDOJO-03 (trivy-image anchor)
+**Depends on:** Phase 29
+**Plans:** 10 plans
+
+Plans:
+- [ ] 29.4-01-PLAN.md — PR A branch; security.yml scan-target:ci (D-01) and IMAGE-TAG gate with RED + scratch negatives (D-04)
+- [ ] 29.4-02-PLAN.md — lifecycle-assert D-08/D-21 trivy-image assertion replacing the exclusion (D-09); offline replay; ci/main image diff helper
+- [ ] 29.4-03-PLAN.md — P-IMAGE-TAG kind proof (D-06): SHA-tag negative control and scan-target:ci positive case
+- [ ] 29.4-04-PLAN.md — push and open PR A (checkpoint); kind proof PROOF PASS; live scan output scan-target:ci
+- [ ] 29.4-05-PLAN.md — before-snapshot, merge PR A untagged, dispatch Scheduled Security (D-17), D-14.1 churn verdict (checkpoint)
+- [ ] 29.4-06-PLAN.md — throwaway fixture PR (D-20), D-08 live assertion, close and cleanup (checkpoint)
+- [ ] 29.4-07-PLAN.md — PR B TRIAGE/README rewrites (D-10) + adoption-guide §12 note (D-15/D-19); open PR B (checkpoint)
+- [ ] 29.4-08-PLAN.md — merge PR B, dispatch on the new SHA, D-11 WR-04 persistence verdict (checkpoint)
+- [ ] 29.4-09-PLAN.md — D-14 impact check, v1.3.0 annotated tag + v1 move, API readback (checkpoint)
+- [ ] 29.4-10-PLAN.md — ADR-031 + docs/adr/README.md row after the tag (D-16/D-18)
+
+### Phase 29.5: Fix WR-03: TRIAGE.md Under Review query hides verified=true Trivy findings (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 29
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 29.5 to break down)
+
+### Phase 29.6: Close 27 UAT item 3 (closed-PR reopen race) and refresh stale 27-HUMAN-UAT.md (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 29
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 29.6 to break down)
+
+### Phase 29.7: Bookkeeping: ROADMAP checkboxes, requirements-completed frontmatter, CLAUDE.md ADR range, gsd-sdk tooling ledger (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 29
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 29.7 to break down)
