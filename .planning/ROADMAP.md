@@ -433,10 +433,10 @@ Plans:
 **Goal:** security.yml tags the scanned image with the fixed literal `scan-target:ci` instead of `${{ github.sha }}`, so trivy-image findings on PR engagements dedupe against `ci/main` and `ci/main` trivy-image findings (with dispositions) persist across main SHAs, proven on kind and live; then release `v1.3.0` (also carrying the Phase 29.2 TLS hardening) and move `v1` after a full consumer impact check
 **Requirements**: DDOJO-03 (trivy-image anchor)
 **Depends on:** Phase 29
-**Plans:** 10 plans
+**Plans:** 1/10 plans executed
 
 Plans:
-- [ ] 29.4-01-PLAN.md — PR A branch; security.yml scan-target:ci (D-01) and IMAGE-TAG gate with RED + scratch negatives (D-04)
+- [x] 29.4-01-PLAN.md — PR A branch; security.yml scan-target:ci (D-01) and IMAGE-TAG gate with RED + scratch negatives (D-04)
 - [ ] 29.4-02-PLAN.md — lifecycle-assert D-08/D-21 trivy-image assertion replacing the exclusion (D-09); offline replay; ci/main image diff helper
 - [ ] 29.4-03-PLAN.md — P-IMAGE-TAG kind proof (D-06): SHA-tag negative control and scan-target:ci positive case
 - [ ] 29.4-04-PLAN.md — push and open PR A (checkpoint); kind proof PROOF PASS; live scan output scan-target:ci
