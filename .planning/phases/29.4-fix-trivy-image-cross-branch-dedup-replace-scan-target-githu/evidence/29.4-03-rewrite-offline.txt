@@ -1,0 +1,92 @@
+29.4-03 Task 1: offline proof of the P-IMAGE-TAG report rewrite on a real artifact (D-06, T-29.4-09)
+Date: 2026-10-03. No kind cluster, no network beyond the artifact download.
+Trailing whitespace stripped from this file (docs-repo pre-commit hook).
+
+Input (real, retained artifact; not fabricated):
+$ gh run download 36846632465 -R OttawaCloudConsulting/security-platform -n trivy-image-results -D <scratch>/art
+  Scheduled Security on main 30afdb9; art/ holds trivy-image.json (533492 bytes) and trivy-image.sarif
+$ jq -r '.ArtifactName, .Metadata.Reference, (.Metadata.RepoTags|tostring), (.Results[].Target)' art/trivy-image.json
+  scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94
+  scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94
+  ["scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94"]
+  scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94 (debian 12.15)
+  -> the old target occurs in exactly these 4 places (ArtifactName, Metadata.Reference,
+     Metadata.RepoTags[0], Results[0].Target with the " (debian 12.15)" suffix)
+
+Program under test: the heredoc body between the marker lines, extracted verbatim from the
+edited script (branch fix/phase-29.4-image-tag), not a pasted copy:
+$ sed -n '/^# >>> P-IMAGE-TAG REWRITE$/,/^# <<< P-IMAGE-TAG REWRITE$/p' scripts/defectdojo-import-proof.sh > rewrite.py
+  rewrite.py: 69 lines, first '# >>> P-IMAGE-TAG REWRITE', last '# <<< P-IMAGE-TAG REWRITE'
+
+Runs (R1 target scan-target:ci, R2 target scan-target:<other sha>, R3 old == target):
+(grep -F is used for the old-SHA count: /usr/bin/grep here is ugrep; the output is one JSON line,
+ so -c is a line count; old_after is the exact occurrence count over all keys and string values)
+
+$ PROOF_IMG_SRC=art/trivy-image.json PROOF_IMG_TARGET=scan-target:ci PROOF_IMG_OUT=out-ci/trivy-image.json python3 rewrite.py
+old=scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94 new=scan-target:ci original_count=4 old_after=0 new_after=4
+ArtifactName='scan-target:ci'
+Metadata.Reference='scan-target:ci'
+Metadata.RepoTags=['scan-target:ci']
+Results[].Target='scan-target:ci (debian 12.15)'
+REWRITE OK: all four locations carry scan-target:ci
+exit=0
+$ grep -Fc 30afdb9fb56516c6b06c5275212b42bcac30cc94 out-ci/trivy-image.json
+0
+
+$ PROOF_IMG_SRC=art/trivy-image.json PROOF_IMG_TARGET=scan-target:fedcba9876543210fedcba9876543210fedcba98 PROOF_IMG_OUT=out-sha/trivy-image.json python3 rewrite.py
+old=scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94 new=scan-target:fedcba9876543210fedcba9876543210fedcba98 original_count=4 old_after=0 new_after=4
+ArtifactName='scan-target:fedcba9876543210fedcba9876543210fedcba98'
+Metadata.Reference='scan-target:fedcba9876543210fedcba9876543210fedcba98'
+Metadata.RepoTags=['scan-target:fedcba9876543210fedcba9876543210fedcba98']
+Results[].Target='scan-target:fedcba9876543210fedcba9876543210fedcba98 (debian 12.15)'
+REWRITE OK: all four locations carry scan-target:fedcba9876543210fedcba9876543210fedcba98
+exit=0
+$ grep -Fc 30afdb9fb56516c6b06c5275212b42bcac30cc94 out-sha/trivy-image.json
+0
+
+$ PROOF_IMG_SRC=out-ci/trivy-image.json PROOF_IMG_TARGET=scan-target:ci PROOF_IMG_OUT=out-ci2/trivy-image.json python3 rewrite.py
+old=scan-target:ci new=scan-target:ci original_count=4 old_after=0 new_after=4
+ArtifactName='scan-target:ci'
+Metadata.Reference='scan-target:ci'
+Metadata.RepoTags=['scan-target:ci']
+Results[].Target='scan-target:ci (debian 12.15)'
+REWRITE OK: all four locations carry scan-target:ci
+exit=0
+$ grep -Fc 30afdb9fb56516c6b06c5275212b42bcac30cc94 out-ci2/trivy-image.json
+0
+
+$ cmp <(jq -S . out-ci/trivy-image.json) <(jq -S . out-ci2/trivy-image.json)
+identical (old == target leaves the copy unchanged)
+
+$ diff of everything except the target string: sha copy vs ci copy, after mapping both targets to a placeholder
+identical: the copies differ only in the image target
+
+Exit-code controls (synthetic variants of the same real file, built with jq in the scratchpad):
+
+$ negative control N1: source without ArtifactName (jq del(.ArtifactName))
+old=None new=scan-target:ci original_count=0: the source has no string ArtifactName
+exit=3
+
+$ negative control N2: Metadata.Reference set to registry.example/other:1 (one location does not carry the old target)
+old=scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94 new=scan-target:ci original_count=3 old_after=0 new_after=3
+ArtifactName='scan-target:ci'
+Metadata.Reference='registry.example/other:1'
+Metadata.RepoTags=['scan-target:ci']
+Results[].Target='scan-target:ci (debian 12.15)'
+REWRITE INVALID: old_after=0 new_after=3 (need >= 3); locations without the target: ['Metadata.Reference']
+exit=4
+
+Negative-control precondition for plan 04 (advisor check): an intra-report hash collision would make a
+PR finding a duplicate of another PR finding regardless of the tag and falsify "every PR finding is an
+active non-duplicate". The artifact's (VulnerabilityID, PkgName, InstalledVersion, Target) tuples:
+$ jq '[.Results[] | .Target as $t | (.Vulnerabilities//[])[] | [.VulnerabilityID,.PkgName,.InstalledVersion,$t]] | {vulnerabilities:length, distinct_id_pkg_version_target:(unique|length)}' art/trivy-image.json
+  {"vulnerabilities":60,"distinct_id_pkg_version_target":60}
+  All 60 tuples are distinct. The Trivy Scan hash fields are title, severity, vulnerability_ids, cwe and
+  description (29.4-RESEARCH); 22 distinct titles over 60 findings, so a collision on the hashed fields
+  cannot be ruled out offline. The kind run in plan 04 decides; a negative-case FAIL whose offenders are
+  duplicates of PR-side findings would be this effect, not a tag effect.
+
+Verdict: original_count=4 old_after=0 new_after=4 for both targets; all four locations carry the new
+target; 0 old-SHA strings in every output; old == target leaves the copy byte-for-byte equal (jq -S);
+the SHA copy and the ci copy are identical once both targets map to one placeholder (they differ only
+in the image target); exit 3 and exit 4 fire on the two synthetic defects.
