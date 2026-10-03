@@ -36,8 +36,8 @@ set -euo pipefail
 #                      -> <out>/<label>-snapshot.json
 #   step 2           assert-pr-duplicates --branch <b> --main-snapshot <file>
 #                      --fixture-path <path>          -> <out>/step2-assert.json
-#                      (amended 2026-09-29: the trivy-image Test is excluded
-#                      from the duplicates check; see TRIVY-IMAGE EXCLUSION)
+#                      (Phase 29.4: the trivy-image Test has its own
+#                      title-keyed dedup assertion; see TRIVY-IMAGE DEDUP)
 #   step 3           disposition --main-snapshot <file> --fp <id> --oos <id>
 #                      --ra <id>                      -> <out>/dispositions.json
 #   step 4           assert-dispositions --dispositions <file>
@@ -49,19 +49,34 @@ set -euo pipefail
 #   step 5           assert-closed --branch <b> --main-snapshot <that file>
 #                      --dispositions <file>          -> <out>/step5-assert.json
 #
-# TRIVY-IMAGE EXCLUSION (D-11 step 2, amended by operator ruling 2026-09-29).
-# security.yml tags the scanned image scan-target:<github.sha>, and the Trivy
-# Scan parser puts that tag in each finding's file_path. A PR merge commit never
-# has the default branch's SHA, so trivy-image findings never dedupe across
-# branches. Measured live in Phase 29: on a PR engagement with 156 findings, all
-# 96 pre-existing non-image findings were duplicates of ci/main originals, and
-# all 59 trivy-image findings were active non-duplicates. assert-pr-duplicates
-# therefore excludes the one Test whose scan_type is "Trivy Scan" and whose
-# title is "trivy-image" (read live from the PR engagement's Tests, never passed
-# in by id; exactly one Test must match, or D11-STEP2-EXCLUSION-KEY fails). The
-# excluded findings are recorded as measured in step2-assert.json, not asserted.
+# TRIVY-IMAGE DEDUP (Phase 29.4 D-08/D-21, replaces the 2026-09-29 exclusion).
+# security.yml scans the image under the fixed tag scan-target:ci, so the same
+# image content must give the same Trivy findings on a PR and on ci/main, and
+# every trivy-image finding on the PR must be a duplicate of its ci/main
+# counterpart. The Test on each side is read live (scan_type "Trivy Scan",
+# title "trivy-image"; never passed in by id) and exactly one must match on
+# each side, or D11-STEP2-TRIVY-IMAGE-KEY fails. The ci/main side comes from
+# the --main-snapshot `tests` array, or from a live Tests read of the snapshot
+# engagement when an older snapshot lacks it.
+#   key          the finding title within the trivy-image Test on each side,
+#                never across the whole engagement (trivy-fs shares the parser
+#                and the title shape)
+#   counterparts ci/main trivy-image findings that are not mitigated and not
+#                duplicates (an upgrade reimport leaves mitigated old sets)
+#   verdict      every matched PR finding must be duplicate=true with
+#                duplicate_finding among that title's counterpart ids, and a
+#                file_path that starts with scan-target: must be scan-target:ci
+#   drift        a PR finding with no title counterpart (Trivy DB change) is
+#                recorded, not failed
+#   vacuous      zero matched findings is a FAIL
+#   hash_code    a matched pair whose hash_code values differ is a FAIL; the
+#                diagnostic prints both hashes
+# The hashed carrier of the image reference is the description line
+# `**Target:** <image>`, not file_path (file_path is not a Trivy Scan hash
+# field). The verdict is one pure jq program, TRIVY_IMAGE_VERDICT, between
+# BEGIN/END marker comments so the offline replay runs the same text.
 # Every other non-fixture finding must still be a duplicate of a ci/main
-# finding in the snapshot.
+# finding in the snapshot (D11-STEP2-DUPLICATES-POINT-TO-MAIN).
 #
 # WHICH TOKEN. The dispositions are written, and everything is read, with the
 # OPERATOR-HELD admin (superuser) token only (Phase 28 D-22, Phase 29 D-16 as
@@ -156,8 +171,9 @@ Subcommands (every flag shown is REQUIRED; there are no defaults):
                        Write <out>/<label>-snapshot.json: product and engagement
                        ids, test ids, finding count and every finding.
   assert-pr-duplicates --branch <b> --main-snapshot <file> --fixture-path <path>
-                       D-11 step 2 on engagement ci/<b>. Excludes the trivy-image
-                       Test from the duplicates check (amended 2026-09-29).
+                       D-11 step 2 on engagement ci/<b>. The trivy-image Test
+                       must dedupe by title against the ci/main trivy-image
+                       Test (Phase 29.4 D-08/D-21).
                        Writes step2-assert.json.
   disposition          --main-snapshot <file> --fp <id> --oos <id> --ra <id>
                        D-11 step 3 on ci/main originals, admin token only.
@@ -562,17 +578,63 @@ api_get_all() {
 }
 
 # The finding fields every snapshot and read-back carries (the import-proof
-# FIELDS that D-11 needs, plus file_path for the step-2 fixture match).
+# FIELDS that D-11 needs, plus file_path for the step-2 fixture match, plus
+# hash_code, additive in Phase 29.4 D-21, for the trivy-image dedup diagnostic).
 # shellcheck disable=SC2016
 SLIM='def slim: . as $f
   | ["id", "test", "title", "file_path", "active", "verified", "duplicate", "duplicate_finding",
-     "false_p", "out_of_scope", "risk_accepted", "is_mitigated"] as $keys
+     "false_p", "out_of_scope", "risk_accepted", "is_mitigated", "hash_code"] as $keys
   | [$keys[] | . as $k | select(($f | has($k)) | not)] as $missing
   | if ($missing | length) > 0
     then error("finding \($f.id) lacks \($missing | join(",")); keys present: \($f | keys | join(","))")
     else $f | {id, test, title, file_path, active, verified, duplicate, duplicate_finding,
-               false_p, out_of_scope, risk_accepted, is_mitigated}
+               false_p, out_of_scope, risk_accepted, is_mitigated, hash_code}
     end;'
+
+# BEGIN TRIVY_IMAGE_VERDICT
+# The D-08/D-21 trivy-image verdict (see TRIVY-IMAGE DEDUP above): a pure jq
+# program, run with `jq -n --slurpfile pr <obj with .findings> --argjson prtid
+# <PR image Test id> --slurpfile main <obj with .findings> --argjson mtid
+# <ci/main image Test id>`. The offline replay extracts the lines between the
+# assignment line and the closing quote line below, so keep the program free
+# of single quotes and keep both of those lines as they are.
+# shellcheck disable=SC2016
+TRIVY_IMAGE_VERDICT='
+($pr[0].findings | map(select(.test == $prtid))) as $pi
+| ($main[0].findings | map(select(.test == $mtid and .is_mitigated != true and .duplicate != true))) as $mc
+| (reduce $mc[] as $c ({}; .[$c.title // ""] += [$c])) as $by
+| ($pi | map(select($by[.title // ""] != null))) as $matched
+| ($pi | map(select($by[.title // ""] == null))) as $drift
+| [$matched[] | . as $f
+    | ($by[$f.title // ""]) as $cs
+    | ($cs | map(.id)) as $cids
+    | ($cs | map(.hash_code)) as $mh
+    | ($f.file_path // "") as $fp
+    | (($f.hash_code != null) and ($mh | all(. != null))) as $hc
+    | [ (if $f.duplicate != true then "not_duplicate" else empty end),
+        (if (($f.duplicate_finding // -1) | IN($cids[])) then empty else "duplicate_finding_not_counterpart" end),
+        (if ($fp | startswith("scan-target:")) and (($fp == "scan-target:ci" or ($fp | startswith("scan-target:ci "))) | not)
+         then "file_path_not_scan_target_ci" else empty end),
+        (if $hc and ($mh | any(. != $f.hash_code)) then "hash_code_differs" else empty end)
+      ] as $r
+    | {hc: $hc,
+       entry: {id: $f.id, title: $f.title, file_path: $f.file_path, duplicate: $f.duplicate,
+               duplicate_finding: $f.duplicate_finding, pr_hash_code: $f.hash_code,
+               main_hash_codes: $mh, reasons: $r}}
+  ] as $eval
+| [$eval[] | select((.entry.reasons | length) > 0) | .entry] as $bad
+| {
+    pr_image_count: ($pi | length),
+    main_counterpart_count: ($mc | length),
+    matched_count: ($matched | length),
+    drift: {count: ($drift | length), titles: ($drift | map(.title))},
+    bad_count: ($bad | length),
+    bad: $bad,
+    hash_compared: (($eval | length) > 0 and ($eval | all(.hc))),
+    verdict: (if ($matched | length) > 0 and ($bad | length) == 0 then "PASS" else "FAIL" end)
+  }
+'
+# END TRIVY_IMAGE_VERDICT
 
 # resolve_product: PID = the id of the one product named exactly $PRODUCT.
 resolve_product() {
@@ -691,9 +753,12 @@ cmd_snapshot() {
   fi
   eid="$(jq '.results[0].id' "$f")"
   engagement_findings "$eid" "${WORK}/snap.json" || abort "SNAPSHOT-FINDINGS" "$API_ERROR"
+  # tests (additive, Phase 29.4): the engagement's Tests, already read by
+  # engagement_findings into tests-<eid>.json (no extra API call).
   jq --arg p "$PRODUCT" --argjson pid "$PID" --arg e "$ENGAGEMENT" \
-    --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    '{captured_at: $at, product: $p, product_id: $pid, engagement: $e} + .' "${WORK}/snap.json" > "$out"
+    --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --slurpfile t "${WORK}/tests-${eid}.json" \
+    '{captured_at: $at, product: $p, product_id: $pid, engagement: $e} + .
+     + {tests: ($t[0].results | map({id, title, scan_type}))}' "${WORK}/snap.json" > "$out"
   echo "snapshot ${ENGAGEMENT}: $(jq '.count' "$out") findings"
   echo "wrote ${out}"
   exit 0
@@ -702,7 +767,8 @@ cmd_snapshot() {
 # ── assert-pr-duplicates (D-11 step 2) ───────────────────────────────────────
 cmd_assert_pr_duplicates() {
   local name="ci/${BRANCH}" f="${WORK}/eng.json" n eid ur="${WORK}/under-review.json"
-  local out="${OUT_DIR}/step2-assert.json" v
+  local out="${OUT_DIR}/step2-assert.json" v meid mtests="${WORK}/main-tests.json" foreign
+  local verdict="${WORK}/trivy-image-verdict.json" prtid mtid
   resolve_product
   check_product_matches "$MAIN_SNAPSHOT" "--main-snapshot"
 
@@ -722,14 +788,29 @@ cmd_assert_pr_duplicates() {
   api_get_all "/api/v2/findings/?test__engagement=${eid}&active=true&verified=false&false_p=false&out_of_scope=false&risk_accepted=false&duplicate=false&is_mitigated=false" "$ur" ||
     abort "D11-STEP2-READ" "$API_ERROR"
 
+  # The ci/main Tests: the --main-snapshot `tests` array, or (an older snapshot
+  # without it) a live read of the snapshot engagement's Tests through the same
+  # foreign-row guard as engagement_findings (see TRIVY-IMAGE DEDUP above).
+  meid="$(jq '.engagement_id' "$MAIN_SNAPSHOT")"
+  if jq -e 'has("tests")' "$MAIN_SNAPSHOT" > /dev/null; then
+    jq '{count: (.tests | length), results: .tests}' "$MAIN_SNAPSHOT" > "$mtests"
+  else
+    api_get_all "/api/v2/tests/?engagement=${meid}" "$mtests" || abort "D11-STEP2-READ" "$API_ERROR"
+    foreign="$(jq --argjson e "$meid" '[.results[] | select(.engagement != $e) | .id]' "$mtests")"
+    if [[ "$foreign" != "[]" ]]; then
+      abort "D11-STEP2-READ" "GET /api/v2/tests/?engagement=${meid} returned tests of another engagement: ${foreign}"
+    fi
+  fi
+
   # engagement_findings left the PR engagement's Tests in tests-<eid>.json; the
-  # trivy-image exclusion key is read from them (TRIVY-IMAGE EXCLUSION above).
+  # trivy-image Test is read from them (TRIVY-IMAGE DEDUP above).
   jq -n --slurpfile b "${WORK}/branch.json" --slurpfile u "$ur" --slurpfile m "$MAIN_SNAPSHOT" \
-    --slurpfile t "${WORK}/tests-${eid}.json" \
+    --slurpfile t "${WORK}/tests-${eid}.json" --slurpfile mt "$mtests" \
     --arg fx "$FIXTURE_PATH" --arg name "$name" '
     ($b[0].findings) as $bf
-    | [$t[0].results[] | select(.scan_type == "Trivy Scan" and .title == "trivy-image")] as $excl_tests
-    | ($excl_tests | map(.id)) as $xids
+    | [$t[0].results[] | select(.scan_type == "Trivy Scan" and .title == "trivy-image")] as $img_tests
+    | ($img_tests | map(.id)) as $imgids
+    | [$mt[0].results[] | select(.scan_type == "Trivy Scan" and .title == "trivy-image")] as $main_img_tests
     | ($bf | map(.id)) as $bids
     | ($m[0].findings | map(.id)) as $mids
     | ($u[0].results) as $ur
@@ -739,8 +820,7 @@ cmd_assert_pr_duplicates() {
     | ($ur | map(.id) | unique) as $ur_ids
     | ($bf | map(select((.file_path // "") | contains($fx)))) as $fixture
     | ($fixture | map(.id) | unique) as $fx_ids
-    | ($bf | map(select(((.id | IN($fx_ids[])) | not) and (.test | IN($xids[]))))) as $excluded
-    | ($bf | map(select(((.id | IN($fx_ids[])) | not) and ((.test | IN($xids[])) | not)))) as $others
+    | ($bf | map(select(((.id | IN($fx_ids[])) | not) and ((.test | IN($imgids[])) | not)))) as $others
     | [$others[] | select(.duplicate != true or ((.duplicate_finding // -1) | IN($mids[]) | not))
         | {id, title, file_path, active, duplicate, duplicate_finding}] as $others_bad
     | {
@@ -755,15 +835,11 @@ cmd_assert_pr_duplicates() {
                        file_paths: ($ur | map(.file_path) | unique), filter_violations: $ur_violations},
         fixture: {count: ($fx_ids | length), ids: $fx_ids, file_paths: ($fixture | map(.file_path) | unique)},
         untriaged_eq_fixture: (($ur_violations | length) == 0 and ($ur_ids | length) > 0 and $ur_ids == $fx_ids),
-        exclusion_key: {scan_type: "Trivy Scan", title: "trivy-image",
-                        tests: ($excl_tests | map({id, title, scan_type})), ok: (($xids | length) == 1)},
-        excluded_measured: {
-          count: ($excluded | length),
-          ids: ($excluded | map(.id)),
-          duplicate_count: ($excluded | map(select(.duplicate == true)) | length),
-          file_paths: ($excluded | map(.file_path) | unique),
-          main_trivy_image_file_paths: ($m[0].findings | map(.file_path // "" | select(startswith("scan-target:"))) | unique)
-        },
+        trivy_image_key: {scan_type: "Trivy Scan", title: "trivy-image",
+                          pr_tests: ($img_tests | map({id, title, scan_type})),
+                          main_tests: ($main_img_tests | map({id, title, scan_type})),
+                          ok: (($img_tests | length) == 1 and ($main_img_tests | length) == 1)},
+        trivy_image_dedup: null,
         others: {count: ($others | length), ids: ($others | map(.id))},
         others_not_duplicate_of_main: $others_bad,
         duplicates_point_to_main: (($others | length) > 0 and ($others_bad | length) == 0)
@@ -775,16 +851,33 @@ cmd_assert_pr_duplicates() {
   else
     fail "D11-STEP2-UNTRIAGED-EQ-FIXTURE" "Under Review ids $(jq -c '.under_review.ids' "$out") file_paths $(jq -c '.under_review.file_paths' "$out") vs fixture ids $(jq -c '.fixture.ids' "$out") file_paths $(jq -c '.fixture.file_paths' "$out"); rows violating the filter client-side: $(jq -c '.under_review.filter_violations' "$out") (note: Trivy findings arrive verified=true and never match this filter, so the fixture must come from a non-Trivy parser)"
   fi
-  if [[ "$(jq '.exclusion_key.ok' "$out")" == "true" ]]; then
-    pass "D11-STEP2-EXCLUSION-KEY" "exactly one Test on ${name} matches scan_type 'Trivy Scan' and title 'trivy-image': $(jq -c '.exclusion_key.tests' "$out")"
+
+  if [[ "$(jq '.trivy_image_key.ok' "$out")" == "true" ]]; then
+    prtid="$(jq '.trivy_image_key.pr_tests[0].id' "$out")"
+    mtid="$(jq '.trivy_image_key.main_tests[0].id' "$out")"
+    pass "D11-STEP2-TRIVY-IMAGE-KEY" "exactly one Test matches scan_type 'Trivy Scan' and title 'trivy-image' on each side: ${name} Test ${prtid}, ci/main snapshot engagement ${meid} Test ${mtid}"
+    if ! jq -n --slurpfile pr "${WORK}/branch.json" --argjson prtid "$prtid" \
+      --slurpfile main "$MAIN_SNAPSHOT" --argjson mtid "$mtid" "$TRIVY_IMAGE_VERDICT" > "$verdict" 2> "${verdict}.err"; then
+      abort "D11-STEP2-TRIVY-IMAGE-DEDUP" "the verdict program failed: $(snippet "${verdict}.err")"
+    fi
+    jq --slurpfile vd "$verdict" '.trivy_image_dedup = $vd[0]' "$out" > "${out}.tmp" && mv "${out}.tmp" "$out"
+    if [[ "$(jq -r '.trivy_image_dedup.verdict' "$out")" == "PASS" ]]; then
+      pass "D11-STEP2-TRIVY-IMAGE-DEDUP" "all $(jq '.trivy_image_dedup.matched_count' "$out") trivy-image finding(s) with a ci/main counterpart are duplicates of it (hash_code compared: $(jq '.trivy_image_dedup.hash_compared' "$out"))"
+    elif [[ "$(jq '.trivy_image_dedup.matched_count' "$out")" == "0" ]]; then
+      fail "D11-STEP2-TRIVY-IMAGE-DEDUP" "no PR trivy-image finding has a title counterpart in the ci/main trivy-image Test (zero overlap; the assertion would be vacuous): $(jq '.trivy_image_dedup.pr_image_count' "$out") PR finding(s), $(jq '.trivy_image_dedup.main_counterpart_count' "$out") ci/main counterpart(s)"
+    else
+      fail "D11-STEP2-TRIVY-IMAGE-DEDUP" "$(jq '.trivy_image_dedup.bad_count' "$out") of $(jq '.trivy_image_dedup.matched_count' "$out") matched trivy-image finding(s) do not dedupe against ci/main: $(jq -c '.trivy_image_dedup.bad[:10]' "$out") (hash_code_differs means the Trivy DB content changed between the two scans or a hashed field still carries a varying value)"
+    fi
+    echo "    INFO: drift (measured, not asserted): $(jq '.trivy_image_dedup.drift.count' "$out") PR trivy-image finding(s) without a ci/main title counterpart: $(jq -c '.trivy_image_dedup.drift.titles[:10]' "$out")"
   else
-    fail "D11-STEP2-EXCLUSION-KEY" "expected exactly 1 Test matching scan_type 'Trivy Scan' and title 'trivy-image' on ${name}, got $(jq -c '.exclusion_key.tests' "$out")"
+    fail "D11-STEP2-TRIVY-IMAGE-KEY" "expected exactly 1 Test matching scan_type 'Trivy Scan' and title 'trivy-image' on each side, got ${name}: $(jq -c '.trivy_image_key.pr_tests' "$out"), ci/main snapshot engagement ${meid}: $(jq -c '.trivy_image_key.main_tests' "$out")"
+    SKIPPED+=("D11-STEP2-TRIVY-IMAGE-DEDUP: not evaluated, it depends on D11-STEP2-TRIVY-IMAGE-KEY")
   fi
-  echo "    INFO: excluded (measured, not asserted): $(jq '.excluded_measured.count' "$out") trivy-image finding(s), $(jq '.excluded_measured.duplicate_count' "$out") of them duplicates; PR file_paths $(jq -c '.excluded_measured.file_paths' "$out"); ci/main file_paths $(jq -c '.excluded_measured.main_trivy_image_file_paths' "$out")"
+
   if [[ "$(jq '.duplicates_point_to_main' "$out")" == "true" ]]; then
     pass "D11-STEP2-DUPLICATES-POINT-TO-MAIN" "all $(jq '.others.count' "$out") non-fixture, non-trivy-image finding(s) on ${name} are duplicates of ci/main originals in the snapshot"
   elif [[ "$(jq '.others.count' "$out")" == "0" ]]; then
-    fail "D11-STEP2-DUPLICATES-POINT-TO-MAIN" "${name} has no findings besides the fixture and the trivy-image Test, so there are no pre-existing findings to be duplicates; the assertion would be vacuous"
+    fail "D11-STEP2-DUPLICATES-POINT-TO-MAIN" "${name} has no non-fixture, non-trivy-image findings, so there are no pre-existing findings to be duplicates; the assertion would be vacuous"
   else
     fail "D11-STEP2-DUPLICATES-POINT-TO-MAIN" "$(jq '.others_not_duplicate_of_main | length' "$out") of $(jq '.others.count' "$out") non-fixture, non-trivy-image finding(s) are not duplicates of a --main-snapshot finding: $(jq -c '.others_not_duplicate_of_main[:10]' "$out")"
   fi
