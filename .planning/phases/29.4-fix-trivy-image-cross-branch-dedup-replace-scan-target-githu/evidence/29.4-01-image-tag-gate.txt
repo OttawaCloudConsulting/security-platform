@@ -1,0 +1,136 @@
+# 29.4-01 IMAGE-TAG gate evidence
+# Clone: repos/security-platform  branch: fix/phase-29.4-image-tag
+# PR A base SHA (origin/main): 30afdb9fb56516c6b06c5275212b42bcac30cc94
+# merge-base --is-ancestor 30afdb9fb56516c6b06c5275212b42bcac30cc94 origin/main: exit 0
+# Captured: 2026-10-02T03:06:37Z
+
+## RED (unfixed security.yml)
+$ bash scripts/check-workflow-uploads.sh
+check-workflow-uploads: parsing every workflow file in .github/workflows (*.yml, *.yaml)
+FAIL: IMAGE-TAG: jobs.container step 'Build image from discovered Dockerfile' run: '-t scan-target:ci' occurs 0 time(s), expected exactly 1 — the scanned image must use the fixed tag scan-target:ci (Phase 29.4 D-04, ADR-031)
+FAIL: IMAGE-TAG: jobs.container step 'Run Trivy image scan' run: 'trivy image scan-target:ci' occurs 0 time(s), expected exactly 1 — the scanned image must use the fixed tag scan-target:ci (Phase 29.4 D-04, ADR-031)
+FAIL: IMAGE-TAG: jobs.container step 'Build image from discovered Dockerfile' run: contains 'github.sha' — a per-SHA image tag breaks cross-branch Trivy dedup (Phase 29.4 D-04, ADR-031)
+FAIL: IMAGE-TAG: jobs.container step 'Run Trivy image scan' run: contains 'github.sha' — a per-SHA image tag breaks cross-branch Trivy dedup (Phase 29.4 D-04, ADR-031)
+FAILED - 4 check(s)
+exit=1
+
+$ shellcheck scripts/check-workflow-uploads.sh
+exit=0
+
+## GREEN (fixed security.yml, real tree)
+$ bash scripts/check-workflow-uploads.sh
+check-workflow-uploads: parsing every workflow file in .github/workflows (*.yml, *.yaml)
+PASS - 21 checks, 0 failures
+exit=0
+
+## Scratch negative (a): build line reverted to -t scan-target:${{ github.sha }}
+$ diff .github/workflows/security.yml <scratch>/a/security.yml
+993c993
+<             -t scan-target:ci "$ctx"
+---
+>             -t scan-target:${{ github.sha }} "$ctx"
+$ WORKFLOWS_DIR=<scratch>/a bash scripts/check-workflow-uploads.sh
+check-workflow-uploads: parsing every workflow file in <scratch>/a (*.yml, *.yaml)
+FAIL: IMAGE-TAG: jobs.container step 'Build image from discovered Dockerfile' run: '-t scan-target:ci' occurs 0 time(s), expected exactly 1 — the scanned image must use the fixed tag scan-target:ci (Phase 29.4 D-04, ADR-031)
+FAIL: IMAGE-TAG: jobs.container step 'Build image from discovered Dockerfile' run: contains 'github.sha' — a per-SHA image tag breaks cross-branch Trivy dedup (Phase 29.4 D-04, ADR-031)
+FAILED - 2 check(s)
+exit=1
+
+## Scratch negative (b): scan line reverted to trivy image scan-target:${{ github.sha }}
+$ diff .github/workflows/security.yml <scratch>/b/security.yml
+999c999
+<           trivy image scan-target:ci --scanners vuln \
+---
+>           trivy image scan-target:${{ github.sha }} --scanners vuln \
+$ WORKFLOWS_DIR=<scratch>/b bash scripts/check-workflow-uploads.sh
+check-workflow-uploads: parsing every workflow file in <scratch>/b (*.yml, *.yaml)
+FAIL: IMAGE-TAG: jobs.container step 'Run Trivy image scan' run: 'trivy image scan-target:ci' occurs 0 time(s), expected exactly 1 — the scanned image must use the fixed tag scan-target:ci (Phase 29.4 D-04, ADR-031)
+FAIL: IMAGE-TAG: jobs.container step 'Run Trivy image scan' run: contains 'github.sha' — a per-SHA image tag breaks cross-branch Trivy dedup (Phase 29.4 D-04, ADR-031)
+FAILED - 2 check(s)
+exit=1
+
+## Scratch negative (c): real lines kept + extra container step running docker tag scan-target:ci scan-target:${{ github.sha }}
+$ diff .github/workflows/security.yml <scratch>/c/security.yml
+1002a1003,1007
+>       - name: Retag scanned image
+>         if: steps.docker.outputs.found == 'true'
+>         run: |
+>           docker tag scan-target:ci scan-target:${{ github.sha }}
+>
+$ WORKFLOWS_DIR=<scratch>/c bash scripts/check-workflow-uploads.sh
+check-workflow-uploads: parsing every workflow file in <scratch>/c (*.yml, *.yaml)
+FAIL: IMAGE-TAG: jobs.container step 'Retag scanned image' run: contains 'github.sha' — a per-SHA image tag breaks cross-branch Trivy dedup (Phase 29.4 D-04, ADR-031)
+FAILED - 1 check(s)
+exit=1
+
+## Static checks
+$ grep -c 'github.sha' .github/workflows/security.yml
+0
+$ git diff origin/main -- .github/workflows/security.yml | grep '^+' | grep -v '^+++' | grep -c '${{'
+1
+# The 1 match is the rewrapped comment line below (an existing reference to the existing
+# steps.docker.outputs.path interpolation, with '${{ github.sha }}, ' removed). It is not a new interpolation:
++      # ${{ steps.docker.outputs.path }} (read from
+$ (same, excluding YAML comment lines) ... | grep -Ev '^\+[[:space:]]*#' | grep -c '${{'
+0
+$ grep -c 'steps.docker.outputs.path': working tree vs origin/main
+3 vs 3
+$ git diff --stat origin/main -- .github/workflows/security.yml
+ .github/workflows/security.yml | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+$ git diff origin/main -- .github/workflows/security.yml
+diff --git a/.github/workflows/security.yml b/.github/workflows/security.yml
+index ebd594e..6a66ed4 100644
+--- a/.github/workflows/security.yml
++++ b/.github/workflows/security.yml
+@@ -944,7 +944,7 @@ jobs:
+       # subsequent step in this job, are what make a Dockerfile-free
+       # repository skip cleanly instead.
+       # The only context interpolations in any run: block in this workflow are
+-      # ${{ github.sha }}, ${{ steps.docker.outputs.path }} (read from
++      # ${{ steps.docker.outputs.path }} (read from
+       # `git ls-files` on the checked-out tree, not an event payload), and
+       # GitHub-generated step outcomes and ids (the steps.<id>.outcome,
+       # .outputs.sarif-id and .outputs.artifact-id/-url values read by the
+@@ -957,6 +957,11 @@ jobs:
+       # branch name, arrives through step env: or the runner-provided GITHUB_*
+       # variables, and its verify step reads the import outcome through env:
+       # too. check-workflow-uploads.sh NO-INTERPOLATION enforces this.
++      # The scanned image is tagged with the fixed literal scan-target:ci, never
++      # the commit SHA, so identical image content gives identical findings on
++      # every branch and main SHA (Phase 29.4, ADR-031); check-workflow-uploads.sh
++      # IMAGE-TAG enforces this. The fixed tag is collision-free only because
++      # this job runs on ubuntu-latest with a fresh Docker daemon per run.
+       #
+       # Pathspec: the corrected five-item form measured in 20-02 (A4) —
+       # 'Dockerfile' '*/Dockerfile' 'Dockerfile.*' '*/Dockerfile.*'
+@@ -985,13 +990,13 @@ jobs:
+         run: |
+           ctx=$(dirname "${{ steps.docker.outputs.path }}")
+           docker build -f "${{ steps.docker.outputs.path }}" \
+-            -t scan-target:${{ github.sha }} "$ctx"
++            -t scan-target:ci "$ctx"
+
+       - name: Run Trivy image scan
+         if: steps.docker.outputs.found == 'true'
+         continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
+         run: |
+-          trivy image scan-target:${{ github.sha }} --scanners vuln \
++          trivy image scan-target:ci --scanners vuln \
+             --format json --output trivy-image.json \
+             --exit-code 1 --severity HIGH,CRITICAL
+
+$ bash scripts/defectdojo-import-proof.sh --extract-only
+PASS: defectdojo-import/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+PASS: defectdojo-import/dd-import: extracted (223 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_INSECURE', 'DD_PRODUCT', 'DD_PRODUCT_TYPE', 'DD_REPORTS_DIR', 'DD_RESULTS_FILE', 'DD_TOKEN', 'DD_URL']
+PASS: defectdojo-import/dd-verify: extracted (39 lines), no ${{, bash -n clean, env names match the contract ['DD_IMPORT_OUTCOME', 'DD_RESULTS_FILE']
+PASS: defectdojo-cleanup/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+PASS: defectdojo-cleanup/dd-delete: extracted (219 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_CLEANUP_RESULT_FILE', 'DD_DEFAULT_BRANCH', 'DD_INSECURE', 'DD_PRODUCT', 'DD_TOKEN', 'DD_URL']
+PASS: defectdojo-cleanup/dd-cleanup-verify: extracted (23 lines), no ${{, bash -n clean, env names match the contract ['DD_CLEANUP_RESULT_FILE', 'DD_DELETE_OUTCOME']
+PASS: DD-GATE-IDENTICAL: the import and cleanup dd-gate bodies are byte-identical
+extract: 7 passed, 0 failed
+EXTRACT PASS - .github/workflows/security.yml
+exit=0
+
+# Note: trailing whitespace was stripped from captured diff output (blank diff lines) to satisfy the docs-repo whitespace hook; content otherwise verbatim.
+# Note: the plan verify clause grep -q -- '-t scan-target:ci "$ctx"' fails under /usr/bin/grep = ugrep 7.8.4 (unescaped $ read as an anchor); grep -F matches security.yml line 993.
