@@ -88,7 +88,12 @@ set -euo pipefail
 #                   default-branch reimports, suppression of new PR copies
 #                   by default-branch dispositions, and the delete-time
 #                   re-parent of default-branch findings when a PR
-#                   engagement is deleted. Prints one
+#                   engagement is deleted. Last, in fresh products
+#                   (proof/image-tag-sha, proof/image-tag-ci), the Phase 29.4
+#                   trivy-image tag scenario: two copies of one
+#                   trivy-image.json that differ only in the image target,
+#                   where SHA tags give active non-duplicates and
+#                   scan-target:ci gives duplicates. Prints one
 #                   "PROOF: <ID> PASS|FAIL <detail>" line per assertion and
 #                   ends with "PROOF PASS - <n> assertions" or
 #                   "PROOF FAIL - <k> of <n>".
@@ -110,7 +115,11 @@ set -euo pipefail
 # lifecycle-assert.sh and homelab-validate.sh; same fixture);
 # P-CONFIGURE P-IDEMPOTENT P-DEDUP-MODE P-DEDUP-BRANCH P-CROSSTOOL
 # P-DISPOSITION P-SUPPRESS P-REPARENT (28-03/28-04, --hook only, after every
-# Phase 27 assertion, in fresh products).
+# Phase 27 assertion, in fresh products);
+# P-IMAGE-TAG (29.4 D-06, --hook only, last, in fresh products
+# proof/image-tag-sha and proof/image-tag-ci: two copies of one
+# trivy-image.json that differ only in the image target; SHA tags give active
+# non-duplicates, scan-target:ci gives duplicates).
 #
 # Every committed-body run (dd-gate, dd-import, dd-verify, dd-delete,
 # dd-cleanup-verify) uses the ci-importer token. The one exception is
@@ -181,6 +190,16 @@ readonly PROOF_REPARENT_PRODUCT="proof/dedup-reparent"
 readonly PROOF_DEDUP_PR="proof/pr-delta"
 readonly PROOF_SUPPRESS_PR="proof/pr-suppress"
 readonly PROOF_REPARENT_PR="proof/pr-first"
+
+# Phase 29.4 identities (D-06): fresh products so the negative control cannot
+# contaminate the positive case; dedup is product-wide. The PR branch names
+# contain a slash on purpose. PROOF_IMAGE_OTHER_SHA is the second image tag of
+# the negative control (40 hex, different from PROOF_SHA).
+readonly PROOF_IMAGE_SHA_PRODUCT="proof/image-tag-sha"
+readonly PROOF_IMAGE_CI_PRODUCT="proof/image-tag-ci"
+readonly PROOF_IMAGE_SHA_PR="proof/pr-image-sha"
+readonly PROOF_IMAGE_CI_PR="proof/pr-image-ci"
+readonly PROOF_IMAGE_OTHER_SHA="fedcba9876543210fedcba9876543210fedcba98"
 
 usage() {
   echo "usage: bash scripts/defectdojo-import-proof.sh <reports-dir> | --extract-only | --scheme-only | --hook" >&2
@@ -1690,7 +1709,7 @@ resp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 PAGE = 250
 FIELDS = ["id", "test", "title", "active", "verified", "duplicate", "duplicate_finding", "false_p",
           "out_of_scope", "risk_accepted", "is_mitigated", "mitigated", "component_name",
-          "component_version", "vulnerability_ids"]
+          "component_version", "vulnerability_ids", "file_path"]
 
 
 def get(path, params=None):
@@ -2280,6 +2299,278 @@ PY
   fi
 }
 
+# image_tag_rewrite SRC TARGET OUTDIR LOG: write OUTDIR/trivy-image.json, a
+# copy of SRC whose image target (SRC's ArtifactName) is replaced by TARGET
+# as an EXACT string inside every JSON string value. Never a regex on 40 hex:
+# the CI report of a fixed security.yml already says scan-target:ci, and the
+# copy must then stay unchanged (old == target). The program between the two
+# marker lines is self-contained and is extracted verbatim by the offline
+# proof (29.4-03 evidence). Exit codes: 0 rewritten and validated; 3 the old
+# target does not occur; 4 an old occurrence survives, the new target is
+# missing somewhere, or one of ArtifactName, Metadata.Reference,
+# Metadata.RepoTags[] and Results[].Target does not carry the target.
+# Returns the program's exit status; the log holds its report.
+image_tag_rewrite() {
+  local src="$1" target="$2" outdir="$3" log="$4"
+  rm -rf "$outdir"
+  mkdir -p "$outdir"
+  PROOF_IMG_SRC="$src" PROOF_IMG_TARGET="$target" PROOF_IMG_OUT="${outdir}/trivy-image.json" \
+    python3 - > "$log" 2>&1 <<'PY'
+# >>> P-IMAGE-TAG REWRITE
+import json
+import os
+import sys
+
+env = os.environ
+with open(env["PROOF_IMG_SRC"], encoding="utf-8") as handle:
+    src = json.load(handle)
+old = src.get("ArtifactName") if isinstance(src, dict) else None
+target = env["PROOF_IMG_TARGET"]
+if not isinstance(old, str) or not old:
+    print("old={!r} new={} original_count=0: the source has no string ArtifactName".format(old, target))
+    sys.exit(3)
+
+
+def count(node, needle):
+    # Occurrences in every string value AND every object key.
+    if isinstance(node, str):
+        return node.count(needle)
+    if isinstance(node, list):
+        return sum(count(item, needle) for item in node)
+    if isinstance(node, dict):
+        return sum(key.count(needle) + count(value, needle) for key, value in node.items())
+    return 0
+
+
+def replace(node):
+    if isinstance(node, str):
+        return node.replace(old, target)
+    if isinstance(node, list):
+        return [replace(item) for item in node]
+    if isinstance(node, dict):
+        return {key: replace(value) for key, value in node.items()}
+    return node
+
+
+original_count = count(src, old)
+out = replace(src)
+old_after = 0 if old == target else count(out, old)
+new_after = count(out, target)
+with open(env["PROOF_IMG_OUT"], "w", encoding="utf-8") as handle:
+    json.dump(out, handle)
+
+meta = out.get("Metadata") if isinstance(out.get("Metadata"), dict) else {}
+results = out.get("Results") if isinstance(out.get("Results"), list) else []
+targets = [r.get("Target") for r in results if isinstance(r, dict)]
+tags = meta.get("RepoTags")
+print("old={} new={} original_count={} old_after={} new_after={}".format(
+    old, target, original_count, old_after, new_after))
+print("ArtifactName={!r}".format(out.get("ArtifactName")))
+print("Metadata.Reference={!r}".format(meta.get("Reference")))
+print("Metadata.RepoTags={!r}".format(tags))
+for t in targets:
+    print("Results[].Target={!r}".format(t))
+if original_count == 0:
+    sys.exit(3)
+locations = {
+    "ArtifactName": out.get("ArtifactName") == target,
+    "Metadata.Reference": meta.get("Reference") == target,
+    "Metadata.RepoTags": isinstance(tags, list) and bool(tags) and all(t == target for t in tags),
+    "Results[].Target": any(isinstance(t, str) and t.startswith(target) for t in targets),
+}
+missing = sorted(k for k, ok in locations.items() if not ok)
+if old_after != 0 or new_after < original_count or missing:
+    print("REWRITE INVALID: old_after={} new_after={} (need >= {}); locations without the target: {}".format(
+        old_after, new_after, original_count, missing or "none"))
+    sys.exit(4)
+print("REWRITE OK: all four locations carry {}".format(target))
+# <<< P-IMAGE-TAG REWRITE
+PY
+}
+
+# prove_image_tag: P-IMAGE-TAG (Phase 29.4 D-06, D-01, D-03). Runs last,
+# inside prove_dedup_triage (dedup on, async_wait set). Takes the CI-produced
+# dd-reports/trivy-image.json and writes four single-file report dirs that
+# differ only in the image target. Negative control in PROOF_IMAGE_SHA_PRODUCT:
+# ci/main tagged scan-target:<PROOF_SHA>, the PR scan-target:<OTHER_SHA>, so
+# every PR trivy-image finding must stay an active non-duplicate (reproduces
+# the 29-16 measurement). Positive case in PROOF_IMAGE_CI_PRODUCT: both copies
+# scan-target:ci, so every PR trivy-image finding must be a duplicate of a
+# ci/main trivy-image finding (D-03: no SHA-bearing hashed field survives).
+# Main is imported FIRST in both cases (its findings hold the lower ids and
+# stay the originals). Failures are proof_fail and return 0, never
+# proof_abort: earlier groups must stay visible.
+prove_image_tag() {
+  local src="${DD_PROOF_REPORTS}/trivy-image.json" ci_tag="scan-target:ci" artifact
+  echo
+  echo "=== trivy-image dedup across branches depends on the image tag (P-IMAGE-TAG) ==="
+  if [ ! -f "$src" ]; then
+    proof_fail "P-IMAGE-TAG" "dd-reports has no trivy-image.json; D-06 requires the case"
+    return 0
+  fi
+  # D-01 in the scan output: the PR's own security.yml produced the fixed tag.
+  artifact="$(jq -r '.ArtifactName' "$src" 2>/dev/null || echo "<unreadable>")"
+  if [ "$artifact" = "$ci_tag" ]; then
+    proof_pass "P-IMAGE-TAG" "the CI-produced trivy-image.json has ArtifactName ${ci_tag} (D-01)"
+  else
+    proof_fail "P-IMAGE-TAG" "the CI-produced trivy-image.json has ArtifactName '${artifact}', expected ${ci_tag} (D-01)"
+  fi
+
+  local sha_main="${PROOF_DIR}/reports-image-sha-main" sha_pr="${PROOF_DIR}/reports-image-sha-pr"
+  local ci_main="${PROOF_DIR}/reports-image-ci-main" ci_pr="${PROOF_DIR}/reports-image-ci-pr"
+  local spec dir target log rw_rc
+  for spec in "${sha_main}|scan-target:${PROOF_SHA}" "${sha_pr}|scan-target:${PROOF_IMAGE_OTHER_SHA}" \
+      "${ci_main}|${ci_tag}" "${ci_pr}|${ci_tag}"; do
+    dir="${spec%%|*}"
+    target="${spec#*|}"
+    log="${dir}.log"
+    rw_rc=0
+    image_tag_rewrite "$src" "$target" "$dir" "$log" || rw_rc=$?
+    sed -e 's/^/    /' "$log"
+    if [ "$rw_rc" -ne 0 ]; then
+      proof_fail "P-IMAGE-TAG" "rewriting trivy-image.json to ${target} failed (exit ${rw_rc}): $(snippet "$log")"
+      return 0
+    fi
+  done
+  proof_pass "P-IMAGE-TAG" "four single-file trivy-image.json copies differ only in the image target (scan-target:${PROOF_SHA}, scan-target:${PROOF_IMAGE_OTHER_SHA}, ${ci_tag} twice)"
+
+  # Negative control first, then the positive case; a failed case never
+  # blocks the other (separate fresh products).
+  if image_tag_case image-sha "$PROOF_IMAGE_SHA_PRODUCT" "$PROOF_IMAGE_SHA_PR" "$sha_main" "$sha_pr"; then
+    image_tag_assert negative "${PROOF_DIR}/image-sha-main.json" "${PROOF_DIR}/image-sha-pr.json" \
+      "$PROOF_IMAGE_SHA_PRODUCT" "$PROOF_IMAGE_SHA_PR"
+  fi
+  if image_tag_case image-ci "$PROOF_IMAGE_CI_PRODUCT" "$PROOF_IMAGE_CI_PR" "$ci_main" "$ci_pr"; then
+    image_tag_assert positive "${PROOF_DIR}/image-ci-main.json" "${PROOF_DIR}/image-ci-pr.json" \
+      "$PROOF_IMAGE_CI_PRODUCT" "$PROOF_IMAGE_CI_PR"
+  fi
+}
+
+# image_tag_case LABEL PRODUCT PR_BRANCH MAIN_DIR PR_DIR: import MAIN_DIR as
+# ci/main FIRST, settle, then PR_DIR as ci/PR_BRANCH, settle, and snapshot
+# both engagements into PROOF_DIR/LABEL-main.json and LABEL-pr.json. Returns
+# 1 after a proof_fail when an import or a snapshot fails (the case's
+# assertions are then skipped), 0 otherwise.
+image_tag_case() {
+  local label="$1" product="$2" pr="$3" main_dir="$4" pr_dir="$5"
+  local main_snap="${PROOF_DIR}/${label}-main.json" pr_snap="${PROOF_DIR}/${label}-pr.json" rc=0
+  import_as_branch "${label}-main" "$product" "$PROOF_DEFAULT_BRANCH" "$main_dir" \
+    "${PROOF_DIR}/results-${label}-main.json"
+  if [ "$BODY_RC" -ne 0 ]; then
+    proof_fail "P-IMAGE-TAG" "committed dd-import body (ci/${PROOF_DEFAULT_BRANCH} in ${product}) exited ${BODY_RC} (log ${BODY_LOG}); ${label} case skipped"
+    return 1
+  fi
+  wait_dedup_settled "$product" "ci/${PROOF_DEFAULT_BRANCH}"
+  import_as_branch "${label}-pr" "$product" "$pr" "$pr_dir" \
+    "${PROOF_DIR}/results-${label}-pr.json"
+  if [ "$BODY_RC" -ne 0 ]; then
+    proof_fail "P-IMAGE-TAG" "committed dd-import body (ci/${pr} in ${product}) exited ${BODY_RC} (log ${BODY_LOG}); ${label} case skipped"
+    return 1
+  fi
+  wait_dedup_settled "$product" "ci/${pr}"
+  snapshot_engagement "$product" "ci/${PROOF_DEFAULT_BRANCH}" "$main_snap" || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    snapshot_engagement "$product" "ci/${pr}" "$pr_snap" || rc=$?
+  fi
+  if [ "$rc" -ne 0 ]; then
+    proof_fail "P-IMAGE-TAG" "snapshot in ${product} failed: $(snippet "${main_snap}.err" "${pr_snap}.err"); ${label} case skipped"
+    return 1
+  fi
+  return 0
+}
+
+# image_tag_assert MODE MAIN_SNAP PR_SNAP PRODUCT PR_BRANCH: the P-IMAGE-TAG
+# verdict on one case. MODE negative: every PR trivy-image finding is active
+# and not a duplicate. MODE positive: every PR trivy-image finding is an
+# inactive duplicate of a ci/main trivy-image finding, its file_path on
+# scan-target:ci. Both modes require equal PR and ci/main trivy-image counts,
+# greater than 0 (never vacuous, T-29.4-08).
+image_tag_assert() {
+  local mode="$1" log="${PROOF_DIR}/assert-image-tag-$1.log" a_rc=0
+  PROOF_IT_MODE="$mode" PROOF_IT_MAIN_SNAP="$2" PROOF_IT_PR_SNAP="$3" PROOF_IT_PRODUCT="$4" \
+    PROOF_IT_PR="$5" python3 - > "$log" 2>&1 <<'PY' || a_rc=$?
+import json
+import os
+import sys
+
+env = os.environ
+PID = "P-IMAGE-TAG"
+CI_TAG = "scan-target:ci"
+failures = 0
+
+
+def say(pid, ok, detail):
+    global failures
+    print("PROOF: {} {} {}".format(pid, "PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+def image_findings(path, name):
+    with open(path, encoding="utf-8") as handle:
+        snap = json.load(handle)
+    tests = [tid for tid, t in snap["tests"].items()
+             if t["title"] == "trivy-image" and t["scan_type"] == "Trivy Scan"]
+    if len(tests) != 1:
+        raise ValueError("{} has {} Tests titled trivy-image with scan_type Trivy Scan, expected 1 (tests {})".format(
+            name, len(tests), snap["tests"]))
+    return [f for f in snap["findings"] if str(f["test"]) == tests[0]]
+
+
+try:
+    mode, product, pr = env["PROOF_IT_MODE"], env["PROOF_IT_PRODUCT"], env["PROOF_IT_PR"]
+    main_name = "{} / ci/{}".format(product, env["PROOF_DEFAULT_BRANCH"])
+    pr_name = "{} / ci/{}".format(product, pr)
+    main_f = image_findings(env["PROOF_IT_MAIN_SNAP"], main_name)
+    pr_f = image_findings(env["PROOF_IT_PR_SNAP"], pr_name)
+    main_ids = {f["id"] for f in main_f}
+    say(PID, len(pr_f) == len(main_f) and len(pr_f) > 0,
+        "{}: ci/{} holds {} trivy-image findings, ci/{} holds {} (expected equal and > 0)".format(
+            mode, pr, len(pr_f), env["PROOF_DEFAULT_BRANCH"], len(main_f)))
+    by_title = {}
+    for f in main_f:
+        by_title.setdefault(f["title"], f)
+    sample = ""
+    if pr_f:
+        twin = by_title.get(pr_f[0]["title"])
+        sample = "; sample file_path PR {!r} vs main {!r}".format(
+            pr_f[0]["file_path"], twin["file_path"] if twin else None)
+    if mode == "negative":
+        bad = [f for f in pr_f if not (f["duplicate"] is False and f["active"] is True)]
+        say(PID, bool(pr_f) and not bad,
+            "negative control (SHA tags scan-target:{} vs scan-target:{}): {} of {} PR trivy-image findings are "
+            "active non-duplicates{}{}{}".format(
+                env["PROOF_SHA"], env["PROOF_IMAGE_OTHER_SHA"], len(pr_f) - len(bad), len(pr_f),
+                " (29-16 reproduced)" if pr_f and not bad else "", sample,
+                "" if not bad else "; offenders: " + "; ".join("#{} dup={} active={} dup_of={}".format(
+                    f["id"], f["duplicate"], f["active"], f["duplicate_finding"]) for f in bad[:10])))
+    elif mode == "positive":
+        bad = []
+        for f in pr_f:
+            fp = f["file_path"] if isinstance(f["file_path"], str) else ""
+            if not (f["duplicate"] is True and f["active"] is False and f["duplicate_finding"] in main_ids
+                    and (not fp.startswith("scan-target:") or fp.startswith(CI_TAG))):
+                bad.append(f)
+        say(PID, bool(pr_f) and not bad,
+            "positive case (both {}): {} of {} PR trivy-image findings are inactive duplicates of a ci/{} "
+            "trivy-image finding with file_path on {} (D-03: no SHA-bearing hashed field survives){}{}".format(
+                CI_TAG, len(pr_f) - len(bad), len(pr_f), env["PROOF_DEFAULT_BRANCH"], CI_TAG, sample,
+                "" if not bad else "; offenders: " + "; ".join(
+                    "#{} dup={} active={} dup_of={} file_path={!r}".format(
+                        f["id"], f["duplicate"], f["active"], f["duplicate_finding"], f["file_path"])
+                    for f in bad[:10])))
+    else:
+        say(PID, False, "unknown P-IMAGE-TAG mode {!r}".format(mode))
+except (OSError, KeyError, TypeError, ValueError) as exc:
+    say(PID, False, "{} assertions aborted: {}".format(env.get("PROOF_IT_MODE"), exc))
+sys.exit(1 if failures else 0)
+PY
+  tally_assert_log "$log"
+  if [ "$a_rc" -ne 0 ] && ! grep -q '^PROOF: P-IMAGE-TAG FAIL' "$log"; then
+    proof_fail "P-IMAGE-TAG" "the ${mode} assertion script exited ${a_rc} without reporting a failed assertion (see ${log})"
+  fi
+}
+
 # prove_dedup_triage BODIES_DIR ADMIN_HDR IMPORTER_TOK CA_PEM: the Phase 28
 # live block (28-03 and 28-04). Runs after every Phase 27 assertion, in fresh
 # products. Every import and delete goes through the COMMITTED security.yml
@@ -2299,6 +2590,8 @@ prove_dedup_triage() {
   # P-CONTEXT comment), so the ones the Python heredocs read are exported.
   export PROOF_ADMIN_HDR PROOF_DEDUP_PY PROOF_DEFAULT_BRANCH
   export PROOF_DEDUP_PRODUCT PROOF_REPARENT_PRODUCT PROOF_DEDUP_PR PROOF_SUPPRESS_PR PROOF_REPARENT_PR
+  export PROOF_SHA PROOF_IMAGE_SHA_PRODUCT PROOF_IMAGE_CI_PRODUCT PROOF_IMAGE_SHA_PR PROOF_IMAGE_CI_PR \
+    PROOF_IMAGE_OTHER_SHA
   write_dedup_py "$PROOF_DEDUP_PY"
 
   echo
@@ -2979,7 +3272,9 @@ PY
   fi
 
   # ── P-REPARENT (D-02, D-03, D-20) ─────────────────────────────────────────
+  # ── P-IMAGE-TAG (Phase 29.4 D-06) ── called right after, last of all
   prove_reparent
+  prove_image_tag
 }
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -54,6 +54,10 @@ set -euo pipefail
 #   CURLRC  the DefectDojo bodies ignore ambient curl config (-q is argv[1]), check
 #           ssl_verify_result, discard curl stderr, and never set DEFECTDOJO_RESOLVE
 #           (Phase 28 CR-01, ADR-029)
+# Phase 29.4 (trivy-image cross-branch dedup):
+#   IMAGE-TAG  the container job builds and scans the fixed tag scan-target:ci and
+#              never github.sha, so identical image content yields identical
+#              Trivy Scan hashes across branches and main SHAs (ADR-031)
 #
 # Self-test overrides (optional, used only to point the gate at scratch copies):
 #   WORKFLOWS_DIR           default .github/workflows
@@ -713,12 +717,48 @@ for jid, step_id in (("defectdojo-import", "dd-import"), ("defectdojo-cleanup", 
              "jobs.{} step {} env: sets DEFECTDOJO_RESOLVE — it is a proof-harness test hook "
              "that the workflow must never set (D-07, Phase 28 CR-01, ADR-029)".format(jid, step_id))
 
+# ── 21. IMAGE-TAG (Phase 29.4 D-04, ADR-031) ─────────────────────────────────
+# The scanned image tag is part of each Trivy finding's title, so a per-SHA tag
+# (scan-target:${{ github.sha }}) gives every branch and every main SHA distinct
+# hashes and defeats DefectDojo dedup. The build and scan steps carry no id:, so
+# they are located by name. PyYAML drops comments, so the github.sha clause can
+# only ever see run: bodies.
+IMAGE_TAG_STEPS = (
+    ("Build image from discovered Dockerfile", "-t scan-target:ci"),
+    ("Run Trivy image scan", "trivy image scan-target:ci"),
+)
+container_body = callee_jobs.get("container")
+if not isinstance(container_body, dict):
+    fail("IMAGE-TAG", "{} has no jobs.container (Phase 29.4 D-04, ADR-031)".format(CALLEE))
+else:
+    container_steps = steps_of(container_body)
+    for step_name, fragment in IMAGE_TAG_STEPS:
+        matches = [s for s in container_steps if s.get("name") == step_name]
+        if len(matches) != 1:
+            fail("IMAGE-TAG",
+                 "jobs.container has {} step(s) named {!r}, expected exactly 1 "
+                 "(Phase 29.4 D-04, ADR-031)".format(len(matches), step_name))
+            continue
+        run = str(matches[0].get("run") or "")
+        fragment_count = run.count(fragment)
+        if fragment_count != 1:
+            fail("IMAGE-TAG",
+                 "jobs.container step {!r} run: {!r} occurs {} time(s), expected exactly 1 — the "
+                 "scanned image must use the fixed tag scan-target:ci "
+                 "(Phase 29.4 D-04, ADR-031)".format(step_name, fragment, fragment_count))
+    for s in container_steps:
+        if "github.sha" in str(s.get("run") or ""):
+            fail("IMAGE-TAG",
+                 "jobs.container step {!r} run: contains 'github.sha' — a per-SHA image tag "
+                 "breaks cross-branch Trivy dedup (Phase 29.4 D-04, ADR-031)".format(
+                     s.get("name") or s.get("id") or "<unnamed>"))
+
 # PERMISSIONS-CALLER, PERMISSIONS-CALLEE, PERMISSIONS-FORBIDDEN, SHA-PIN,
 # SARIF-CATEGORY, ARTIFACT-RETENTION, ARTIFACT-PATH-SAFETY, UPLOAD-VERIFY-PAIRING,
 # REDACT-RETAINED, JOB-SHAPE, SIDE-CHANNEL-NOT-REQUIRED, SIDE-CHANNEL-SHAPE,
 # OPTIONAL-SECRET, NO-INTERPOLATION, IMPORT-VERIFY-PAIRING, INSECURE-WARNING,
-# SCAN-JOB-CLOSED-SKIP, CALLER-WIRING, SCHEME, CURLRC.
-CHECK_COUNT = 20
+# SCAN-JOB-CLOSED-SKIP, CALLER-WIRING, SCHEME, CURLRC, IMAGE-TAG.
+CHECK_COUNT = 21
 
 if failures:
     for line in failures:

@@ -944,7 +944,7 @@ jobs:
       # subsequent step in this job, are what make a Dockerfile-free
       # repository skip cleanly instead.
       # The only context interpolations in any run: block in this workflow are
-      # ${{ github.sha }}, ${{ steps.docker.outputs.path }} (read from
+      # ${{ steps.docker.outputs.path }} (read from
       # `git ls-files` on the checked-out tree, not an event payload), and
       # GitHub-generated step outcomes and ids (the steps.<id>.outcome,
       # .outputs.sarif-id and .outputs.artifact-id/-url values read by the
@@ -957,6 +957,11 @@ jobs:
       # branch name, arrives through step env: or the runner-provided GITHUB_*
       # variables, and its verify step reads the import outcome through env:
       # too. check-workflow-uploads.sh NO-INTERPOLATION enforces this.
+      # The scanned image is tagged with the fixed literal scan-target:ci, never
+      # the commit SHA, so identical image content gives identical findings on
+      # every branch and main SHA (Phase 29.4, ADR-031); check-workflow-uploads.sh
+      # IMAGE-TAG enforces this. The fixed tag is collision-free only because
+      # this job runs on ubuntu-latest with a fresh Docker daemon per run.
       #
       # Pathspec: the corrected five-item form measured in 20-02 (A4) —
       # 'Dockerfile' '*/Dockerfile' 'Dockerfile.*' '*/Dockerfile.*'
@@ -985,13 +990,13 @@ jobs:
         run: |
           ctx=$(dirname "${{ steps.docker.outputs.path }}")
           docker build -f "${{ steps.docker.outputs.path }}" \
-            -t scan-target:${{ github.sha }} "$ctx"
+            -t scan-target:ci "$ctx"
 
       - name: Run Trivy image scan
         if: steps.docker.outputs.found == 'true'
         continue-on-error: ${{ env.GATE_MODE == 'report-only' }}  # D-04 / Phase 18 CICD-06
         run: |
-          trivy image scan-target:${{ github.sha }} --scanners vuln \
+          trivy image scan-target:ci --scanners vuln \
             --format json --output trivy-image.json \
             --exit-code 1 --severity HIGH,CRITICAL
 
