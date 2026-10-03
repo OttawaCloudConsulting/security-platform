@@ -4,7 +4,7 @@ milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
 stopped_at: Phase 29.4 context gathered
-last_updated: "2026-10-03T04:20:12.604Z"
+last_updated: "2026-10-03T04:26:48.714Z"
 last_activity: 2026-10-03
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.4 (fix-trivy-image-cross-branch-dedup-replace-scan-target-githu) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 Status: Ready to execute
 Last activity: 2026-10-03
 
@@ -359,6 +359,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.3]: Phase 26 WR-05 fixed: both chart gates fail closed (CHART-DIR-PRESENT, TLS-GUARD-PRESENT, PROVISION-JOB-PRESENT, exit 1); Phase 26 WR-04 hint and Nexus README fixed; chart-gates.yml runs both gates on PR/push-to-main/dispatch with standing negative cases; CHART_GATE_MODE unset = report-only (not set live; blocking proven offline only); merged at 30afdb9fb56516c6b06c5275212b42bcac30cc94 untagged (D-20); ADR-030 Accepted
 - [Phase 29.3]: 29.3-07: ADR-030 Accepted (2026-10-01) quoting PR #29, run 36813331164, merge 30afdb9, push run 36813770305; README index row; 29.4 release scope unchanged
 - [Phase 29.4]: 29.4-01: IMAGE-TAG gate locates container build/scan steps by name (no id:) so security.yml changes only in run: bodies and comments (D-14.3)
+- [Phase 29.4]: 29.4-02: hash_code is a required SLIM key; TRIVY-IMAGE-DEDUP is SKIPPED when TRIVY-IMAGE-KEY fails; hash_compared=false does not block PASS
 
 ### Pending Todos
 
@@ -531,10 +532,11 @@ Carried forward from v1.1 close:
 | Phase 29.3 P05 | 15 min | 2 tasks | 2 files |
 | Phase 29.3 P06 | 5 min | 2 tasks | 1 files |
 | Phase 29.3 P07 | 10 min | 2 tasks | 3 files |
+| Phase 29.4 P02 | 20min | 2 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-10-03T04:18:11.327Z
+Last session: 2026-10-03T04:26:40.898Z
 Stopped at: Phase 29.4 context gathered
 Resume file: None
 
