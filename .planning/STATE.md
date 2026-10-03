@@ -4,7 +4,7 @@ milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
 stopped_at: Phase 29.4 context gathered
-last_updated: "2026-10-03T04:18:11.335Z"
+last_updated: "2026-10-03T04:20:12.604Z"
 last_activity: 2026-10-03
 progress:
   total_phases: 7
@@ -358,6 +358,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.3]: 29.3-06: PR #29 merged on operator approval ("approved - merge") as 30afdb9 via --match-head-commit 36100a1; push-to-main Chart Gates run 36813770305 green in both jobs (report-only, negatives (a)/(b) PASS); no tag, v1 unmoved, CHART_GATE_MODE unset, main rules unchanged
 - [Phase 29.3]: Phase 26 WR-05 fixed: both chart gates fail closed (CHART-DIR-PRESENT, TLS-GUARD-PRESENT, PROVISION-JOB-PRESENT, exit 1); Phase 26 WR-04 hint and Nexus README fixed; chart-gates.yml runs both gates on PR/push-to-main/dispatch with standing negative cases; CHART_GATE_MODE unset = report-only (not set live; blocking proven offline only); merged at 30afdb9fb56516c6b06c5275212b42bcac30cc94 untagged (D-20); ADR-030 Accepted
 - [Phase 29.3]: 29.3-07: ADR-030 Accepted (2026-10-01) quoting PR #29, run 36813331164, merge 30afdb9, push run 36813770305; README index row; 29.4 release scope unchanged
+- [Phase 29.4]: 29.4-01: IMAGE-TAG gate locates container build/scan steps by name (no id:) so security.yml changes only in run: bodies and comments (D-14.3)
 
 ### Pending Todos
 
