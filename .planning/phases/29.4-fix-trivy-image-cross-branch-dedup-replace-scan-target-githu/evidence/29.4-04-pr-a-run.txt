@@ -1,0 +1,139 @@
+29.4-04 Task 2/3 PR A push and live-run evidence - started 2026-10-03T22:12:44Z
+note: trailing whitespace stripped for the docs pre-commit git diff --check; content otherwise verbatim
+
+OPERATOR APPROVAL (Task 2, verbatim, typed by the operator in-session):
+  approved - push 91501ca
+Approved HEAD SHA: 91501ca1052ef76218b32bd38430be5d28eea507
+Pre-push check: git -C repos/security-platform rev-parse HEAD = 91501ca1052ef76218b32bd38430be5d28eea507; git status --short = (empty); git ls-remote --heads origin fix/phase-29.4-image-tag = (empty, not yet pushed)
+
+DOING: git -C repos/security-platform push -u origin fix/phase-29.4-image-tag; gh pr create against main (no merge, no tag, no dispatch)
+EXPECT: branch created on origin at 91501ca; PR A OPEN; PR Security and DefectDojo Import Proof triggered on head 91501ca;
+        container job success, trivy-image-results ArtifactName scan-target:ci; kind proof ends PROOF PASS - <n> assertions
+        with >= 3 'PROOF: P-IMAGE-TAG PASS' lines and no 'PROOF: ... FAIL' line; DefectDojo Import success on ARC
+IF MATCH: record run ids, PROOF lines, artifact, gh pr checks; commit evidence; plan 05 handles merge
+IF MISMATCH: STOP, no rerun, no close, no merge/tag; commit evidence so far; present D-13 fallback to operator
+
+$ git -C repos/security-platform push -u origin fix/phase-29.4-image-tag
+(pre-push hooks: shellcheck Passed, yamllint Passed, Detect hardcoded secrets Passed; others Skipped - no files)
+To https://github.com/OttawaCloudConsulting/security-platform.git
+ * [new branch]      fix/phase-29.4-image-tag -> fix/phase-29.4-image-tag
+branch 'fix/phase-29.4-image-tag' set up to track 'origin/fix/phase-29.4-image-tag'.
+(exit 0)
+
+$ git ls-remote --heads origin fix/phase-29.4-image-tag
+91501ca1052ef76218b32bd38430be5d28eea507	refs/heads/fix/phase-29.4-image-tag
+
+$ gh pr create -R OttawaCloudConsulting/security-platform --base main --head fix/phase-29.4-image-tag --title "Phase 29.4: tag the scanned image scan-target:ci so trivy-image findings dedupe across branches (PR A)" --body-file <scratch>
+https://github.com/OttawaCloudConsulting/security-platform/pull/32
+(exit 0)
+PR body names D-01, D-04, D-06, D-09 only; states no tag / no v1 move and release waits for live evidence.
+T-29.4-15 check on body: grep for URLs/IPv4/token/homelab matched only the Claude Code attribution lines (claude.com, claude.ai); no host, address or token.
+
+$ gh pr view 32 --json number,url,state,headRefOid,baseRefName,isDraft
+{"baseRefName":"main","headRefOid":"91501ca1052ef76218b32bd38430be5d28eea507","isDraft":false,"number":32,"state":"OPEN","url":"https://github.com/OttawaCloudConsulting/security-platform/pull/32"}
+
+$ gh run list --commit 91501ca1052ef76218b32bd38430be5d28eea507 --json databaseId,workflowName,event,status,conclusion,createdAt  (t+20s)
+PR Security              37157681084  pull_request  in_progress  created 2026-10-03T22:13:18Z
+DefectDojo Import Proof  37157681058  pull_request  in_progress  created 2026-10-03T22:13:18Z
+
+D-01 LIVE - PR A's own PR Security run 37157681084 (security.yml at 91501ca)
+Pitfall 5 precondition: job "security / Container — Trivy Image" status completed, conclusion success (no 429)
+
+$ gh api repos/OttawaCloudConsulting/security-platform/actions/runs/37157681084/artifacts --jq '.artifacts[]|[.name,.size_in_bytes,.expired]|@tsv'
+semgrep-results	202349	false
+checkov-results	5192	false
+gitleaks-results	11572	false
+sca-results	20450	false
+trivy-image-results	66077	false
+
+$ gh run download 37157681084 -R OttawaCloudConsulting/security-platform -n trivy-image-results -D evidence/29.4-04-pr-a-trivy-image
+(exit 0) -> trivy-image.json (533340 bytes), trivy-image.sarif (113394 bytes); filenames as published, not renamed
+sha256 5a8a49ad92187d74f3146347088550b995ee13176e3aa4c78e730f407eae12df  trivy-image.json
+sha256 e706cbace6896336b7d7ae29c2f9b692903ac58feb9fbc99b5bb44568fd45c5c  trivy-image.sarif
+
+$ jq -r .ArtifactName trivy-image.json
+scan-target:ci
+$ grep -c 'scan-target:ci' trivy-image.json trivy-image.sarif
+trivy-image.json:4
+trivy-image.sarif:2
+$ grep -cE 'scan-target:[0-9a-f]{40}' trivy-image.json trivy-image.sarif   (must be 0: no 40-hex SHA after scan-target:)
+trivy-image.json:0
+trivy-image.sarif:0
+note: the sarif also has 60 'library/scan-target: <pkg>@<ver>' message texts (repository-name prefix, no tag) - not a tag
+$ jq '.Results|length, ([.[].Vulnerabilities[]?]|length)' trivy-image.json
+1
+60
+Kept as the post-change side of the D-14.2 SARIF diff (public scan output of a public repo; no secrets).
+
+STALL - captured 2026-10-03T22:26:48Z (no failure; infrastructure unavailable; STOP per Pitfall 5 / T-29.4-13, no rerun)
+
+$ gh run view 37157681084 --json status,conclusion,jobs   (PR Security)
+status=pending conclusion=
+  security / Secrets — Gitleaks: completed success
+  security / IaC — Checkov: completed success
+  security / Container — Trivy Image: completed success
+  security / SCA — Trivy Filesystem: completed success
+  security / SAST — Semgrep CE: completed success
+  security / DefectDojo Cleanup: completed skipped
+  security / DefectDojo Import: pending
+
+$ gh run view 37157681058 --json status,conclusion,jobs   (DefectDojo Import Proof)
+status=queued conclusion=
+  scans / SAST — Semgrep CE: completed success
+  scans / SCA — Trivy Filesystem: completed success
+  scans / Secrets — Gitleaks: completed success
+  scans / IaC — Checkov: completed success
+  scans / Container — Trivy Image: completed success
+  scans / DefectDojo Cleanup: completed skipped
+  scans / DefectDojo Import: queued
+  (prove-import not yet created: needs: scans)
+
+$ gh api .../actions/runs/<id>/jobs --jq (Import jobs: labels, runner, created_at)
+{"created_at":"2026-10-03T22:14:03Z","labels":["occ-homelab-defectdojo"],"name":"security / DefectDojo Import","run":37157681084,"runner_name":null,"status":"pending"}
+{"created_at":"2026-10-03T22:14:01Z","labels":["occ-homelab-defectdojo"],"name":"scans / DefectDojo Import","run":37157681058,"runner_name":"","status":"queued"}
+{"created_at":"2026-10-03T10:02:47Z","labels":["occ-homelab-defectdojo"],"name":"security / DefectDojo Import","run":37115036934,"status":"queued"}
+
+$ gh api repos/OttawaCloudConsulting/security-platform/actions/runners --jq (name,status,busy)
+{"busy":false,"name":"occ-homelab-defectdojo-qqrsp-runner-swd5t","status":"offline"}
+{"busy":false,"name":"occ-homelab-defectdojo-qqrsp-runner-zx6zn","status":"offline"}
+
+$ gh pr checks 32 -R OttawaCloudConsulting/security-platform   (at stall, verbatim)
+Checkov	pass	5s	https://github.com/OttawaCloudConsulting/security-platform/runs/111304473836
+GitGuardian Security Checks	pass	0	https://dashboard.gitguardian.com
+Semgrep OSS	pass	3s	https://github.com/OttawaCloudConsulting/security-platform/runs/111304474108
+Trivy	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/111304447406
+gitleaks	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/111304428951
+scans / Container — Trivy Image	pass	25s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304403359
+scans / IaC — Checkov	pass	33s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304403335
+scans / SAST — Semgrep CE	pass	32s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304403270
+scans / SCA — Trivy Filesystem	pass	40s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304403286
+scans / Secrets — Gitleaks	pass	15s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304403328
+security / Container — Trivy Image	pass	22s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304403373
+security / IaC — Checkov	pass	32s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304403358
+security / SCA — Trivy Filesystem	pass	42s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304403383
+security / Secrets — Gitleaks	pass	19s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304403214
+tflint	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/111304493901
+security / DefectDojo Import	pending	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304530630
+security / SAST — Semgrep CE	pass	32s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304403396
+tflint-errors	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/111304494246
+scans / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304403802
+security / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304404028
+scans / DefectDojo Import	pending	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304524443
+(exit 8)
+
+$ gh run list --limit 4 (queued backlog)
+37157681084	PR Security	fix/phase-29.4-image-tag	pending		2026-10-03T22:13:18Z
+37157681058	DefectDojo Import Proof	fix/phase-29.4-image-tag	queued		2026-10-03T22:13:18Z
+37115036934	Scheduled Security	main	queued		2026-10-03T10:02:00Z
+36993235781	Scheduled Security	main	completed	success	2026-10-02T10:02:29Z
+
+repos/security-platform/.github/workflows/defectdojo-import-proof.yml L90-102: prove-import `needs: scans`; STALL NOTE
+(Phase 29, ADR-027): with the self-hosted runner offline, prove-import waits until GitHub cancels the queued
+`scans / DefectDojo Import` (about 24h); no functional guard by design.
+
+INFERENCE (one statement): the occ-homelab-defectdojo runner scale set has been unavailable since at least
+2026-10-03T10:02:47Z (main Scheduled Security 37115036934 Import queued since then), about 12h before PR A was pushed;
+PR A did not cause the stall. Nothing has failed: the five scanner jobs in both runs concluded success.
+RESULT: MISMATCH on EXPECT (Import jobs and kind proof did not run). THEREFORE: STOP, human-action checkpoint;
+no rerun, no cancel, no cluster access, no merge/tag/dispatch. PR #32 left OPEN.
+Not yet captured (pending runner restore): Import conclusions/ARC runner name, PROOF lines, gh pr checks.
