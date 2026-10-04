@@ -1,0 +1,34 @@
+{
+  "mode": "upgrade",
+  "verdict": "PASS",
+  "image_test_id": {
+    "before": 4,
+    "after": 4
+  },
+  "counts": {
+    "before": {
+      "total": 120,
+      "active": 60,
+      "mitigated": 60,
+      "duplicate": 0
+    },
+    "after": {
+      "total": 180,
+      "active": 60,
+      "mitigated": 120,
+      "duplicate": 0
+    },
+    "old": 60,
+    "new_all": 60,
+    "new_active": 60
+  },
+  "title_overlap": {
+    "common": 60,
+    "old_only": 0,
+    "new_only": 0
+  },
+  "new_file_paths": [
+    "scan-target:ci (debian 12.15)"
+  ],
+  "failures": []
+}

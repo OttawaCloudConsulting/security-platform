@@ -171,3 +171,10 @@ Result: newest run is still 37198294074 (schedule, 30afdb9). No Scheduled Securi
 before snapshot and now, so no cron import touched ci/main; nothing to attribute.
 
 Task 2 verdict: MATCH on every step (one plan-expectation correction recorded in Step 3). Continue to Task 3.
+
+----------------------------------------------------------------------------------------------------
+Correction appended after Task 3 (2026-10-04, from the per-state breakdown in evidence/29.4-05-dispatch.txt Step 3)
+----------------------------------------------------------------------------------------------------
+Step 2 above says "60 mitigated on the earlier scan-target:2fda1ac path". The exact split of the 60 mitigated
+findings in image Test 4 is 59 on scan-target:2fda1ac and 1 on scan-target:30afdb9 (already mitigated before this
+plan). The 60 live findings on scan-target:30afdb9 and the 0 on scan-target:ci are as stated.
