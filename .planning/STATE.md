@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Phase 29.5 context gathered
-last_updated: "2026-10-04T22:59:29.374Z"
-last_activity: 2026-10-04 -- Phase 29.5 planning complete
+stopped_at: Completed 29.5-01-PLAN.md
+last_updated: "2026-10-04T23:51:50.841Z"
+last_activity: 2026-10-04
 progress:
   total_phases: 7
   completed_phases: 7
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 29.5 — fix wr 03 triage md under review query hides verified true t
+**Current focus:** Phase 29.5 — fix-wr-03-triage-md-under-review-query-hides-verified-true-t
 
 ## Current Position
 
-Phase: 29.5
-Plan: Not started
+Phase: 29.5 (fix-wr-03-triage-md-under-review-query-hides-verified-true-t) — EXECUTING
+Plan: 2 of 12
 Status: Ready to execute
-Last activity: 2026-10-04 -- Phase 29.5 planning complete
+Last activity: 2026-10-04
 
 ## Performance Metrics
 
@@ -370,6 +370,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.4]: 29.4-08: PR B (#34) merged at bc0eb52 as aa48081 on operator reply 'approved - merge bc0eb52 and dispatch, no extra snapshot'; dispatch run 37230464825 on aa48081; D-11 persist PASS (60/60 ci/main trivy-image ids persisted, 0 recreated, 0 drift) - WR-04 closed live; no tag, v1 stays fdabac9
 - [Phase 29.4]: 29.4-09: operator approved (verbatim 'approve - no @v1 callers outside the org'); v1.3.0 annotated (21c5037) and v1 moved to aa48081, API-verified; bundles 29.2 TLS hardening
 - [Phase 29.4]: 29.4-10: ADR-031 written after v1.3.0 (D-18): fixed scan-target:ci tag; supersedes ADR-027 trivy-image tradeoff and follow-up (b) in prose; ADR-026/027/029 unchanged
+- [Phase 29.5]: 29.5-01: VERIFIED-FALSE gate (check 22) asserts exact field count, verified= count and position inside the dd-import fields list as separate checks — each regression shows which assertion fired; scratch case (c) trips only the position check
+- [Phase 29.5]: 29.5-01: DDOJO-04 left as already complete (Phase 28); requirements.mark-complete not run, gap closure belongs to the phase closing plan — all 12 29.5 plans list DDOJO-04 and REQUIREMENTS.md already shows it complete
 
 ### Pending Todos
 
@@ -551,12 +553,13 @@ Carried forward from v1.1 close:
 | Phase 29.4 P08 | 5 min | 3 tasks | 4 files |
 | Phase 29.4 P09 | ~4 min | 3 tasks | 5 files |
 | Phase 29.4 P10 | 15min | 3 tasks | 5 files |
+| Phase 29.5 P01 | ~7min | 3 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-10-04T21:56:30.001Z
-Stopped at: Phase 29.5 context gathered
-Resume file: .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-CONTEXT.md
+Last session: 2026-10-04T23:51:50.831Z
+Stopped at: Completed 29.5-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
