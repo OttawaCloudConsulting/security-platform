@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.4-04-PLAN.md
-last_updated: "2026-10-04T18:45:25.344Z"
+stopped_at: Completed 29.4-05-PLAN.md
+last_updated: "2026-10-04T18:58:35.970Z"
 last_activity: 2026-10-04
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.4 (fix-trivy-image-cross-branch-dedup-replace-scan-target-githu) — EXECUTING
-Plan: 5 of 10
+Plan: 6 of 10
 Status: Ready to execute
 Last activity: 2026-10-04
 
@@ -363,6 +363,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.4]: 29.4-03 P-IMAGE-TAG rewrite: Results[].Target must START WITH the new target (real Target has a ' (debian 12.15)' suffix); ArtifactName, Metadata.Reference and RepoTags[] must equal it; old_after==0 over all keys and string values
 - [Phase 29.4]: 29.4-04: PR A #32 open at 91501ca; kind proof PROOF PASS - 172 assertions (6 P-IMAGE-TAG PASS, 0 FAIL); D-01 live ArtifactName scan-target:ci; not merged/tagged
 - [Phase 29.4]: 29.4-04: ARC outage was operator-reported kube-apiserver serving cert expiry (2026-10-02, kubeadm 1-year); renewed 2026-10-04 to 2027-10-04; queued jobs ran without rerun
+- [Phase 29.4]: PR A (#32) merged untagged at 2dccff5 on operator reply 'approved - merge and dispatch 91501ca'; v1 stays fdabac9
+- [Phase 29.4]: Dispatch run 37226275966 on 2dccff5 was the first post-upgrade ci/main import; D-14.1 upgrade PASS (60 old SHA-path findings mitigated, 60 new scan-target:ci, 0 duplicates)
 
 ### Pending Todos
 
@@ -538,11 +540,12 @@ Carried forward from v1.1 close:
 | Phase 29.4 P02 | 20min | 2 tasks | 4 files |
 | Phase 29.4 P03 | 45min | 2 tasks | 2 files |
 | Phase 29.4 P04 | 20h30m (about 1h active) | 3 tasks | 4 files |
+| Phase 29.4 P05 | 8min | 3 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-10-04T18:45:25.333Z
-Stopped at: Completed 29.4-04-PLAN.md
+Last session: 2026-10-04T18:59:30Z
+Stopped at: Completed 29.4-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
