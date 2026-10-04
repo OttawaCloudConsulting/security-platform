@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: ready_to_plan
-stopped_at: Phase 29.4 complete (10/10) — ready to discuss Phase 29.5
-last_updated: 2026-10-04T21:29:58.991Z
+status: planning
+stopped_at: Phase 29.5 context gathered
+last_updated: "2026-10-04T21:56:30.019Z"
 last_activity: 2026-10-04
 progress:
   total_phases: 7
   completed_phases: 7
   total_plans: 75
-  completed_plans: 106
+  completed_plans: 75
   percent: 100
 ---
 
@@ -554,9 +554,9 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-10-04T20:18:00Z
-Stopped at: Completed 29.4-09-PLAN.md
-Resume file: None
+Last session: 2026-10-04T21:56:30.001Z
+Stopped at: Phase 29.5 context gathered
+Resume file: .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-CONTEXT.md
 
 ## Operator Next Steps
 
