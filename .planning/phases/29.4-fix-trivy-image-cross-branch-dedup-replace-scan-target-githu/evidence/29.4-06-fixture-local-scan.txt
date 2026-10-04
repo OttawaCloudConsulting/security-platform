@@ -1,0 +1,84 @@
+# 29.4-06 Task 1: local proof of the D-08 fixture and the ci/main pre-throwaway snapshot (captured 2026-10-04T19:00Z-19:02Z)
+# Branch phase29.4/d08-image-dedup-fixture cut from security-platform origin/main 2dccff51de278c29a18f2349da7d7f3f5a568579
+# (the PR A merge) after `git fetch origin`; working tree was clean. Fixture committed locally as
+# 3fcd1dd "test(29.4-06): D-08 live dedup fixture — never merge". NOT pushed. Upstream unset
+# (`git branch --unset-upstream`) so a bare `git push` cannot target main.
+# Fixture files (mode 0644, no executable bit): phase29.4-d08-fixture/README.md phase29.4-d08-fixture/unsafe_pickle.py
+# Same pattern as the 29-16 fixture (36ef1ba), renamed for Phase 29.4.
+# Local semgrep 1.155.0 (CI pins semgrep==1.177.0; p/default is fetched from the registry by both).
+# Note: trailing whitespace is stripped from command output in this file (docs-repo pre-commit hook).
+# The DefectDojo base URL and token are not written here.
+
+## 0. Branch diff
+$ git diff --name-only origin/main..HEAD
+phase29.4-d08-fixture/README.md
+phase29.4-d08-fixture/unsafe_pickle.py
+-> exactly the two fixture files.
+
+## 1. Semgrep, the CI sast invocation (security.yml sast job L115: semgrep scan --config p/default --metrics=off --error ...) from the repo root
+$ semgrep scan --config p/default --metrics=off --json-output=<scratch>/sg-full.json .
+exit 0 (run without --error so the evidence records the full result set)
+findings by path and rule:
+  .github/dependabot.yml package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown MEDIUM line=16
+  fixtures/Dockerfile dockerfile.security.missing-user.missing-user ERROR line=6
+  fixtures/secret.env generic.secrets.security.detected-aws-access-key-id-value.detected-aws-access-key-id-value ERROR line=21
+  fixtures/secret.env generic.secrets.security.detected-aws-secret-access-key.detected-aws-secret-access-key ERROR line=22
+  fixtures/vulnerable.py python.lang.security.audit.eval-detected.eval-detected WARNING line=20
+  fixtures/vulnerable.py python.lang.security.audit.exec-detected.exec-detected WARNING line=24
+  fixtures/vulnerable.py python.lang.security.audit.subprocess-shell-true.subprocess-shell-true ERROR line=32
+  phase29.4-d08-fixture/unsafe_pickle.py python.lang.security.deserialization.pickle.avoid-pickle WARNING line=8
+fixture findings (path contains phase29.4-d08-fixture/): 1 (avoid-pickle)
+non-fixture findings: 7 (ci/main Semgrep Test 1 holds 7)
+
+## 2. Novelty against evidence/29.4-main-after-upgrade-snapshot.json (278 findings)
+$ jq -r '.findings[].title' 29.4-main-after-upgrade-snapshot.json | grep -c -F avoid-pickle
+0
+$ jq '[.findings[] | select((.file_path//"")|contains("phase29.4-d08-fixture"))]|length' 29.4-main-after-upgrade-snapshot.json
+0
+
+## 3. Other scanners on the fixture directory (the fixture must add nothing else)
+$ checkov -d phase29.4-d08-fixture --quiet --compact -o json   (checkov 3.2.396)
+{"passed":0,"failed":0,"skipped":0,"resource_count":0}
+$ gitleaks dir phase29.4-d08-fixture --no-banner
+INF no leaks found
+Trivy fs runs --scanners vuln only and the fixture adds no package manifest; no Dockerfile is added or changed
+(the trivy-image scan-target:ci build input is identical to main); npm/pip-audit see no new manifest.
+
+## 4. Proof-workflow paths filter (defectdojo-import-proof.yml L52-63 pull_request.paths)
+fixture paths: phase29.4-d08-fixture/README.md phase29.4-d08-fixture/unsafe_pickle.py
+filter: .github/workflows/{security,pr-security,scheduled-security,defectdojo-import-proof}.yml,
+        scripts/defectdojo-{import-proof,live-smoke,configure,lifecycle-assert,homelab-validate}.sh, kubernetes/defectdojo/**
+-> no match. No file name contains "Dockerfile".
+
+VERDICT: 1 new Semgrep finding (python.lang.security.deserialization.pickle.avoid-pickle,
+phase29.4-d08-fixture/unsafe_pickle.py line 8), rule absent from ci/main; not a secret; outside the proof paths filter; no Dockerfile.
+
+## 5. Scheduled Security run list (precondition for the snapshot)
+$ date -u
+2026-10-04T19:01:08Z
+$ gh run list -R OttawaCloudConsulting/security-platform --workflow scheduled-security.yml --json databaseId,event,headSha,status,conclusion,createdAt -L 5
+37226275966 workflow_dispatch 2dccff51de278c29a18f2349da7d7f3f5a568579 completed success 2026-10-04T18:55:19Z   <- the plan 05 dispatch (newest)
+37198294074 schedule          30afdb9fb56516c6b06c5275212b42bcac30cc94 completed success 2026-10-04T11:18:33Z
+37115036934 schedule          30afdb9fb56516c6b06c5275212b42bcac30cc94 completed failure 2026-10-03T10:02:00Z
+36993235781 schedule          30afdb9fb56516c6b06c5275212b42bcac30cc94 completed success 2026-10-02T10:02:29Z
+36846632465 schedule          30afdb9fb56516c6b06c5275212b42bcac30cc94 completed success 2026-10-01T10:02:47Z
+-> no run newer than the plan 05 dispatch. Next cron: 2026-10-05 ~10:00Z (06:00 America/Toronto).
+
+## 6. ci/main pre-throwaway snapshot
+$ DEFECTDOJO_URL=<homelab, not recorded> DEFECTDOJO_ADMIN_TOKEN_FILE=$HOME/.config/defectdojo/homelab-admin.token bash scripts/defectdojo-lifecycle-assert.sh snapshot --product OttawaCloudConsulting/security-platform --out <abs evidence dir> --engagement ci/main --label 29.4-main-pre-throwaway
+(run from repos/security-platform at 3fcd1dd, whose script equals origin/main 2dccff5; started 19:01:16Z)
+snapshot ci/main: 278 findings
+wrote <evidence>/29.4-main-pre-throwaway-snapshot.json
+exit 0 (captured_at 2026-10-04T19:01:19Z, engagement_id 1)
+
+Per-Test counts (id title: n): 1 semgrep 7; 2 checkov 14; 3 trivy-fs 6; 4 trivy-image 180; 5 gitleaks 18;
+6 npm-audit-1 2; 7 pip-audit-1 48; 8 tflint 3. Identical to 29.4-main-after-upgrade-snapshot.json
+(`diff <(jq -S .findings pre) <(jq -S .findings after)` is empty): ci/main has not changed since the plan 05 import.
+
+trivy-image Test 4 by file_path prefix and state:
+  scan-target:2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d  active=false mitigated=true  duplicate=false n=59
+  scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94  active=false mitigated=true  duplicate=false n=61
+  scan-target:ci                                        active=true  mitigated=false duplicate=false n=60
+$ jq -e '(.tests | map(select(.title=="trivy-image")) | .[0].id) as $t | [.findings[] | select(.test==$t and .is_mitigated!=true and .duplicate!=true)] | (length>0 and all(.file_path|startswith("scan-target:ci")))' 29.4-main-pre-throwaway-snapshot.json
+true
+-> 60 active non-duplicate trivy-image findings, all on scan-target:ci. Precondition met.
