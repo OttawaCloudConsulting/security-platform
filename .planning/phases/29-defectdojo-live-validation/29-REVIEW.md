@@ -181,8 +181,8 @@ exit 1 with "OpenSSL >= 1.1.1 required".
 
 WR-04 is closed by Phase 29.4. The container job in `security.yml` now builds and scans the fixed tag
 `scan-target:ci` instead of `scan-target:${{ github.sha }}` (security-platform PR #32, merge `2dccff5`), released in
-`v1.3.0` (annotated tag object `21c5037` on `aa48081`; `v1` moved to `aa48081`). The inference above was correct
-before the fix: the `ci/main` trivy-image Test held 59 mitigated findings on `scan-target:2fda1ac…`, an earlier main
+`v1.3.0` (annotated tag object `21c5037` on `aa48081`; `v1` moved to `aa48081`). The pre-fix state was consistent
+with the inference above: the `ci/main` trivy-image Test held 59 mitigated findings on `scan-target:2fda1ac…`, an earlier main
 SHA (29.4-05-SUMMARY).
 After the fix, D-11 measured it live: between two `ci/main` imports at different main SHAs (`2dccff5` and `aa48081`,
 dispatch 37230464825), 60 of 60 trivy-image finding ids persisted, 0 were recreated and there was no drift; the
