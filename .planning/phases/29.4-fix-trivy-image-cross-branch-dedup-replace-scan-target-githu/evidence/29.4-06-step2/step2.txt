@@ -1,0 +1,11 @@
+# Note: trailing whitespace stripped from this helper output (docs-repo pre-commit hook); otherwise verbatim.
+==> D11-STEP2-ENGAGEMENT: PASS - engagement 'ci/phase29.4/d08-image-dedup-fixture' exists in product 1 (id 8)
+==> D11-STEP2-UNTRIAGED-EQ-FIXTURE: PASS - the Under Review set on ci/phase29.4/d08-image-dedup-fixture is exactly the 1 finding(s) under 'phase29.4-d08-fixture/': ["phase29.4-d08-fixture/unsafe_pickle.py"]
+==> D11-STEP2-TRIVY-IMAGE-KEY: PASS - exactly one Test matches scan_type 'Trivy Scan' and title 'trivy-image' on each side: ci/phase29.4/d08-image-dedup-fixture Test 59, ci/main snapshot engagement 1 Test 4
+==> D11-STEP2-TRIVY-IMAGE-DEDUP: PASS - all 60 trivy-image finding(s) with a ci/main counterpart are duplicates of it (hash_code compared: true)
+    INFO: drift (measured, not asserted): 0 PR trivy-image finding(s) without a ci/main title counterpart: []
+==> D11-STEP2-DUPLICATES-POINT-TO-MAIN: PASS - all 97 non-fixture, non-trivy-image finding(s) on ci/phase29.4/d08-image-dedup-fixture are duplicates of ci/main originals in the snapshot
+    evidence: /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-06-step2/step2-assert.json
+
+=== Summary ===
+ALL PASS - 5 live check(s) executed and passed; 0 sub-check(s) skipped (not passed).

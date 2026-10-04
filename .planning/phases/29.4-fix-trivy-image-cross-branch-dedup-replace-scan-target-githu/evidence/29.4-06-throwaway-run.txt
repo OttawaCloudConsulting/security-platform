@@ -1,0 +1,116 @@
+# 29.4-06 Task 3: throwaway PR, D-08 live assertion, close unmerged, cleanup
+# The DefectDojo base URL and token are not written here. Trailing whitespace is stripped (docs-repo pre-commit hook).
+
+## Operator approval (Task 2), verbatim, typed by the operator after the full checkpoint including the
+## disclosure that the public repo briefly carries the deliberately unsafe pickle fixture:
+approved - open and close 3fcd1dd
+-> covers: push of phase29.4/d08-image-dedup-fixture at 3fcd1dd1ba268a311b6e9dbc8152250dbc6f0ff4, opening the
+   DO-NOT-MERGE PR, closing it unmerged, deleting the remote branch.
+
+## Step 0 precheck (2026-10-04T19:04:48Z)
+HEAD 3fcd1dd1ba268a311b6e9dbc8152250dbc6f0ff4 on phase29.4/d08-image-dedup-fixture; git status --porcelain: 0 lines.
+Scheduled Security newest run: 37226275966 workflow_dispatch 2dccff5 completed success 2026-10-04T18:55:19Z
+-> no ci/main import after the pre-throwaway snapshot (19:01:19Z); snapshot stands.
+
+DOING: push the fixture branch, open the DO-NOT-MERGE PR against main, wait for PR Security, run
+       assert-pr-duplicates --fixture-path phase29.4-d08-fixture/ against the pre-throwaway snapshot,
+       snapshot the PR engagement, close the PR unmerged, confirm Cleanup and engagement gone, delete the branch.
+EXPECT: PR Security container (Trivy Image) and DefectDojo Import (ARC occ-homelab-defectdojo) succeed; no
+        DefectDojo Import Proof run; all five D11-STEP2 checks PASS with trivy_image_dedup matched_count > 0
+        (60 ci/main scan-target:ci findings to match); closed-event Cleanup success; engagement gone.
+IF MISMATCH: STOP, commit evidence, report.
+
+## Step 1: push and PR (2026-10-04T19:06Z)
+$ git push -u origin phase29.4/d08-image-dedup-fixture
+security-platform pre-push hooks: ruff, ruff format, markdownlint, Detect hardcoded secrets Passed; others skipped (no files)
+ * [new branch]      phase29.4/d08-image-dedup-fixture -> phase29.4/d08-image-dedup-fixture
+$ gh pr create -R OttawaCloudConsulting/security-platform --base main --head phase29.4/d08-image-dedup-fixture \
+    --title "Phase 29.4 D-08 live dedup fixture — DO NOT MERGE" --body-file <scratch>
+https://github.com/OttawaCloudConsulting/security-platform/pull/33
+-> PR #33 (body: throwaway, closed unmerged after the measurement; no homelab host/URL/token).
+
+## Step 2: PR Security run on head 3fcd1dd
+37226987029 PR Security pull_request created 2026-10-04T19:06:21Z
+run conclusion=success head=3fcd1dd1ba268a311b6e9dbc8152250dbc6f0ff4 (completed by 19:08Z)
+$ gh api repos/OttawaCloudConsulting/security-platform/actions/runs/37226987029/jobs --jq '.jobs[]|...'
+111508565688 security / Secrets — Gitleaks success runner=GitHub Actions 1000001376 labels=ubuntu-latest 19:06:24Z-19:06:43Z
+111508565837 security / Container — Trivy Image success runner=GitHub Actions 1000001377 labels=ubuntu-latest 19:06:24Z-19:06:49Z
+111508565851 security / SCA — Trivy Filesystem success runner=GitHub Actions 1000001378 labels=ubuntu-latest 19:06:24Z-19:07:02Z
+111508565923 security / SAST — Semgrep CE success runner=GitHub Actions 1000001379 labels=ubuntu-latest 19:06:24Z-19:06:53Z
+111508565948 security / IaC — Checkov success runner=GitHub Actions 1000001380 labels=ubuntu-latest 19:06:25Z-19:07:04Z
+111508566536 security / DefectDojo Cleanup skipped runner=null labels=occ-homelab-defectdojo (opened event: expected skip)
+111508711579 security / DefectDojo Import success runner=occ-homelab-defectdojo-qqrsp-runner-77x49 labels=occ-homelab-defectdojo 19:07:10Z-19:07:23Z
+-> Container (Trivy Image) success (no 429); DefectDojo Import success on the ARC occ-homelab-defectdojo runner.
+
+$ gh run list -R OttawaCloudConsulting/security-platform --workflow defectdojo-import-proof.yml -L 3   (19:08:21Z)
+37157681058 pull_request 91501ca 2026-10-03T22:13:18Z success   <- newest; nothing on 3fcd1dd
+36903584781 pull_request d1b128f 2026-10-01T18:00:19Z success
+36903435554 pull_request e473364 2026-10-01T17:59:07Z success
+-> no DefectDojo Import Proof run was triggered by PR #33.
+
+## Step 3: Scheduled Security run list before the assertion (19:08:21Z)
+37226275966 workflow_dispatch 2dccff5 2026-10-04T18:55:19Z success   <- still newest
+37198294074 schedule 30afdb9 2026-10-04T11:18:33Z success
+-> no ci/main import since the pre-throwaway snapshot; snapshot not stale.
+
+## Step 4: D-08 assertion (19:08:2xZ)
+$ mkdir -p <evidence>/29.4-06-step2
+$ DEFECTDOJO_URL=<homelab, not recorded> DEFECTDOJO_ADMIN_TOKEN_FILE=$HOME/.config/defectdojo/homelab-admin.token \
+  bash scripts/defectdojo-lifecycle-assert.sh assert-pr-duplicates --product OttawaCloudConsulting/security-platform \
+  --out <abs evidence>/29.4-06-step2 --branch phase29.4/d08-image-dedup-fixture \
+  --main-snapshot <abs evidence>/29.4-main-pre-throwaway-snapshot.json --fixture-path phase29.4-d08-fixture/
+(run from repos/security-platform at 3fcd1dd; script identical to origin/main 2dccff5)
+exit=0; full output in 29.4-06-step2/step2.txt:
+  D11-STEP2-ENGAGEMENT: PASS (engagement id 8)
+  D11-STEP2-UNTRIAGED-EQ-FIXTURE: PASS (1 finding, phase29.4-d08-fixture/unsafe_pickle.py)
+  D11-STEP2-TRIVY-IMAGE-KEY: PASS (PR Test 59, ci/main Test 4)
+  D11-STEP2-TRIVY-IMAGE-DEDUP: PASS (all 60 with a ci/main counterpart are duplicates of it; hash_code compared: true)
+  D11-STEP2-DUPLICATES-POINT-TO-MAIN: PASS (97 non-fixture, non-trivy-image findings)
+  ALL PASS - 5 live check(s) executed and passed; 0 sub-check(s) skipped
+$ jq -c '.trivy_image_dedup' step2-assert.json
+{"pr_image_count":60,"main_counterpart_count":60,"matched_count":60,"drift":{"count":0,"titles":[]},"bad_count":0,"bad":[],"hash_compared":true,"verdict":"PASS"}
+-> matched_count 60, drift 0 (titles []), hash_compared true, bad 0 (no hash_code_differs pairs).
+Scheduled Security run list after the assertion (19:08:39Z): newest still 37226275966.
+
+## Step 5: PR engagement snapshot (label 29.4-throwaway-pr) -> 29.4-throwaway-pr-snapshot.json
+snapshot ci/phase29.4/d08-image-dedup-fixture: 158 findings, exit 0, captured_at 2026-10-04T19:08:53Z, engagement_id 8
+Per-Test (id title n duplicates): 56 semgrep 8 7; 57 checkov 14 14; 58 trivy-fs 6 6; 59 trivy-image 60 60;
+60 gitleaks 18 18; 61 npm-audit-1 2 2; 62 pip-audit-1 47 47; 63 tflint 3 3.
+158 = 1 fixture (the only non-duplicate) + 60 trivy-image + 97 others. trivy-image file_path: all 60 'scan-target:ci (debian 12.15)'.
+(pip-audit 47 on the PR vs 48 on ci/main: one fewer advisory on the PR import; every PR pip-audit finding is a duplicate.)
+Compare the 29-16 gap: 59 active non-duplicate trivy-image findings on the PR engagement; now 0.
+
+## Step 6: close unmerged and cleanup
+$ gh pr close 33 -R OttawaCloudConsulting/security-platform   (2026-10-04T19:09:01Z)
+✓ Closed pull request OttawaCloudConsulting/security-platform#33
+$ gh pr view 33 --json state,mergedAt,closedAt
+CLOSED merged=null closed=2026-10-04T19:09:00Z
+Closed-event PR Security run 37227159391 pull_request success head 3fcd1dd created 2026-10-04T19:09:03Z:
+111509091788 security / DefectDojo Cleanup success runner=occ-homelab-defectdojo-qqrsp-runner-4l22k labels=occ-homelab-defectdojo
+111509092530 security / Container — Trivy Image skipped; 111509092740 DefectDojo Import skipped;
+Gitleaks, Trivy Filesystem, Checkov, Semgrep skipped (closed event: expected)
+-> DefectDojo Cleanup success.
+
+Engagement-gone probe (2026-10-04T19:09:34Z), after Cleanup completed:
+$ DEFECTDOJO_URL=<homelab, not recorded> ... bash scripts/defectdojo-lifecycle-assert.sh snapshot --product OttawaCloudConsulting/security-platform \
+  --out <abs evidence> --engagement ci/phase29.4/d08-image-dedup-fixture --label 29.4-throwaway-gone
+==> SNAPSHOT-ENGAGEMENT: FAIL - 0 engagements named exactly 'ci/phase29.4/d08-image-dedup-fixture' in product 1, expected 1
+exit=1 (the expected abort); no 29.4-throwaway-gone-snapshot.json was written.
+-> engagement 8 is gone.
+
+$ git push origin --delete phase29.4/d08-image-dedup-fixture
+ - [deleted]         phase29.4/d08-image-dedup-fixture
+$ git branch --unset-upstream   (restore Task 1's no-upstream posture so a bare push cannot recreate the branch)
+$ git ls-remote --heads origin phase29.4/d08-image-dedup-fixture | wc -l
+0
+$ gh pr view 33 --json state,mergedAt
+CLOSED null   (never merged)
+$ git ls-remote origin refs/heads/main refs/tags/v1
+2dccff51de278c29a18f2349da7d7f3f5a568579 refs/heads/main   (unchanged)
+fdabac9464f2baaeaa276f8934dc8d353295b355 refs/tags/v1      (unchanged; no tag created or moved)
+Local branch phase29.4/d08-image-dedup-fixture kept (the plan does not say to delete it); security-platform left checked out on it.
+
+VERDICT: D-08 PASS live. All 60 trivy-image findings on the PR engagement are duplicates of their ci/main
+scan-target:ci counterparts with equal hash_code (drift 0); the only non-duplicate on the PR engagement is the fixture.
+The 29-16 gap (59 active non-duplicate trivy-image findings) is closed on the homelab. PR #33 closed unmerged,
+engagement cleaned up and confirmed gone, remote branch deleted.
