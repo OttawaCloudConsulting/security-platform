@@ -58,6 +58,10 @@ set -euo pipefail
 #   IMAGE-TAG  the container job builds and scans the fixed tag scan-target:ci and
 #              never github.sha, so identical image content yields identical
 #              Trivy Scan hashes across branches and main SHAs (ADR-031)
+# Phase 29.5 (Trivy findings enter Under Review):
+#   VERIFIED-FALSE  the dd-import fields list sends verified=false exactly once, so
+#                   every parser lands findings unverified and Verified means a
+#                   triager confirmed the finding (ADR-032)
 #
 # Self-test overrides (optional, used only to point the gate at scratch copies):
 #   WORKFLOWS_DIR           default .github/workflows
@@ -753,12 +757,63 @@ else:
                  "breaks cross-branch Trivy dedup (Phase 29.4 D-04, ADR-031)".format(
                      s.get("name") or s.get("id") or "<unnamed>"))
 
+# ── 22. VERIFIED-FALSE (Phase 29.5 D-01/D-14, ADR-032) ──────────────────────
+# DefectDojo's Trivy parser sets verified=true from each vulnerability's Status,
+# which hides those findings from the TRIAGE.md Under Review query
+# (verified=false). The dd-import body must send verified=false exactly once,
+# inside the fields list that the --form-string loop posts on every
+# reimport-scan call. The list's closing bracket is the first line after
+# `fields = [` whose stripped text is exactly `]` (a plain find("]") would hit
+# the bracket inside branch[:150]).
+VERIFIED_FIELD = '"verified=false",'
+FIELDS_OPEN = "fields = ["
+vf_body = present.get("defectdojo-import")
+if vf_body is None:
+    fail_absent("VERIFIED-FALSE", "defectdojo-import")
+else:
+    vf_matches = [s for s in steps_of(vf_body) if s.get("id") == "dd-import"]
+    if len(vf_matches) != 1:
+        fail("VERIFIED-FALSE",
+             "jobs.defectdojo-import has {} step(s) with id=dd-import, expected exactly 1 "
+             "(Phase 29.5 D-01/D-14, ADR-032)".format(len(vf_matches)))
+    else:
+        run = str(vf_matches[0].get("run") or "")
+        field_count = run.count(VERIFIED_FIELD)
+        if field_count != 1:
+            fail("VERIFIED-FALSE",
+                 "jobs.defectdojo-import step dd-import run: {!r} occurs {} time(s), expected "
+                 "exactly 1 — every reimport-scan call must send verified=false "
+                 "(Phase 29.5 D-01/D-14, ADR-032)".format(VERIFIED_FIELD, field_count))
+        any_count = run.count("verified=")
+        if any_count != 1:
+            fail("VERIFIED-FALSE",
+                 "jobs.defectdojo-import step dd-import run: 'verified=' occurs {} time(s), "
+                 "expected exactly 1 (the verified=false field) — no other verified value may be "
+                 "sent (Phase 29.5 D-01/D-14, ADR-032)".format(any_count))
+        fields_at = run.find(FIELDS_OPEN)
+        close_at = -1
+        if fields_at >= 0:
+            # start scanning at the line after `fields = [`
+            offset = fields_at + len(run[fields_at:].splitlines(True)[0])
+            for line in run[offset:].splitlines(True):
+                if line.strip() == "]":
+                    close_at = offset
+                    break
+                offset += len(line)
+        verified_at = run.find(VERIFIED_FIELD)
+        if not (0 <= fields_at < verified_at < close_at):
+            fail("VERIFIED-FALSE",
+                 "jobs.defectdojo-import step dd-import run: {!r} must sit inside the fields list "
+                 "({!r} ... its closing ']'), got fields_at={} verified_at={} close_at={} — the "
+                 "--form-string loop posts only that list (Phase 29.5 D-01/D-14, ADR-032)".format(
+                     VERIFIED_FIELD, FIELDS_OPEN, fields_at, verified_at, close_at))
+
 # PERMISSIONS-CALLER, PERMISSIONS-CALLEE, PERMISSIONS-FORBIDDEN, SHA-PIN,
 # SARIF-CATEGORY, ARTIFACT-RETENTION, ARTIFACT-PATH-SAFETY, UPLOAD-VERIFY-PAIRING,
 # REDACT-RETAINED, JOB-SHAPE, SIDE-CHANNEL-NOT-REQUIRED, SIDE-CHANNEL-SHAPE,
 # OPTIONAL-SECRET, NO-INTERPOLATION, IMPORT-VERIFY-PAIRING, INSECURE-WARNING,
-# SCAN-JOB-CLOSED-SKIP, CALLER-WIRING, SCHEME, CURLRC, IMAGE-TAG.
-CHECK_COUNT = 21
+# SCAN-JOB-CLOSED-SKIP, CALLER-WIRING, SCHEME, CURLRC, IMAGE-TAG, VERIFIED-FALSE.
+CHECK_COUNT = 22
 
 if failures:
     for line in failures:
