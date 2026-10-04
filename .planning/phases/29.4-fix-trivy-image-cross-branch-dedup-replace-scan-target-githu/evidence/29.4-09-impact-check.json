@@ -3,14 +3,32 @@
   "repo": "OttawaCloudConsulting/security-platform",
   "release_sha": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67",
   "origin_main": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67",
-  "pr_a": {"number": 32, "merge_commit": "2dccff51de278c29a18f2349da7d7f3f5a568579"},
-  "pr_b": {"number": 34, "merge_commit": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67"},
-  "d11_dispatch_run": {"id": 37230464825, "head_sha": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67"},
+  "pr_a": {
+    "number": 32,
+    "merge_commit": "2dccff51de278c29a18f2349da7d7f3f5a568579"
+  },
+  "pr_b": {
+    "number": 34,
+    "merge_commit": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67"
+  },
+  "d11_dispatch_run": {
+    "id": 37230464825,
+    "head_sha": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67"
+  },
   "release_sha_check": "release_sha == origin_main == pr_b.merge_commit == d11_dispatch_run.head_sha",
   "tags_before": {
-    "v1": {"type": "commit", "sha": "fdabac9464f2baaeaa276f8934dc8d353295b355"},
-    "v1_2_0": {"tag_object": "b8ae59df7dcf6aec798dac699ca334d68812939d", "commit": "fdabac9464f2baaeaa276f8934dc8d353295b355"},
-    "v1_1_1": {"tag_object": "c1565b35e88de4e70e61d79292943c15b3fe67f6", "commit": "917352c00987023fa5ff1e6cdabc16987eb114dd"},
+    "v1": {
+      "type": "commit",
+      "sha": "fdabac9464f2baaeaa276f8934dc8d353295b355"
+    },
+    "v1_2_0": {
+      "tag_object": "b8ae59df7dcf6aec798dac699ca334d68812939d",
+      "commit": "fdabac9464f2baaeaa276f8934dc8d353295b355"
+    },
+    "v1_1_1": {
+      "tag_object": "c1565b35e88de4e70e61d79292943c15b3fe67f6",
+      "commit": "917352c00987023fa5ff1e6cdabc16987eb114dd"
+    },
     "v1_2_1": null,
     "v1_3_0": null
   },
@@ -18,12 +36,28 @@
     "command": "reference: evidence/29.4-05-d14-1-upgrade.json (29.4-ci-main-image-diff.sh --mode upgrade, dispatch run 37226275966 on 2dccff5)",
     "result": {
       "upgrade_verdict": "PASS",
-      "before": {"total": 120, "active": 60, "mitigated": 60, "duplicate": 0},
-      "after": {"total": 180, "active": 60, "mitigated": 120, "duplicate": 0},
+      "before": {
+        "total": 120,
+        "active": 60,
+        "mitigated": 60,
+        "duplicate": 0
+      },
+      "after": {
+        "total": 180,
+        "active": 60,
+        "mitigated": 120,
+        "duplicate": 0
+      },
       "old": 60,
       "new_active": 60,
-      "title_overlap": {"common": 60, "old_only": 0, "new_only": 0},
-      "new_file_paths": ["scan-target:ci (debian 12.15)"],
+      "title_overlap": {
+        "common": 60,
+        "old_only": 0,
+        "new_only": 0
+      },
+      "new_file_paths": [
+        "scan-target:ci (debian 12.15)"
+      ],
       "persist_after_upgrade": "evidence/29.4-08-d11-persist.json PASS, 60/60 ids persisted 2dccff5 -> aa48081",
       "consumer_impact": "one-time churn on the first ci/<default> reimport: SHA-tagged image findings mitigated, scan-target:ci set created; FP/RA/OOS dispositions on old image findings lost once"
     },
@@ -32,8 +66,36 @@
   "d14_2": {
     "command": "gh run download 36846632465 / 37226275966 -n trivy-image-results; jq partialFingerprints count, artifactLocation.uri set, scan-target:(ci|<40hex>) outside run properties, runs[0].properties.imageName; diff of jq -S 'del(.runs[].properties)'",
     "result": {
-      "pre": {"run": 36846632465, "event": "schedule", "head_sha": "30afdb9fb56516c6b06c5275212b42bcac30cc94", "created_at": "2026-10-01T10:02:47Z", "partial_fingerprints": 0, "fingerprints": 0, "uris": ["library/scan-target"], "results": 60, "tag_outside_properties": 0, "tag_inside_properties": 2, "image_name": "scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94"},
-      "post": {"run": 37226275966, "event": "workflow_dispatch", "head_sha": "2dccff51de278c29a18f2349da7d7f3f5a568579", "created_at": "2026-10-04T18:55:19Z", "partial_fingerprints": 0, "fingerprints": 0, "uris": ["library/scan-target"], "results": 60, "tag_outside_properties": 0, "tag_inside_properties": 2, "image_name": "scan-target:ci"},
+      "pre": {
+        "run": 36846632465,
+        "event": "schedule",
+        "head_sha": "30afdb9fb56516c6b06c5275212b42bcac30cc94",
+        "created_at": "2026-10-01T10:02:47Z",
+        "partial_fingerprints": 0,
+        "fingerprints": 0,
+        "uris": [
+          "library/scan-target"
+        ],
+        "results": 60,
+        "tag_outside_properties": 0,
+        "tag_inside_properties": 2,
+        "image_name": "scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94"
+      },
+      "post": {
+        "run": 37226275966,
+        "event": "workflow_dispatch",
+        "head_sha": "2dccff51de278c29a18f2349da7d7f3f5a568579",
+        "created_at": "2026-10-04T18:55:19Z",
+        "partial_fingerprints": 0,
+        "fingerprints": 0,
+        "uris": [
+          "library/scan-target"
+        ],
+        "results": 60,
+        "tag_outside_properties": 0,
+        "tag_inside_properties": 2,
+        "image_name": "scan-target:ci"
+      },
       "image_id_both_sides": "sha256:6f3a484305aeb80b41f38851426107a78781af571d21719fab4982b24b8551b6",
       "body_diff_without_properties": "one finding only: CVE-2026-103111 libpcre2-8-0 Fixed Version empty (2026-10-01) vs 10.42-1+deb12u2 (2026-10-04) in message/help text; Trivy DB drift between scan dates, not tag-related; ruleId, location and fingerprints unaffected"
     },
@@ -41,19 +103,45 @@
   },
   "d14_3": {
     "command": "python3 29.4-surface-diff.py <v1.2.0 security.yml> <R security.yml> --expect defectdojo-import=dd-import --expect defectdojo-cleanup=dd-delete --expect 'container=Build image from discovered Dockerfile' --expect 'container=Run Trivy image scan'; negatives; bash scripts/check-workflow-uploads.sh in a detached worktree at R",
-    "tool_versions": {"python": "3.12.0", "pyyaml": "6.0.3"},
+    "tool_versions": {
+      "python": "3.12.0",
+      "pyyaml": "6.0.3"
+    },
     "result": {
       "structure": "IDENTICAL (all keys except run)",
       "changed_run_bodies": [
-        ["container", "Build image from discovered Dockerfile"],
-        ["container", "Run Trivy image scan"],
-        ["defectdojo-cleanup", "dd-delete"],
-        ["defectdojo-import", "dd-import"]
+        [
+          "container",
+          "Build image from discovered Dockerfile"
+        ],
+        [
+          "container",
+          "Run Trivy image scan"
+        ],
+        [
+          "defectdojo-cleanup",
+          "dd-delete"
+        ],
+        [
+          "defectdojo-import",
+          "dd-import"
+        ]
       ],
       "real_exit": 0,
-      "negative_changed_sarif_category": {"edit": "trivy-image -> trivy-image-x (L1024)", "exit": 1, "named": "$.jobs.container.steps[8].with.category: 'trivy-image' != 'trivy-image-x'"},
-      "negative_extra_run_body": {"edit": "Detect Dockerfile (id docker) body L978", "exit": 1, "named": "UNEXPECTED container = docker"},
-      "negative_underspecified_expect": {"edit": "none; --expect for Run Trivy image scan omitted", "exit": 1},
+      "negative_changed_sarif_category": {
+        "edit": "trivy-image -> trivy-image-x (L1024)",
+        "exit": 1,
+        "named": "$.jobs.container.steps[8].with.category: 'trivy-image' != 'trivy-image-x'"
+      },
+      "negative_extra_run_body": {
+        "edit": "Detect Dockerfile (id docker) body L978",
+        "exit": 1,
+        "named": "UNEXPECTED container = docker"
+      },
+      "negative_underspecified_expect": {
+        "edit": "none; --expect for Run Trivy image scan omitted",
+        "exit": 1
+      },
       "comment_blindness": "PyYAML drops comments; complement: 3c547c6 (PR A) hunks @@-944, @@-957, @@-985 all inside the container job (L912-L1108); f5a3926 (29.2-05) 19 hunks inside defectdojo-import/defectdojo-cleanup only",
       "check_workflow_uploads_at_R": "PASS - 21 checks, 0 failures"
     },
@@ -63,19 +151,33 @@
     "command": "git show R:.github/workflows/security.yml | grep -cF '\"curl\", \"-q\"' ; grep -cF 'ssl_verify_result' ; git log --oneline v1.2.0..R -- .github/workflows/security.yml",
     "result": {
       "curl_q_count": 2,
-      "curl_q_lines": {"dd-import": 1553, "dd-delete": 1871},
+      "curl_q_lines": {
+        "dd-import": 1553,
+        "dd-delete": 1871
+      },
       "ssl_verify_result_count": 4,
-      "enforcement_lines": [1581, 1886],
+      "enforcement_lines": [
+        1581,
+        1886
+      ],
       "curl_q_count_v1_2_0": 0,
-      "security_yml_commits_v1_2_0_to_R": ["3c547c6 fix(29.4-01) (PR A)", "f5a3926 fix(29.2-05)"],
-      "post_tag_half": "pending: API readback v1^{} and v1.3.0^{} == R in 29.4-09-tags.json after approval"
+      "security_yml_commits_v1_2_0_to_R": [
+        "3c547c6 fix(29.4-01) (PR A)",
+        "f5a3926 fix(29.2-05)"
+      ],
+      "post_tag_half": "PASS: v1^{} and v1.3.0^{} == R (API-verified, see 29.4-09-tags.json)"
     },
     "verdict": "PASS (pre-tag)"
   },
   "d14_5": {
     "command": "gh search code 'security-platform/.github/workflows/security.yml@v1' --owner OttawaCloudConsulting; gh search code 'OttawaCloudConsulting/security-platform/.github/workflows/security.yml@'; contents-API scan of .github/workflows in all 61 org repos for uses: OttawaCloudConsulting/security-platform/",
     "result": {
-      "search_hits": ["security-platform:README.md", "security-platform:cicd/README.md", "security-platform:.github/workflows/scheduled-security.yml (comment)", "security-platform:.github/workflows/pr-security.yml (comment)"],
+      "search_hits": [
+        "security-platform:README.md",
+        "security-platform:cicd/README.md",
+        "security-platform:.github/workflows/scheduled-security.yml (comment)",
+        "security-platform:.github/workflows/pr-security.yml (comment)"
+      ],
       "org_repos": 61,
       "repos_with_workflows_dir": 10,
       "repos_without_or_unreadable": 51,
@@ -83,7 +185,12 @@
       "visible_v1_callers": [],
       "limit": "only OttawaCloudConsulting default branches visible to this token; personal-account, other-org, out-of-org private or non-default-branch callers cannot be enumerated (RESEARCH A3); v2.0 pilots were Mode A copies (A4). Operator to confirm."
     },
-    "verdict": "PASS (limit stated)"
+    "verdict": "PASS (limit stated)",
+    "operator_confirmation": {
+      "verbatim": "approve - no @v1 callers outside the org",
+      "recorded_at": "2026-10-04",
+      "meaning": "no @v1 callers in personal accounts, other orgs or private repos outside OttawaCloudConsulting"
+    }
   },
   "d14_6": {
     "command": "PyYAML: container steps after 'Detect Dockerfile' and their if:; grep -cF \"if: steps.docker.outputs.found == 'true'\"",
@@ -102,10 +209,23 @@
     "command": "gh pr list -R OttawaCloudConsulting/security-platform --state open --json number,title,author,baseRefOid,headRefOid,files (filter security.yml); gh pr list --state merged --search 'merged:>=2026-10-04T18:52:00Z'; git log --oneline 2dccff5..R -- .github/workflows/security.yml",
     "result": {
       "open_prs_touching_security_yml": [
-        {"number": 31, "title": "chore(deps): bump github/codeql-action/upload-sarif from 4.38.1 to 4.38.2", "author": "app/dependabot", "base": "30afdb9"},
-        {"number": 30, "title": "chore(deps): bump bridgecrewio/checkov-action from 12.3125.0 to 12.3126.0", "author": "app/dependabot", "base": "30afdb9"}
+        {
+          "number": 31,
+          "title": "chore(deps): bump github/codeql-action/upload-sarif from 4.38.1 to 4.38.2",
+          "author": "app/dependabot",
+          "base": "30afdb9"
+        },
+        {
+          "number": 30,
+          "title": "chore(deps): bump bridgecrewio/checkov-action from 12.3125.0 to 12.3126.0",
+          "author": "app/dependabot",
+          "base": "30afdb9"
+        }
       ],
-      "merged_since_pr_a": [32, 34],
+      "merged_since_pr_a": [
+        32,
+        34
+      ],
       "security_yml_commits_after_pr_a": [],
       "follow_up": "#30 and #31 held until after the v1.3.0 tag; then rebase/recreate and review"
     },

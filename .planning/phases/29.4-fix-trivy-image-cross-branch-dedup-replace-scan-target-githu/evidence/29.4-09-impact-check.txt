@@ -243,3 +243,10 @@ d14_6 PASS (criterion corrected), d22 PASS. No D-13 trigger.
 == Plan 29.4-09 Task 1 <verify><automated> ==
 Run verbatim at 2026-10-04T20:12Z: exit 0. Homelab-literal grep and trailing-whitespace grep over all four
 Task 1 files: no match.
+
+== Task 2 operator reply and D-14.5 confirmation (recorded in Task 3) ==
+Operator reply, verbatim: "approve - no @v1 callers outside the org"
+Decision: approve (cut v1.3.0 at R and move v1 to R).
+D-14.5: the operator confirms there are no @v1 callers in personal accounts,
+other orgs or private repos outside OttawaCloudConsulting. d14_5 PASS (operator-confirmed).
+d14_4 post-tag half: PASS, v1^{} and v1.3.0^{} == R via API (29.4-09-tags.json).

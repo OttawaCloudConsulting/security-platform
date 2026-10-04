@@ -1,0 +1,90 @@
+{
+  "captured_at": "2026-10-04T20:16:05Z",
+  "method": "ADR-018 API verification (gh api git/ref/tags/*, git/tags/*) + git ls-remote --tags origin + local rev-parse",
+  "operator_reply": "approve",
+  "operator_reply_verbatim": "approve - no @v1 callers outside the org",
+  "release_sha": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67",
+  "pr_a": {
+    "number": 32,
+    "merge_commit": "2dccff51de278c29a18f2349da7d7f3f5a568579"
+  },
+  "pr_b": {
+    "number": 34,
+    "merge_commit": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67"
+  },
+  "origin_main": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67",
+  "v1": {
+    "sha": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67",
+    "type": "commit"
+  },
+  "v1_3_0": {
+    "sha": "21c50379710bd945c55d4f8a18cc205bb6b6bfca",
+    "type": "tag",
+    "url": "https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/tags/21c50379710bd945c55d4f8a18cc205bb6b6bfca"
+  },
+  "v1_3_0_tag_object": {
+    "tag": "v1.3.0",
+    "object": {
+      "sha": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67",
+      "type": "commit",
+      "url": "https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/commits/aa48081681ee1e578c50d6a0d9e5ead6ff6afc67"
+    },
+    "tagger": {
+      "name": "OCC",
+      "email": "cturner@ottawacloudconsulting.com",
+      "date": "2026-10-04T20:15:22Z"
+    },
+    "message_byte_identical_to_evidence_tag_message": true,
+    "message_bytes": 2263
+  },
+  "v1_3_0_commit": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67",
+  "v1_2_0": {
+    "sha": "b8ae59df7dcf6aec798dac699ca334d68812939d",
+    "type": "tag",
+    "commit": "fdabac9464f2baaeaa276f8934dc8d353295b355",
+    "unchanged": true
+  },
+  "v1_1_1": {
+    "sha": "c1565b35e88de4e70e61d79292943c15b3fe67f6",
+    "type": "tag",
+    "commit": "917352c00987023fa5ff1e6cdabc16987eb114dd",
+    "unchanged": true
+  },
+  "v1_previous": {
+    "type": "commit",
+    "sha": "fdabac9464f2baaeaa276f8934dc8d353295b355"
+  },
+  "local_rev_parse": {
+    "v1^{}": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67",
+    "v1.3.0^{}": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67",
+    "v1_object_type": "commit"
+  },
+  "ls_remote_tags_after": [
+    "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67\trefs/tags/v1",
+    "fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4\trefs/tags/v1.0.0",
+    "cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef\trefs/tags/v1.0.0^{}",
+    "414fd3beb5a6d79d52316150a192803a4b0ece78\trefs/tags/v1.1.0",
+    "0f7e4e141d2a300d4be9a54efc137eb4510bb7ea\trefs/tags/v1.1.0^{}",
+    "c1565b35e88de4e70e61d79292943c15b3fe67f6\trefs/tags/v1.1.1",
+    "917352c00987023fa5ff1e6cdabc16987eb114dd\trefs/tags/v1.1.1^{}",
+    "b8ae59df7dcf6aec798dac699ca334d68812939d\trefs/tags/v1.2.0",
+    "fdabac9464f2baaeaa276f8934dc8d353295b355\trefs/tags/v1.2.0^{}",
+    "21c50379710bd945c55d4f8a18cc205bb6b6bfca\trefs/tags/v1.3.0",
+    "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67\trefs/tags/v1.3.0^{}",
+    "8d47cf9f86e9f79a42a57a2b4298d34b5dcda449\trefs/tags/v2.0",
+    "c6395e145643c21a724df9225f3a5210d5d98bde\trefs/tags/v2.0^{}"
+  ],
+  "other_tags_unchanged": "v1.0.0, v1.1.0, v1.1.1, v1.2.0, v2.0 byte-identical in ls-remote before/after; only v1 moved and v1.3.0 added",
+  "d14_4": {
+    "measured_at": "v1.3.0 (= R)",
+    "curl_q_count": 2,
+    "ssl_verify_result_count": 4,
+    "verdict": "PASS (post-tag half: v1^{} and v1.3.0^{} == R)"
+  },
+  "d14_5_operator_confirmation": {
+    "verbatim": "approve - no @v1 callers outside the org",
+    "meaning": "operator confirms no @v1 callers in personal accounts, other orgs or private repos outside OttawaCloudConsulting"
+  },
+  "github_release_created": false,
+  "rollback": "git -C repos/security-platform tag -f v1 fdabac9464f2baaeaa276f8934dc8d353295b355 && git -C repos/security-platform push -f origin refs/tags/v1"
+}
