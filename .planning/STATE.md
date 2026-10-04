@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: executing
-stopped_at: Completed 29.4-09-PLAN.md
-last_updated: "2026-10-04T20:17:27.841Z"
+status: verifying
+stopped_at: Completed 29.4-10-PLAN.md
+last_updated: "2026-10-04T20:23:37.675Z"
 last_activity: 2026-10-04
 progress:
   total_phases: 7
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 Phase: 29.4 (fix-trivy-image-cross-branch-dedup-replace-scan-target-githu) — EXECUTING
 Plan: 10 of 10
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-04
 
 ## Performance Metrics
@@ -369,6 +369,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.4]: 29.4-07: PR B (#34) opened at bc0eb52 on operator reply 'approved - push PR B bc0eb52'; PR Security, kind proof (PROOF PASS - 172 assertions, 6 P-IMAGE-TAG PASS) and Chart Gates green; not merged (plan 08), no tag, v1 stays fdabac9
 - [Phase 29.4]: 29.4-08: PR B (#34) merged at bc0eb52 as aa48081 on operator reply 'approved - merge bc0eb52 and dispatch, no extra snapshot'; dispatch run 37230464825 on aa48081; D-11 persist PASS (60/60 ci/main trivy-image ids persisted, 0 recreated, 0 drift) - WR-04 closed live; no tag, v1 stays fdabac9
 - [Phase 29.4]: 29.4-09: operator approved (verbatim 'approve - no @v1 callers outside the org'); v1.3.0 annotated (21c5037) and v1 moved to aa48081, API-verified; bundles 29.2 TLS hardening
+- [Phase 29.4]: 29.4-10: ADR-031 written after v1.3.0 (D-18): fixed scan-target:ci tag; supersedes ADR-027 trivy-image tradeoff and follow-up (b) in prose; ADR-026/027/029 unchanged
 
 ### Pending Todos
 
@@ -549,6 +550,7 @@ Carried forward from v1.1 close:
 | Phase 29.4 P07 | 12 min (Task 3) | 3 tasks | 4 files |
 | Phase 29.4 P08 | 5 min | 3 tasks | 4 files |
 | Phase 29.4 P09 | ~4 min | 3 tasks | 5 files |
+| Phase 29.4 P10 | 15min | 3 tasks | 5 files |
 
 ## Session Continuity
 

@@ -433,7 +433,7 @@ Plans:
 **Goal:** security.yml tags the scanned image with the fixed literal `scan-target:ci` instead of `${{ github.sha }}`, so trivy-image findings on PR engagements dedupe against `ci/main` and `ci/main` trivy-image findings (with dispositions) persist across main SHAs, proven on kind and live; then release `v1.3.0` (also carrying the Phase 29.2 TLS hardening) and move `v1` after a full consumer impact check
 **Requirements**: DDOJO-03 (trivy-image anchor)
 **Depends on:** Phase 29
-**Plans:** 9/10 plans executed
+**Plans:** 10/10 plans complete
 
 Plans:
 - [x] 29.4-01-PLAN.md — PR A branch; security.yml scan-target:ci (D-01) and IMAGE-TAG gate with RED + scratch negatives (D-04)
@@ -445,7 +445,7 @@ Plans:
 - [x] 29.4-07-PLAN.md — PR B TRIAGE/README rewrites (D-10) + adoption-guide §12 note (D-15/D-19); open PR B (checkpoint)
 - [x] 29.4-08-PLAN.md — merge PR B, dispatch on the new SHA, D-11 WR-04 persistence verdict (checkpoint)
 - [x] 29.4-09-PLAN.md — D-14 impact check, v1.3.0 annotated tag + v1 move, API readback (checkpoint)
-- [ ] 29.4-10-PLAN.md — ADR-031 + docs/adr/README.md row after the tag (D-16/D-18)
+- [x] 29.4-10-PLAN.md — ADR-031 + docs/adr/README.md row after the tag (D-16/D-18)
 
 ### Phase 29.5: Fix WR-03: TRIAGE.md Under Review query hides verified=true Trivy findings (INSERTED)
 
