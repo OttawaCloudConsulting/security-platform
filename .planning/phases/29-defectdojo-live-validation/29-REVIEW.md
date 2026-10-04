@@ -177,6 +177,19 @@ exit 1 with "OpenSSL >= 1.1.1 required".
    together with `is_mitigated=true` on the old ones confirm the inference.
 3. Record the outcome in a new ADR or the follow-up-b record.
 
+### Resolution (Phase 29.4, 2026-10-04)
+
+WR-04 is closed by Phase 29.4. The container job in `security.yml` now builds and scans the fixed tag
+`scan-target:ci` instead of `scan-target:${{ github.sha }}` (security-platform PR #32, merge `2dccff5`), released in
+`v1.3.0` (annotated tag object `21c5037` on `aa48081`; `v1` moved to `aa48081`). The inference above was correct
+before the fix: the `ci/main` trivy-image Test held 59 mitigated findings on `scan-target:2fda1ac…`, an earlier main
+SHA (29.4-05-SUMMARY).
+After the fix, D-11 measured it live: between two `ci/main` imports at different main SHAs (`2dccff5` and `aa48081`,
+dispatch 37230464825), 60 of 60 trivy-image finding ids persisted, 0 were recreated and there was no drift; the
+reimport left all 60 untouched (`.planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-08-d11-persist.json`).
+The TRIAGE.md and README caveats were rewritten in PR #34 instead of widened. ADR-031 records the decision and the
+evidence. The finding text above is left as written.
+
 ### WR-05: `api_get_all` pages by offset with no stable order and checks only the row count (Inferred)
 
 **File:** `/Users/christian/git-repos/OCC-github/development_environment/security_solution/repos/security-platform/scripts/defectdojo-lifecycle-assert.sh:429-465`
