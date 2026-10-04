@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.4-06-PLAN.md
-last_updated: "2026-10-04T19:25:08.403Z"
+stopped_at: Completed 29.4-07-PLAN.md
+last_updated: "2026-10-04T19:41:23.447Z"
 last_activity: 2026-10-04
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.4 (fix-trivy-image-cross-branch-dedup-replace-scan-target-githu) — EXECUTING
-Plan: 7 of 10
+Plan: 8 of 10
 Status: Ready to execute
 Last activity: 2026-10-04
 
@@ -366,6 +366,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.4]: PR A (#32) merged untagged at 2dccff5 on operator reply 'approved - merge and dispatch 91501ca'; v1 stays fdabac9
 - [Phase 29.4]: Dispatch run 37226275966 on 2dccff5 was the first post-upgrade ci/main import; D-14.1 upgrade PASS (60 old SHA-path findings mitigated, 60 new scan-target:ci, 0 duplicates)
 - [Phase 29.4]: 29.4-06: D-08 PASS live on homelab - throwaway PR #33 trivy-image findings all duplicates of ci/main scan-target:ci (matched 60, drift 0, hash_compared true); PR closed unmerged, engagement gone; D-13 fallback not needed
+- [Phase 29.4]: 29.4-07: PR B (#34) opened at bc0eb52 on operator reply 'approved - push PR B bc0eb52'; PR Security, kind proof (PROOF PASS - 172 assertions, 6 P-IMAGE-TAG PASS) and Chart Gates green; not merged (plan 08), no tag, v1 stays fdabac9
 
 ### Pending Todos
 
@@ -543,11 +544,12 @@ Carried forward from v1.1 close:
 | Phase 29.4 P04 | 20h30m (about 1h active) | 3 tasks | 4 files |
 | Phase 29.4 P05 | 8min | 3 tasks | 5 files |
 | Phase 29.4 P06 | 14 min | 3 tasks | 6 files |
+| Phase 29.4 P07 | 12 min (Task 3) | 3 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-10-04T19:25:08.394Z
-Stopped at: Completed 29.4-06-PLAN.md
+Last session: 2026-10-04T19:41:23.438Z
+Stopped at: Completed 29.4-07-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
