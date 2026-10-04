@@ -1,0 +1,173 @@
+29.4-05 Task 2: ci/main before-upgrade snapshot, PR A merge, origin/main readback, PR A cleanup
+====================================================================================================
+
+Operator reply to the Task 1 checkpoint (verbatim, typed by the operator in this session after being shown
+the full checkpoint including the irreversibility of the public merge and the one-time D-14.1 loss of
+False Positive / Risk Accepted dispositions on old trivy-image findings):
+
+    approved - merge and dispatch 91501ca
+
+This approves BOTH the merge of PR #32 at head 91501ca1052ef76218b32bd38430be5d28eea507 AND one
+`gh workflow run scheduled-security.yml --ref main` dispatch (Task 3, evidence/29.4-05-dispatch.txt).
+
+DOING:  (1) record the Scheduled Security run list; (2) take the read-only ci/main snapshot with the PR A
+        branch lifecycle-assert (label 29.4-main-before-upgrade); (3) re-read PR #32 headRefOid and state;
+        (4) gh pr merge 32 -R OttawaCloudConsulting/security-platform --merge --match-head-commit 91501ca1052ef76218b32bd38430be5d28eea507;
+        (5) read the merged content back from origin/main; (6) wait for the PR Security `closed` run and its
+        DefectDojo Cleanup; (7) engagement-gone probe for ci/fix/phase-29.4-image-tag; (8) run list again.
+EXPECT: no new Scheduled Security run since 37198294074; snapshot has exactly one trivy-image / Trivy Scan
+        Test whose active findings are on scan-target:<40-hex> paths (none on scan-target:ci); PR #32 OPEN,
+        MERGEABLE, head 91501ca; merge commit with second parent 91501ca; security.yml github.sha count 0,
+        scan-target:ci count 2; CHECK_COUNT = 21 count 1; D11-STEP2-TRIVY-IMAGE-DEDUP >= 1; prove_image_tag >= 2;
+        diff stat four files; v1* tags identical to the plan 04 baseline; Cleanup success; probe aborts with
+        "0 engagements named exactly".
+IF MATCH:    commit this evidence and continue to Task 3 (the approved single dispatch).
+IF MISMATCH: STOP, no retry, commit the evidence so far, present FAILED / THEORY / PROPOSE and the D-13
+             fallback ((a') revert PR A via a revert PR, or (b) leave PR A on main untagged). No tag, no v1 move.
+
+Note: trailing whitespace is stripped from command output in this file (docs-repo pre-commit hook).
+The DefectDojo base URL and token are not written here.
+
+----------------------------------------------------------------------------------------------------
+Step 1: Scheduled Security run list (before snapshot)
+----------------------------------------------------------------------------------------------------
+$ date -u
+2026-10-04T18:51:21Z
+$ gh run list -R OttawaCloudConsulting/security-platform --workflow scheduled-security.yml --json databaseId,event,headSha,status,conclusion,createdAt -L 10
+[{"conclusion":"success","createdAt":"2026-10-04T11:18:33Z","databaseId":37198294074,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"failure","createdAt":"2026-10-03T10:02:00Z","databaseId":37115036934,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"success","createdAt":"2026-10-02T10:02:29Z","databaseId":36993235781,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"success","createdAt":"2026-10-01T10:02:47Z","databaseId":36846632465,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"failure","createdAt":"2026-09-30T10:02:40Z","databaseId":36699956848,"event":"schedule","headSha":"fdabac9464f2baaeaa276f8934dc8d353295b355","status":"completed"},{"conclusion":"success","createdAt":"2026-09-29T10:02:41Z","databaseId":36553070357,"event":"schedule","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"},{"conclusion":"success","createdAt":"2026-09-29T01:59:33Z","databaseId":36510481745,"event":"workflow_dispatch","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"},{"conclusion":"success","createdAt":"2026-09-29T00:18:24Z","databaseId":36502430372,"event":"workflow_dispatch","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"},{"conclusion":"failure","createdAt":"2026-09-28T10:03:39Z","databaseId":36407382568,"event":"schedule","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"},{"conclusion":"success","createdAt":"2026-09-27T10:02:28Z","databaseId":36311259755,"event":"schedule","headSha":"c8027e6784ec631db128f45444c9a8092db9d0a1","status":"completed"}]
+Result: newest run is still 37198294074 (schedule, 30afdb9, success). No new run since the checkpoint.
+
+$ gh pr view 32 -R OttawaCloudConsulting/security-platform --json number,state,headRefOid,mergeable,mergeStateStatus,baseRefOid
+{"baseRefOid":"30afdb9fb56516c6b06c5275212b42bcac30cc94","headRefOid":"91501ca1052ef76218b32bd38430be5d28eea507","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","number":32,"state":"OPEN"}
+$ git -C repos/security-platform rev-parse origin/main   (after fetch)
+30afdb9fb56516c6b06c5275212b42bcac30cc94
+
+----------------------------------------------------------------------------------------------------
+Step 2: before snapshot (lifecycle-assert from repos/security-platform at fix/phase-29.4-image-tag 91501ca)
+----------------------------------------------------------------------------------------------------
+$ DEFECTDOJO_URL=<homelab, not recorded> DEFECTDOJO_ADMIN_TOKEN_FILE=$HOME/.config/defectdojo/homelab-admin.token bash scripts/defectdojo-lifecycle-assert.sh snapshot --product OttawaCloudConsulting/security-platform --out <abs evidence dir> --engagement ci/main --label 29.4-main-before-upgrade
+started 2026-10-04T18:51:46Z
+snapshot ci/main: 218 findings
+wrote evidence/29.4-main-before-upgrade-snapshot.json
+exit 0, finished 2026-10-04T18:51:48Z
+captured_at: 2026-10-04T18:51:48Z  engagement_id: 1  product_id: 1
+tests: [{"id":4,"title":"trivy-image","scan_type":"Trivy Scan"},{"id":7,"title":"pip-audit-1","scan_type":"pip-audit Scan"},{"id":6,"title":"npm-audit-1","scan_type":"NPM Audit v7+ Scan"},{"id":3,"title":"trivy-fs","scan_type":"Trivy Scan"},{"id":2,"title":"checkov","scan_type":"Checkov Scan"},{"id":8,"title":"tflint","scan_type":"SARIF"},{"id":5,"title":"gitleaks","scan_type":"Gitleaks Scan"},{"id":1,"title":"semgrep","scan_type":"Semgrep JSON Report"}]
+findings[0] has hash_code: true
+image Test (trivy-image / Trivy Scan) count: 1, id 4
+image Test findings:
+{"total":120,"active":60,"live_active_nonmitigated_nondup":60,"mitigated":60,"duplicate":0,"live_file_path_prefixes":[{"prefix":"scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94","n":60}],"active_on_scan_target_ci":0,"all_file_path_prefixes":["scan-target:2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94"]}
+Result: MATCH. One image Test (id 4); 60 live findings, all on scan-target:30afdb9 (the 37198294074 import); 60 mitigated on the earlier scan-target:2fda1ac path; 0 active on scan-target:ci.
+Snapshot file mode is 0600 as written by the helper (holds finding JSON only, no token).
+
+----------------------------------------------------------------------------------------------------
+Step 3: re-read PR #32, merge with --match-head-commit, origin/main readback
+----------------------------------------------------------------------------------------------------
+$ date -u
+2026-10-04T18:52:09Z
+$ gh pr view 32 -R OttawaCloudConsulting/security-platform --json number,state,headRefOid,mergeable,mergeStateStatus
+{"headRefOid":"91501ca1052ef76218b32bd38430be5d28eea507","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","number":32,"state":"OPEN"}
+Result: head equals the approved SHA; OPEN, MERGEABLE, CLEAN.
+
+DOING:  gh pr merge 32 --merge --match-head-commit 91501ca1052ef76218b32bd38430be5d28eea507
+EXPECT: exit 0, PR MERGED with a merge commit
+$ date -u
+2026-10-04T18:52:25Z
+$ gh pr merge 32 -R OttawaCloudConsulting/security-platform --merge --match-head-commit 91501ca1052ef76218b32bd38430be5d28eea507
+exit 0
+$ date -u
+2026-10-04T18:52:27Z
+$ gh pr view 32 -R OttawaCloudConsulting/security-platform --json state,mergedAt,mergeCommit,headRefOid
+{"headRefOid":"91501ca1052ef76218b32bd38430be5d28eea507","mergeCommit":{"oid":"2dccff51de278c29a18f2349da7d7f3f5a568579"},"mergedAt":"2026-10-04T18:52:27Z","state":"MERGED"}
+RESULT: merged at 2026-10-04T18:52:27Z, merge SHA 2dccff51de278c29a18f2349da7d7f3f5a568579. MATCH: yes.
+The before snapshot (18:51:46Z to 18:51:48Z) was captured before the merge timestamp.
+
+$ git -C repos/security-platform fetch -q origin --tags
+$ git -C repos/security-platform rev-parse origin/main
+2dccff51de278c29a18f2349da7d7f3f5a568579
+$ git rev-list --parents -n1 2dccff51de278c29a18f2349da7d7f3f5a568579
+2dccff51de278c29a18f2349da7d7f3f5a568579 30afdb9fb56516c6b06c5275212b42bcac30cc94 91501ca1052ef76218b32bd38430be5d28eea507
+-> first parent 30afdb9 (previous main), second parent 91501ca (approved head). MATCH.
+$ git diff 91501ca 2dccff5 --stat
+(no output: the merge tree is byte-identical to the approved head 91501ca)
+
+$ git show origin/main:.github/workflows/security.yml | grep -c 'github.sha'
+0                                                                       (expected 0: MATCH)
+$ git show origin/main:.github/workflows/security.yml | grep -c 'scan-target:ci'
+3                                                                       (expected 2: see plan-expectation correction below)
+$ git show origin/main:.github/workflows/security.yml | grep -n 'scan-target:ci'
+960:      # The scanned image is tagged with the fixed literal scan-target:ci, never
+993:            -t scan-target:ci "$ctx"
+999:          trivy image scan-target:ci --scanners vuln \
+$ git show origin/main:scripts/check-workflow-uploads.sh | grep -cF 'CHECK_COUNT = 21'
+1                                                                       (expected 1: MATCH; the no-space form CHECK_COUNT=21 counts 0)
+$ git show origin/main:scripts/defectdojo-lifecycle-assert.sh | grep -c 'D11-STEP2-TRIVY-IMAGE-DEDUP'
+5                                                                       (expected >= 1: MATCH)
+$ git show origin/main:scripts/defectdojo-import-proof.sh | grep -c 'prove_image_tag'
+3                                                                       (expected >= 2: MATCH)
+$ git diff --stat 2dccff5^1 2dccff5
+ .github/workflows/security.yml         |  11 +-
+ scripts/check-workflow-uploads.sh      |  44 ++++-
+ scripts/defectdojo-import-proof.sh     | 301 ++++++++++++++++++++++++++++++++-
+ scripts/defectdojo-lifecycle-assert.sh | 177 ++++++++++++++-----
+ 4 files changed, 483 insertions(+), 50 deletions(-)
+-> the four files. MATCH.
+$ git ls-remote --tags origin 'v1*'
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+-> identical to the plan 04 baseline (evidence/29.4-04-prepush.txt L534-544); v1 and v1.2.0^{} still fdabac9. MATCH.
+
+PLAN-EXPECTATION CORRECTION (scan-target:ci count 3, not 2): the expected value 2 counted only the two
+functional lines (993 build `-t scan-target:ci`, 999 scan `trivy image scan-target:ci`). Plan 29.4-01
+(PLAN.md L123) also required a comment sentence naming the fixed literal scan-target:ci; that comment
+(L960) landed in 3c547c6 (evidence/29.4-01-image-tag-gate.txt L99) and has been on the branch since. The
+governing proof is the empty `git diff 91501ca 2dccff5`: main carries exactly the approved content. This
+is a counting error in the plan 05 expectation, not a content deviation, and is not a red.
+THEREFORE: merge and readback MATCH; continue to PR A cleanup.
+
+----------------------------------------------------------------------------------------------------
+Step 4: PR A DefectDojo Cleanup and engagement-gone probe
+----------------------------------------------------------------------------------------------------
+$ gh run list -R OttawaCloudConsulting/security-platform --workflow pr-security.yml --branch fix/phase-29.4-image-tag --json databaseId,event,status,conclusion,createdAt,headSha -L 5
+[{"conclusion":"success","createdAt":"2026-10-04T18:52:29Z","databaseId":37226102306,"event":"pull_request","headSha":"91501ca1052ef76218b32bd38430be5d28eea507","status":"completed"},{"conclusion":"success","createdAt":"2026-10-03T22:13:18Z","databaseId":37157681084,"event":"pull_request","headSha":"91501ca1052ef76218b32bd38430be5d28eea507","status":"completed"}]
+-> 37226102306 created 18:52:29Z, two seconds after the merge: the pull_request `closed` run.
+$ gh run view 37226102306 --json jobs (summarised) / gh api .../runs/37226102306/jobs
+  security / DefectDojo Cleanup   success  18:52:35Z to 18:52:43Z  runner occ-homelab-defectdojo-qqrsp-runner-26drj  labels ["occ-homelab-defectdojo"]
+    steps: Set up job success; Gate — DefectDojo token present? success; Delete this PR's ci/<branch> DefectDojo engagement success;
+           Verify DefectDojo cleanup landed success; Complete job success
+  security / SAST, IaC, Container — Trivy Image, DefectDojo Import, Secrets, SCA: skipped (as designed on closed)
+  run conclusion: success
+
+Engagement-gone probe (lifecycle-assert at 91501ca, from repos/security-platform):
+$ date -u
+2026-10-04T18:54:25Z
+$ DEFECTDOJO_URL=<homelab, not recorded> DEFECTDOJO_ADMIN_TOKEN_FILE=$HOME/.config/defectdojo/homelab-admin.token bash scripts/defectdojo-lifecycle-assert.sh snapshot --product OttawaCloudConsulting/security-platform --out <abs evidence dir> --engagement ci/fix/phase-29.4-image-tag --label 29.4-pr-a-gone-probe
+==> SNAPSHOT-ENGAGEMENT: FAIL - 0 engagements named exactly 'ci/fix/phase-29.4-image-tag' in product 1, expected 1
+
+=== Summary ===
+SKIPPED - 1 sub-check(s) did not run. A SKIP IS NOT A PASS:
+  - the remaining snapshot assertions: not evaluated, they depend on SNAPSHOT-ENGAGEMENT
+
+FAILED - one or more live checks did not produce the expected result:
+  - SNAPSHOT-ENGAGEMENT: 0 engagements named exactly 'ci/fix/phase-29.4-image-tag' in product 1, expected 1
+exit 1
+-> aborted non-zero with "0 engagements named exactly" as required. `ls` of the evidence dir afterwards shows no
+   29.4-pr-a-gone-probe-snapshot.json: the probe wrote no file, nothing to delete.
+RESULT: PR A engagement deleted by Cleanup and confirmed gone before any dispatch. MATCH.
+
+----------------------------------------------------------------------------------------------------
+Step 5: Scheduled Security run list (after merge and cleanup)
+----------------------------------------------------------------------------------------------------
+$ date -u; gh run list -R OttawaCloudConsulting/security-platform --workflow scheduled-security.yml --json databaseId,event,headSha,status,conclusion,createdAt -L 10
+2026-10-04T18:54:42Z
+[{"conclusion":"success","createdAt":"2026-10-04T11:18:33Z","databaseId":37198294074,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"failure","createdAt":"2026-10-03T10:02:00Z","databaseId":37115036934,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"success","createdAt":"2026-10-02T10:02:29Z","databaseId":36993235781,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"success","createdAt":"2026-10-01T10:02:47Z","databaseId":36846632465,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"failure","createdAt":"2026-09-30T10:02:40Z","databaseId":36699956848,"event":"schedule","headSha":"fdabac9464f2baaeaa276f8934dc8d353295b355","status":"completed"},{"conclusion":"success","createdAt":"2026-09-29T10:02:41Z","databaseId":36553070357,"event":"schedule","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"},{"conclusion":"success","createdAt":"2026-09-29T01:59:33Z","databaseId":36510481745,"event":"workflow_dispatch","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"},{"conclusion":"success","createdAt":"2026-09-29T00:18:24Z","databaseId":36502430372,"event":"workflow_dispatch","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"},{"conclusion":"failure","createdAt":"2026-09-28T10:03:39Z","databaseId":36407382568,"event":"schedule","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"},{"conclusion":"success","createdAt":"2026-09-27T10:02:28Z","databaseId":36311259755,"event":"schedule","headSha":"c8027e6784ec631db128f45444c9a8092db9d0a1","status":"completed"}]
+Result: newest run is still 37198294074 (schedule, 30afdb9). No Scheduled Security run was created between the
+before snapshot and now, so no cron import touched ci/main; nothing to attribute.
+
+Task 2 verdict: MATCH on every step (one plan-expectation correction recorded in Step 3). Continue to Task 3.
