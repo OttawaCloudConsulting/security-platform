@@ -1,0 +1,138 @@
+29.4-08 Task 3: Scheduled Security workflow_dispatch on the PR B merge, after snapshot, D-11 persist verdict
+==========================================================================================================
+
+Approval: the operator's verbatim reply `approved - merge bc0eb52 and dispatch, no extra snapshot` (recorded in
+evidence/29.4-08-merge.txt) explicitly approves ONE `gh workflow run scheduled-security.yml --ref main`. The
+optional pre-dispatch ci/main snapshot was declined by the operator and is not taken.
+
+Preconditions (evidence/29.4-08-merge.txt): PR #34 merged at 2026-10-04T19:59:33Z, merge SHA
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67 (!= PR A merge SHA 2dccff51de278c29a18f2349da7d7f3f5a568579); PR B Cleanup
+(run 37230366223) success; engagement ci/docs/phase-29.4-dedup-text confirmed gone at 19:59:58Z; newest Scheduled
+Security run still 37226275966 (plan 05 dispatch on 2dccff5), so the dispatch is the first ci/main import on aa48081.
+
+DOING:  gh workflow run scheduled-security.yml -R OttawaCloudConsulting/security-platform --ref main (once);
+        resolve the new run; wait (budget 45 min); record job conclusions; after snapshot (label
+        29.4-main-after-pr-b); 29.4-ci-main-image-diff.sh --mode persist with --before
+        evidence/29.4-main-after-upgrade-snapshot.json (plan 05, after the PR A import).
+EXPECT: one new run, event workflow_dispatch, headSha aa48081681ee1e578c50d6a0d9e5ead6ff6afc67;
+        `security / Container — Trivy Image` success; DefectDojo Import success on an occ-homelab-defectdojo ARC
+        runner; persist verdict PASS: persisted ids > 0, recreated empty, image Test id 4 on both sides; titles
+        only added or only dropped recorded as Trivy DB drift.
+IF MATCH:    commit, write SUMMARY.
+IF MISMATCH: STOP, no re-dispatch or rerun (a public.ecr.aws 429 included), commit evidence so far, present
+             FAILED / THEORY / PROPOSE and the D-13 fallback (revert or hold PR A, revert or amend PR B; v1.2.1 at
+             30afdb9 and a v1 move only on separate approval; v1 rollback target fdabac9). No tag, no v1 move.
+
+Note: trailing whitespace is stripped from command output in this file (docs-repo pre-commit hook).
+The DefectDojo base URL and token are not written here.
+
+----------------------------------------------------------------------------------------------------
+Step 1: cron / import check before the dispatch
+----------------------------------------------------------------------------------------------------
+Scheduled Security list at 20:00:03Z (evidence/29.4-08-merge.txt Step 5) and again at 20:00:55Z immediately before
+the dispatch: newest run 37226275966 (workflow_dispatch, 2dccff5, plan 05). No ci/main import between the PR B merge
+(19:59:33Z) and the dispatch. Next cron ~2026-10-05 10:00Z.
+
+----------------------------------------------------------------------------------------------------
+Step 2: the one approved dispatch
+----------------------------------------------------------------------------------------------------
+$ date -u
+2026-10-04T20:00:55Z
+$ gh workflow run scheduled-security.yml -R OttawaCloudConsulting/security-platform --ref main
+https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37230464825
+exit 0
+$ gh run list -R OttawaCloudConsulting/security-platform --workflow scheduled-security.yml --json databaseId,event,headSha,status,conclusion,createdAt -L 3   (8 s later)
+[{"conclusion":"","createdAt":"2026-10-04T20:00:58Z","databaseId":37230464825,"event":"workflow_dispatch","headSha":"aa48081681ee1e578c50d6a0d9e5ead6ff6afc67","status":"in_progress"},{"conclusion":"success","createdAt":"2026-10-04T18:55:19Z","databaseId":37226275966,"event":"workflow_dispatch","headSha":"2dccff51de278c29a18f2349da7d7f3f5a568579","status":"completed"},{"conclusion":"success","createdAt":"2026-10-04T11:18:33Z","databaseId":37198294074,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"}]
+-> run 37230464825, event workflow_dispatch, created 20:00:58Z (after the command), headSha
+   aa48081681ee1e578c50d6a0d9e5ead6ff6afc67 == PR B merge SHA (!= PR A merge SHA 2dccff5). MATCH.
+   Exactly one dispatch was made in this plan.
+
+Poll: in_progress 20:01:23Z .. 20:01:54Z, completed success 20:02:10Z.
+$ gh run view 37230464825 --json event,headSha,status,conclusion,createdAt,updatedAt
+{"conclusion":"success","createdAt":"2026-10-04T20:00:58Z","event":"workflow_dispatch","headSha":"aa48081681ee1e578c50d6a0d9e5ead6ff6afc67","status":"completed","updatedAt":"2026-10-04T20:01:57Z"}
+$ gh api repos/OttawaCloudConsulting/security-platform/actions/runs/37230464825/jobs   (name, conclusion, started, completed, runner_name, labels)
+security / Container — Trivy Image	success	2026-10-04T20:01:04Z	2026-10-04T20:01:29Z	GitHub Actions 1000001399	ubuntu-latest
+security / SCA — Trivy Filesystem	success	2026-10-04T20:01:04Z	2026-10-04T20:01:43Z	GitHub Actions 1000001400	ubuntu-latest
+security / SAST — Semgrep CE	success	2026-10-04T20:01:05Z	2026-10-04T20:01:41Z	GitHub Actions 1000001402	ubuntu-latest
+security / Secrets — Gitleaks	success	2026-10-04T20:01:04Z	2026-10-04T20:01:19Z	GitHub Actions 1000001403	ubuntu-latest
+security / IaC — Checkov	success	2026-10-04T20:01:05Z	2026-10-04T20:01:42Z	GitHub Actions 1000001401	ubuntu-latest
+security / DefectDojo Cleanup	skipped	2026-10-04T20:01:03Z	2026-10-04T20:01:02Z	-	occ-homelab-defectdojo
+security / DefectDojo Import	success	2026-10-04T20:01:48Z	2026-10-04T20:01:57Z	occ-homelab-defectdojo-qqrsp-runner-9gnbz	occ-homelab-defectdojo
+-> security / Container — Trivy Image success on ubuntu-latest (no public.ecr.aws 429); security / DefectDojo Import
+   success on ARC runner occ-homelab-defectdojo-qqrsp-runner-9gnbz (label occ-homelab-defectdojo), 20:01:48Z to
+   20:01:57Z. DefectDojo Cleanup skipped (as designed outside pull_request closed). MATCH.
+
+----------------------------------------------------------------------------------------------------
+Step 3: after snapshot
+----------------------------------------------------------------------------------------------------
+$ DEFECTDOJO_URL=<homelab, not recorded> DEFECTDOJO_ADMIN_TOKEN_FILE=$HOME/.config/defectdojo/homelab-admin.token bash scripts/defectdojo-lifecycle-assert.sh snapshot --product OttawaCloudConsulting/security-platform --out <abs evidence dir> --engagement ci/main --label 29.4-main-after-pr-b
+(run from repos/security-platform at bc0eb52; `git diff --quiet HEAD origin/main -- scripts` exit 0, i.e. the same
+scripts as main aa48081 and as the plan 05 snapshots; started 20:02:22Z)
+snapshot ci/main: 278 findings
+wrote evidence/29.4-main-after-pr-b-snapshot.json
+exit 0 (captured_at 2026-10-04T20:02:25Z, engagement_id 1, product_id 1; file mode 0600; no URL or token in it)
+
+Per-Test finding counts (test id: after-upgrade -> after-pr-b): 1 semgrep 7->7; 2 checkov 14->14; 3 trivy-fs 6->6;
+4 trivy-image 180->180; 5 gitleaks 18->18; 6 npm-audit 2->2; 7 pip-audit 48->48; 8 tflint 3->3. 278 -> 278.
+Image Test 4 by file_path prefix and state, after-pr-b (identical to the plan 05 after-upgrade breakdown):
+[{"p":"scan-target:2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","active":false,"is_mitigated":true,"duplicate":false,"n":59},{"p":"scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94","active":false,"is_mitigated":true,"duplicate":false,"n":61},{"p":"scan-target:ci","active":true,"is_mitigated":false,"duplicate":false,"n":60}]
+
+Corroboration that the reimport really landed on Test 4 (read-only DefectDojo API, admin token from file; host not
+recorded): an unchanged snapshot alone could also mean "no reimport happened", so the import record was read.
+GET /api/v2/tests/4/
+{"id":4,"updated":"2026-10-04T20:01:53.389721Z","branch_tag":"main","commit_hash":"aa48081681ee1e578c50d6a0d9e5ead6ff6afc67","build_id":"37230464825","version":""}
+GET /api/v2/test_imports/?test=4&o=-created&limit=3   (id, created, close_old_findings, findings_affected)
+{"id":145,"created":"2026-10-04T20:01:53.284359Z","close_old_findings":true,"findings_affected":60}
+{"id":121,"created":"2026-10-04T18:56:18.517386Z","close_old_findings":true,"findings_affected":120}
+{"id":105,"created":"2026-10-04T18:32:03.196353Z","close_old_findings":true,"findings_affected":61}
+GET /api/v2/test_imports/145/   (action histogram)
+{"id":145,"type":"reimport","created":"2026-10-04T20:01:53.284359Z","actions":[{"a":"U","n":60}]}
+-> Test 4 carries commit_hash aa48081 and build_id 37230464825 (this dispatch). Reimport 145 touched 60 findings, all
+   with action U (untouched: matched an existing finding by hash), none N (new), C (closed) or R (reactivated).
+   Import 121 is the plan 05 PR A reimport (60 new scan-target:ci + 60 closed scan-target:30afdb9 = 120).
+
+----------------------------------------------------------------------------------------------------
+Step 4: D-11 persist verdict (WR-04)
+----------------------------------------------------------------------------------------------------
+$ bash .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/29.4-ci-main-image-diff.sh --mode persist --before <abs>/evidence/29.4-main-after-upgrade-snapshot.json --after <abs>/evidence/29.4-main-after-pr-b-snapshot.json --out <abs>/evidence/29.4-08-d11-persist.json
+{
+  "mode": "persist",
+  "verdict": "PASS",
+  "image_test_id": {
+    "before": 4,
+    "after": 4
+  },
+  "counts": {
+    "before": {
+      "total": 180,
+      "active": 60,
+      "mitigated": 120,
+      "duplicate": 0
+    },
+    "after": {
+      "total": 180,
+      "active": 60,
+      "mitigated": 120,
+      "duplicate": 0
+    },
+    "A": 60,
+    "B": 60,
+    "persisted": 60,
+    "removed": 0,
+    "added": 0,
+    "recreated": 0
+  },
+  "recreated": [],
+  "drift": {
+    "drift_dropped": [],
+    "drift_added": []
+  },
+  "failures": []
+}
+exit 0
+-> verdict PASS: image Test id 4 on both sides; all 60 active ci/main trivy-image finding ids persisted across main
+   SHAs 2dccff5 -> aa48081; recreated 0 (no title closed and re-created under a new id, so no hash_code pair to
+   print); removed 0, added 0; drift_dropped [] and drift_added [] (no Trivy DB drift between 18:56Z and 20:01Z).
+   MATCH. WR-04 is closed on live evidence: with scan-target:ci the image hash no longer varies with the main SHA.
+
+Task 3 verdict: MATCH on every step. No tag cut, no v1 move (plan 09).

@@ -1,0 +1,34 @@
+{
+  "mode": "persist",
+  "verdict": "PASS",
+  "image_test_id": {
+    "before": 4,
+    "after": 4
+  },
+  "counts": {
+    "before": {
+      "total": 180,
+      "active": 60,
+      "mitigated": 120,
+      "duplicate": 0
+    },
+    "after": {
+      "total": 180,
+      "active": 60,
+      "mitigated": 120,
+      "duplicate": 0
+    },
+    "A": 60,
+    "B": 60,
+    "persisted": 60,
+    "removed": 0,
+    "added": 0,
+    "recreated": 0
+  },
+  "recreated": [],
+  "drift": {
+    "drift_dropped": [],
+    "drift_added": []
+  },
+  "failures": []
+}
