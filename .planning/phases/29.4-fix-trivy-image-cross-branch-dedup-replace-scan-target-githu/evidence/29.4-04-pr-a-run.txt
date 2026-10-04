@@ -137,3 +137,278 @@ PR A did not cause the stall. Nothing has failed: the five scanner jobs in both 
 RESULT: MISMATCH on EXPECT (Import jobs and kind proof did not run). THEREFORE: STOP, human-action checkpoint;
 no rerun, no cancel, no cluster access, no merge/tag/dispatch. PR #32 left OPEN.
 Not yet captured (pending runner restore): Import conclusions/ARC runner name, PROOF lines, gh pr checks.
+
+RESUMPTION - captured 2026-10-04T18:44:15Z (continuation executor; no rerun, no cancel, no dispatch, no merge/tag performed)
+note: trailing whitespace (gh pr checks trailing tabs) stripped for the docs pre-commit git diff --check; content otherwise verbatim
+
+STALL RESOLUTION - operator-reported (not observed by this executor via gh; relayed by the orchestrator, 2026-10-04):
+  root cause: homelab kube-apiserver serving certificate (kubeadm 1-year cert, CN=kube-apiserver, issuer CN=kubernetes)
+  expired 2026-10-02T15:55:14Z, so the ARC listener could not reach the API server and no runner pods were created.
+  operator renewed the kubeadm certs; new serving cert valid 2026-10-04T18:25:54Z -> 2027-10-04T18:30:54Z.
+  ARC listener occ-homelab-defectdojo-776f7979-listener restarted about 2026-10-04T18:31Z.
+  PR A did not cause the stall (cert expired about 30h before the push at 2026-10-03T22:12Z).
+
+OBSERVED - main Scheduled Security 37115036934 (queued since 2026-10-03T10:02:47Z, before PR A):
+$ gh run view 37115036934 --json status,conclusion,updatedAt
+{"conclusion":"failure","status":"completed","updatedAt":"2026-10-04T09:12:49Z"}
+$ gh api .../actions/runs/37115036934/jobs --jq (DefectDojo jobs)
+{"completed_at":"2026-10-03T10:02:00Z","conclusion":"skipped","name":"security / DefectDojo Cleanup","runner_name":null,"started_at":"2026-10-03T10:02:01Z","status":"completed"}
+{"completed_at":"2026-10-04T09:12:48Z","conclusion":"cancelled","name":"security / DefectDojo Import","runner_name":"","started_at":"2026-10-03T10:02:47Z","status":"completed"}
+  -> Import cancelled by GitHub after about 23h10m queued, before the cert renewal; not caused by PR A; not rerun.
+
+OBSERVED - PR A runs on head 91501ca1052ef76218b32bd38430be5d28eea507 (jobs API, verbatim)
+$ gh run view 37157681084 --json status,conclusion,workflowName,headSha
+PR Security status=completed conclusion=success head=91501ca1052ef76218b32bd38430be5d28eea507
+$ gh api repos/OttawaCloudConsulting/security-platform/actions/runs/37157681084/jobs --jq '.jobs[]|{name,status,conclusion,runner_name,labels,started_at,completed_at,id}'
+{"completed_at":"2026-10-03T22:13:43Z","conclusion":"success","id":111304403214,"labels":["ubuntu-latest"],"name":"security / Secrets — Gitleaks","runner_name":"GitHub Actions 1000001353","started_at":"2026-10-03T22:13:24Z","status":"completed"}
+{"completed_at":"2026-10-03T22:13:55Z","conclusion":"success","id":111304403358,"labels":["ubuntu-latest"],"name":"security / IaC — Checkov","runner_name":"GitHub Actions 1000001356","started_at":"2026-10-03T22:13:23Z","status":"completed"}
+{"completed_at":"2026-10-03T22:13:42Z","conclusion":"success","id":111304403373,"labels":["ubuntu-latest"],"name":"security / Container — Trivy Image","runner_name":"GitHub Actions 1000001357","started_at":"2026-10-03T22:13:20Z","status":"completed"}
+{"completed_at":"2026-10-03T22:14:03Z","conclusion":"success","id":111304403383,"labels":["ubuntu-latest"],"name":"security / SCA — Trivy Filesystem","runner_name":"GitHub Actions 1000001359","started_at":"2026-10-03T22:13:21Z","status":"completed"}
+{"completed_at":"2026-10-03T22:13:52Z","conclusion":"success","id":111304403396,"labels":["ubuntu-latest"],"name":"security / SAST — Semgrep CE","runner_name":"GitHub Actions 1000001361","started_at":"2026-10-03T22:13:20Z","status":"completed"}
+{"completed_at":"2026-10-03T22:13:18Z","conclusion":"skipped","id":111304404028,"labels":["occ-homelab-defectdojo"],"name":"security / DefectDojo Cleanup","runner_name":null,"started_at":"2026-10-03T22:13:19Z","status":"completed"}
+{"completed_at":"2026-10-04T18:32:15Z","conclusion":"success","id":111304530630,"labels":["occ-homelab-defectdojo"],"name":"security / DefectDojo Import","runner_name":"occ-homelab-defectdojo-qqrsp-runner-v7l49","started_at":"2026-10-04T18:32:02Z","status":"completed"}
+$ gh run view 37157681058 --json status,conclusion,workflowName,headSha
+DefectDojo Import Proof status=completed conclusion=success head=91501ca1052ef76218b32bd38430be5d28eea507
+$ gh api repos/OttawaCloudConsulting/security-platform/actions/runs/37157681058/jobs --jq '.jobs[]|{name,status,conclusion,runner_name,labels,started_at,completed_at,id}'
+{"completed_at":"2026-10-03T22:13:53Z","conclusion":"success","id":111304403270,"labels":["ubuntu-latest"],"name":"scans / SAST — Semgrep CE","runner_name":"GitHub Actions 1000001352","started_at":"2026-10-03T22:13:21Z","status":"completed"}
+{"completed_at":"2026-10-03T22:14:01Z","conclusion":"success","id":111304403286,"labels":["ubuntu-latest"],"name":"scans / SCA — Trivy Filesystem","runner_name":"GitHub Actions 1000001355","started_at":"2026-10-03T22:13:21Z","status":"completed"}
+{"completed_at":"2026-10-03T22:13:35Z","conclusion":"success","id":111304403328,"labels":["ubuntu-latest"],"name":"scans / Secrets — Gitleaks","runner_name":"GitHub Actions 1000001354","started_at":"2026-10-03T22:13:20Z","status":"completed"}
+{"completed_at":"2026-10-03T22:13:54Z","conclusion":"success","id":111304403335,"labels":["ubuntu-latest"],"name":"scans / IaC — Checkov","runner_name":"GitHub Actions 1000001358","started_at":"2026-10-03T22:13:21Z","status":"completed"}
+{"completed_at":"2026-10-03T22:13:45Z","conclusion":"success","id":111304403359,"labels":["ubuntu-latest"],"name":"scans / Container — Trivy Image","runner_name":"GitHub Actions 1000001360","started_at":"2026-10-03T22:13:20Z","status":"completed"}
+{"completed_at":"2026-10-03T22:13:18Z","conclusion":"skipped","id":111304403802,"labels":["occ-homelab-defectdojo"],"name":"scans / DefectDojo Cleanup","runner_name":null,"started_at":"2026-10-03T22:13:19Z","status":"completed"}
+{"completed_at":"2026-10-04T18:31:58Z","conclusion":"success","id":111304524443,"labels":["occ-homelab-defectdojo"],"name":"scans / DefectDojo Import","runner_name":"occ-homelab-defectdojo-qqrsp-runner-swd5t","started_at":"2026-10-04T18:31:54Z","status":"completed"}
+{"completed_at":"2026-10-04T18:39:58Z","conclusion":"success","id":111502134445,"labels":["ubuntu-latest"],"name":"prove-import","runner_name":"GitHub Actions 1000001367","started_at":"2026-10-04T18:32:02Z","status":"completed"}
+DefectDojo Import on ARC (occ-homelab-defectdojo label):
+  scans / DefectDojo Import    (run 37157681058) success on occ-homelab-defectdojo-qqrsp-runner-swd5t 2026-10-04T18:31:54Z -> 18:31:58Z
+  security / DefectDojo Import (run 37157681084) success on occ-homelab-defectdojo-qqrsp-runner-v7l49 2026-10-04T18:32:02Z -> 18:32:15Z
+  prove-import (kind, ubuntu-latest) success 2026-10-04T18:32:02Z -> 18:39:58Z (7m56s; plan estimate was about 60 min)
+  wait from run creation (2026-10-03T22:13:18Z) to first Import start (2026-10-04T18:31:54Z): about 20h19m
+$ gh api repos/OttawaCloudConsulting/security-platform/actions/runners --jq .total_count
+0
+  (ephemeral ARC runners deregister after their job; runner identity is taken from the job records above)
+
+KIND PROOF - run 37157681058 job prove-import
+$ gh run view 37157681058 --log | grep -E 'PROOF: |PROOF (PASS|FAIL)'   (log prefix "prove-import<TAB>Live proof<TAB><timestamp> " stripped)
+PROOF: P-EXTRACT PASS six committed side-channel bodies extracted from .github/workflows/security.yml
+PROOF: P-TLS PASS GET https://defectdojo.smoke.test:18443/api/v2/ -> http 403, ssl_verify_result 0 against the kind CA; host resolved by DEFECTDOJO_RESOLVE; the hostile CURL_HOME curlrc was ignored
+PROOF: P-ADMIN-TOKEN PASS api-token-auth as admin -> 200 with a token, over verified TLS
+PROOF: P-USER PASS ci-importer created and read back with is_staff=true, is_superuser=false (the documented minimum, not superuser)
+PROOF: P-IMPORTER-TOKEN PASS api-token-auth as ci-importer -> 200 with a token, over verified TLS; all body runs use this token
+PROOF: P-GATE PASS token absent -> exit 0, enabled=false, SKIP line printed
+PROOF: P-GATE PASS Dependabot actor with a token set -> exit 0, enabled=false
+PROOF: P-GATE PASS token present, normal actor -> exit 0, enabled=true
+PROOF: P-RUN1 PASS committed dd-import body exited 0 as ci-importer, tls_mode verified-ca, no ::warning::
+PROOF: P-RUN1 PASS committed dd-verify body exited 0 on the run-1 results
+PROOF: P-CONTEXT PASS product type exactly named 'CI': 1 found
+PROOF: P-CONTEXT PASS product exactly named 'proof/security-platform': 1 found
+PROOF: P-CONTEXT PASS product 1 is under product type 'CI' (id 2), found prod_type 2
+PROOF: P-CONTEXT PASS engagement exactly named 'ci/proof/branch-a' in product 1: 1 found
+PROOF: P-CONTEXT PASS every attempted import reported product 1 / engagement 1
+PROOF: P-TESTS PASS engagement 1 holds 8 Test(s); 8 report file(s) were attempted
+PROOF: P-TESTS PASS attempted files ['checkov-results.json', 'gitleaks-results.json', 'npm-audit-1.json', 'pip-audit-1.json', 'semgrep-results.json', 'tflint.sarif', 'trivy-fs.json', 'trivy-image.json'] == present known report files ['checkov-results.json', 'gitleaks-results.json', 'npm-audit-1.json', 'pip-audit-1.json', 'semgrep-results.json', 'tflint.sarif', 'trivy-fs.json', 'trivy-image.json']
+PROOF: P-TESTS PASS no present report file was skipped
+PROOF: P-TESTS PASS semgrep-results.json: test 1 title='semgrep' scan_type='Semgrep JSON Report'; expected 'semgrep' / 'Semgrep JSON Report'
+PROOF: P-TESTS PASS checkov-results.json: test 2 title='checkov' scan_type='Checkov Scan'; expected 'checkov' / 'Checkov Scan'
+PROOF: P-TESTS PASS trivy-fs.json: test 3 title='trivy-fs' scan_type='Trivy Scan'; expected 'trivy-fs' / 'Trivy Scan'
+PROOF: P-TESTS PASS trivy-image.json: test 4 title='trivy-image' scan_type='Trivy Scan'; expected 'trivy-image' / 'Trivy Scan'
+PROOF: P-TESTS PASS gitleaks-results.json: test 5 title='gitleaks' scan_type='Gitleaks Scan'; expected 'gitleaks' / 'Gitleaks Scan'
+PROOF: P-TESTS PASS npm-audit-1.json: test 6 title='npm-audit-1' scan_type='NPM Audit v7+ Scan'; expected 'npm-audit-1' / 'NPM Audit v7+ Scan'
+PROOF: P-TESTS PASS pip-audit-1.json: test 7 title='pip-audit-1' scan_type='pip-audit Scan'; expected 'pip-audit-1' / 'pip-audit Scan'
+PROOF: P-TESTS PASS tflint.sarif: test 8 title='tflint' scan_type='SARIF'; expected 'tflint' / 'SARIF'
+PROOF: P-COUNTS PASS semgrep-results.json: statistics.after.total.total 7 == findings?test=1 count 7
+PROOF: P-COUNTS PASS semgrep-results.json: 1 <= imported 7 <= raw 7 (bounded: parser merges entries)
+PROOF: P-COUNTS PASS checkov-results.json: statistics.after.total.total 14 == findings?test=2 count 14
+PROOF: P-COUNTS PASS checkov-results.json: imported 14 == raw 14 (exact: parser does not merge)
+PROOF: P-COUNTS PASS trivy-fs.json: statistics.after.total.total 6 == findings?test=3 count 6
+PROOF: P-COUNTS PASS trivy-fs.json: imported 6 == raw 6 (exact: parser does not merge)
+PROOF: P-COUNTS PASS trivy-image.json: statistics.after.total.total 60 == findings?test=4 count 60
+PROOF: P-COUNTS PASS trivy-image.json: imported 60 == raw 60 (exact: parser does not merge)
+PROOF: P-COUNTS PASS gitleaks-results.json: statistics.after.total.total 18 == findings?test=5 count 18
+PROOF: P-COUNTS PASS gitleaks-results.json: 1 <= imported 18 <= raw 18 (bounded: parser merges entries)
+PROOF: P-COUNTS PASS npm-audit-1.json: statistics.after.total.total 2 == findings?test=6 count 2
+PROOF: P-COUNTS PASS npm-audit-1.json: 1 <= imported 2 <= raw 8 (bounded: parser merges entries)
+PROOF: P-COUNTS PASS pip-audit-1.json: statistics.after.total.total 47 == findings?test=7 count 47
+PROOF: P-COUNTS PASS pip-audit-1.json: imported 47 == raw 47 (exact: parser does not merge)
+PROOF: P-COUNTS PASS tflint.sarif: statistics.after.total.total 3 == findings?test=8 count 3
+PROOF: P-COUNTS PASS tflint.sarif: 1 <= imported 3 <= raw 3 (bounded: parser merges entries)
+PROOF: P-RUN2 PASS committed dd-import (run 2) and dd-verify bodies exited 0
+PROOF: P-RUN2 PASS run 2 attempted ['checkov-results.json', 'gitleaks-results.json', 'npm-audit-1.json', 'pip-audit-1.json', 'semgrep-results.json', 'tflint.sarif', 'trivy-fs.json', 'trivy-image.json'] == run 1 files ['checkov-results.json', 'gitleaks-results.json', 'npm-audit-1.json', 'pip-audit-1.json', 'semgrep-results.json', 'tflint.sarif', 'trivy-fs.json', 'trivy-image.json']
+PROOF: P-RUN2 PASS semgrep-results.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS semgrep-results.json: after.total.total 7 == run-1 7
+PROOF: P-RUN2 PASS semgrep-results.json: test_id 1 == run-1 test_id 1 (reimported in place)
+PROOF: P-RUN2 PASS checkov-results.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS checkov-results.json: after.total.total 14 == run-1 14
+PROOF: P-RUN2 PASS checkov-results.json: test_id 2 == run-1 test_id 2 (reimported in place)
+PROOF: P-RUN2 PASS trivy-fs.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS trivy-fs.json: after.total.total 6 == run-1 6
+PROOF: P-RUN2 PASS trivy-fs.json: test_id 3 == run-1 test_id 3 (reimported in place)
+PROOF: P-RUN2 PASS trivy-image.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS trivy-image.json: after.total.total 60 == run-1 60
+PROOF: P-RUN2 PASS trivy-image.json: test_id 4 == run-1 test_id 4 (reimported in place)
+PROOF: P-RUN2 PASS gitleaks-results.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS gitleaks-results.json: after.total.total 18 == run-1 18
+PROOF: P-RUN2 PASS gitleaks-results.json: test_id 5 == run-1 test_id 5 (reimported in place)
+PROOF: P-RUN2 PASS npm-audit-1.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS npm-audit-1.json: after.total.total 2 == run-1 2
+PROOF: P-RUN2 PASS npm-audit-1.json: test_id 6 == run-1 test_id 6 (reimported in place)
+PROOF: P-RUN2 PASS pip-audit-1.json: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS pip-audit-1.json: after.total.total 47 == run-1 47
+PROOF: P-RUN2 PASS pip-audit-1.json: test_id 7 == run-1 test_id 7 (reimported in place)
+PROOF: P-RUN2 PASS tflint.sarif: delta.created.total.total 0 == 0
+PROOF: P-RUN2 PASS tflint.sarif: after.total.total 3 == run-1 3
+PROOF: P-RUN2 PASS tflint.sarif: test_id 8 == run-1 test_id 8 (reimported in place)
+PROOF: P-RUN2 PASS engagement 'ci/proof/branch-a': 1 match(es), Test count 8 == run-1 8
+PROOF: P-SCHEDULE PASS schedule event, empty head ref, GITHUB_REF_NAME=main -> exit 0 and engagement 'ci/main' exists in proof/security-platform (1 Test)
+PROOF: P-HOSTILE PASS import with the hostile head ref exited 0
+PROOF: P-HOSTILE PASS exactly one engagement named literally 'ci/@dd-proof/$(touch pwned)' exists in proof/security-platform
+PROOF: P-HOSTILE PASS no file named pwned in the body's cwd, /home/runner/work/security-platform/security-platform or anywhere under $DD_SMOKE_OUT: the $( ) never ran
+PROOF: P-SCOPE PASS an engagement with the identical hostile name exists in proof/other-product too
+PROOF: P-CLEANUP PASS committed dd-delete body exited 0 with outcome deleted, as ci-importer
+PROOF: P-CLEANUP PASS the hostile engagement is gone from proof/security-platform
+PROOF: P-CLEANUP PASS the same-named engagement in proof/other-product still exists (product-scoped delete)
+PROOF: P-CLEANUP PASS ci/proof/branch-a still exists with its run-2 Test count 8
+PROOF: P-CLEANUP PASS ci/main still exists
+PROOF: P-CLEANUP PASS committed dd-cleanup-verify body exited 0 on the deleted result
+PROOF: P-REFUSE PASS head ref 'main' (default-branch) -> exit 0, outcome refused, REFUSE: line
+PROOF: P-REFUSE PASS head ref '' (empty-head) -> exit 0, outcome refused, REFUSE: line
+PROOF: P-REFUSE PASS ci/main still exists after both refusals
+PROOF: P-NOMATCH PASS head ref 'never/existed' -> exit 0, outcome nothing-to-delete, instance engagement count 3 -> 3
+PROOF: P-INSECURE PASS DD_INSECURE=true -> ::warning:: line printed, exit 0, insecure attempted=0 skipped=8: no request was made
+PROOF: P-HTTP PASS import-http: DD_URL=http://127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+PROOF: P-HTTP PASS import-noscheme: DD_URL=127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+PROOF: P-HTTP PASS delete-http: DD_URL=http://127.0.0.1:9 -> exit 1, refused before the TLS label, no request, no results file, token absent
+PROOF: P-HTTP PASS configure-http: DEFECTDOJO_URL=http://127.0.0.1:9 -> exit 1, refused before the token file is read, no request, token absent
+PROOF: P-HTTP PASS configure-noscheme: DEFECTDOJO_URL=127.0.0.1:9 -> exit 1, refused before the token file is read, no request, token absent
+PROOF: P-CONFIGURE-GUARD PASS configure-no-env: empty DEFECTDOJO_ADMIN_TOKEN_FILE -> exit 2, FATAL names the variable, no request
+PROOF: P-CONFIGURE-GUARD PASS configure-loose-perms: 0644 token file -> exit 2, FATAL names the path, no request, token absent
+PROOF: P-CURLRC PASS control: no -q curl read the hostile curlrc and reached the listener (REQUEST auth=yes; trace and libcurl files written)
+PROOF: P-CURLRC PASS configure: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CURLRC PASS lifecycle: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CURLRC PASS homelab-tls-probe: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0)
+PROOF: P-CURLRC PASS homelab-token-get: the measure_count token GET was refused on TLS verification before any request (listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0)
+PROOF: P-CURLRC PASS dd-import: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CURLRC PASS dd-delete: exit 1, unverified peer refused before any request, curlrc ignored, token absent, no trace/libcurl file (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CONFIGURE-GUARD PASS configure-token-dir: the token path is a directory -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CONFIGURE-GUARD PASS configure-token-mode000: a mode-000 token file -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CONFIGURE-GUARD PASS configure-token-multiline: a two-line token file (40-hex, then 'X-Other: 1') -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CONFIGURE-GUARD PASS configure-token-prefix: a 'Token '-prefixed token file -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CONFIGURE-GUARD PASS configure-token-blanklines: a token file with four trailing LF (regression guard for the WR-01 review gap) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CONFIGURE-GUARD PASS configure-token-barecr: a token file ending in a bare CR (regression guard) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CONFIGURE-GUARD PASS configure-token-nul: a token file with a NUL byte after the token (regression guard) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS configure-token-lf: a token file ending in exactly one LF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS configure-token-crlf: a token file ending in exactly one CRLF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-RESOLVE-GUARD PASS configure-resolve-host: DEFECTDOJO_RESOLVE host differs from DEFECTDOJO_URL -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-RESOLVE-GUARD PASS configure-resolve-wildcard: a wildcard DEFECTDOJO_RESOLVE -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS lifecycle-token-multiline: a two-line token file (two 40-hex lines, the WR-02 join gap) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS lifecycle-token-prefix: a 'Token '-prefixed token file (regression guard: refused before 29.2) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS lifecycle-token-dir: the token path is a directory (regression guard: refused before 29.2) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS lifecycle-token-blanklines: a token file with four trailing LF (the WR-01 review gap) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS lifecycle-token-barecr: a token file ending in a bare CR -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS lifecycle-token-nul: a token file with a NUL byte after the token -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS lifecycle-token-lf: a token file ending in exactly one LF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS lifecycle-token-crlf: a token file ending in exactly one CRLF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=1 HANDSHAKE-FAIL=1 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-RESOLVE-GUARD PASS lifecycle-resolve-host: DEFECTDOJO_RESOLVE host differs from DEFECTDOJO_URL -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-RESOLVE-GUARD PASS lifecycle-resolve-wildcard: a wildcard DEFECTDOJO_RESOLVE -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS homelab-token-multiline: a two-line token file (two 40-hex lines, the WR-02 join gap) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS homelab-token-prefix: a 'Token '-prefixed token file -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS homelab-token-dir: the --token-file path is a directory -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS homelab-token-blanklines: a token file with four trailing LF (the WR-01 review gap) -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS homelab-token-barecr: a token file ending in a bare CR -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-GUARD PASS homelab-token-nul: a token file with a NUL byte after the token -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS homelab-token-lf: a token file ending in exactly one LF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0)
+PROOF: P-TOKEN-ACCEPT PASS homelab-token-crlf: a token file ending in exactly one CRLF -> accepted past the token check, refused at TLS, 0 REQUEST, token absent (listener CONNECT=6 HANDSHAKE-FAIL=4 HANDSHAKE-OK=2 REQUEST=0)
+PROOF: P-RESOLVE-GUARD PASS dd-import-resolve-host: DEFECTDOJO_RESOLVE host differs from DD_URL -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-RESOLVE-GUARD PASS dd-delete-resolve-host: DEFECTDOJO_RESOLVE host differs from DD_URL -> exit 2, refused before any request, 0 CONNECT, token absent (listener CONNECT=0 HANDSHAKE-FAIL=0 HANDSHAKE-OK=0 REQUEST=0)
+PROOF: P-CONFIGURE PASS run 1 on the fresh install -> exit 0, CHANGED: names enable_deduplication, VERIFIED: printed
+PROOF: P-CONFIGURE PASS read-back: enable_deduplication=true, delete_duplicates=false, both false-positive-history flags false, risk_acceptance_form_default_days=90
+PROOF: P-CONFIGURE PASS enable_finding_sla unchanged by the bootstrap (true -> true, D-21)
+PROOF: P-CONFIGURE PASS the admin token string does not appear in the run-1 log
+PROOF: P-IDEMPOTENT PASS run 2 -> exit 0, NO CHANGE, no CHANGED: line, System Settings byte-identical (jq -S) before and after
+PROOF: P-DEDUP-MODE PASS POST -> 201; read-back: ci-importer's contact-info row 1 has deduplication_execution_mode=async_wait (harness only; security.yml unchanged)
+PROOF: P-DEDUP-BRANCH PASS ci/proof/pr-delta holds 157 findings (at least 10, non-vacuous)
+PROOF: P-DEDUP-BRANCH PASS exactly one PR finding is non-duplicate and it is the active delta CVE-2020-8203 lodash 4.17.15: 1 non-duplicate (#389 Trivy Scan 'CVE-2020-8203 Lodash 4.17.15' dup=False active=True dup_of=None)
+PROOF: P-DEDUP-BRANCH PASS every other PR finding (156) is duplicate=true, active=false, with its original in ci/main
+PROOF: P-DEDUP-BRANCH PASS no ci/main finding has its original in the PR engagement (the older default-branch finding stays the original)
+PROOF: P-CROSSTOOL PASS ci/main holds findings of every SCA parser (Trivy Scan=65, pip-audit Scan=47, NPM Audit v7+ Scan=2)
+PROOF: P-CROSSTOOL PASS packages reported by both Trivy and pip-audit (non-vacuous gap): ['requests']
+PROOF: P-CROSSTOOL PASS 23 duplicate link(s) touch an SCA finding in ci/main; 0 cross scan types
+PROOF: P-DISPOSITION PASS before any reimport: FP #233 reads false_p=True active=False (false_p=True out_of_scope=False risk_accepted=False active=False is_mitigated=True)
+PROOF: P-DISPOSITION PASS before any reimport: OOS #234 reads out_of_scope=True active=False (false_p=False out_of_scope=True risk_accepted=False active=False is_mitigated=True)
+PROOF: P-DISPOSITION PASS before any reimport: RA #235 reads risk_accepted=True active=False (false_p=False out_of_scope=False risk_accepted=True active=False is_mitigated=False)
+PROOF: P-DISPOSITION PASS reimport 1 of ci/main from the trimmed reports -> exit 0, Test count unchanged at 8 (in-place reimport)
+PROOF: P-DISPOSITION PASS after reimport 1: FP #233 is false_p=True out_of_scope=False risk_accepted=False active=False is_mitigated=True (expected false_p=True out_of_scope=False risk_accepted=False active=False is_mitigated=True), mitigated=2026-10-04T18:38:17.738869Z
+PROOF: P-DISPOSITION PASS after reimport 1: OOS #234 is false_p=False out_of_scope=True risk_accepted=False active=False is_mitigated=True (expected false_p=False out_of_scope=True risk_accepted=False active=False is_mitigated=True), mitigated=2026-10-04T18:38:18.104661Z
+PROOF: P-DISPOSITION PASS after reimport 1: RA #235 is false_p=False out_of_scope=False risk_accepted=True active=False is_mitigated=False (expected false_p=False out_of_scope=False risk_accepted=True active=False is_mitigated=False), mitigated=None
+PROOF: P-DISPOSITION PASS reimport 1: trivy-fs statistics.delta.reactivated.total = 0 (expected 0)
+PROOF: P-DISPOSITION PASS reimport 2 of ci/main from the trimmed reports -> exit 0, Test count unchanged at 8 (in-place reimport)
+PROOF: P-DISPOSITION PASS after reimport 2: FP #233 is false_p=True out_of_scope=False risk_accepted=False active=False is_mitigated=True (expected false_p=True out_of_scope=False risk_accepted=False active=False is_mitigated=True), mitigated=2026-10-04T18:38:17.738869Z
+PROOF: P-DISPOSITION PASS after reimport 2: OOS #234 is false_p=False out_of_scope=True risk_accepted=False active=False is_mitigated=True (expected false_p=False out_of_scope=True risk_accepted=False active=False is_mitigated=True), mitigated=2026-10-04T18:38:18.104661Z
+PROOF: P-DISPOSITION PASS after reimport 2: RA #235 is false_p=False out_of_scope=False risk_accepted=True active=False is_mitigated=False (expected false_p=False out_of_scope=False risk_accepted=True active=False is_mitigated=False), mitigated=None
+PROOF: P-DISPOSITION PASS reimport 2: trivy-fs statistics.delta.reactivated.total = 0 (expected 0)
+PROOF: P-DISPOSITION PASS reimport 2 vs reimport 1: the three tuples and the FP/OOS mitigated timestamps (FP=2026-10-04T18:38:17.738869Z, OOS=2026-10-04T18:38:18.104661Z) are unchanged
+PROOF: P-SUPPRESS PASS FP #233: 1 ci/proof/pr-suppress finding(s) have it as duplicate_finding (expected exactly 1, duplicate=true, active=false): #546 'CVE-2021-23337 Lodash 4.17.15' dup=True active=False dup_of=233
+PROOF: P-SUPPRESS PASS OOS #234: 1 ci/proof/pr-suppress finding(s) have it as duplicate_finding (expected exactly 1, duplicate=true, active=false): #547 'CVE-2026-4800 Lodash 4.17.15' dup=True active=False dup_of=234
+PROOF: P-SUPPRESS PASS RA #235: 1 ci/proof/pr-suppress finding(s) have it as duplicate_finding (expected exactly 1, duplicate=true, active=false): #548 'NSWG-ECO-516 Lodash 4.17.15' dup=True active=False dup_of=235
+PROOF: P-SUPPRESS PASS ci/proof/pr-suppress holds 156 findings, 0 active (expected 0: every finding in the trimmed set already exists on ci/main)
+PROOF: P-REPARENT PASS precondition: ci/proof/pr-first holds 6 findings, K=6 non-duplicate (0 of them not active); ci/main holds 6 findings, 0 not a duplicate of a PR finding
+PROOF: P-REPARENT PASS committed dd-delete body exited 0 with outcome deleted, as ci-importer; ci/proof/pr-first is gone from proof/dedup-reparent
+PROOF: P-REPARENT PASS immediately after the delete (no reimport): ci/main has 6 findings with duplicate=false and active=true (expected K=6); 6 total, 6 non-duplicate, 0 duplicate
+PROOF: P-REPARENT PASS every remaining ci/main duplicate (0) has its original inside ci/main
+PROOF: P-IMAGE-TAG PASS the CI-produced trivy-image.json has ArtifactName scan-target:ci (D-01)
+PROOF: P-IMAGE-TAG PASS four single-file trivy-image.json copies differ only in the image target (scan-target:0123456789abcdef0123456789abcdef01234567, scan-target:fedcba9876543210fedcba9876543210fedcba98, scan-target:ci twice)
+PROOF: P-IMAGE-TAG PASS negative: ci/proof/pr-image-sha holds 60 trivy-image findings, ci/main holds 60 (expected equal and > 0)
+PROOF: P-IMAGE-TAG PASS negative control (SHA tags scan-target:0123456789abcdef0123456789abcdef01234567 vs scan-target:fedcba9876543210fedcba9876543210fedcba98): 60 of 60 PR trivy-image findings are active non-duplicates (29-16 reproduced); sample file_path PR 'scan-target:fedcba9876543210fedcba9876543210fedcba98 (debian 12.15)' vs main 'scan-target:0123456789abcdef0123456789abcdef01234567 (debian 12.15)'
+PROOF: P-IMAGE-TAG PASS positive: ci/proof/pr-image-ci holds 60 trivy-image findings, ci/main holds 60 (expected equal and > 0)
+PROOF: P-IMAGE-TAG PASS positive case (both scan-target:ci): 60 of 60 PR trivy-image findings are inactive duplicates of a ci/main trivy-image finding with file_path on scan-target:ci (D-03: no SHA-bearing hashed field survives); sample file_path PR 'scan-target:ci (debian 12.15)' vs main 'scan-target:ci (debian 12.15)'
+PROOF: P-TLS PASS no curl in the live run read the hostile curlrc: curlrc-global-trace.txt and curlrc-global-libcurl.c were never created
+PROOF PASS - 172 assertions
+counts: PROOF lines total 173 (172 assertions + final line); 'PROOF: P-IMAGE-TAG PASS' = 6; 'PROOF: .* FAIL' = 0
+final line timestamp: 2026-10-04T18:39:44.8037195Z PROOF PASS - 172 assertions
+note: the negative-control PASS line carries "(29-16 reproduced)". At 91501ca scripts/defectdojo-import-proof.sh L2544
+  appends that text only when pr_f and not bad (PASS); the FAIL detail does not carry it. Consistent with 29.4-03-SUMMARY
+  deviation 2 ("printed only on PASS"); no discrepancy.
+
+$ gh pr view 32 --json state,headRefOid,mergedAt
+{"headRefOid":"91501ca1052ef76218b32bd38430be5d28eea507","mergedAt":null,"state":"OPEN"}
+
+$ git ls-remote --tags origin 'v1*'   (unchanged from pre-push baseline: v1 and v1.2.0^{} at fdabac9)
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+
+$ gh pr checks 32 -R OttawaCloudConsulting/security-platform   (final, verbatim)
+Checkov	pass	5s	https://github.com/OttawaCloudConsulting/security-platform/runs/111304473836
+GitGuardian Security Checks	pass	0	https://dashboard.gitguardian.com
+Semgrep OSS	pass	3s	https://github.com/OttawaCloudConsulting/security-platform/runs/111304474108
+Trivy	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/111304447406
+gitleaks	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/111304428951
+prove-import	pass	7m56s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111502134445
+scans / Container — Trivy Image	pass	25s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304403359
+scans / DefectDojo Import	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304524443
+scans / IaC — Checkov	pass	33s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304403335
+scans / SAST — Semgrep CE	pass	32s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304403270
+scans / SCA — Trivy Filesystem	pass	40s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304403286
+scans / Secrets — Gitleaks	pass	15s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304403328
+security / Container — Trivy Image	pass	22s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304403373
+security / IaC — Checkov	pass	32s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304403358
+security / SAST — Semgrep CE	pass	32s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304403396
+security / SCA — Trivy Filesystem	pass	42s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304403383
+security / Secrets — Gitleaks	pass	19s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304403214
+tflint	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/111304493901
+tflint-errors	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/111304494246
+scans / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681058/job/111304403802
+security / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304404028
+security / DefectDojo Import	pass	13s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37157681084/job/111304530630
+exit 0
+
+RESULT: every EXPECT item now met - container job success, ArtifactName scan-target:ci (captured earlier), DefectDojo Import
+success on ARC in both runs, kind proof PROOF PASS - 172 assertions with 6 P-IMAGE-TAG PASS lines and 0 FAIL lines,
+all checks pass (Cleanup jobs skipping by design on pull_request).
+MATCH: yes
+THEREFORE: Task 3 complete. PR #32 left OPEN at 91501ca; no merge, tag, v1 move or dispatch. Merge decision is plan 05.
