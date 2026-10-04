@@ -1,0 +1,105 @@
+# 29.5-01 VERIFIED-FALSE gate evidence
+# Clone: repos/security-platform  branch: fix/phase-29.5-verified-false
+# PR A base SHA (origin/main): aa48081681ee1e578c50d6a0d9e5ead6ff6afc67
+# merge-base --is-ancestor aa48081681ee1e578c50d6a0d9e5ead6ff6afc67 origin/main: exit 0
+# Captured: 2026-10-04T23:46:15Z
+
+## RED (unfixed security.yml)
+$ bash scripts/check-workflow-uploads.sh
+check-workflow-uploads: parsing every workflow file in .github/workflows (*.yml, *.yaml)
+FAIL: VERIFIED-FALSE: jobs.defectdojo-import step dd-import run: '"verified=false",' occurs 0 time(s), expected exactly 1 — every reimport-scan call must send verified=false (Phase 29.5 D-01/D-14, ADR-032)
+FAIL: VERIFIED-FALSE: jobs.defectdojo-import step dd-import run: 'verified=' occurs 0 time(s), expected exactly 1 (the verified=false field) — no other verified value may be sent (Phase 29.5 D-01/D-14, ADR-032)
+FAIL: VERIFIED-FALSE: jobs.defectdojo-import step dd-import run: '"verified=false",' must sit inside the fields list ('fields = [' ... its closing ']'), got fields_at=5188 verified_at=-1 close_at=5831 — the --form-string loop posts only that list (Phase 29.5 D-01/D-14, ADR-032)
+FAILED - 3 check(s)
+exit=1
+
+$ shellcheck scripts/check-workflow-uploads.sh
+exit=0
+
+## GREEN (fixed security.yml, real tree)
+$ bash scripts/check-workflow-uploads.sh
+check-workflow-uploads: parsing every workflow file in .github/workflows (*.yml, *.yaml)
+PASS - 22 checks, 0 failures
+exit=0
+
+## Scratch negative (a): "verified=false", line deleted
+$ diff .github/workflows/security.yml <scratch>/a/security.yml
+1554d1553
+<                           "verified=false",  # every parser lands unverified; Verified = a triager confirmed it (ADR-032)
+diff-exit=1
+$ WORKFLOWS_DIR=<scratch>/a bash scripts/check-workflow-uploads.sh
+check-workflow-uploads: parsing every workflow file in <scratch>/a (*.yml, *.yaml)
+FAIL: VERIFIED-FALSE: jobs.defectdojo-import step dd-import run: '"verified=false",' occurs 0 time(s), expected exactly 1 — every reimport-scan call must send verified=false (Phase 29.5 D-01/D-14, ADR-032)
+FAIL: VERIFIED-FALSE: jobs.defectdojo-import step dd-import run: 'verified=' occurs 0 time(s), expected exactly 1 (the verified=false field) — no other verified value may be sent (Phase 29.5 D-01/D-14, ADR-032)
+FAIL: VERIFIED-FALSE: jobs.defectdojo-import step dd-import run: '"verified=false",' must sit inside the fields list ('fields = [' ... its closing ']'), got fields_at=5188 verified_at=-1 close_at=5831 — the --form-string loop posts only that list (Phase 29.5 D-01/D-14, ADR-032)
+FAILED - 3 check(s)
+exit=1
+
+## Scratch negative (b): line changed to "verified=true",
+$ diff .github/workflows/security.yml <scratch>/b/security.yml
+1554c1554
+<                           "verified=false",  # every parser lands unverified; Verified = a triager confirmed it (ADR-032)
+---
+>                           "verified=true",  # every parser lands unverified; Verified = a triager confirmed it (ADR-032)
+diff-exit=1
+$ WORKFLOWS_DIR=<scratch>/b bash scripts/check-workflow-uploads.sh
+check-workflow-uploads: parsing every workflow file in <scratch>/b (*.yml, *.yaml)
+FAIL: VERIFIED-FALSE: jobs.defectdojo-import step dd-import run: '"verified=false",' occurs 0 time(s), expected exactly 1 — every reimport-scan call must send verified=false (Phase 29.5 D-01/D-14, ADR-032)
+FAIL: VERIFIED-FALSE: jobs.defectdojo-import step dd-import run: '"verified=false",' must sit inside the fields list ('fields = [' ... its closing ']'), got fields_at=5188 verified_at=-1 close_at=5942 — the --form-string loop posts only that list (Phase 29.5 D-01/D-14, ADR-032)
+FAILED - 2 check(s)
+exit=1
+
+## Scratch negative (c): line deleted from the list and `# moved: "verified=false",` placed after the closing ]
+$ diff .github/workflows/security.yml <scratch>/c/security.yml
+1554d1553
+<                           "verified=false",  # every parser lands unverified; Verified = a triager confirmed it (ADR-032)
+1560a1560
+>                       # moved: "verified=false",
+diff-exit=1
+$ WORKFLOWS_DIR=<scratch>/c bash scripts/check-workflow-uploads.sh
+check-workflow-uploads: parsing every workflow file in <scratch>/c (*.yml, *.yaml)
+FAIL: VERIFIED-FALSE: jobs.defectdojo-import step dd-import run: '"verified=false",' must sit inside the fields list ('fields = [' ... its closing ']'), got fields_at=5188 verified_at=5866 close_at=5831 — the --form-string loop posts only that list (Phase 29.5 D-01/D-14, ADR-032)
+FAILED - 1 check(s)
+exit=1
+
+## Static checks (Task 2)
+$ grep -c '"verified=false",' .github/workflows/security.yml
+1
+$ git diff origin/main -- .github/workflows/security.yml | grep '^+' | grep -v '^+++' | grep -c '${{'
+0
+$ git diff --stat origin/main -- .github/workflows/security.yml
+ .github/workflows/security.yml | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+$ bash scripts/defectdojo-import-proof.sh --extract-only
+PASS: defectdojo-import/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+PASS: defectdojo-import/dd-import: extracted (224 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_INSECURE', 'DD_PRODUCT', 'DD_PRODUCT_TYPE', 'DD_REPORTS_DIR', 'DD_RESULTS_FILE', 'DD_TOKEN', 'DD_URL']
+PASS: defectdojo-import/dd-verify: extracted (39 lines), no ${{, bash -n clean, env names match the contract ['DD_IMPORT_OUTCOME', 'DD_RESULTS_FILE']
+PASS: defectdojo-cleanup/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+PASS: defectdojo-cleanup/dd-delete: extracted (219 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_CLEANUP_RESULT_FILE', 'DD_DEFAULT_BRANCH', 'DD_INSECURE', 'DD_PRODUCT', 'DD_TOKEN', 'DD_URL']
+PASS: defectdojo-cleanup/dd-cleanup-verify: extracted (23 lines), no ${{, bash -n clean, env names match the contract ['DD_CLEANUP_RESULT_FILE', 'DD_DELETE_OUTCOME']
+PASS: DD-GATE-IDENTICAL: the import and cleanup dd-gate bodies are byte-identical
+extract: 7 passed, 0 failed
+EXTRACT PASS - .github/workflows/security.yml
+exit=0
+
+## D-13 lifecycle-assert text
+$ grep -c 'arrive verified=true' scripts/defectdojo-lifecycle-assert.sh
+0
+$ grep -c 'verified=false&false_p=false&out_of_scope=false&risk_accepted=false&duplicate=false&is_mitigated=false' scripts/defectdojo-lifecycle-assert.sh   (working tree)
+1
+$ git show origin/main:scripts/defectdojo-lifecycle-assert.sh | grep -c 'verified=false&false_p=false&out_of_scope=false&risk_accepted=false&duplicate=false&is_mitigated=false'   (origin/main)
+1
+$ git diff origin/main -- scripts/defectdojo-lifecycle-assert.sh | grep -E '^[-+]' | grep -v '^[-+][-+]' | grep -c 'api_get_all'
+0
+$ git diff origin/main -- scripts/defectdojo-lifecycle-assert.sh | grep -E '^[-+]' | grep -v '^[-+][-+]' | grep -c '\.verified != false'
+0
+$ git diff --stat origin/main -- scripts/defectdojo-lifecycle-assert.sh
+ scripts/defectdojo-lifecycle-assert.sh | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+$ shellcheck scripts/defectdojo-lifecycle-assert.sh
+exit=0
+$ git show origin/main:scripts/defectdojo-lifecycle-assert.sh > <scratch>/lifecycle-main.sh
+$ bash <scratch>/lifecycle-main.sh --help > <scratch>/help-main.txt   (exit 0)
+$ bash scripts/defectdojo-lifecycle-assert.sh --help > <scratch>/help-new.txt   (exit 0)
+$ diff <scratch>/help-main.txt <scratch>/help-new.txt   (usage / subcommand list unchanged)
+diff-exit=0
