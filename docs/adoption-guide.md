@@ -843,6 +843,12 @@ because the job is not a required check. Never make it one. A cancelled cleanup 
   that already exists on the default-branch engagement is an inactive duplicate, so the PR
   engagement's active findings are the ones the PR introduces. Two tools reporting the same
   vulnerability still produce two findings.
+- **Upgrading to `v1.3.0` replaces container-image findings once.** From `v1.3.0` the scanned image
+  is tagged `scan-target:ci` instead of the commit SHA, so container-image findings dedupe across
+  branches like every other finding. The first `ci/<default>` reimport after the upgrade mitigates
+  the old SHA-tagged image findings and creates the new set. False Positive, Out of Scope or Risk
+  Accepted dispositions on the old image findings must be set again on the new ones. Repositories
+  with no Dockerfile see no change.
 - **Triage only on the default branch.** Disposition findings on the `ci/<default>` engagement, for
   example `ci/main`, never on a `ci/<pr-branch>` engagement: that engagement is deleted when the PR
   closes, and a disposition set there is lost.
