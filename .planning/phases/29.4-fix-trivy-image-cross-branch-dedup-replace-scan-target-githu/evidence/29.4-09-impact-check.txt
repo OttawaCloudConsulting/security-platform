@@ -1,0 +1,245 @@
+29.4-09 v1 consumer impact check (D-14 items 1-6, D-22) before the v1.3.0 release decision
+captured_at: 2026-10-04T20:10:00Z
+tools: Python 3.12.0, PyYAML 6.0.3, jq-1.8.2, gh 2.102.0
+repo: OttawaCloudConsulting/security-platform (local clone repos/security-platform)
+No tag was created or moved by this task. v1 was not touched.
+
+== Release SHA (R) ==
+$ git -C repos/security-platform fetch origin --tags
+$ git -C repos/security-platform rev-parse origin/main
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67
+$ git -C repos/security-platform log -1 --format='%H %P %s' origin/main
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67 2dccff51de278c29a18f2349da7d7f3f5a568579 bc0eb52301f1a7f972dea8dc10a767e8b4267bc8 Merge pull request #34 from OttawaCloudConsulting/docs/phase-29.4-dedup-text
+R = origin/main = PR B (#34) merge SHA (29.4-08-SUMMARY) = the SHA the D-11 dispatch run 37230464825 ran on. MATCH.
+
+$ git -C repos/security-platform ls-remote --tags origin
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+8d47cf9f86e9f79a42a57a2b4298d34b5dcda449	refs/tags/v2.0
+c6395e145643c21a724df9225f3a5210d5d98bde	refs/tags/v2.0^{}
+No v1.2.1 and no v1.3.0. v1 (lightweight) = v1.2.0^{} = fdabac9.
+
+== D-14 item 1: one-time trivy-image churn on upgrade (reference) ==
+Source: evidence/29.4-05-d14-1-upgrade.json (plan 29.4-05, dispatch run 37226275966 on 2dccff5)
+verdict PASS; before: total 120, active 60, mitigated 60, duplicate 0; after: total 180, active 60,
+mitigated 120, duplicate 0; old 60, new_active 60; title overlap common 60, old_only 0, new_only 0;
+new_file_paths ["scan-target:ci (debian 12.15)"]; failures [].
+Consequence for consumers: FP/RA/OOS dispositions on the old SHA-tagged image findings are lost once.
+Persistence after the upgrade: evidence/29.4-08-d11-persist.json, PASS, 60/60 ids persisted 2dccff5 -> aa48081.
+
+== D-14 item 2: SARIF / code-scanning alerts ==
+$ gh run view 36846632465 -R OttawaCloudConsulting/security-platform --json ...
+36846632465	Scheduled Security	schedule	main	30afdb9fb56516c6b06c5275212b42bcac30cc94	2026-10-01T10:02:47Z	success
+$ gh run view 37226275966 -R OttawaCloudConsulting/security-platform --json ...
+37226275966	Scheduled Security	workflow_dispatch	main	2dccff51de278c29a18f2349da7d7f3f5a568579	2026-10-04T18:55:19Z	success
+$ gh run download 36846632465 -R OttawaCloudConsulting/security-platform -n trivy-image-results -D <scratch>/pre
+$ gh run download 37226275966 -R OttawaCloudConsulting/security-platform -n trivy-image-results -D <scratch>/post
+(both exit 0; each contains trivy-image.json and trivy-image.sarif)
+
+Per side, on trivy-image.sarif:
+  jq '[.runs[].results[].partialFingerprints] | map(select(. != null)) | length'
+  jq '[.runs[].results[].fingerprints] | map(select(. != null)) | length'
+  jq -c '[.runs[].results[].locations[].physicalLocation.artifactLocation.uri] | unique'
+  jq '[.runs[].results[]] | length'
+  jq '[del(.runs[].properties) | .. | strings | select(test("scan-target:(ci|[0-9a-f]{40})"))] | length'
+  jq '[.runs[].properties | .. | strings | select(test("scan-target:(ci|[0-9a-f]{40})"))] | length'
+  jq -r '.runs[0].properties.imageName'
+== pre
+partialFingerprints non-null: 0
+fingerprints (any) non-null: 0
+uris: ["library/scan-target"]
+results: 60
+tag outside properties: 0
+tag inside properties: 2
+imageName: scan-target:30afdb9fb56516c6b06c5275212b42bcac30cc94
+== post
+partialFingerprints non-null: 0
+fingerprints (any) non-null: 0
+uris: ["library/scan-target"]
+results: 60
+tag outside properties: 0
+tag inside properties: 2
+imageName: scan-target:ci
+run properties (both sides): same imageID sha256:6f3a484305aeb80b41f38851426107a78781af571d21719fab4982b24b8551b6;
+imageName and repoTags carry the tag (scan-target:30afdb9... vs scan-target:ci).
+
+$ diff <(jq -S 'del(.runs[].properties)' pre/trivy-image.sarif) <(jq -S 'del(.runs[].properties)' post/trivy-image.sarif)
+One difference only, in 3 lines: CVE-2026-103111 (libpcre2-8-0 10.42-1) "Fixed Version:" is empty in the
+2026-10-01 run and "10.42-1+deb12u2" in the 2026-10-04 run (result message text, rule help markdown and text).
+This is Trivy vulnerability DB drift between the two scan dates, not tag-related: it does not touch ruleId,
+location or fingerprints.
+Verdict PASS: the image tag appears only in runs[].properties; uri is library/scan-target; no
+partialFingerprints; code-scanning alerts (ruleId + path + primaryLocationLineHash) are unaffected.
+
+== D-14 item 3: structural surface (D-02) ==
+Tool: .planning/phases/29.4-.../29.4-surface-diff.py (python3, mode -rw-r--r--, no executable bit)
+$ git -C repos/security-platform show v1.2.0:.github/workflows/security.yml > <scratch>/v120.yml
+$ git -C repos/security-platform show aa48081681ee1e578c50d6a0d9e5ead6ff6afc67:.github/workflows/security.yml > <scratch>/rel.yml
+EXP = --expect "defectdojo-import=dd-import" --expect "defectdojo-cleanup=dd-delete"
+      --expect "container=Build image from discovered Dockerfile" --expect "container=Run Trivy image scan"
+
+Real run:
+$ python3 29.4-surface-diff.py <scratch>/v120.yml <scratch>/rel.yml $EXP
+STRUCTURE: IDENTICAL (all keys except run)
+CHANGED RUN BODIES (4):
+  container = Build image from discovered Dockerfile
+  container = Run Trivy image scan
+  defectdojo-cleanup = dd-delete
+  defectdojo-import = dd-import
+SURFACE-DIFF: PASS
+exit=0
+
+Negative 1 (changed SARIF category):
+$ sed 's/category: trivy-image /category: trivy-image-x /' rel.yml > neg1.yml
+1024c1024
+<           category: trivy-image     # MANDATORY — distinguishes this analysis
+---
+>           category: trivy-image-x     # MANDATORY — distinguishes this analysis
+$ python3 29.4-surface-diff.py <scratch>/v120.yml <scratch>/neg1.yml $EXP
+STRUCTURE: DIFFERENT
+  $.jobs.container.steps[8].with.category: 'trivy-image' != 'trivy-image-x'
+CHANGED RUN BODIES (4):
+  container = Build image from discovered Dockerfile
+  container = Run Trivy image scan
+  defectdojo-cleanup = dd-delete
+  defectdojo-import = dd-import
+SURFACE-DIFF: FAIL
+neg1 exit=1
+
+Negative 2 (extra changed run body, Detect Dockerfile id docker):
+$ sed '978s/$/ # negative-case edit/' rel.yml > neg2.yml
+$ python3 29.4-surface-diff.py <scratch>/v120.yml <scratch>/neg2.yml $EXP
+STRUCTURE: IDENTICAL (all keys except run)
+CHANGED RUN BODIES (5):
+  container = Build image from discovered Dockerfile
+  container = Run Trivy image scan
+  container = docker
+  defectdojo-cleanup = dd-delete
+  defectdojo-import = dd-import
+UNEXPECTED CHANGED RUN BODIES:
+  container = docker
+SURFACE-DIFF: FAIL
+neg2 exit=1
+
+Negative 3 (under-specified --expect, Run Trivy image scan omitted) on the real files:
+UNEXPECTED CHANGED RUN BODIES:
+  container = Run Trivy image scan
+SURFACE-DIFF: FAIL
+neg3 exit=1
+
+Limit: PyYAML drops comments, so comment-only edits are invisible to the tool (e.g. the PR A comment
+sentence near L960). Complement, hunk headers of the two commits in v1.2.0..R that touch security.yml:
+$ git -C repos/security-platform show 3c547c6 -- .github/workflows/security.yml | grep '^@@'   (PR A, D-01)
+@@ -944,7 +944,7 @@ jobs:
+@@ -957,6 +957,11 @@ jobs:
+@@ -985,13 +990,13 @@ jobs:
+All three hunks are inside the container job (job keys at R: container L912-L1108,
+defectdojo-import L1266-L1711, defectdojo-cleanup L1712-end). 3c547c6 is an ancestor of the PR A head 91501ca.
+$ git -C repos/security-platform show f5a3926 -- .github/workflows/security.yml | grep '^@@'   (29.2-05)
+19 hunks, old-side L1370-L1905 (inside the defectdojo-import and defectdojo-cleanup jobs only).
+So dd-import / dd-delete changes are 29.2 alone, and the container changes are PR A alone.
+
+Existing gate at R:
+$ git -C repos/security-platform worktree add --detach <scratch>/release aa48081681ee1e578c50d6a0d9e5ead6ff6afc67
+HEAD is now at aa48081 Merge pull request #34 from OttawaCloudConsulting/docs/phase-29.4-dedup-text
+$ (cd <scratch>/release && bash scripts/check-workflow-uploads.sh)
+check-workflow-uploads: parsing every workflow file in .github/workflows (*.yml, *.yaml)
+PASS - 21 checks, 0 failures
+exit=0
+$ git -C repos/security-platform worktree remove <scratch>/release
+(worktree list afterwards: only the main clone)
+Verdict PASS.
+
+== D-14 item 4: 29.2 TLS hardening present at R (pre-tag half) ==
+$ git show R:.github/workflows/security.yml | grep -cF '"curl", "-q"'
+2
+  L1553 (dd-import)  cmd = ["curl", "-q", "-sS", "--proto", "=https", ... "%{http_code} %{ssl_verify_result} %{errormsg}"] + tls_args
+  L1871 (dd-delete)  cmd = ["curl", "-q", "-sS", "--proto", "=https", ... "%{http_code} %{ssl_verify_result} %{errormsg}"] + tls_args
+$ git show R:.github/workflows/security.yml | grep -cF 'ssl_verify_result'
+4
+  (two -w format strings L1553/L1871, two comment lines L1384/L1783; enforcement L1581 and L1886:
+   if proc.returncode != 0 or (tls_mode != "insecure" and verify != "0"); stderr=subprocess.DEVNULL L1560/L1875)
+$ git show v1.2.0:.github/workflows/security.yml | grep -cF '"curl", "-q"'
+0
+$ git -C repos/security-platform log --oneline v1.2.0..R -- .github/workflows/security.yml
+3c547c6 fix(29.4-01): tag the scanned image scan-target:ci, not github.sha (D-01)
+f5a3926 fix(29.2-05): security.yml DefectDojo bodies ignore curlrc, check ssl_verify_result, drop curl stderr; CURLRC gate (Phase 28 CR-01)
+Only the 29.2 commit and the PR A commit. Verdict PASS (post-tag half: API readback in 29.4-09-tags.json).
+
+== D-14 item 5: v1 callers ==
+$ gh search code "security-platform/.github/workflows/security.yml@v1" --owner OttawaCloudConsulting --json repository,path
+4 hits, all in OttawaCloudConsulting/security-platform itself: README.md, cicd/README.md,
+.github/workflows/scheduled-security.yml, .github/workflows/pr-security.yml
+$ gh search code "OttawaCloudConsulting/security-platform/.github/workflows/security.yml@" --json repository,path
+same 4 hits, nothing outside security-platform.
+$ git -C repos/security-platform grep -n "security.yml@" aa48081 -- .github/workflows README.md cicd/README.md
+aa48081:.github/workflows/pr-security.yml:20:# `uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1`
+aa48081:.github/workflows/scheduled-security.yml:14:# `uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1`
+aa48081:README.md:6:`uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1`
+aa48081:cicd/README.md:55:2. **Reference as a reusable workflow**: `uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1`.
+All four are documentation or comment lines; security-platform's own workflows do not call @v1.
+Contents-API scan of every repository in the org (gh repo list OttawaCloudConsulting --limit 200: 61 repos):
+  for each repo, gh api repos/<repo>/contents/.github/workflows, then each workflow file raw,
+  grep -nE '^[[:space:]]*-?[[:space:]]*uses:[[:space:]]*OttawaCloudConsulting/security-platform/'
+repos_with_workflows_dir=10 repos_without=51 (no .github/workflows directory or not readable)
+matching uses: lines: 0
+Limit (RESEARCH A3): only OttawaCloudConsulting default branches visible to this token were scanned.
+Callers in personal accounts, other organisations, private repositories outside the org, or on
+non-default branches cannot be enumerated. RESEARCH A4: the v2.0 pilot adoptions were Mode A copies,
+unaffected by a v1 move. Operator to confirm there are no out-of-org @v1 callers.
+Verdict PASS (0 visible @v1 callers; limit stated).
+
+== D-14 item 6: repositories without a Dockerfile ==
+Container steps after "Detect Dockerfile" (id docker) at R, with their if: conditions (PyYAML):
+'Build image from discovered Dockerfile' | steps.docker.outputs.found == 'true'
+'Run Trivy image scan' | steps.docker.outputs.found == 'true'
+'Convert to SARIF' | always() && steps.docker.outputs.found == 'true'
+'Show scan output files' | always() && steps.docker.outputs.found == 'true'
+'Upload Trivy image SARIF' | always() && steps.docker.outputs.found == 'true'
+'Verify Trivy image SARIF upload landed' | always() && steps.docker.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && github.event.repository.private == false
+'Upload container reports' | always() && steps.docker.outputs.found == 'true'
+'Verify container artifact upload landed' | always() && steps.docker.outputs.found == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
+steps_after_detect 8, every one has steps.docker.outputs.found == 'true' as an && conjunct
+$ grep -cF "if: steps.docker.outputs.found == 'true'" rel.yml    -> 2   (v1.2.0: 2)
+Plan correction: the plan expected the literal line count to equal the number of steps after Detect
+Dockerfile (8). The literal count is 2 because six steps combine the guard with always() and other
+conditions. The corrected criterion is "every step after Detect Dockerfile carries the guard as an &&
+conjunct": 8 of 8. With found=false, always() && false skips every one, so no image is built or scanned,
+no trivy-image SARIF or report is produced, and dd-import skips the missing trivy-image.json with the
+reason "no Dockerfile in this repository" (import TABLE, L1431-L1432 at R). Unchanged behaviour: the
+guards are structurally identical to v1.2.0 per D-14.3, and the TABLE is not part of the 29.4 change.
+Verdict PASS: no-Dockerfile consumers see no change.
+
+== D-22: Dependabot PRs touching security.yml ==
+$ gh pr list -R OttawaCloudConsulting/security-platform --state open --json number,title,author,baseRefOid,headRefOid,files
+  (filtered to files[].path == ".github/workflows/security.yml")
+31	chore(deps): bump github/codeql-action/upload-sarif from 4.38.1 to 4.38.2	app/dependabot	30afdb9	d1b128f
+30	chore(deps): bump bridgecrewio/checkov-action from 12.3125.0 to 12.3126.0	app/dependabot	30afdb9	e473364
+All open PRs: #31 and #30 only.
+$ gh pr list -R OttawaCloudConsulting/security-platform --state merged --search "merged:>=2026-10-04T18:52:00Z" --json number,title,mergedAt
+34	Phase 29.4: document trivy-image dedup across branches from v1.3.0 (PR B)	2026-10-04T19:59:33Z
+32	Phase 29.4: tag the scanned image scan-target:ci so trivy-image findings dedupe across branches (PR A)	2026-10-04T18:52:27Z
+$ git -C repos/security-platform log --oneline 2dccff51de278c29a18f2349da7d7f3f5a568579..aa48081681ee1e578c50d6a0d9e5ead6ff6afc67 -- .github/workflows/security.yml
+(empty)
+Verdict PASS: #30/#31 still open and held (D-22); nothing touched security.yml after PR A.
+Follow-up after the tag: #30 and #31 (base 30afdb9) need a rebase/recreate and review.
+
+== Tag message (D-15) ==
+evidence/29.4-09-tag-message.txt. Lint: no line longer than 79 characters, no trailing whitespace, no
+line starting with '#'. Round trip in a scratch repo: git tag -a t1 -F 29.4-09-tag-message.txt, then
+git cat-file tag t1 | sed '1,/^$/d' is byte-identical to the file (default cleanup mode keeps it intact).
+
+== Overall ==
+d14_1 PASS (referenced), d14_2 PASS, d14_3 PASS, d14_4 PASS (pre-tag), d14_5 PASS (limit stated),
+d14_6 PASS (criterion corrected), d22 PASS. No D-13 trigger.
+
+== Plan 29.4-09 Task 1 <verify><automated> ==
+Run verbatim at 2026-10-04T20:12Z: exit 0. Homelab-literal grep and trailing-whitespace grep over all four
+Task 1 files: no match.

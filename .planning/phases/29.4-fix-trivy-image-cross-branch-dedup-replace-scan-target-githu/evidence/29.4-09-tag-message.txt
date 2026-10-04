@@ -1,0 +1,42 @@
+v1.3.0: fixed scan image tag and DefectDojo client TLS hardening
+
+Release over v1.2.0 (fdabac9). No workflow_call input, secret, job id or name,
+SARIF category, artifact name or action pin changes. Only four run bodies
+in .github/workflows/security.yml differ from v1.2.0.
+
+Phase 29.2 (DefectDojo client TLS hardening, ADR-029):
+- dd-import and dd-delete invoke curl with -q as argv[1], so a ~/.curlrc
+  on the runner can no longer change TLS or redirect behaviour
+- both bodies read %{ssl_verify_result} and stop at the first non-zero
+  value (unless DEFECTDOJO_INSECURE=true) or curl transport failure, so
+  the token is not sent to that peer again
+- curl stderr is no longer echoed into the job log by dd-import or
+  dd-delete; check-workflow-uploads.sh gained a CURLRC gate
+
+Phase 29.4 (trivy-image dedup across branches):
+- the container job builds and scans the image as scan-target:ci instead
+  of scan-target:<github.sha>
+- trivy-image findings now deduplicate across branches in DefectDojo (a
+  PR shows only the image findings it introduces) and persist across
+  default-branch commits while the Trivy vulnerability data is unchanged
+
+Upgrade note:
+- the first ci/<default-branch> reimport after the upgrade mitigates the
+  existing SHA-tagged trivy-image findings and creates the scan-target:ci
+  set once; this one-time churn was measured live (60 mitigated, 60 new,
+  0 duplicates) and the next default-branch commit kept all 60
+  finding ids
+- false-positive, risk-accepted and out-of-scope dispositions recorded on
+  the old SHA-tagged image findings do not carry over and must be
+  re-applied to the new findings once
+- repositories without a Dockerfile are unaffected (every container step
+  after Dockerfile detection is skipped when no Dockerfile is found)
+- GitHub code-scanning alerts are unaffected: the image tag appears only
+  in the SARIF run properties, not in rule ids, locations or fingerprints
+- Mode A (copy-paste) adopters change only when they re-copy the workflow;
+  @v1.2.0 and @v1.1.1 pins are unchanged
+
+Unchanged surfaces: workflow_call inputs and secrets, the five scanner
+check names and the DefectDojo job names, SARIF categories, artifact
+names (including trivy-image-results) and every uses: pin are identical
+to v1.2.0.
