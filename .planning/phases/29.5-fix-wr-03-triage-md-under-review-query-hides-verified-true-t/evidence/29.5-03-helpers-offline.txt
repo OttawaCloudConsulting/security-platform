@@ -1,0 +1,148 @@
+# 29.5-03 offline helper proof (P-VERIFIED helpers, no kind, no network writes)
+
+clone:  repos/security-platform (OttawaCloudConsulting/security-platform)
+branch: fix/phase-29.5-verified-false
+HEAD:   be0441e0097b65ac5ca66aa530028bc36c4e249e (plus the uncommitted 29.5-03 harness edit under test)
+time:   2026-10-05T00:09:39Z
+python: Python 3.12.0
+
+## STRIP
+
+Committed body: the dd-import body written by the harness's own extract_bodies
+(the function extracted from scripts/defectdojo-import-proof.sh with sed and run
+into a scratch dir, because --extract-only removes its mktemp dir on exit):
+  224 lines, mode 600, sha256 fae1ad85a04ed55375a0520e5586373c5add9013c2b4e2430108940653992f20
+  verified= occurrences: 1
+  extracted STRIP program: 18 lines
+
+### run 1: committed body -> stripped copy
+removed_line=143 text="verified=false",  # every parser lands unverified; Verified = a triager confirmed it (ADR-032)
+exit=0
+stripped copy mode 600, 223 lines
+
+### diff committed stripped
+143d142
+<                 "verified=false",  # every parser lands unverified; Verified = a triager confirmed it (ADR-032)
+diff exit=1
+removed/added/field lines: 1 0 1
+
+### bash -n stripped copy
+bash -n exit=0
+
+### run 2: stripped copy -> (must exit 3, zero hits, no file written)
+strip refused: 0 line(s) start with '"verified=false",' (expected exactly 1)
+exit=3
+DST written: no
+
+## TRIVY-FS DROP
+
+Real CI reports: latest successful Scheduled Security run
+  gh run list -R OttawaCloudConsulting/security-platform --workflow scheduled-security.yml --status success -L 1
+  -> {"createdAt":"2026-10-04T20:00:58Z","databaseId":37230464825,"headSha":"aa48081681ee1e578c50d6a0d9e5ead6ff6afc67"}
+  gh run download <id> -p '*-results' -D raw; every file flattened into dd-reports (CI merge-multiple layout)
+
+### raw artifact listing
+./checkov-results/checkov-results.json
+./checkov-results/checkov.sarif
+./gitleaks-results/gitleaks-results.json
+./gitleaks-results/gitleaks.sarif
+./sca-results/npm-audit-1.json
+./sca-results/pip-audit-1.json
+./sca-results/tflint.sarif
+./sca-results/trivy-fs.json
+./sca-results/trivy-fs.sarif
+./semgrep-results/semgrep-results.json
+./semgrep-results/semgrep.sarif
+./trivy-image-results/trivy-image.json
+./trivy-image-results/trivy-image.sarif
+
+### dd-reports listing (flattened)
+checkov-results.json
+checkov.sarif
+gitleaks-results.json
+gitleaks.sarif
+npm-audit-1.json
+pip-audit-1.json
+semgrep-results.json
+semgrep.sarif
+tflint.sarif
+trivy-fs.json
+trivy-fs.sarif
+trivy-image.json
+trivy-image.sarif
+
+### Trivy Status breakdown (jq '[.Results[]?.Vulnerabilities[]?.Status] | group_by(.) | map({(.[0]): length}) | add')
+trivy-fs.json: {"fixed":6}
+trivy-image.json: {"affected":48,"fix_deferred":7,"fixed":4,"will_not_fix":1}
+
+extracted TRIVY-FS DROP program: 57 lines
+removed=CVE-2020-8203 pkg=lodash version=4.17.15 status=fixed vulns_before=6 vulns_after=5
+exit=0
+OUT_DIR contents: trivy-fs.json
+vulnerabilities in source / copy: 6 / 5
+
+### negative: no qualifying vulnerability (every Status rewritten to unknown) -> must exit 3
+NO-CANDIDATE: 6 trivy-fs vulnerabilities (6 distinct triples, Status {'unknown': 6}): none is unique with a Status the parser maps to verified True
+exit=3
+
+## DROP-ONE
+
+extracted DROP-ONE program: 53 lines
+gitleaks-results.json top level: array, 18 elements, distinct Fingerprint: 18
+
+### gitleaks-results.json
+shape=array removed=Fingerprint|fbfcbe95a6a35d2ec74a44e86c1164013be27cbf:fixtures/secret.env:aws-access-token:21 before=18 after=17
+exit=0
+elements in copy: 17
+
+### semgrep-results.json (named fallback, run for completeness)
+shape=results removed=check_id+path+start.line|package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown|.github/dependabot.yml|16 before=7 after=6
+exit=0
+results in copy: 6
+
+### negative: wrong shape (npm-audit-1.json, top level object without a results array) -> must exit 5
+WRONG-SHAPE: top level is dict with keys ['auditReportVersion', 'metadata', 'vulnerabilities']; expected a top-level array or an object with a results array
+exit=5
+
+### observation: checkov-results.json is also a top-level array (5 framework objects, no Fingerprint/RuleID/File/StartLine) -> no unique identity, exit 3
+NO-CANDIDATE: shape=array holds 5 elements, none with a unique identity
+exit=3
+
+### negative: one-element array -> must exit 3
+NO-CANDIDATE: shape=array holds 1 element(s), need at least 2
+exit=3
+
+### A4 verdict
+A4 confirmed by measurement: gitleaks-results.json is a top-level array with at least 2 elements and unique Fingerprints.
+REACTIVATE_REPORT=gitleaks-results.json
+
+## ASSERT (synthetic snapshots, read-side script only)
+
+The verified_assert Python program, extracted from the harness with awk, run on hand-built snapshot JSON (8 Tests, 2 findings each) to exercise every mode once before any kind run. Not a DefectDojo measurement.
+
+### positive
+PROOF: P-VERIFIED-FALSE PASS positive call 1: the engagement holds 8 Tests ['checkov', 'gitleaks', 'npm-audit-1', 'pip-audit-1', 'semgrep', 'tflint', 'trivy-fs', 'trivy-image'] (expected exactly ['checkov', 'gitleaks', 'npm-audit-1', 'pip-audit-1', 'semgrep', 'tflint', 'trivy-fs', 'trivy-image']); missing none, extra none, repeated none
+PROOF: P-VERIFIED-FALSE PASS positive call 1: 16 findings in 8 Tests all verified=false; per-Test counts checkov=2,gitleaks=2,npm-audit-1=2,pip-audit-1=2,semgrep=2,tflint=2,trivy-fs=2,trivy-image=2
+exit=0
+
+### negative
+PROOF: P-VERIFIED-FALSE PASS negative control (old body): the engagement holds 8 Tests ['checkov', 'gitleaks', 'npm-audit-1', 'pip-audit-1', 'semgrep', 'tflint', 'trivy-fs', 'trivy-image'] (expected exactly ['checkov', 'gitleaks', 'npm-audit-1', 'pip-audit-1', 'semgrep', 'tflint', 'trivy-fs', 'trivy-image']); missing none, extra none, repeated none
+PROOF: P-VERIFIED-FALSE PASS negative control (old body): 4 of 4 non-duplicate Trivy Scan findings read verified=true (expected all, count > 0; 28-05 and the Phase 29 live split reproduced); Trivy Status in the reports: trivy-fs.json fixed=6; trivy-image.json affected=48,fix_deferred=7,fixed=4,will_not_fix=1; per-Test verified true/false checkov=0/2,gitleaks=0/2,npm-audit-1=0/2,pip-audit-1=0/2,semgrep=0/2,tflint=0/2,trivy-fs=2/1,trivy-image=2/0
+PROOF: P-VERIFIED-FALSE PASS negative control (old body): 12 of 12 non-Trivy findings read verified=false (expected all, count > 0)
+exit=0
+
+### newreimport
+PROOF: P-VERIFIED-NEWREIMPORT PASS reimport of the full trivy-fs.json into ci/main created 1 new finding(s) (expected exactly 1): 1 findings before, 2 after
+PROOF: P-VERIFIED-NEWREIMPORT PASS new finding #2 ('CVE-2020-8203 lodash 4.17.15', component 'lodash') reads verified=False duplicate=False; it is the removed CVE-2020-8203 lodash 4.17.15 with Status fixed (parser maps to verified True; stored false)
+exit=0
+
+### positive on the verified=true snapshot (must FAIL, exit 1)
+PROOF: P-VERIFIED-FALSE PASS positive call 2: the engagement holds 8 Tests ['checkov', 'gitleaks', 'npm-audit-1', 'pip-audit-1', 'semgrep', 'tflint', 'trivy-fs', 'trivy-image'] (expected exactly ['checkov', 'gitleaks', 'npm-audit-1', 'pip-audit-1', 'semgrep', 'tflint', 'trivy-fs', 'trivy-image']); missing none, extra none, repeated none
+PROOF: P-VERIFIED-FALSE FAIL positive call 2: 4 of 17 findings do not read verified=false; Trivy Tests without findings: none; per-Test counts checkov=2,gitleaks=2,npm-audit-1=2,pip-audit-1=2,semgrep=2,tflint=2,trivy-fs=3,trivy-image=2; offenders: #2 test=trivy-fs trivy=True verified=True duplicate=False; #3 test=trivy-image trivy=True verified=True duplicate=False; #10 test=trivy-fs trivy=True verified=True duplicate=False; #11 test=trivy-image trivy=True verified=True duplicate=False
+exit=1
+
+## COMMIT CHECK
+
+The four programs proven above (STRIP, TRIVY-FS DROP, DROP-ONE, verified_assert) were re-extracted from
+`git show e57b621:scripts/defectdojo-import-proof.sh` and compared with cmp to the copies run above: identical=1.
+The only edit between the run and the commit moved a section comment in prove_dedup_triage.
