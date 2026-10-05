@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.5-01-PLAN.md
-last_updated: "2026-10-04T23:51:50.841Z"
-last_activity: 2026-10-04
+stopped_at: Completed 29.5-02-PLAN.md
+last_updated: "2026-10-05T00:02:02.513Z"
+last_activity: 2026-10-05
 progress:
   total_phases: 7
   completed_phases: 7
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.5 (fix-wr-03-triage-md-under-review-query-hides-verified-true-t) — EXECUTING
-Plan: 2 of 12
+Plan: 3 of 12
 Status: Ready to execute
-Last activity: 2026-10-04
+Last activity: 2026-10-05
 
 ## Performance Metrics
 
@@ -372,6 +372,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.4]: 29.4-10: ADR-031 written after v1.3.0 (D-18): fixed scan-target:ci tag; supersedes ADR-027 trivy-image tradeoff and follow-up (b) in prose; ADR-026/027/029 unchanged
 - [Phase 29.5]: 29.5-01: VERIFIED-FALSE gate (check 22) asserts exact field count, verified= count and position inside the dd-import fields list as separate checks — each regression shows which assertion fired; scratch case (c) trips only the position check
 - [Phase 29.5]: 29.5-01: DDOJO-04 left as already complete (Phase 28); requirements.mark-complete not run, gap closure belongs to the phase closing plan — all 12 29.5 plans list DDOJO-04 and REQUIREMENTS.md already shows it complete
+- [Phase 29.5]: 29.5-02: still_true counts only pre-fix open Trivy ids still triage-open after with verified=true; ids that left triage-open go to no_longer_open and do not drive reset_needed (matches reset mode)
+- [Phase 29.5]: 29.5-02: self-test adds cases 9 (TRIVY_BECAME_VERIFIED) and 10 (RESET_SCOPE_TRIVY) so every failure code is proven to fire; 10/10 match on the real 29.4 ci/main snapshot
 
 ### Pending Todos
 
@@ -554,11 +556,12 @@ Carried forward from v1.1 close:
 | Phase 29.4 P09 | ~4 min | 3 tasks | 5 files |
 | Phase 29.4 P10 | 15min | 3 tasks | 5 files |
 | Phase 29.5 P01 | ~7min | 3 tasks | 4 files |
+| Phase 29.5 P02 | ~10min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-10-04T23:51:50.831Z
-Stopped at: Completed 29.5-01-PLAN.md
+Last session: 2026-10-05T00:02:02.504Z
+Stopped at: Completed 29.5-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
