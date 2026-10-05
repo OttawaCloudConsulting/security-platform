@@ -119,7 +119,12 @@ set -euo pipefail
 # P-IMAGE-TAG (29.4 D-06, --hook only, last, in fresh products
 # proof/image-tag-sha and proof/image-tag-ci: two copies of one
 # trivy-image.json that differ only in the image target; SHA tags give active
-# non-duplicates, scan-target:ci gives duplicates).
+# non-duplicates, scan-target:ci gives duplicates);
+# P-VERIFIED-BODY, P-VERIFIED-FALSE, P-VERIFIED-NEWREIMPORT (Phase 29.5 D-10,
+# D-04; --hook only, last, in fresh products proof/verified-new,
+# proof/verified-old, proof/verified-newreimport: committed body lands every
+# finding verified=false; the body without the field lands non-duplicate Trivy
+# findings verified=true).
 #
 # Every committed-body run (dd-gate, dd-import, dd-verify, dd-delete,
 # dd-cleanup-verify) uses the ci-importer token. The one exception is
@@ -200,6 +205,12 @@ readonly PROOF_IMAGE_CI_PRODUCT="proof/image-tag-ci"
 readonly PROOF_IMAGE_SHA_PR="proof/pr-image-sha"
 readonly PROOF_IMAGE_CI_PR="proof/pr-image-ci"
 readonly PROOF_IMAGE_OTHER_SHA="fedcba9876543210fedcba9876543210fedcba98"
+
+# Phase 29.5 identities (D-10, D-11): fresh products per case; dedup is product-wide, so cases must not share a product
+readonly PROOF_VF_NEW_PRODUCT="proof/verified-new"
+readonly PROOF_VF_NEWREIMPORT_PRODUCT="proof/verified-newreimport"
+readonly PROOF_VF_OLD_PRODUCT="proof/verified-old"
+readonly PROOF_VF_REACTIVATE_PRODUCT="proof/verified-reactivate"
 
 usage() {
   echo "usage: bash scripts/defectdojo-import-proof.sh <reports-dir> | --extract-only | --scheme-only | --hook" >&2
@@ -2571,6 +2582,477 @@ PY
   fi
 }
 
+# verified_strip SRC DST: write DST (0600), a copy of the dd-import body SRC
+# with exactly one line removed: the one whose stripped text starts with
+# `"verified=false",`. Exact-line removal, never a regex substitution, so the
+# old body (the Phase 29 behaviour, before D-01) differs from the committed
+# body by that field alone. The program between the two marker lines is
+# self-contained and is extracted verbatim by the offline proof (29.5-03
+# evidence). Exit codes: 0 stripped, DST written and `bash -n` clean; 3 zero
+# or several matching lines (DST is not written); 1 chmod or `bash -n`
+# failed. The report goes to DST.log.
+verified_strip() {
+  local src="$1" dst="$2" rc=0
+  rm -f "$dst"
+  PROOF_VF_SRC="$src" PROOF_VF_DST="$dst" python3 - > "${dst}.log" 2>&1 <<'PY' || rc=$?
+# >>> P-VERIFIED STRIP
+import os
+import sys
+
+env = os.environ
+with open(env["PROOF_VF_SRC"], encoding="utf-8", newline="") as handle:
+    lines = handle.read().splitlines(keepends=True)
+hits = [i for i, line in enumerate(lines) if line.strip().startswith('"verified=false",')]
+if len(hits) != 1:
+    print("strip refused: {} line(s) start with '\"verified=false\",' (expected exactly 1){}".format(
+        len(hits), "".join("; line {}: {}".format(i + 1, lines[i].strip()) for i in hits[:5])))
+    sys.exit(3)
+index = hits[0]
+fd = os.open(env["PROOF_VF_DST"], os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
+    handle.write("".join(lines[:index] + lines[index + 1:]))
+print("removed_line={} text={}".format(index + 1, lines[index].strip()))
+# <<< P-VERIFIED STRIP
+PY
+  if [ "$rc" -ne 0 ]; then
+    return "$rc"
+  fi
+  if ! chmod 600 "$dst"; then
+    echo "chmod 600 ${dst} failed" >> "${dst}.log"
+    return 1
+  fi
+  if ! bash -n "$dst" >> "${dst}.log" 2>&1; then
+    echo "bash -n ${dst} failed" >> "${dst}.log"
+    return 1
+  fi
+  echo "bash -n ${dst##*/}: exit 0" >> "${dst}.log"
+}
+
+# vf_drop_trivy_fs SRC_DIR OUT_DIR: write OUT_DIR/trivy-fs.json (and nothing
+# else), a copy of SRC_DIR/trivy-fs.json with exactly one vulnerability
+# removed. The removed entry is the first, in document order, whose Status
+# the 3.3.200 Trivy parser maps to verified True (affected, fixed,
+# will_not_fix, fix_deferred, end_of_life, not_affected) and whose
+# (VulnerabilityID, PkgName, InstalledVersion) triple occurs exactly once in
+# the file (the P-DEDUP-BRANCH uniqueness key). The product imports trivy-fs
+# only, so trivy-image is not consulted. The removed entry is recorded in
+# OUT_DIR.removed.json (outside OUT_DIR, so it is never imported). The program
+# between the marker lines is extracted verbatim by the offline proof.
+# Exit codes: 0 written; 3 no vulnerability qualifies; 4 the count did not
+# drop by exactly 1. The report goes to OUT_DIR.log.
+vf_drop_trivy_fs() {
+  local src_dir="$1" out_dir="$2" rc=0
+  rm -rf "$out_dir" "${out_dir}.removed.json"
+  mkdir -p "$out_dir"
+  PROOF_VF_SRC_DIR="$src_dir" PROOF_VF_OUT_DIR="$out_dir" PROOF_VF_RECORD="${out_dir}.removed.json" \
+    python3 - > "${out_dir}.log" 2>&1 <<'PY' || rc=$?
+# >>> P-VERIFIED TRIVY-FS DROP
+import json
+import os
+import sys
+
+env = os.environ
+TRUE_STATUS = ("affected", "fixed", "will_not_fix", "fix_deferred", "end_of_life", "not_affected")
+src = os.path.join(env["PROOF_VF_SRC_DIR"], "trivy-fs.json")
+out = os.path.join(env["PROOF_VF_OUT_DIR"], "trivy-fs.json")
+
+
+def entries(doc):
+    for result in (doc.get("Results") or []):
+        if not isinstance(result, dict):
+            continue
+        for vuln in (result.get("Vulnerabilities") or []):
+            if isinstance(vuln, dict):
+                key = (vuln.get("VulnerabilityID"), vuln.get("PkgName"), vuln.get("InstalledVersion"))
+                yield key, result, vuln
+
+
+with open(src, encoding="utf-8") as handle:
+    doc = json.load(handle)
+counts = {}
+for key, _, _ in entries(doc):
+    counts[key] = counts.get(key, 0) + 1
+before = sum(counts.values())
+chosen = None
+for key, result, vuln in entries(doc):
+    if None not in key and counts[key] == 1 and vuln.get("Status") in TRUE_STATUS:
+        chosen = (key, result, vuln)
+        break
+if chosen is None:
+    statuses = {}
+    for _, _, vuln in entries(doc):
+        statuses[str(vuln.get("Status"))] = statuses.get(str(vuln.get("Status")), 0) + 1
+    print("NO-CANDIDATE: {} trivy-fs vulnerabilities ({} distinct triples, Status {}): none is unique with a "
+          "Status the parser maps to verified True".format(before, len(counts), statuses))
+    sys.exit(3)
+key, result, vuln = chosen
+index = next(i for i, v in enumerate(result["Vulnerabilities"]) if v is vuln)
+del result["Vulnerabilities"][index]
+after = sum(1 for _ in entries(doc))
+line = "removed={} pkg={} version={} status={} vulns_before={} vulns_after={}".format(
+    key[0], key[1], key[2], vuln.get("Status"), before, after)
+if after != before - 1:
+    print("WRONG-COUNT: " + line)
+    sys.exit(4)
+with open(out, "w", encoding="utf-8") as handle:
+    json.dump(doc, handle)
+if env.get("PROOF_VF_RECORD"):
+    with open(env["PROOF_VF_RECORD"], "w", encoding="utf-8") as handle:
+        json.dump({"VulnerabilityID": key[0], "PkgName": key[1], "InstalledVersion": key[2],
+                   "Status": vuln.get("Status"), "Title": vuln.get("Title"),
+                   "Severity": vuln.get("Severity"), "Target": result.get("Target")}, handle, indent=2)
+print(line)
+# <<< P-VERIFIED TRIVY-FS DROP
+PY
+  return "$rc"
+}
+
+# vf_drop_one SRC_FILE OUT_FILE: write OUT_FILE, a copy of the report
+# SRC_FILE with exactly one element removed. A top-level array (the gitleaks
+# shape, RESEARCH A4) loses one element; an object with a `results` array
+# (semgrep) loses one element of `results`. The removed element is the first
+# whose identity is unique (gitleaks: Fingerprint when present, else RuleID,
+# File and StartLine; semgrep: check_id, path and start.line), and the array
+# must hold at least 2 elements. Plan 04 identifies the DefectDojo finding by
+# measurement, so the helper does not know any finding id. The program
+# between the marker lines is extracted verbatim by the offline proof.
+# Exit codes: 0 written; 3 no unique element or fewer than 2 elements; 4 the
+# count did not drop by exactly 1; 5 any other JSON shape. The report goes to
+# OUT_FILE.log. Called by P-VERIFIED-REACTIVATE (29.5-04); until then only
+# the offline proof runs it.
+# shellcheck disable=SC2329  # see above: the 29.5-04 caller lands next
+vf_drop_one() {
+  local src_file="$1" out_file="$2" rc=0
+  rm -f "$out_file"
+  PROOF_VF_SRC_FILE="$src_file" PROOF_VF_OUT_FILE="$out_file" \
+    python3 - > "${out_file}.log" 2>&1 <<'PY' || rc=$?
+# >>> P-VERIFIED DROP-ONE
+import json
+import os
+import sys
+
+env = os.environ
+with open(env["PROOF_VF_SRC_FILE"], encoding="utf-8") as handle:
+    doc = json.load(handle)
+
+
+def gitleaks_id(e):
+    fp = e.get("Fingerprint")
+    if isinstance(fp, str) and fp:
+        return ("Fingerprint", fp)
+    return ("RuleID+File+StartLine", e.get("RuleID"), e.get("File"), e.get("StartLine"))
+
+
+def semgrep_id(e):
+    start = e.get("start") if isinstance(e.get("start"), dict) else {}
+    return ("check_id+path+start.line", e.get("check_id"), e.get("path"), start.get("line"))
+
+
+if isinstance(doc, list):
+    shape, items, ident = "array", doc, gitleaks_id
+elif isinstance(doc, dict) and isinstance(doc.get("results"), list):
+    shape, items, ident = "results", doc["results"], semgrep_id
+else:
+    print("WRONG-SHAPE: top level is {}{}; expected a top-level array or an object with a results array".format(
+        type(doc).__name__, " with keys {}".format(sorted(doc)[:10]) if isinstance(doc, dict) else ""))
+    sys.exit(5)
+before = len(items)
+if before < 2:
+    print("NO-CANDIDATE: shape={} holds {} element(s), need at least 2".format(shape, before))
+    sys.exit(3)
+keys = [ident(e) if isinstance(e, dict) else None for e in items]
+counts = {}
+for k in keys:
+    counts[k] = counts.get(k, 0) + 1
+index = next((i for i, k in enumerate(keys) if k is not None and None not in k and counts[k] == 1), None)
+if index is None:
+    print("NO-CANDIDATE: shape={} holds {} elements, none with a unique identity".format(shape, before))
+    sys.exit(3)
+removed = keys[index]
+del items[index]
+after = len(items)
+line = "shape={} removed={} before={} after={}".format(shape, "|".join(str(x) for x in removed), before, after)
+if after != before - 1:
+    print("WRONG-COUNT: " + line)
+    sys.exit(4)
+with open(env["PROOF_VF_OUT_FILE"], "w", encoding="utf-8") as handle:
+    json.dump(doc, handle)
+print(line)
+# <<< P-VERIFIED DROP-ONE
+PY
+  return "$rc"
+}
+
+# verified_assert MODE SNAP CALL [S1]: the read-side P-VERIFIED verdicts.
+# MODE positive (P-VERIFIED-FALSE, committed body): the engagement holds
+# exactly the 8 expected Tests, every finding reads verified=false and each
+# Trivy Scan Test holds at least one finding. MODE negative (P-VERIFIED-FALSE,
+# old body): the same 8 Tests, every non-duplicate Trivy Scan finding reads
+# verified=true (count above 0; duplicates are always verified=false) and
+# every non-Trivy finding reads verified=false; the Trivy Status breakdown of
+# the report files is printed. MODE newreimport (P-VERIFIED-NEWREIMPORT): SNAP
+# is S2 and S1 the snapshot before the full-report reimport; exactly one
+# finding is new, it reads verified=false and duplicate=false and it matches
+# the vulnerability vf_drop_trivy_fs removed.
+verified_assert() {
+  local mode="$1" log="${PROOF_DIR}/assert-verified-$1-$3.log" a_rc=0 pid="P-VERIFIED-FALSE"
+  [ "$mode" = "newreimport" ] && pid="P-VERIFIED-NEWREIMPORT"
+  PROOF_VF_MODE="$mode" PROOF_VF_SNAP="$2" PROOF_VF_CALL="$3" PROOF_VF_S1="${4:-}" \
+    PROOF_VF_REPORTS="${PROOF_DIR}/reports-vf-all" PROOF_VF_REMOVED="${PROOF_DIR}/reports-vf-trimmed.removed.json" \
+    python3 - > "$log" 2>&1 <<'PY' || a_rc=$?
+import json
+import os
+import sys
+
+env = os.environ
+EXPECTED = {"semgrep", "checkov", "trivy-fs", "trivy-image", "gitleaks", "npm-audit-1", "pip-audit-1", "tflint"}
+TRIVY = ("trivy-fs", "trivy-image")
+failures = 0
+
+
+def say(pid, ok, detail):
+    global failures
+    print("PROOF: {} {} {}".format(pid, "PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+def load(path):
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def status_breakdown(reports):
+    parts = []
+    for name in ("trivy-fs.json", "trivy-image.json"):
+        path = os.path.join(reports, name)
+        if not os.path.isfile(path):
+            parts.append("{} absent".format(name))
+            continue
+        counts = {}
+        for result in (load(path).get("Results") or []):
+            for vuln in ((result or {}).get("Vulnerabilities") or []):
+                status = str(vuln.get("Status")) if isinstance(vuln, dict) else "?"
+                counts[status] = counts.get(status, 0) + 1
+        parts.append("{} {}".format(name, ",".join("{}={}".format(k, counts[k]) for k in sorted(counts)) or "none"))
+    return "; ".join(parts)
+
+
+def brief(f, title, trivy):
+    return "#{} test={} trivy={} verified={} duplicate={}".format(f["id"], title, trivy, f["verified"], f["duplicate"])
+
+
+mode = env.get("PROOF_VF_MODE", "")
+pid = "P-VERIFIED-NEWREIMPORT" if mode == "newreimport" else "P-VERIFIED-FALSE"
+try:
+    if mode in ("positive", "negative"):
+        snap = load(env["PROOF_VF_SNAP"])
+        label = "positive call {}".format(env["PROOF_VF_CALL"]) if mode == "positive" else "negative control (old body)"
+        titles = [t["title"] for t in snap["tests"].values()]
+        tset = set(titles)
+        missing, extra = sorted(EXPECTED - tset), sorted(tset - EXPECTED)
+        repeated = sorted(t for t in tset if titles.count(t) > 1)
+        say(pid, not missing and not extra and not repeated and len(titles) == len(EXPECTED),
+            "{}: the engagement holds {} Tests {} (expected exactly {}); missing {}, extra {}, repeated {}".format(
+                label, len(titles), sorted(titles), sorted(EXPECTED), missing or "none", extra or "none",
+                repeated or "none"))
+        title_of = {tid: t["title"] for tid, t in snap["tests"].items()}
+        trivy_of = {tid: t["title"] in TRIVY and t["scan_type"] == "Trivy Scan" for tid, t in snap["tests"].items()}
+        findings = snap["findings"]
+        per = {}
+        for f in findings:
+            row = per.setdefault(title_of.get(str(f["test"]), "?"), {"n": 0, "true": 0, "false": 0, "dup": 0})
+            row["n"] += 1
+            row["true" if f["verified"] is True else "false"] += 1
+            row["dup"] += 1 if f["duplicate"] is True else 0
+        counts = ",".join("{}={}".format(t, per[t]["n"]) for t in sorted(per))
+        split = ",".join("{}={}/{}".format(t, per[t]["true"], per[t]["false"]) for t in sorted(per))
+        if mode == "positive":
+            bad = [f for f in findings if f["verified"] is not False]
+            empty = [t for t in TRIVY if per.get(t, {}).get("n", 0) == 0]
+            ok = bool(findings) and not bad and not empty
+            if ok:
+                detail = "{}: {} findings in {} Tests all verified=false; per-Test counts {}".format(
+                    label, len(findings), len(titles), counts)
+            else:
+                detail = "{}: {} of {} findings do not read verified=false; Trivy Tests without findings: {}; " \
+                    "per-Test counts {}{}".format(
+                        label, len(bad), len(findings), empty or "none", counts or "none",
+                        "" if not bad else "; offenders: " + "; ".join(
+                            brief(f, title_of.get(str(f["test"])), trivy_of.get(str(f["test"]))) for f in bad[:10]))
+            say(pid, ok, detail)
+        else:
+            breakdown = status_breakdown(env["PROOF_VF_REPORTS"])
+            trivy_nd = [f for f in findings if trivy_of.get(str(f["test"])) and f["duplicate"] is False]
+            trivy_bad = [f for f in trivy_nd if f["verified"] is not True]
+            say(pid, bool(trivy_nd) and not trivy_bad,
+                "{}: {} of {} non-duplicate Trivy Scan findings read verified=true (expected all, count > 0{}); "
+                "Trivy Status in the reports: {}; per-Test verified true/false {}{}".format(
+                    label, len(trivy_nd) - len(trivy_bad), len(trivy_nd),
+                    "; 28-05 and the Phase 29 live split reproduced" if trivy_nd and not trivy_bad else "",
+                    breakdown, split or "none",
+                    "" if not trivy_bad else "; offenders: " + "; ".join(
+                        brief(f, title_of.get(str(f["test"])), True) for f in trivy_bad[:10])))
+            non_trivy = [f for f in findings if not trivy_of.get(str(f["test"]))]
+            nt_bad = [f for f in non_trivy if f["verified"] is not False]
+            say(pid, bool(non_trivy) and not nt_bad,
+                "{}: {} of {} non-Trivy findings read verified=false (expected all, count > 0){}".format(
+                    label, len(non_trivy) - len(nt_bad), len(non_trivy),
+                    "" if not nt_bad else "; offenders: " + "; ".join(
+                        brief(f, title_of.get(str(f["test"])), False) for f in nt_bad[:10])))
+    elif mode == "newreimport":
+        s1, s2, removed = load(env["PROOF_VF_S1"]), load(env["PROOF_VF_SNAP"]), load(env["PROOF_VF_REMOVED"])
+        vid, pkg, status = removed["VulnerabilityID"], removed["PkgName"], removed["Status"]
+        ids1 = {f["id"] for f in s1["findings"]}
+        new = [f for f in s2["findings"] if f["id"] not in ids1]
+        say(pid, len(new) == 1,
+            "reimport of the full trivy-fs.json into ci/{} created {} new finding(s) (expected exactly 1): "
+            "{} findings before, {} after{}".format(
+                env["PROOF_DEFAULT_BRANCH"], len(new), len(s1["findings"]), len(s2["findings"]),
+                "" if len(new) <= 1 else "; new: " + "; ".join("#{} {!r}".format(f["id"], f["title"]) for f in new[:10])))
+        if len(new) == 1:
+            f = new[0]
+            title = f["title"] if isinstance(f["title"], str) else ""
+            match = (vid in title or vid in f["vulnerability_ids"]) and (f["component_name"] == pkg or pkg in title)
+            ok = f["verified"] is False and f["duplicate"] is False and match
+            say(pid, ok,
+                "new finding #{} ({!r}, component {!r}) reads verified={} duplicate={}; it is the removed {} {} {} "
+                "with Status {} (parser maps to verified True; stored {}){}".format(
+                    f["id"], title, f["component_name"], f["verified"], f["duplicate"], vid, pkg,
+                    removed["InstalledVersion"], status, "false" if f["verified"] is False else f["verified"],
+                    "" if match else "; MISMATCH: the new finding does not match the removed vulnerability"))
+    else:
+        say(pid, False, "unknown P-VERIFIED assertion mode {!r}".format(mode))
+except (OSError, KeyError, TypeError, ValueError) as exc:
+    say(pid, False, "{} assertions aborted: {}".format(mode, exc))
+sys.exit(1 if failures else 0)
+PY
+  tally_assert_log "$log"
+  if [ "$a_rc" -ne 0 ] && ! grep -q "^PROOF: ${pid} FAIL" "$log"; then
+    proof_fail "$pid" "the ${mode} assertion script exited ${a_rc} without reporting a failed assertion (see ${log})"
+  fi
+}
+
+# verified_import_settle ID LABEL PRODUCT REPORTS SNAP: one ci/main import
+# (schedule form) of REPORTS into PRODUCT with whatever DEDUP_B_IMPORT points
+# at, then wait_dedup_settled, then a snapshot into SNAP. Returns 1 after a
+# proof_fail under ID when the body or the snapshot fails, 0 otherwise.
+verified_import_settle() {
+  local id="$1" label="$2" product="$3" reports="$4" snap="$5" which="committed"
+  [ "$DEDUP_B_IMPORT" = "${PROOF_DIR}/dd-import-old-body.sh" ] && which="old"
+  import_as_branch "$label" "$product" "$PROOF_DEFAULT_BRANCH" "$reports" "${PROOF_DIR}/results-${label}.json"
+  if [ "$BODY_RC" -ne 0 ]; then
+    proof_fail "$id" "dd-import body (${which}, ${label}: ${product} / ci/${PROOF_DEFAULT_BRANCH}) exited ${BODY_RC} (log ${BODY_LOG}); case skipped"
+    return 1
+  fi
+  wait_dedup_settled "$product" "ci/${PROOF_DEFAULT_BRANCH}"
+  if ! snapshot_engagement "$product" "ci/${PROOF_DEFAULT_BRANCH}" "$snap"; then
+    proof_fail "$id" "snapshot of ${product} / ci/${PROOF_DEFAULT_BRANCH} after ${label} failed: $(snippet "${snap}.err"); case skipped"
+    return 1
+  fi
+  return 0
+}
+
+# prove_verified: P-VERIFIED-* (Phase 29.5 D-10, D-04, D-11). Runs last,
+# inside prove_dedup_triage (dedup on, async_wait set), in fresh products.
+# P-VERIFIED-BODY builds the old body (the committed dd-import body minus the
+# verified=false line) and proves it differs by that line alone.
+# P-VERIFIED-FALSE: the committed body, all reports, two calls into
+# PROOF_VF_NEW_PRODUCT (call 1 through the DefaultImporter fallback, call 2
+# through DefaultReImporter with every finding matched), and the old body
+# once into PROOF_VF_OLD_PRODUCT as the negative control (VF_OLD_SNAP keeps
+# its snapshot for plan 04, which continues that product).
+# P-VERIFIED-NEWREIMPORT: in PROOF_VF_NEWREIMPORT_PRODUCT, ci/main from a
+# trivy-fs.json missing one True-mapping vulnerability, then the full file:
+# the one finding the reimporter creates must read verified=false.
+# Every failure is a proof_fail followed by moving on (or return 0): earlier
+# groups, P-IMAGE-TAG included, must stay visible.
+prove_verified() {
+  local committed="$DEDUP_B_IMPORT" old="${PROOF_DIR}/dd-import-old-body.sh"
+  local have_old=1 strip_rc=0 diff_rc=0 n_field counts call saved
+  local all="${PROOF_DIR}/reports-vf-all"
+  echo
+  echo "=== imports send verified=false; Trivy findings enter Under Review (P-VERIFIED-*) ==="
+
+  # ── P-VERIFIED-BODY (D-10 non-vacuous, T-29.5-08) ──────────────────────────
+  verified_strip "$committed" "$old" || strip_rc=$?
+  sed -e 's/^/    /' "${old}.log"
+  if [ "$strip_rc" -ne 0 ]; then
+    proof_fail "P-VERIFIED-BODY" "stripping the verified=false line from the committed dd-import body failed (exit ${strip_rc}): $(snippet "${old}.log")"
+    have_old=0
+  else
+    n_field="$(awk '{ n += gsub(/verified=/, "") } END { print n + 0 }' "$committed")"
+    if [ "$n_field" = "1" ]; then
+      proof_pass "P-VERIFIED-BODY" "the committed dd-import body contains verified= exactly once"
+    else
+      proof_fail "P-VERIFIED-BODY" "the committed dd-import body contains verified= ${n_field} times (expected exactly 1)"
+      have_old=0
+    fi
+    diff "$committed" "$old" > "${old}.diff" 2>&1 || diff_rc=$?
+    counts="$(awk '/^</ { r++ } /^>/ { a++ } /^<.*"verified=false",/ { h++ } END { print r + 0, a + 0, h + 0 }' "${old}.diff")"
+    if [ "$diff_rc" -eq 1 ] && [ "$counts" = "1 0 1" ]; then
+      proof_pass "P-VERIFIED-BODY" "committed vs old body: exactly one line removed, none added, and it holds \"verified=false\", ($(sed -n '/^</p' "${old}.diff" | head -n 1 | sed 's/^< *//'))"
+    else
+      proof_fail "P-VERIFIED-BODY" "committed vs old body: diff exit ${diff_rc}, removed/added/field lines ${counts} (expected exit 1 and 1 0 1): $(snippet "${old}.diff")"
+      have_old=0
+    fi
+    if bash -n "$old" 2>"${old}.bashn"; then
+      proof_pass "P-VERIFIED-BODY" "the old body passes bash -n"
+    else
+      proof_fail "P-VERIFIED-BODY" "the old body fails bash -n: $(snippet "${old}.bashn")"
+      have_old=0
+    fi
+  fi
+
+  # ── P-VERIFIED-FALSE positive (D-10, T-29.5-09) ────────────────────────────
+  rm -rf "$all"
+  mkdir -p "$all"
+  find "$DD_PROOF_REPORTS" -maxdepth 1 -type f -exec cp {} "${all}/" \;
+  for call in 1 2; do
+    if ! verified_import_settle "P-VERIFIED-FALSE" "vf-new-${call}" "$PROOF_VF_NEW_PRODUCT" "$all" \
+        "${PROOF_DIR}/vf-new-${call}.json"; then
+      break
+    fi
+    verified_assert positive "${PROOF_DIR}/vf-new-${call}.json" "$call"
+  done
+
+  # ── P-VERIFIED-FALSE negative control (D-10, D-03, T-29.5-11) ─────────────
+  # DEDUP_B_IMPORT points at the old body for exactly this one call and is
+  # restored before anything else happens, on every path.
+  VF_OLD_SNAP="${PROOF_DIR}/vf-old.json"
+  if [ "$have_old" -ne 1 ]; then
+    proof_fail "P-VERIFIED-FALSE" "negative control skipped: no old body (see P-VERIFIED-BODY)"
+  else
+    saved="$DEDUP_B_IMPORT"
+    DEDUP_B_IMPORT="$old"
+    local old_rc=0
+    verified_import_settle "P-VERIFIED-FALSE" "vf-old" "$PROOF_VF_OLD_PRODUCT" "$all" "$VF_OLD_SNAP" || old_rc=$?
+    DEDUP_B_IMPORT="$saved"
+    if [ "$old_rc" -eq 0 ]; then
+      verified_assert negative "$VF_OLD_SNAP" 1
+    fi
+  fi
+
+  # ── P-VERIFIED-NEWREIMPORT (D-04, T-29.5-10) ──────────────────────────────
+  local trimmed="${PROOF_DIR}/reports-vf-trimmed" full="${PROOF_DIR}/reports-vf-trivyfs-full" drop_rc=0
+  vf_drop_trivy_fs "$DD_PROOF_REPORTS" "$trimmed" || drop_rc=$?
+  sed -e 's/^/    /' "${trimmed}.log"
+  if [ "$drop_rc" -ne 0 ]; then
+    proof_fail "P-VERIFIED-NEWREIMPORT" "building the trimmed trivy-fs.json failed (exit ${drop_rc}): $(snippet "${trimmed}.log"); case skipped"
+    return 0
+  fi
+  rm -rf "$full"
+  mkdir -p "$full"
+  cp "${DD_PROOF_REPORTS}/trivy-fs.json" "${full}/trivy-fs.json"
+  if verified_import_settle "P-VERIFIED-NEWREIMPORT" "vf-newreimport-1" "$PROOF_VF_NEWREIMPORT_PRODUCT" "$trimmed" \
+      "${PROOF_DIR}/vf-newreimport-1.json" &&
+    verified_import_settle "P-VERIFIED-NEWREIMPORT" "vf-newreimport-2" "$PROOF_VF_NEWREIMPORT_PRODUCT" "$full" \
+      "${PROOF_DIR}/vf-newreimport-2.json"; then
+    verified_assert newreimport "${PROOF_DIR}/vf-newreimport-2.json" 2 "${PROOF_DIR}/vf-newreimport-1.json"
+  fi
+  return 0
+}
+
 # prove_dedup_triage BODIES_DIR ADMIN_HDR IMPORTER_TOK CA_PEM: the Phase 28
 # live block (28-03 and 28-04). Runs after every Phase 27 assertion, in fresh
 # products. Every import and delete goes through the COMMITTED security.yml
@@ -2592,6 +3074,7 @@ prove_dedup_triage() {
   export PROOF_DEDUP_PRODUCT PROOF_REPARENT_PRODUCT PROOF_DEDUP_PR PROOF_SUPPRESS_PR PROOF_REPARENT_PR
   export PROOF_SHA PROOF_IMAGE_SHA_PRODUCT PROOF_IMAGE_CI_PRODUCT PROOF_IMAGE_SHA_PR PROOF_IMAGE_CI_PR \
     PROOF_IMAGE_OTHER_SHA
+  export PROOF_VF_NEW_PRODUCT PROOF_VF_NEWREIMPORT_PRODUCT PROOF_VF_OLD_PRODUCT PROOF_VF_REACTIVATE_PRODUCT
   write_dedup_py "$PROOF_DEDUP_PY"
 
   echo
@@ -3272,9 +3755,11 @@ PY
   fi
 
   # ── P-REPARENT (D-02, D-03, D-20) ─────────────────────────────────────────
-  # ── P-IMAGE-TAG (Phase 29.4 D-06) ── called right after, last of all
+  # ── P-IMAGE-TAG (Phase 29.4 D-06) ── called right after
+  # ── P-VERIFIED-* (Phase 29.5 D-10, D-11) ── called last
   prove_reparent
   prove_image_tag
+  prove_verified
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
