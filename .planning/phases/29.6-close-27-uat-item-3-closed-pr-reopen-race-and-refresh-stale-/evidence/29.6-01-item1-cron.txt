@@ -1,0 +1,18 @@
+29.6-01 Task 1: item 1 configured schedule readback (27-HUMAN-UAT item 1)
+Captured: 2026-10-05T23:55:07Z
+Note: trailing whitespace is stripped from command output in this file (docs-repo pre-commit hook).
+
+$ git -C repos/security-platform fetch -q origin
+(exit 0, no output)
+
+$ git -C repos/security-platform rev-parse origin/main
+6c0d5319b1c328f135b47acd47e1a5e92ae2b10c
+
+$ git -C repos/security-platform show origin/main:.github/workflows/scheduled-security.yml | grep -n -A1 cron
+21:# cron twice a year. The Toronto DST transition happens at 02:00, so 06:00 is
+22-# never a skipped hour.
+--
+37:    - cron: '0 6 * * *'
+38-      timezone: "America/Toronto"
+
+Reading (D-13): schedule run 36553070357 (29.6-01-item1-run.json) has createdAt 2026-09-29T10:02:41Z, which is 06:02:41 EDT (UTC-4) against the configured cron '0 6 * * *' timezone America/Toronto; GitHub schedule start is best-effort, so the ~2 min start delay is recorded as observed and not as a failure.

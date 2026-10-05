@@ -1,0 +1,57 @@
+29.6-01 Task 1: item 2 homelab DefectDojo readback (27-HUMAN-UAT item 2), GET-only
+Captured: 2026-10-05T23:55:30Z
+Note: trailing whitespace is stripped from command output in this file (docs-repo pre-commit hook).
+The admin token is passed by file path only; its content is not written here.
+Only the 'snapshot' subcommand is run; its path (resolve_product, engagements_named, engagement_findings) issues GETs only.
+
+$ git -C repos/security-platform diff --quiet origin/main -- scripts/defectdojo-lifecycle-assert.sh; echo $?
+0
+
+$ cd repos/security-platform && DEFECTDOJO_URL=https://defectdojo.infra.ottawacloudconsulting.com DEFECTDOJO_ADMIN_TOKEN_FILE="$HOME/.config/defectdojo/homelab-admin.token" bash scripts/defectdojo-lifecycle-assert.sh snapshot --product OttawaCloudConsulting/security-platform --engagement ci/main --label 29.6-item2 --out <abs path to this evidence dir>
+snapshot ci/main: 278 findings
+wrote /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-item2-snapshot.json
+exit code: 0
+
+$ jq '{product, engagement, engagement_id, count, tests: [.tests[]|{title,scan_type}]}' 29.6-item2-snapshot.json
+{
+  "product": "OttawaCloudConsulting/security-platform",
+  "engagement": "ci/main",
+  "engagement_id": 1,
+  "count": 278,
+  "tests": [
+    {
+      "title": "npm-audit-1",
+      "scan_type": "NPM Audit v7+ Scan"
+    },
+    {
+      "title": "trivy-fs",
+      "scan_type": "Trivy Scan"
+    },
+    {
+      "title": "trivy-image",
+      "scan_type": "Trivy Scan"
+    },
+    {
+      "title": "pip-audit-1",
+      "scan_type": "pip-audit Scan"
+    },
+    {
+      "title": "tflint",
+      "scan_type": "SARIF"
+    },
+    {
+      "title": "checkov",
+      "scan_type": "Checkov Scan"
+    },
+    {
+      "title": "gitleaks",
+      "scan_type": "Gitleaks Scan"
+    },
+    {
+      "title": "semgrep",
+      "scan_type": "Semgrep JSON Report"
+    }
+  ]
+}
+
+Reading (D-14): security-platform is its own Mode A consumer, importing into the non-ephemeral https homelab DefectDojo; the ci/main engagement exists in product OttawaCloudConsulting/security-platform with count > 0 and non-empty tests. No separate repository has done a live Mode B import.
