@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: "Completed 29.5-05-PLAN.md (PR A #35 open, kind proof green; awaiting plan 06 D-05/D-07 ruling)"
-last_updated: "2026-10-05T01:00:55.772Z"
+stopped_at: Completed 29.5-06-PLAN.md
+last_updated: "2026-10-05T01:07:54.194Z"
 last_activity: 2026-10-05
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.5 (fix-wr-03-triage-md-under-review-query-hides-verified-true-t) — EXECUTING
-Plan: 6 of 12
+Plan: 7 of 12
 Status: Ready to execute
 Last activity: 2026-10-05
 
@@ -379,6 +379,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.5]: 29.5-04: P-VERIFIED-REACTIVATE fails on mechanics at steps 1-5 (incl. step-2 reactivation and step-3 PATCH taking) and requires X non-duplicate; steps 4/5 verified values are printed, never asserted
 - [Phase 29.5]: 29.5-04: vf_patch_verified requires the PATCH response to echo the written verified value, so a silent no-op PATCH cannot read as a reimport effect
 - [Phase 29.5]: 29.5-05: PR A #35 open at d2e813d; kind proof PROOF PASS - 189 assertions, no D-04/D-07 STOP; RESET measured still_true=66/66 (reimport does not reset pre-fix verified=true), REACTIVATE clears verified -> plan 06 ruling
+- [Phase 29.5]: 29.5-06: D-07 reactivation ruling accept (operator verbatim "accept"); l36_l40_sentence_allowed=true; D-05 kind prediction reset_predicted_needed=true (still_true=66 of 66), binding D-05 decision in plan 07 from live readback
 
 ### Pending Todos
 
@@ -565,11 +566,12 @@ Carried forward from v1.1 close:
 | Phase 29.5 P03 | 15min | 3 tasks | 2 files |
 | Phase 29.5 P04 | 25min | 2 tasks | 1 files |
 | Phase 29.5 P05 | 16min | 3 tasks | 2 files |
+| Phase 29.5 P06 | 5min | 3 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-10-05T01:00:55.760Z
-Stopped at: Completed 29.5-05-PLAN.md (PR A #35 open, kind proof green; awaiting plan 06 D-05/D-07 ruling)
+Last session: 2026-10-05T01:07:54.183Z
+Stopped at: Completed 29.5-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -452,7 +452,7 @@ Plans:
 **Goal:** TRIAGE.md's Under Review query and state table hold for Trivy findings: the `dd-import` step sends `verified=false` on every reimport, so every parser lands findings unverified and Verified means a triager confirmed the finding; proven in kind and by a live `ci/main` readback, with pre-upgrade findings measured (and reset if needed), released as `v1.4.0` with `v1` moved, and recorded in ADR-032 (closes 28-REVIEW WR-03)
 **Requirements**: DDOJO-04 (gap closure)
 **Depends on:** Phase 29
-**Plans:** 5/12 plans executed
+**Plans:** 6/12 plans executed
 
 Plans:
 - [x] 29.5-01-PLAN.md — PR A branch; VERIFIED-FALSE gate RED-first + scratch negatives; `verified=false` in dd-import fields; lifecycle-assert text (D-01, D-02, D-13, D-14)
@@ -460,7 +460,7 @@ Plans:
 - [x] 29.5-03-PLAN.md — kind proof part 1: P-VERIFIED-BODY, P-VERIFIED-FALSE (8 Tests + old-body negative control), P-VERIFIED-NEWREIMPORT; helpers proven offline (D-04, D-10)
 - [x] 29.5-04-PLAN.md — kind proof part 2: P-VERIFIED-RESET, P-VERIFIED-TRIAGER, P-VERIFIED-REACTIVATE; stale comment (D-05, D-06, D-07, D-11)
 - [x] 29.5-05-PLAN.md — push and open PR A; capture PROOF lines with D-04/D-07 STOP routing
-- [ ] 29.5-06-PLAN.md — operator ruling on reactivation (D-07) and D-05 kind outcome
+- [x] 29.5-06-PLAN.md — operator ruling on reactivation (D-07) and D-05 kind outcome
 - [ ] 29.5-07-PLAN.md — before snapshot, merge PR A, Scheduled Security dispatch, live D-12 readback
 - [ ] 29.5-08-PLAN.md — conditional one-time reset of pre-fix Trivy Verified on ci/main (D-05)
 - [ ] 29.5-09-PLAN.md — PR B: TRIAGE.md L44 rewrite (+ reset recipe) and adoption-guide §12 bullet (D-08, D-09, D-17)
