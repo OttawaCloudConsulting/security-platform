@@ -37,11 +37,13 @@ Every finding on `ci/<default>` is in exactly one of these states.
 | False Positive | Mark it False Positive (UI) or the FP `PATCH` below. It becomes inactive. | Measured: the finding reads `false_p=true, active=false, is_mitigated=true` from the moment it is dispositioned, and two reimports left that state and its mitigated timestamp unchanged. It is never reactivated. |
 | Out of Scope | Mark it Out of Scope (UI) or the OOS `PATCH` below. It becomes inactive. | Measured: `out_of_scope=true, active=false, is_mitigated=true` from the moment it is dispositioned, unchanged by two reimports. It is never reactivated. |
 | Risk Accepted | Create a full Risk Acceptance with an expiry date and a reason (see Risk acceptance). The finding becomes inactive. | Measured: `risk_accepted=true, active=false, is_mitigated=false`, unchanged by two reimports. It is never reactivated by a reimport. It is reactivated when the acceptance expires. |
-| Mitigated | Nothing to set. Reimport sets it through `close_old_findings` when the scanner stops reporting the finding. | Closed while the scanner no longer reports it. If the issue comes back, the next reimport reopens it, which is intended. |
+| Mitigated | Nothing to set. Reimport sets it through `close_old_findings` when the scanner stops reporting the finding. | Closed while the scanner no longer reports it. If the issue comes back, the next reimport reopens it, which is intended. From v1.4.0 a reopened finding returns unverified, so it re-enters Under Review even if it was Verified before it was fixed (measured in kind, Phase 29.5). |
 
 **Under Review is a query, not a flag.** It is the implicit untriaged queue: findings on `ci/<default>` that are active, not verified, not a duplicate, not mitigated, and carry none of False Positive, Out of Scope or Risk Accepted. In the UI, open the `ci/<default>` engagement's findings and filter on Active = Yes, Verified = No, Duplicate = No, Mitigated = No, and False Positive, Out of Scope and Risk Accepted all No. The API query is under API examples. DefectDojo also has a native "Under Review" flag; that is its multi-reviewer review-request workflow, and this runbook does not use it.
 
-**Trivy findings arrive Verified.** Measured: Trivy Scan findings imported by the `security.yml` import landed with `verified=true`, although the import sends no verified field. Findings from the other parsers were not checked. For Trivy findings, Verified is therefore not a triage signal, and the `verified=false` filter above never matches them. To see untriaged Trivy findings, run the same query without `verified=false`.
+**Every parser arrives unverified from v1.4.0.** From `v1.4.0` the `security.yml` import sends `verified=false`, so findings from every parser, Trivy included, arrive unverified and the Under Review query above matches them. Verified is set only by a triager and means the finding is confirmed real. Measured in kind (Phase 29.5): every finding from all 8 reports landed `verified=false` on first import and on reimport, including a Trivy finding whose scanner status the parser maps to verified; a Verified set by a triager on an active finding was kept by the next reimport.
+
+**Findings imported before v1.4.0 stay Verified until reset.** Before `v1.4.0` the import sent no verified field and DefectDojo's Trivy parser set `verified=true` from each vulnerability's status, so Trivy findings were absent from Under Review. A reimport does not reset Verified on a finding that is still active, so Trivy findings imported before the upgrade keep `verified=true` until the one-time reset is run (see One-time reset after upgrading to v1.4.0). Measured live (Phase 29.5): on `ci/main` the first reimport after the upgrade left 65 of 65 earlier Trivy findings `verified=true`; the one-time reset below set them to `verified=false`, after which 0 remained. That reimport brought 0 new Trivy findings, so the claim that new Trivy findings arrive unverified rests on the kind measurement.
 
 **No reimport flag is needed.** The measured reimports reported 0 reactivated findings. Do not add `do_not_reactivate` to the reimport: it must stay off so that a fixed issue that regresses reopens.
 
@@ -112,6 +114,82 @@ curl -sS -X POST -H @"$HDR" -H 'Content-Type: application/json' \
 Remove the header file when you are done:
 
 ```bash
+rm -f "$HDR"
+```
+
+## One-time reset after upgrading to v1.4.0
+
+Findings that a Trivy parser imported before v1.4.0 arrived with `verified=true` without any triage meaning, so they are absent from Under Review, and a reimport does not reset Verified on a finding that is still active.
+
+Scope: the `ci/<default>` engagement only; the Trivy Scan Tests titled `trivy-fs` and `trivy-image`; findings that are active, not dispositioned (not false positive, out of scope or risk accepted), not duplicate and not mitigated. PR engagements are deleted when the PR closes and need nothing.
+
+Run this once with an operator token. It prints the candidate ids and changes nothing until you type `yes`. Keep the printed id list: setting `verified` back to `true` on those ids undoes the reset.
+
+```bash
+set -euo pipefail
+DD=https://defectdojo.example.com
+TOKEN_FILE=/path/to/token-file
+ENG=42
+
+case "$DD" in
+  https://*) ;;
+  *) echo "FAILED: DD must be https:// - refusing to send the API token" >&2; exit 1 ;;
+esac
+
+HDR="$(mktemp)"; chmod 600 "$HDR"
+BODY="$(mktemp)"
+trap 'rm -f "$HDR" "$BODY"' EXIT
+printf 'Authorization: Token %s\n' "$(cat "$TOKEN_FILE")" > "$HDR"
+
+# dd_api METHOD URL EXPECTED_HTTP [JSON_BODY]: response body goes to $BODY.
+dd_api() {
+  local out rc=0
+  if [ "$#" -eq 4 ]; then
+    out="$(curl -q -sS --proto =https --proto-redir =https -H @"$HDR" -X "$1" \
+      -H 'Content-Type: application/json' -d "$4" \
+      -o "$BODY" -w '%{http_code}|%{ssl_verify_result}' "$2" 2>/dev/null)" || rc=$?
+  else
+    out="$(curl -q -sS --proto =https --proto-redir =https -H @"$HDR" -X "$1" \
+      -o "$BODY" -w '%{http_code}|%{ssl_verify_result}' "$2" 2>/dev/null)" || rc=$?
+  fi
+  if [ "$rc" -ne 0 ] || [ "${out#*|}" != 0 ] || [ "${out%%|*}" != "$3" ]; then
+    echo "FAILED: $1 $2: curl exit $rc, http ${out%%|*}, TLS verification result ${out#*|} (must be 0)" >&2
+    exit 1
+  fi
+}
+
+# Step 1: the Trivy Scan Tests on the ci/<default> engagement.
+dd_api GET "$DD/api/v2/tests/?engagement=$ENG&limit=100" 200
+jq -e '.next == null' "$BODY" >/dev/null || { echo "FAILED: more than one page of Tests" >&2; exit 1; }
+TESTS="$(jq -c '[.results[] | select(.engagement == '"$ENG"' and .scan_type == "Trivy Scan" and (.title == "trivy-fs" or .title == "trivy-image")) | .id]' "$BODY")"
+[ "$TESTS" != "[]" ] || { echo "FAILED: no trivy-fs or trivy-image Trivy Scan Test on engagement $ENG" >&2; exit 1; }
+echo "Trivy Test ids: $TESTS"
+
+# Step 2: triage-open Trivy findings that read verified=true. Every filter is
+# re-checked client-side, because a server filter that is ignored returns every row.
+dd_api GET "$DD/api/v2/findings/?test__engagement=$ENG&active=true&verified=true&false_p=false&out_of_scope=false&risk_accepted=false&duplicate=false&is_mitigated=false&limit=1000" 200
+jq -e '.next == null' "$BODY" >/dev/null || { echo "FAILED: more than one page of findings" >&2; exit 1; }
+IDS_JSON="$(jq -c --argjson t "$TESTS" '[.results[]
+  | select((.test as $x | any($t[]; . == $x))
+      and .active == true and .verified == true and .false_p == false
+      and .out_of_scope == false and .risk_accepted == false
+      and .duplicate == false and .is_mitigated == false)
+  | .id] | sort' "$BODY")"
+COUNT="$(jq 'length' <<<"$IDS_JSON")"
+IDS="$(jq -r '.[]' <<<"$IDS_JSON")"
+printf 'Candidates (%s):\n' "$COUNT"
+printf '%s\n' "$IDS"
+[ "$COUNT" -gt 0 ] || { echo "Nothing to reset."; exit 0; }
+
+# Step 3: set verified=false on each candidate, stopping on the first non-200.
+read -r -p "Type yes to set verified=false on these $COUNT findings: " ANSWER
+[ "$ANSWER" = yes ] || { echo "Not confirmed; nothing changed."; exit 1; }
+for id in $IDS; do
+  dd_api PATCH "$DD/api/v2/findings/$id/" 200 '{"verified": false}'
+  echo "reset $id"
+done
+
+# Step 4: the EXIT trap removes the header file.
 rm -f "$HDR"
 ```
 
