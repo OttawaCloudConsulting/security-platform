@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: verifying
-stopped_at: Completed 29.5-12-PLAN.md
-last_updated: "2026-10-05T04:03:01.504Z"
+status: ready_to_plan
+stopped_at: Phase 29.5 complete (12/12) — ready to discuss Phase 29.6
+last_updated: 2026-10-05T18:21:30.502Z
 last_activity: 2026-10-05
 progress:
   total_phases: 7
   completed_phases: 7
   total_plans: 75
-  completed_plans: 75
+  completed_plans: 118
   percent: 100
 ---
 
@@ -21,20 +21,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 29.5 — fix-wr-03-triage-md-under-review-query-hides-verified-true-t
+**Current focus:** Phase 29.6 — close 27 uat item 3 closed pr reopen race and refresh stale
 
 ## Current Position
 
-Phase: 29.5 (fix-wr-03-triage-md-under-review-query-hides-verified-true-t) — EXECUTING
-Plan: 12 of 12
-Status: Phase complete — ready for verification
+Phase: 29.6
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-10-05
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 113 (v1.0 + v1.1)
+- Total plans completed: 125 (v1.0 + v1.1)
 - Total execution time: ~2h 40min
 
 **Recent Trend:**
