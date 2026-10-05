@@ -39,3 +39,4 @@ For the full findings that prompted ADR-001 through ADR-012, see [`red-team/00-c
 | [ADR-029](adr029-defectdojo-api-clients-ignore-ambient-curl-config.md) | DefectDojo API Clients Ignore Ambient curl Configuration and Require a Verified TLS Result | 2026-09-30 | Accepted |
 | [ADR-030](adr030-standing-chart-gates-fail-closed-and-run-in-ci.md) | Standing Chart Gates Fail Closed and Run in CI | 2026-10-01 | Accepted |
 | [ADR-031](adr031-fixed-scan-image-tag-makes-trivy-image-findings-dedupe-across-branches.md) | A Fixed Scan Image Tag Makes trivy-image Findings Dedupe Across Branches and Main Commits | 2026-10-04 | Accepted |
+| [ADR-032](adr032-defectdojo-import-sends-verified-false-so-trivy-findings-enter-under-review.md) | The DefectDojo Import Sends verified=false So Trivy Findings Enter Under Review | 2026-10-05 | Accepted |
