@@ -137,10 +137,12 @@ set -euo pipefail
 # Re-parenting was proven on kind in Phase 28 (P-REPARENT); ADR-027 records it
 # as not exercised live. assert-closed prints an explicit INFO line saying so.
 #
-# TRIVY CAVEAT (TRIAGE.md). Trivy findings arrive verified=true, so the
-# verbatim Under Review filter (verified=false) never matches them. The step-2
-# fixture must therefore be a finding from a non-Trivy parser, or
-# D11-STEP2-UNTRIAGED-EQ-FIXTURE fails.
+# VERIFIED (TRIAGE.md, ADR-032). From v1.4.0 the security.yml import sends
+# verified=false, so findings from every parser, Trivy included, match the
+# verbatim Under Review filter (verified=false). Trivy Scan findings imported
+# before v1.4.0 landed verified=true and only leave that state through the
+# one-time reset in TRIAGE.md (or a triager), so on a pre-v1.4.0 engagement the
+# step-2 fixture should still come from a non-Trivy parser.
 #
 # DANGLING DUPLICATES. D11-STEP5-NO-DANGLING-DUPLICATE counts a finding with
 # duplicate=true as dangling when its duplicate_finding id is not in the
@@ -849,7 +851,7 @@ cmd_assert_pr_duplicates() {
   if [[ "$(jq '.untriaged_eq_fixture' "$out")" == "true" ]]; then
     pass "D11-STEP2-UNTRIAGED-EQ-FIXTURE" "the Under Review set on ${name} is exactly the ${v%% *} finding(s) under '${FIXTURE_PATH}': $(jq -c '.under_review.file_paths' "$out")"
   else
-    fail "D11-STEP2-UNTRIAGED-EQ-FIXTURE" "Under Review ids $(jq -c '.under_review.ids' "$out") file_paths $(jq -c '.under_review.file_paths' "$out") vs fixture ids $(jq -c '.fixture.ids' "$out") file_paths $(jq -c '.fixture.file_paths' "$out"); rows violating the filter client-side: $(jq -c '.under_review.filter_violations' "$out") (note: Trivy findings arrive verified=true and never match this filter, so the fixture must come from a non-Trivy parser)"
+    fail "D11-STEP2-UNTRIAGED-EQ-FIXTURE" "Under Review ids $(jq -c '.under_review.ids' "$out") file_paths $(jq -c '.under_review.file_paths' "$out") vs fixture ids $(jq -c '.fixture.ids' "$out") file_paths $(jq -c '.fixture.file_paths' "$out"); rows violating the filter client-side: $(jq -c '.under_review.filter_violations' "$out") (note: findings that a Trivy parser imported before v1.4.0 landed verified=true and do not match this filter until reset; see TRIAGE.md)"
   fi
 
   if [[ "$(jq '.trivy_image_key.ok' "$out")" == "true" ]]; then

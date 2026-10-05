@@ -1353,6 +1353,13 @@ jobs:
       # closes fixed findings (close_old_findings) instead of piling up a new
       # Test per run as import-scan would (D-07, D-09).
       #
+      # Every reimport-scan call also sends verified=false, so findings from
+      # every parser arrive unverified and the TRIAGE.md Under Review query
+      # (verified=false) matches them. Without it DefectDojo 3.3.200's Trivy
+      # parser sets verified=true from each vulnerability's Status. A Verified
+      # set by a triager on an active, still-reported finding is not touched
+      # by reimport (Phase 29.5, ADR-032).
+      #
       # An explicit, unique test_title on every call: Trivy fs and Trivy image
       # share the scan_type "Trivy Scan", and without a title reimport takes
       # the LAST Test of that scan_type, so the two would overwrite each other.
@@ -1544,6 +1551,7 @@ jobs:
                           "test_title=" + test_title,
                           "auto_create_context=true",
                           "close_old_findings=true",
+                          "verified=false",  # every parser lands unverified; Verified = a triager confirmed it (ADR-032)
                           "branch_tag=" + branch[:150],
                           "commit_hash=" + env.get("GITHUB_SHA", ""),
                           "build_id=" + env.get("GITHUB_RUN_ID", ""),
