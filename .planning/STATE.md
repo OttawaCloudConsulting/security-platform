@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.5-08-PLAN.md
-last_updated: "2026-10-05T02:24:14.309Z"
+stopped_at: Completed 29.5-09-PLAN.md
+last_updated: "2026-10-05T03:20:34.666Z"
 last_activity: 2026-10-05
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.5 (fix-wr-03-triage-md-under-review-query-hides-verified-true-t) — EXECUTING
-Plan: 9 of 12
+Plan: 10 of 12
 Status: Ready to execute
 Last activity: 2026-10-05
 
@@ -382,6 +382,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.5]: 29.5-06: D-07 reactivation ruling accept (operator verbatim "accept"); l36_l40_sentence_allowed=true; D-05 kind prediction reset_predicted_needed=true (still_true=66 of 66), binding D-05 decision in plan 07 from live readback
 - [Phase 29.5]: 29.5-07: D-05 live reset_needed=true (still_true 65 of 65 after dispatch 37251249025 on merge a53f6fb); D-12 fix PASS, new_trivy 0; PR A merged untagged
 - [Phase 29.5]: 29.5-08 D-05: one-time reset ran on ci/main (executor, operator-approved 65 ids); 65/65 PATCH 200; reset-mode diff PASS, after_open_trivy_true 0
+- [Phase 29.5]: PR B #36 OPEN at 9456cbb with every check green; DefectDojo Import Proof PROOF PASS - 189 assertions on attempt 2 after one operator-approved rerun of a KIND-INSTALL ingress-nginx admission-webhook flake (follow-up: wait for webhook endpoint)
 
 ### Pending Todos
 
@@ -571,11 +572,12 @@ Carried forward from v1.1 close:
 | Phase 29.5 P06 | 5min | 3 tasks | 2 files |
 | Phase 29.5 P07 | 6min | 3 tasks | 5 files |
 | Phase 29.5 P08 | 15min | 3 tasks | 6 files |
+| Phase 29.5 P09 | 45min | 3 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-10-05T02:24:14.299Z
-Stopped at: Completed 29.5-08-PLAN.md
+Last session: 2026-10-05T03:20:34.655Z
+Stopped at: Completed 29.5-09-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
