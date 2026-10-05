@@ -1,0 +1,151 @@
+29.5-09 Task 3 PR B push and checks evidence - started 2026-10-05T02:36:43Z
+
+OPERATOR APPROVAL (Task 2, verbatim, relayed by the orchestrator from the operator):
+  approved - push PR B
+Approved HEAD SHA: 9456cbb19acaf0fe3f2204ff853139057edf4121
+Disclosures a-e accepted as stated. Optional TRIAGE.md L3 change and the curl -q retrofit of the existing API examples: declined, out of scope.
+Scope: push docs/phase-29.5-triage-verified to origin and open PR B against main. NOT approved: merge (plan 10), tag, moving v1, dispatch, merging Dependabot #30/#31.
+Pre-push check: git -C repos/security-platform rev-parse HEAD = 9456cbb19acaf0fe3f2204ff853139057edf4121; git status --porcelain = (empty); git ls-remote --heads origin docs/phase-29.5-triage-verified = (empty, not yet pushed)
+Branch diff vs origin/main: kubernetes/defectdojo/TRIAGE.md
+Open PRs touching TRIAGE.md (disclosure e, re-read): none (open: #31, #30 Dependabot, both .github/workflows/security.yml only)
+
+DOING: git -C repos/security-platform push -u origin docs/phase-29.5-triage-verified; gh pr create against main (no merge, no tag, no dispatch)
+EXPECT: branch created on origin at 9456cbb; PR B OPEN; PR Security triggered on head 9456cbb and green (DefectDojo Import into ci/docs/phase-29.5-triage-verified);
+        DefectDojo Import Proof NOT triggered (its pull_request paths do not include kubernetes/defectdojo/**); chart-gates may run depending on its paths
+IF MATCH: record run ids and gh pr checks; commit evidence; plan 10 merge decision
+IF MISMATCH: STOP, no rerun, no close, no merge/tag; commit evidence so far; bring to operator
+
+$ git -C repos/security-platform push -u origin docs/phase-29.5-triage-verified
+Terraform fmt........................................(no files to check)Skipped
+Terraform validate...................................(no files to check)Skipped
+ruff (legacy alias)..................................(no files to check)Skipped
+ruff format..........................................(no files to check)Skipped
+shellcheck...........................................(no files to check)Skipped
+Lint Dockerfiles.....................................(no files to check)Skipped
+yamllint.............................................(no files to check)Skipped
+markdownlint.............................................................Passed
+eslint...............................................(no files to check)Skipped
+npm audit............................................(no files to check)Skipped
+Detect hardcoded secrets.................................................Passed
+remote:
+remote: Create a pull request for 'docs/phase-29.5-triage-verified' on GitHub by visiting:
+remote:      https://github.com/OttawaCloudConsulting/security-platform/pull/new/docs/phase-29.5-triage-verified
+remote:
+To https://github.com/OttawaCloudConsulting/security-platform.git
+ * [new branch]      docs/phase-29.5-triage-verified -> docs/phase-29.5-triage-verified
+branch 'docs/phase-29.5-triage-verified' set up to track 'origin/docs/phase-29.5-triage-verified'.
+(exit 0)
+
+$ git ls-remote --heads origin docs/phase-29.5-triage-verified
+9456cbb19acaf0fe3f2204ff853139057edf4121	refs/heads/docs/phase-29.5-triage-verified
+
+$ gh pr create -R OttawaCloudConsulting/security-platform --base main --head docs/phase-29.5-triage-verified --title "Phase 29.5: TRIAGE.md Under Review holds Trivy findings from v1.4.0 (PR B)" --body-file <scratch>
+https://github.com/OttawaCloudConsulting/security-platform/pull/36
+(exit 0)
+PR body: cites the kind (all 8 reports verified=false; triager Verified kept; reopened returns unverified) and live counts (65 of 65 still verified=true after first post-upgrade reimport; 0 after reset; 0 new Trivy findings). Body scanned for the company mail domain, homelab 10.40 addresses, "homelab" and "infra.": no match.
+
+$ gh pr view 36 --json number,url,state,headRefOid,baseRefName,isDraft
+{"baseRefName":"main","headRefOid":"9456cbb19acaf0fe3f2204ff853139057edf4121","isDraft":false,"number":36,"state":"OPEN","url":"https://github.com/OttawaCloudConsulting/security-platform/pull/36"}
+
+$ gh run list --commit 9456cbb19acaf0fe3f2204ff853139057edf4121 --json databaseId,workflowName,status,conclusion  (final, 2026-10-05T02:40:02Z)
+PR Security	37256101476	completed	success
+DefectDojo Import Proof	37256101450	completed	failure
+Chart Gates	37256101188	completed	success
+
+MISMATCH vs EXPECT: DefectDojo Import Proof DID trigger (its pull_request paths include kubernetes/defectdojo/**; the plan said "possibly"), and it FAILED.
+
+DefectDojo Import Proof run 37256101450 jobs:
+scans / Secrets — Gitleaks	success	2026-10-05T02:37:03Z	2026-10-05T02:37:21Z	ubuntu-latest
+scans / IaC — Checkov	success	2026-10-05T02:37:04Z	2026-10-05T02:37:39Z	ubuntu-latest
+scans / SAST — Semgrep CE	success	2026-10-05T02:37:03Z	2026-10-05T02:37:44Z	ubuntu-latest
+scans / SCA — Trivy Filesystem	success	2026-10-05T02:37:04Z	2026-10-05T02:37:53Z	ubuntu-latest
+scans / Container — Trivy Image	success	2026-10-05T02:37:03Z	2026-10-05T02:37:25Z	ubuntu-latest
+scans / DefectDojo Cleanup	skipped	2026-10-05T02:37:02Z	2026-10-05T02:37:01Z	occ-homelab-defectdojo
+scans / DefectDojo Import	success	2026-10-05T02:38:15Z	2026-10-05T02:38:19Z	occ-homelab-defectdojo
+prove-import	failure	2026-10-05T02:38:32Z	2026-10-05T02:39:53Z	ubuntu-latest
+
+$ gh run view 37256101450 --log-failed  (prove-import / Live proof, verbatim, lines cut at 260 cols)
+prove-import	Live proof	﻿2026-10-05T02:38:36.3760076Z ##[group]Run bash scripts/defectdojo-import-proof.sh dd-reports
+prove-import	Live proof	2026-10-05T02:38:36.3760416Z bash scripts/defectdojo-import-proof.sh dd-reports
+prove-import	Live proof	2026-10-05T02:38:36.3815290Z shell: /usr/bin/bash -e {0}
+prove-import	Live proof	2026-10-05T02:38:36.3815468Z ##[endgroup]
+prove-import	Live proof	2026-10-05T02:38:37.1375337Z PASS: defectdojo-import/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+prove-import	Live proof	2026-10-05T02:38:37.1376093Z PASS: defectdojo-import/dd-import: extracted (224 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_INSECURE', 'DD_PRODUCT', 'DD_PRODUCT_TYPE', 'DD_REPORTS_DIR', 'DD_RESULTS_FILE
+prove-import	Live proof	2026-10-05T02:38:37.1376908Z PASS: defectdojo-import/dd-verify: extracted (39 lines), no ${{, bash -n clean, env names match the contract ['DD_IMPORT_OUTCOME', 'DD_RESULTS_FILE']
+prove-import	Live proof	2026-10-05T02:38:37.1377406Z PASS: defectdojo-cleanup/dd-gate: extracted (12 lines), no ${{, bash -n clean, env names match the contract ['DD_TOKEN']
+prove-import	Live proof	2026-10-05T02:38:37.1378022Z PASS: defectdojo-cleanup/dd-delete: extracted (219 lines), no ${{, bash -n clean, env names match the contract ['DD_CA_CERT', 'DD_CLEANUP_RESULT_FILE', 'DD_DEFAULT_BRANCH', 'DD_INSECURE', 'DD_PRODUCT', 'DD_T
+prove-import	Live proof	2026-10-05T02:38:37.1379296Z PASS: defectdojo-cleanup/dd-cleanup-verify: extracted (23 lines), no ${{, bash -n clean, env names match the contract ['DD_CLEANUP_RESULT_FILE', 'DD_DELETE_OUTCOME']
+prove-import	Live proof	2026-10-05T02:38:37.1380053Z PASS: DD-GATE-IDENTICAL: the import and cleanup dd-gate bodies are byte-identical
+prove-import	Live proof	2026-10-05T02:38:37.1380509Z extract: 7 passed, 0 failed
+prove-import	Live proof	2026-10-05T02:38:37.1413758Z EXTRACT PASS - .github/workflows/security.yml
+prove-import	Live proof	2026-10-05T02:38:37.1682222Z helm client: v4.3.0+gbec5b06
+prove-import	Live proof	2026-10-05T02:38:37.1848604Z     kubernetes/defectdojo/charts/defectdojo-1.9.53.tgz not vendored; running helm dependency build (needs network)
+prove-import	Live proof	2026-10-05T02:38:37.3679430Z Hang tight while we grab the latest from your chart repositories...
+prove-import	Live proof	2026-10-05T02:38:37.4580322Z ...Successfully got an update from the "defectdojo" chart repository
+prove-import	Live proof	2026-10-05T02:38:37.4581189Z Update Complete. ⎈Happy Helming!⎈
+prove-import	Live proof	2026-10-05T02:38:37.4742590Z Saving 1 charts
+prove-import	Live proof	2026-10-05T02:38:37.4743416Z Downloading defectdojo from repo https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/helm-charts
+prove-import	Live proof	2026-10-05T02:38:37.7782744Z Deleting outdated charts
+prove-import	Live proof	2026-10-05T02:38:37.7939718Z --- 1. kind cluster ---
+prove-import	Live proof	2026-10-05T02:38:40.9854959Z     creating cluster dd-smoke (cold image pulls follow; this is the slow part)
+prove-import	Live proof	2026-10-05T02:39:02.5010213Z ==> KIND-CLUSTER: PASS - cluster dd-smoke is up (context kind-dd-smoke)
+prove-import	Live proof	2026-10-05T02:39:02.5010632Z --- 2. cert-manager v1.21.2 ---
+prove-import	Live proof	2026-10-05T02:39:28.0293470Z ==> KIND-CERT-MANAGER: PASS - cert-manager v1.21.2 applied; cert-manager, cert-manager-webhook and cert-manager-cainjector rolled out
+prove-import	Live proof	2026-10-05T02:39:28.0295889Z --- 3. ingress-nginx controller-v1.15.1 (smoke-only; archived upstream) ---
+prove-import	Live proof	2026-10-05T02:39:48.0665850Z ==> KIND-INGRESS-NGINX: PASS - ingress-nginx controller-v1.15.1 rolled out; IngressClass nginx annotated is-default-class=true
+prove-import	Live proof	2026-10-05T02:39:48.0666690Z --- 4. CA ClusterIssuer ---
+prove-import	Live proof	2026-10-05T02:39:48.3453701Z ==> KIND-CA-ISSUER: PASS - ClusterIssuer selfsigned -> Certificate smoke-ca (isCA, Ready) -> ClusterIssuer smoke-ca
+prove-import	Live proof	2026-10-05T02:39:48.3454129Z --- 5. namespace and pre-created Secrets ---
+prove-import	Live proof	2026-10-05T02:39:48.5869775Z     Secrets defectdojo, defectdojo-postgresql-specific, defectdojo-valkey-specific applied from stdin
+prove-import	Live proof	2026-10-05T02:39:48.5870558Z --- 6. install (D-15: first install only) ---
+prove-import	Live proof	2026-10-05T02:39:49.0244954Z Error: INSTALLATION FAILED: server-side apply failed for object defectdojo/defectdojo networking.k8s.io/v1, Kind=Ingress: Internal error occurred: failed calling webhook "validate.nginx.ingress.kubernetes.io
+prove-import	Live proof	2026-10-05T02:39:49.0275024Z ==> KIND-INSTALL: exit=1 (FAIL - expected exit 0)
+prove-import	Live proof	2026-10-05T02:39:49.0275856Z     install failed; pod state in namespace defectdojo:
+prove-import	Live proof	2026-10-05T02:39:49.1001269Z NAME                                            READY   STATUS     RESTARTS   AGE   IP       NODE                     NOMINATED NODE           READINESS GATES
+prove-import	Live proof	2026-10-05T02:39:49.1002387Z defectdojo-celery-beat-66d9fcf64f-c4dj6         0/1     Init:0/1   0          1s    <none>   dd-smoke-control-plane   <none>                   <none>
+prove-import	Live proof	2026-10-05T02:39:49.1003260Z defectdojo-celery-worker-7d66c5cc75-tmtgk       0/1     Init:0/1   0          1s    <none>   dd-smoke-control-plane   <none>                   <none>
+prove-import	Live proof	2026-10-05T02:39:49.1004170Z defectdojo-django-5b8d5f7f85-bqdm8              0/2     Init:0/1   0          1s    <none>   dd-smoke-control-plane   <none>                   <none>
+prove-import	Live proof	2026-10-05T02:39:49.1004882Z defectdojo-initializer-2026-10-05-02-39-cvx9q   0/1     Pending    0          1s    <none>   dd-smoke-control-plane   <none>                   <none>
+prove-import	Live proof	2026-10-05T02:39:49.1005563Z defectdojo-postgresql-0                         0/1     Pending    0          0s    <none>   <none>                   dd-smoke-control-plane   <none>
+prove-import	Live proof	2026-10-05T02:39:49.1005996Z defectdojo-valkey-0                             0/1     Pending    0          0s    <none>   dd-smoke-control-plane   <none>                   <none>
+prove-import	Live proof	2026-10-05T02:39:49.1032340Z
+prove-import	Live proof	2026-10-05T02:39:49.1044036Z === Summary ===
+prove-import	Live proof	2026-10-05T02:39:49.1045185Z FAILED - one or more live checks did not produce the expected result:
+prove-import	Live proof	2026-10-05T02:39:49.1045613Z   - KIND-INSTALL: exited 1, expected 0
+prove-import	Live proof	2026-10-05T02:39:51.7319974Z ##[error]Process completed with exit code 1.
+
+No PROOF PASS line and no P-VERIFIED lines: the proof stopped at step 6 (KIND-INSTALL) before any import assertion ran.
+Failure: helm install in the kind cluster was rejected by the ingress-nginx admission webhook ("connection refused" on the in-cluster
+admission Service, a kind ClusterIP, not a homelab address) about 1 s after KIND-INGRESS-NGINX reported rollout PASS. grep shows the proof scripts
+name TRIAGE.md only in comments; the diff is docs-only. Theory (unverified): the admission endpoint was not yet serving, a timing race in the kind setup.
+PR Security run 37256101476: success (security / DefectDojo Import pass on the homelab runner).  Chart Gates run 37256101188: success.
+
+$ gh pr checks 36
+prove-import	fail	1m21s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101450/job/111593650802
+Checkov	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/111593484136
+GitGuardian Security Checks	pass	1s	https://dashboard.gitguardian.com
+Semgrep OSS	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/111593507600
+Trivy	pass	3s	https://github.com/OttawaCloudConsulting/security-platform/runs/111593440513
+chart-gate-defectdojo	pass	10s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101188/job/111593393881
+chart-gate-nexus	pass	8s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101188/job/111593393982
+gitleaks	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/111593426766
+scans / Container — Trivy Image	pass	22s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101450/job/111593394976
+scans / DefectDojo Import	pass	4s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101450/job/111593567691
+scans / IaC — Checkov	pass	35s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101450/job/111593394913
+scans / SAST — Semgrep CE	pass	41s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101450/job/111593394920
+scans / SCA — Trivy Filesystem	pass	49s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101450/job/111593394955
+scans / Secrets — Gitleaks	pass	18s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101450/job/111593394739
+security / Container — Trivy Image	pass	27s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101476/job/111593394966
+security / DefectDojo Import	pass	14s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101476/job/111593559724
+security / IaC — Checkov	pass	37s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101476/job/111593395106
+security / SAST — Semgrep CE	pass	41s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101476/job/111593394798
+security / Secrets — Gitleaks	pass	18s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101476/job/111593395020
+tflint	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/111593524821
+tflint-errors	pass	2s	https://github.com/OttawaCloudConsulting/security-platform/runs/111593525574
+scans / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101450/job/111593395790
+security / DefectDojo Cleanup	skipping	0	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101476/job/111593395754
+security / SCA — Trivy Filesystem	pass	48s	https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37256101476/job/111593395044
+(exit 1)
+
+RESULT: PR B #36 OPEN at 9456cbb; one red check (prove-import). STOP per plan: no rerun, no close, no merge, no tag; brought to operator.
+note: trailing whitespace stripped for the docs pre-commit git diff --check; content otherwise verbatim
