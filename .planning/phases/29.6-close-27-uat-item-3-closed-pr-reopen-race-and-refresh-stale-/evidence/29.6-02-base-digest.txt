@@ -1,0 +1,14 @@
+# 29.6-02 base image digest — live read from public.ecr.aws
+# Captured: 2026-10-05T23:58:08Z (UTC). Token redacted as <token>.
+
+$ curl -s https://public.ecr.aws/token/            # -> {"token":"<token>"}
+$ curl -sI -H "Authorization: Bearer <token>" -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json" https://public.ecr.aws/v2/docker/library/alpine/manifests/3.20
+
+HTTP/2 200
+date: Mon, 05 Oct 2026 23:58:08 GMT
+content-type: application/vnd.oci.image.index.v1+json
+content-length: 9226
+docker-content-digest: sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+docker-distribution-api-version: registry/2.0
+
+Pinned in 29.6-seed/Dockerfile: public.ecr.aws/docker/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc (OCI image index / manifest list digest)
