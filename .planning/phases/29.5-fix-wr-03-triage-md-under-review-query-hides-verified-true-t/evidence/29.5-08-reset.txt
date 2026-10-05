@@ -42,3 +42,217 @@ import and no triager changed the in-scope set.
 
 No PATCH and no other DefectDojo write was sent in Task 1. The reset waits for Task 2,
 where the operator approves this id list and chooses who runs it.
+
+================================================================
+29.5-08 Task 3: the one-time reset (runner 2, the executor), after-reset snapshot, reset-mode verdict
+================================================================
+
+Operator reply to the Task 2 checkpoint (verbatim, relayed by the orchestrator from the human user):
+
+    approved - executor runs it
+
+What this approves: the executor runs the committed recipe (29.5-reset-recipe.md, commit 64ac3f5)
+against exactly the 65 ids in 29.5-08-reset-candidates.json (trivy-fs Test 3 ids 23-27, trivy-image
+Test 4 ids 1156-1215) on ci/main (engagement 1), with the operator admin token file. Runner choice: (2)
+the executor. NOT approved: any other id, any other DefectDojo write, a push, a tag or a dispatch.
+
+DOING:  (1) re-run the read-only listing (recipe steps 1-2 only, cut at "# Step 3", the same method as
+        Task 1) and compare its ids with the approved candidate_ids;
+        (2) run the full recipe with only the three placeholder lines set (DD, TOKEN_FILE, ENG=1). Its stdin
+        comes from a gate process. The gate waits for the recipe's own "Candidates (N):" listing,
+        compares those ids with the approved list, and writes "yes" only if they are equal ("no"
+        otherwise, so the recipe exits 1 having changed nothing);
+        (3) take the read-only after-reset snapshot with lifecycle-assert (label 29.5-main-after-reset);
+        (4) 29.5-ci-main-verified-diff.sh --mode reset, with before = 29.5-main-after-fix-snapshot.json and
+        after = 29.5-main-after-reset-snapshot.json, writing 29.5-08-reset-diff.json.
+EXPECT: re-check = the approved 65; the recipe prints "Trivy Test ids: [3,4]" (in either order), 65
+        candidates equal to the approved list, then 65 "reset <id>" lines (dd_api exits on any non-200,
+        so each line is one HTTP 200 PATCH) and exit 0; the diff verdict is PASS with reset_count 65,
+        after_open_trivy_true 0, non_trivy_verified_changed 0 and out_of_scope_trivy_changed 0. The
+        trivy-image findings that are not triage-open (mitigated or duplicate) stay verified=true. That
+        is expected and is not a scope failure.
+IF MATCH:    write 29.5-08-d05-reset.json, commit the evidence, then SUMMARY, then STATE and ROADMAP.
+IF MISMATCH: STOP. No retry and no second run. Record exactly which ids were PATCHed, commit the
+             evidence and report FAILED / THEORY / PROPOSE.
+
+Results
+-------
+Step 1, the read-only re-check (2026-10-05T02:09:11Z UTC): listing copy (cut at "# Step 3", grep -c PATCH = 0),
+stdin from /dev/null, exit 0. "Trivy Test ids: [4,3]", "Candidates (65)". The ids are EQUAL to
+candidate_ids in 29.5-08-reset-candidates.json.
+
+Step 2, the full recipe (started 02:22:04Z, finished 02:22:31Z UTC): the bash block of 29.5-reset-recipe.md
+is unchanged since 64ac3f5 (diff empty). Only the three placeholder lines differ in the scratch copy:
+  DD="$(cat "$HOME/.config/defectdojo/homelab-url")"
+  TOKEN_FILE=<operator admin token file>
+  ENG=1
+Gate output: "gate: listing equal (65) -> yes". The recipe exited 0, and its EXIT trap removed the header
+file and the body file. The recipe output follows verbatim. Every "reset <id>" line is one PATCH
+{"verified": false} that returned HTTP 200 with ssl_verify_result 0, because dd_api exits on anything else.
+(The read -p prompt is not echoed because stdin is not a terminal.)
+  | Trivy Test ids: [4,3]
+  | Candidates (65):
+  | 23
+  | 24
+  | 25
+  | 26
+  | 27
+  | 1156
+  | 1157
+  | 1158
+  | 1159
+  | 1160
+  | 1161
+  | 1162
+  | 1163
+  | 1164
+  | 1165
+  | 1166
+  | 1167
+  | 1168
+  | 1169
+  | 1170
+  | 1171
+  | 1172
+  | 1173
+  | 1174
+  | 1175
+  | 1176
+  | 1177
+  | 1178
+  | 1179
+  | 1180
+  | 1181
+  | 1182
+  | 1183
+  | 1184
+  | 1185
+  | 1186
+  | 1187
+  | 1188
+  | 1189
+  | 1190
+  | 1191
+  | 1192
+  | 1193
+  | 1194
+  | 1195
+  | 1196
+  | 1197
+  | 1198
+  | 1199
+  | 1200
+  | 1201
+  | 1202
+  | 1203
+  | 1204
+  | 1205
+  | 1206
+  | 1207
+  | 1208
+  | 1209
+  | 1210
+  | 1211
+  | 1212
+  | 1213
+  | 1214
+  | 1215
+  | reset 23
+  | reset 24
+  | reset 25
+  | reset 26
+  | reset 27
+  | reset 1156
+  | reset 1157
+  | reset 1158
+  | reset 1159
+  | reset 1160
+  | reset 1161
+  | reset 1162
+  | reset 1163
+  | reset 1164
+  | reset 1165
+  | reset 1166
+  | reset 1167
+  | reset 1168
+  | reset 1169
+  | reset 1170
+  | reset 1171
+  | reset 1172
+  | reset 1173
+  | reset 1174
+  | reset 1175
+  | reset 1176
+  | reset 1177
+  | reset 1178
+  | reset 1179
+  | reset 1180
+  | reset 1181
+  | reset 1182
+  | reset 1183
+  | reset 1184
+  | reset 1185
+  | reset 1186
+  | reset 1187
+  | reset 1188
+  | reset 1189
+  | reset 1190
+  | reset 1191
+  | reset 1192
+  | reset 1193
+  | reset 1194
+  | reset 1195
+  | reset 1196
+  | reset 1197
+  | reset 1198
+  | reset 1199
+  | reset 1200
+  | reset 1201
+  | reset 1202
+  | reset 1203
+  | reset 1204
+  | reset 1205
+  | reset 1206
+  | reset 1207
+  | reset 1208
+  | reset 1209
+  | reset 1210
+  | reset 1211
+  | reset 1212
+  | reset 1213
+  | reset 1214
+  | reset 1215
+"reset" line count: 65. Sorted, the PATCHed ids are EQUAL to the approved candidate_ids. No other write
+was sent.
+
+Step 3, the after-reset snapshot (read-only):
+$ DEFECTDOJO_URL=<homelab, not recorded> DEFECTDOJO_ADMIN_TOKEN_FILE=$HOME/.config/defectdojo/homelab-admin.token bash scripts/defectdojo-lifecycle-assert.sh snapshot --product OttawaCloudConsulting/security-platform --out <abs evidence dir> --engagement ci/main --label 29.5-main-after-reset
+  (run from repos/security-platform on branch fix/phase-29.5-verified-false at d2e813d, as in 29.5-07)
+started 2026-10-05T02:22:40Z
+snapshot ci/main: 278 findings
+wrote <evidence dir>/29.5-main-after-reset-snapshot.json
+exit 0, finished 2026-10-05T02:22:43Z
+captured_at: 2026-10-05T02:22:43Z  engagement_id: 1  product_id: 1  (the same 8 Tests and ids as after-fix)
+per-Test counts (the same definition as 29.5-07):
+{"title":"pip-audit-1","id":7,"total":48,"triage_open":24,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"trivy-image","id":4,"total":180,"triage_open":60,"triage_open_verified_true":0,"any_verified_true":120}
+{"title":"gitleaks","id":5,"total":18,"triage_open":18,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"semgrep","id":1,"total":7,"triage_open":6,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"npm-audit-1","id":6,"total":2,"triage_open":2,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"checkov","id":2,"total":14,"triage_open":13,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"tflint","id":8,"total":3,"triage_open":3,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"trivy-fs","id":3,"total":6,"triage_open":5,"triage_open_verified_true":0,"any_verified_true":1}
+-> trivy-image any_verified_true went 180 -> 120 and trivy-fs went 6 -> 1. Exactly the 60 + 5 triage-open
+   findings changed. The findings that are not triage-open (mitigated or duplicate) still read verified=true,
+   which is outside the D-05 scope.
+
+Step 4, the reset-mode verdict:
+$ bash .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-ci-main-verified-diff.sh --mode reset --before evidence/29.5-main-after-fix-snapshot.json --after evidence/29.5-main-after-reset-snapshot.json --out evidence/29.5-08-reset-diff.json
+{"verdict":"PASS","counts":{"before_open_trivy_true":65,"reset_count":65,"after_open_trivy_true":0,"non_trivy_verified_changed":0,"out_of_scope_trivy_changed":0},"failures":[]}
+exit 0. reset_ids (65) are EQUAL to the approved candidate_ids.
+
+RESULT:    65/65 PATCH 200; reset-mode diff PASS; reset_count 65; after_open_trivy_true 0;
+           non_trivy_verified_changed 0; out_of_scope_trivy_changed 0.
+MATCH:     yes
+THEREFORE: D-05 is done on ci/main, and every triage-open Trivy finding reads verified=false (D-12 readback).
+           Outcome record: 29.5-08-d05-reset.json.

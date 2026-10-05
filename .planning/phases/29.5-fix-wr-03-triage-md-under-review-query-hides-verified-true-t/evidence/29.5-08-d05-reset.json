@@ -1,0 +1,18 @@
+{
+  "captured_at": "2026-10-05T02:22:43Z",
+  "needed": true,
+  "source": "29.5-07-d12-fix.json",
+  "ran_by": "executor",
+  "operator_reply_verbatim": "approved - executor runs it",
+  "approved_count": 65,
+  "approved_ids_file": "29.5-08-reset-candidates.json",
+  "patch_http_200_count": 65,
+  "reset_count": 65,
+  "after_open_trivy_true": 0,
+  "non_trivy_verified_changed": 0,
+  "out_of_scope_trivy_changed": 0,
+  "verdict": "PASS",
+  "reset_verdict_file": "29.5-08-reset-diff.json",
+  "before_snapshot": "29.5-main-after-fix-snapshot.json",
+  "after_snapshot": "29.5-main-after-reset-snapshot.json"
+}
