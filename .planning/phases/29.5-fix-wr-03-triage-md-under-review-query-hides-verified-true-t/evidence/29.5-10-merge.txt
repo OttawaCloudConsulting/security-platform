@@ -1,0 +1,159 @@
+29.5-10 Task 2: PR B merge, origin/main readback, PR B cleanup
+====================================================================================================
+
+Operator reply to the Task 1 checkpoint (verbatim, relayed by the orchestrator from the human user):
+
+    approved - merge PR B
+
+Approved head: 9456cbb19acaf0fe3f2204ff853139057edf4121 (PR #36, docs/phase-29.5-triage-verified, TRIAGE.md only).
+Disclosures accepted: (a) merge with --merge --match-head-commit, no tag, no v1 move; (b) the merge SHA becomes the
+v1.4.0 release candidate and plan 11 runs the impact check before any tag. Side effect disclosed: the plan 09 rerun
+made one extra import into the PR engagement ci/docs/phase-29.5-triage-verified.
+NOT approved: tagging, moving v1, any dispatch, merging Dependabot #30/#31.
+
+DOING:  (1) re-read PR #36 headRefOid and state; (2) gh pr merge 36 -R OttawaCloudConsulting/security-platform
+        --merge --match-head-commit 9456cbb19acaf0fe3f2204ff853139057edf4121 (no --squash, --auto, --delete-branch);
+        (3) fetch origin --tags and read the merged content back from origin/main; (4) wait for the PR Security
+        `closed` run and its DefectDojo Cleanup; (5) read-only engagement-gone probe for
+        ci/docs/phase-29.5-triage-verified.
+EXPECT: PR #36 OPEN, MERGEABLE, head 9456cbb; merge commit parents a53f6fb (first) and 9456cbb (second); diff stat
+        exactly kubernetes/defectdojo/TRIAGE.md; 'Trivy findings arrive Verified' count 0; 'v1.4.0' count >= 1;
+        Under Review API query line count 1 (equal to a53f6fb, the PR A merge); no .github/workflows change
+        (git diff --quiet exit 0); v1* tags identical to the 29.5-05 baseline; Cleanup success; probe aborts with
+        "0 engagements named exactly".
+IF MATCH:    commit this evidence; write SUMMARY; record the merge SHA as the release candidate for plan 11.
+IF MISMATCH: STOP, no retry, commit the evidence so far, present FAILED / THEORY / PROPOSE. No tag, no v1 move.
+
+Note: trailing whitespace is stripped from command output in this file (docs-repo pre-commit hook).
+The DefectDojo base URL and token are not written here.
+
+----------------------------------------------------------------------------------------------------
+Step 1: pre-merge state (PR #36, origin/main, tags, Under Review query baseline)
+----------------------------------------------------------------------------------------------------
+$ date -u
+Mon Oct  5 03:30:17 UTC 2026
+$ gh pr view 36 -R OttawaCloudConsulting/security-platform --json number,state,headRefOid,mergeable,mergeStateStatus,baseRefOid
+{"baseRefOid":"a53f6fb773a782411a9d32ea5457d8d2a31ba465","headRefOid":"9456cbb19acaf0fe3f2204ff853139057edf4121","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","number":36,"state":"OPEN"}
+$ git -C repos/security-platform rev-parse origin/main
+a53f6fb773a782411a9d32ea5457d8d2a31ba465
+$ git ls-remote --tags origin 'v1*'   (pre-merge)
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+21c50379710bd945c55d4f8a18cc205bb6b6bfca	refs/tags/v1.3.0
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67	refs/tags/v1.3.0^{}
+Q='active=true&verified=false&false_p=false&out_of_scope=false&risk_accepted=false&duplicate=false&is_mitigated=false'
+$ git show a53f6fb:kubernetes/defectdojo/TRIAGE.md | grep -cF "$Q"   (Under Review API query, at the PR A merge)
+1
+$ git show 9456cbb:kubernetes/defectdojo/TRIAGE.md | grep -cF "$Q"   (at the approved head)
+1
+Result: MATCH. Head equals the approved SHA 9456cbb; OPEN, MERGEABLE, CLEAN; base a53f6fb = origin/main (PR A merge).
+v1* listing equals the 29.5-05 baseline (v1 and v1.3.0^{} aa48081; no v1.4.0).
+
+----------------------------------------------------------------------------------------------------
+Step 2: merge with --match-head-commit
+----------------------------------------------------------------------------------------------------
+DOING:  gh pr merge 36 --merge --match-head-commit 9456cbb19acaf0fe3f2204ff853139057edf4121
+EXPECT: exit 0, PR MERGED with a merge commit
+$ date -u
+Mon Oct  5 03:30:46 UTC 2026
+$ gh pr merge 36 -R OttawaCloudConsulting/security-platform --merge --match-head-commit 9456cbb19acaf0fe3f2204ff853139057edf4121
+exit 0
+$ date -u
+Mon Oct  5 03:30:49 UTC 2026
+$ gh pr view 36 -R OttawaCloudConsulting/security-platform --json state,mergedAt,mergeCommit,headRefOid
+{"headRefOid":"9456cbb19acaf0fe3f2204ff853139057edf4121","mergeCommit":{"oid":"6c0d5319b1c328f135b47acd47e1a5e92ae2b10c"},"mergedAt":"2026-10-05T03:30:48Z","state":"MERGED"}
+Result: MATCH. PR #36 MERGED at 2026-10-05T03:30:48Z, merge commit 6c0d5319b1c328f135b47acd47e1a5e92ae2b10c.
+No --squash, --auto or --delete-branch. No tag command run.
+
+----------------------------------------------------------------------------------------------------
+Step 3: origin/main readback
+----------------------------------------------------------------------------------------------------
+$ git -C repos/security-platform fetch origin --tags
+From https://github.com/OttawaCloudConsulting/security-platform
+   a53f6fb..6c0d531  main       -> origin/main
+exit 0
+$ git rev-parse origin/main
+6c0d5319b1c328f135b47acd47e1a5e92ae2b10c
+$ git rev-list --parents -n1 6c0d5319b1c328f135b47acd47e1a5e92ae2b10c
+6c0d5319b1c328f135b47acd47e1a5e92ae2b10c a53f6fb773a782411a9d32ea5457d8d2a31ba465 9456cbb19acaf0fe3f2204ff853139057edf4121
+$ git diff --stat 6c0d531^1 6c0d531
+ kubernetes/defectdojo/TRIAGE.md | 82 ++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 80 insertions(+), 2 deletions(-)
+$ git show origin/main:kubernetes/defectdojo/TRIAGE.md | grep -c 'Trivy findings arrive Verified'   (expect 0)
+0
+$ git show origin/main:kubernetes/defectdojo/TRIAGE.md | grep -c 'v1.4.0'   (expect >= 1)
+5
+$ git show origin/main:kubernetes/defectdojo/TRIAGE.md | grep -cF "$Q"   (Under Review API query; a53f6fb count 1)
+1
+$ git diff --quiet 6c0d531^1 6c0d531 -- .github/workflows
+workflows diff exit 0
+$ git diff --quiet 9456cbb 6c0d531   (merge tree == approved head tree)
+exit 0
+$ git ls-remote --tags origin 'v1*'   (post-merge)
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+21c50379710bd945c55d4f8a18cc205bb6b6bfca	refs/tags/v1.3.0
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67	refs/tags/v1.3.0^{}
+Result: MATCH. origin/main = 6c0d531; parents a53f6fb (first, PR A merge) and 9456cbb (second = approved head);
+merge tree identical to 9456cbb; diff stat exactly kubernetes/defectdojo/TRIAGE.md (+80/-2); 'Trivy findings arrive
+Verified' 0; 'v1.4.0' 5 (>= 1); Under Review query line count 1 = the count at the PR A merge a53f6fb; no
+.github/workflows change. v1* listing byte-identical to the pre-merge listing in Step 1 (v1 and v1.3.0^{} still
+aa48081; no v1.4.0) = the 29.5-05 baseline. No tag moved.
+
+release candidate: 6c0d5319b1c328f135b47acd47e1a5e92ae2b10c
+
+----------------------------------------------------------------------------------------------------
+Step 4: PR B cleanup (PR Security `closed` run) and engagement-gone probe
+----------------------------------------------------------------------------------------------------
+$ date -u
+Mon Oct  5 03:31:00 UTC 2026
+$ gh run list -R OttawaCloudConsulting/security-platform --workflow pr-security.yml --branch docs/phase-29.5-triage-verified --json databaseId,event,headSha,status,conclusion,createdAt -L 5
+[{"conclusion":"","createdAt":"2026-10-05T03:30:51Z","databaseId":37259739087,"event":"pull_request","headSha":"9456cbb19acaf0fe3f2204ff853139057edf4121","status":"in_progress"},{"conclusion":"success","createdAt":"2026-10-05T02:37:01Z","databaseId":37256101476,"event":"pull_request","headSha":"9456cbb19acaf0fe3f2204ff853139057edf4121","status":"completed"}]
+$ gh run watch 37259739087 -R OttawaCloudConsulting/security-platform --exit-status
+watch exit 0
+$ gh run view 37259739087 -R OttawaCloudConsulting/security-platform --json event,headSha,conclusion,createdAt,jobs
+{"conclusion":"success","createdAt":"2026-10-05T03:30:51Z","event":"pull_request","headSha":"9456cbb19acaf0fe3f2204ff853139057edf4121","jobs":[{"conclusion":"success","name":"security / DefectDojo Cleanup"},{"conclusion":"skipped","name":"security / IaC — Checkov"},{"conclusion":"skipped","name":"security / Container — Trivy Image"},{"conclusion":"skipped","name":"security / SCA — Trivy Filesystem"},{"conclusion":"skipped","name":"security / SAST — Semgrep CE"},{"conclusion":"skipped","name":"security / Secrets — Gitleaks"},{"conclusion":"skipped","name":"security / DefectDojo Import"}]}
+Run 37259739087 was created 2026-10-05T03:30:51Z, 3 s after mergedAt; only DefectDojo Cleanup ran (every scan job and
+DefectDojo Import skipped), which is the `closed` event path. DefectDojo Cleanup: success.
+
+$ DEFECTDOJO_URL=<homelab, not recorded> DEFECTDOJO_ADMIN_TOKEN_FILE=$HOME/.config/defectdojo/homelab-admin.token bash scripts/defectdojo-lifecycle-assert.sh snapshot --product OttawaCloudConsulting/security-platform --out <scratch dir> --engagement ci/docs/phase-29.5-triage-verified --label 29.5-pr-b-gone-probe
+started 2026-10-05T03:31:15Z
+==> SNAPSHOT-ENGAGEMENT: FAIL - 0 engagements named exactly 'ci/docs/phase-29.5-triage-verified' in product 1, expected 1
+
+=== Summary ===
+SKIPPED - 1 sub-check(s) did not run. A SKIP IS NOT A PASS:
+  - the remaining snapshot assertions: not evaluated, they depend on SNAPSHOT-ENGAGEMENT
+
+FAILED - one or more live checks did not produce the expected result:
+  - SNAPSHOT-ENGAGEMENT: 0 engagements named exactly 'ci/docs/phase-29.5-triage-verified' in product 1, expected 1
+exit 1, finished 2026-10-05T03:31:15Z
+The scratch --out dir is empty afterwards (no snapshot JSON written).
+Result: MATCH. The read-only probe aborts with SNAPSHOT-ENGAGEMENT "0 engagements named exactly" (exit 1, expected):
+PR B's engagement ci/docs/phase-29.5-triage-verified, including the extra import from the plan 09 rerun, is gone.
+
+----------------------------------------------------------------------------------------------------
+Step 5: runs on the merge SHA; no dispatch
+----------------------------------------------------------------------------------------------------
+$ gh run list -R OttawaCloudConsulting/security-platform --commit 6c0d5319b1c328f135b47acd47e1a5e92ae2b10c --json databaseId,workflowName,event,status,conclusion,createdAt
+[{"conclusion":"success","createdAt":"2026-10-05T03:30:51Z","databaseId":37259738738,"event":"push","status":"completed","workflowName":"Chart Gates"}]
+$ gh run list -R OttawaCloudConsulting/security-platform --workflow scheduled-security.yml --json databaseId,event,headSha,createdAt -L 2
+[{"createdAt":"2026-10-05T01:23:37Z","databaseId":37251249025,"event":"workflow_dispatch","headSha":"a53f6fb773a782411a9d32ea5457d8d2a31ba465"},{"createdAt":"2026-10-04T20:00:58Z","databaseId":37230464825,"event":"workflow_dispatch","headSha":"aa48081681ee1e578c50d6a0d9e5ead6ff6afc67"}]
+Result: only the push-triggered Chart Gates run (success) ran on 6c0d531. No Scheduled Security run since the
+approved 29.5-07 dispatch 37251249025 (a53f6fb). Nothing was dispatched in this plan.
+
+Task 2 verdict: MATCH on every step. PR B is on main untagged; its engagement is gone; v1* tags unchanged.
+release candidate for plan 11 (v1.4.0): 6c0d5319b1c328f135b47acd47e1a5e92ae2b10c
