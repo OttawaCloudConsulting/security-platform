@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.5-10-PLAN.md (PR B merged at 6c0d531, release candidate)
-last_updated: "2026-10-05T03:32:51.924Z"
+stopped_at: Completed 29.5-11-PLAN.md (v1.4.0 cut, v1 moved to 6c0d531)
+last_updated: "2026-10-05T03:55:56.315Z"
 last_activity: 2026-10-05
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.5 (fix-wr-03-triage-md-under-review-query-hides-verified-true-t) — EXECUTING
-Plan: 11 of 12
+Plan: 12 of 12
 Status: Ready to execute
 Last activity: 2026-10-05
 
@@ -384,6 +384,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.5]: 29.5-08 D-05: one-time reset ran on ci/main (executor, operator-approved 65 ids); 65/65 PATCH 200; reset-mode diff PASS, after_open_trivy_true 0
 - [Phase 29.5]: PR B #36 OPEN at 9456cbb with every check green; DefectDojo Import Proof PROOF PASS - 189 assertions on attempt 2 after one operator-approved rerun of a KIND-INSTALL ingress-nginx admission-webhook flake (follow-up: wait for webhook endpoint)
 - [Phase 29.5]: PR B #36 merged with --merge --match-head-commit 9456cbb after operator approval; merge SHA 6c0d531 is the v1.4.0 release candidate; no tag, v1 not moved
+- [Phase 29.5]: v1.4.0 cut (annotated 07bac54) and v1 moved aa48081 -> 6c0d531 after operator reply 'Approve'; API-verified; external @v1 caller confirmation not given, D-16 item 4 limit stands; Dependabot #30/#31 held
 
 ### Pending Todos
 
@@ -575,11 +576,12 @@ Carried forward from v1.1 close:
 | Phase 29.5 P08 | 15min | 3 tasks | 6 files |
 | Phase 29.5 P09 | 45min | 3 tasks | 3 files |
 | Phase 29.5 P10 | 5min | 2 tasks | 1 files |
+| Phase 29.5 P11 | 25min | 3 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-10-05T03:32:51.916Z
-Stopped at: Completed 29.5-10-PLAN.md (PR B merged at 6c0d531, release candidate)
+Last session: 2026-10-05T03:55:56.305Z
+Stopped at: Completed 29.5-11-PLAN.md (v1.4.0 cut, v1 moved to 6c0d531)
 Resume file: None
 
 ## Operator Next Steps
