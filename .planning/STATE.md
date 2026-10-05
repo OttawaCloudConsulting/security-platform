@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.5-04-PLAN.md
-last_updated: "2026-10-05T00:33:02.488Z"
+stopped_at: "Completed 29.5-05-PLAN.md (PR A #35 open, kind proof green; awaiting plan 06 D-05/D-07 ruling)"
+last_updated: "2026-10-05T01:00:55.772Z"
 last_activity: 2026-10-05
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.5 (fix-wr-03-triage-md-under-review-query-hides-verified-true-t) — EXECUTING
-Plan: 5 of 12
+Plan: 6 of 12
 Status: Ready to execute
 Last activity: 2026-10-05
 
@@ -378,6 +378,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.5]: 29.5-03: any P-VERIFIED-BODY failure disables the old-body negative control (never vacuous, T-29.5-08)
 - [Phase 29.5]: 29.5-04: P-VERIFIED-REACTIVATE fails on mechanics at steps 1-5 (incl. step-2 reactivation and step-3 PATCH taking) and requires X non-duplicate; steps 4/5 verified values are printed, never asserted
 - [Phase 29.5]: 29.5-04: vf_patch_verified requires the PATCH response to echo the written verified value, so a silent no-op PATCH cannot read as a reimport effect
+- [Phase 29.5]: 29.5-05: PR A #35 open at d2e813d; kind proof PROOF PASS - 189 assertions, no D-04/D-07 STOP; RESET measured still_true=66/66 (reimport does not reset pre-fix verified=true), REACTIVATE clears verified -> plan 06 ruling
 
 ### Pending Todos
 
@@ -563,11 +564,12 @@ Carried forward from v1.1 close:
 | Phase 29.5 P02 | ~10min | 2 tasks | 2 files |
 | Phase 29.5 P03 | 15min | 3 tasks | 2 files |
 | Phase 29.5 P04 | 25min | 2 tasks | 1 files |
+| Phase 29.5 P05 | 16min | 3 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-10-05T00:33:02.478Z
-Stopped at: Completed 29.5-04-PLAN.md
+Last session: 2026-10-05T01:00:55.760Z
+Stopped at: Completed 29.5-05-PLAN.md (PR A #35 open, kind proof green; awaiting plan 06 D-05/D-07 ruling)
 Resume file: None
 
 ## Operator Next Steps
