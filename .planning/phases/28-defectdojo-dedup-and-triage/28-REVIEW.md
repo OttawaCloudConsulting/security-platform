@@ -115,6 +115,20 @@ DefectDojo tokens are 40 hex characters, so a tighter `[0-9a-f]{40}` would also 
 
 Then correct lines 31, 35 and 42 so the state table matches what is measured.
 
+### Resolution (Phase 29.5, 2026-10-05)
+
+WR-03 is closed by Phase 29.5. The fix took the third option above: the import, not the query. The `dd-import`
+fields list in `security.yml` now sends `verified=false` on every reimport-scan call, so findings from every parser,
+Trivy included, arrive unverified and match the Under Review query. The query and the state table stay as written.
+The fix merged through `security-platform` PR #35 (`a53f6fb773a782411a9d32ea5457d8d2a31ba465`) and the `TRIAGE.md`
+text through PR #36 (`6c0d5319b1c328f135b47acd47e1a5e92ae2b10c`). It is released in `v1.4.0` (annotated tag object
+`07bac542cdacdc754b19ff377ec36ba5cbf895d7`, release SHA `6c0d5319b1c328f135b47acd47e1a5e92ae2b10c`), and `v1` was
+moved to the release SHA (`evidence/29.5-11-tags.json`). Live on `ci/main`, the first reimport after the upgrade
+left 65 of 65 pre-fix Trivy findings `verified=true` and brought 0 new Trivy findings
+(`evidence/29.5-07-d12-fix.json`). The one-time reset then set all 65 to `verified=false`, with 0 left
+`verified=true` and no non-Trivy finding changed (`evidence/29.5-08-d05-reset.json`). That new findings arrive
+unverified is measured in kind. The decision and its evidence are recorded in ADR-032.
+
 ### WR-04: The P-HTTP configure cases claim "refused before the token file is read" but do not test the order
 
 **File:** `repos/security-platform/scripts/defectdojo-import-proof.sh:665-677, 704`
