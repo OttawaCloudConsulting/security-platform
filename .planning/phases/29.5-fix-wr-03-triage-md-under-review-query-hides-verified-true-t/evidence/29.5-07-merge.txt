@@ -1,0 +1,192 @@
+29.5-07 Task 2: ci/main before-fix snapshot, PR A merge, origin/main readback, PR A cleanup
+====================================================================================================
+
+Operator reply to the Task 1 checkpoint (verbatim, relayed by the orchestrator from the human user):
+
+    write the file `~/.config/defectdojo/homelab-url` and then proceed
+
+Orchestrator interpretation (recorded alongside the verbatim reply): "proceed" = continue the plan as gated,
+i.e. merge PR A (#35) untagged at d2e813d9a67369b40f4202d33b357bb4fe4911e6 with
+`gh pr merge 35 --merge --match-head-commit d2e813d9a67369b40f4202d33b357bb4fe4911e6` AND one
+`gh workflow run scheduled-security.yml --ref main` dispatch (Task 3, evidence/29.5-07-dispatch.txt).
+NOT approved: tagging, moving v1, re-dispatch, merging Dependabot #30/#31, any DefectDojo write.
+
+Precondition: jq -r .reactivation_ruling evidence/29.5-06-rulings.json = accept (checked).
+
+DOING:  (1) record the Scheduled Security run list; (2) take the read-only ci/main snapshot with the PR A
+        branch lifecycle-assert (label 29.5-main-before-fix); (3) re-read PR #35 headRefOid and state;
+        (4) gh pr merge 35 -R OttawaCloudConsulting/security-platform --merge --match-head-commit d2e813d9a67369b40f4202d33b357bb4fe4911e6;
+        (5) read the merged content back from origin/main; (6) wait for the PR Security `closed` run and its
+        DefectDojo Cleanup; (7) engagement-gone probe for ci/fix/phase-29.5-verified-false; (8) run list again.
+EXPECT: no Scheduled Security run on a SHA carrying "verified=false"; snapshot has exactly one trivy-fs and one
+        trivy-image Trivy Scan Test; 65 triage-open Trivy findings (5 fs, 60 image) all verified=true, every
+        other Test verified=false; PR #35 OPEN, MERGEABLE, head d2e813d; merge commit second parent d2e813d;
+        security.yml '"verified=false",' count 1; CHECK_COUNT = 22 count 1; prove_verified >= 2;
+        'arrive verified=true' count 0; diff stat four files; v1* tags identical to the 29.5-05 baseline;
+        Cleanup success; probe aborts with "0 engagements named exactly".
+IF MATCH:    commit this evidence and continue to Task 3 (the approved single dispatch).
+IF MISMATCH: STOP, no retry, commit the evidence so far, present FAILED / THEORY / PROPOSE. No tag, no v1 move.
+
+Note: trailing whitespace is stripped from command output in this file (docs-repo pre-commit hook).
+The DefectDojo base URL and token are not written here.
+
+----------------------------------------------------------------------------------------------------
+Step 1: Scheduled Security run list (before snapshot), PR #35 and tags
+----------------------------------------------------------------------------------------------------
+$ date -u
+2026-10-05T01:20:56Z
+$ gh run list -R OttawaCloudConsulting/security-platform --workflow scheduled-security.yml --json databaseId,event,headSha,status,conclusion,createdAt -L 10
+[{"conclusion":"success","createdAt":"2026-10-04T20:00:58Z","databaseId":37230464825,"event":"workflow_dispatch","headSha":"aa48081681ee1e578c50d6a0d9e5ead6ff6afc67","status":"completed"},{"conclusion":"success","createdAt":"2026-10-04T18:55:19Z","databaseId":37226275966,"event":"workflow_dispatch","headSha":"2dccff51de278c29a18f2349da7d7f3f5a568579","status":"completed"},{"conclusion":"success","createdAt":"2026-10-04T11:18:33Z","databaseId":37198294074,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"failure","createdAt":"2026-10-03T10:02:00Z","databaseId":37115036934,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"success","createdAt":"2026-10-02T10:02:29Z","databaseId":36993235781,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"success","createdAt":"2026-10-01T10:02:47Z","databaseId":36846632465,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"failure","createdAt":"2026-09-30T10:02:40Z","databaseId":36699956848,"event":"schedule","headSha":"fdabac9464f2baaeaa276f8934dc8d353295b355","status":"completed"},{"conclusion":"success","createdAt":"2026-09-29T10:02:41Z","databaseId":36553070357,"event":"schedule","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"},{"conclusion":"success","createdAt":"2026-09-29T01:59:33Z","databaseId":36510481745,"event":"workflow_dispatch","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"},{"conclusion":"success","createdAt":"2026-09-29T00:18:24Z","databaseId":36502430372,"event":"workflow_dispatch","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"}]
+Result: newest run is 37230464825 (workflow_dispatch, aa48081 = current origin/main, success, 2026-10-04T20:00:58Z).
+aa48081 is the 29.4 release head; origin/main:.github/workflows/security.yml has 0 '"verified=false",' lines, so no
+Scheduled Security run has run on a SHA that carries the field. Current time 01:20 UTC, well clear of the 10:00 UTC cron.
+
+$ gh pr view 35 -R OttawaCloudConsulting/security-platform --json number,state,headRefOid,mergeable,mergeStateStatus,baseRefOid
+{"baseRefOid":"aa48081681ee1e578c50d6a0d9e5ead6ff6afc67","headRefOid":"d2e813d9a67369b40f4202d33b357bb4fe4911e6","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","number":35,"state":"OPEN"}
+$ git -C repos/security-platform rev-parse HEAD origin/main
+d2e813d9a67369b40f4202d33b357bb4fe4911e6
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67
+$ git -C repos/security-platform show origin/main:.github/workflows/security.yml | grep -c '"verified=false",'
+0
+$ git -C repos/security-platform ls-remote --tags origin 'v1*'   (pre-merge)
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+21c50379710bd945c55d4f8a18cc205bb6b6bfca	refs/tags/v1.3.0
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67	refs/tags/v1.3.0^{}
+29.5-05 baseline (evidence/29.5-05-pr-a-run.txt): v1 -> aa48081681ee1e578c50d6a0d9e5ead6ff6afc67, v1.3.0 -> 21c5037 (^{} aa48081); no v1.4.0.
+
+----------------------------------------------------------------------------------------------------
+Step 2: before snapshot (lifecycle-assert from repos/security-platform at fix/phase-29.5-verified-false d2e813d)
+----------------------------------------------------------------------------------------------------
+$ DEFECTDOJO_URL=<homelab, not recorded> DEFECTDOJO_ADMIN_TOKEN_FILE=$HOME/.config/defectdojo/homelab-admin.token bash scripts/defectdojo-lifecycle-assert.sh snapshot --product OttawaCloudConsulting/security-platform --out <abs evidence dir> --engagement ci/main --label 29.5-main-before-fix
+started 2026-10-05T01:21:09Z
+snapshot ci/main: 278 findings
+wrote .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/evidence/29.5-main-before-fix-snapshot.json
+exit 0, finished 2026-10-05T01:21:12Z
+captured_at: 2026-10-05T01:21:11Z  engagement_id: 1  product_id: 1
+tests: [{"id":5,"title":"gitleaks","scan_type":"Gitleaks Scan"},{"id":4,"title":"trivy-image","scan_type":"Trivy Scan"},{"id":2,"title":"checkov","scan_type":"Checkov Scan"},{"id":1,"title":"semgrep","scan_type":"Semgrep JSON Report"},{"id":7,"title":"pip-audit-1","scan_type":"pip-audit Scan"},{"id":3,"title":"trivy-fs","scan_type":"Trivy Scan"},{"id":8,"title":"tflint","scan_type":"SARIF"},{"id":6,"title":"npm-audit-1","scan_type":"NPM Audit v7+ Scan"}]
+findings[0] has verified: true
+per-Test counts (triage-open = active, not duplicate, not mitigated, not false_p, not out_of_scope, not risk_accepted):
+{"title":"gitleaks","id":5,"scan_type":"Gitleaks Scan","total":18,"triage_open":18,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"trivy-image","id":4,"scan_type":"Trivy Scan","total":180,"triage_open":60,"triage_open_verified_true":60,"any_verified_true":180}
+{"title":"checkov","id":2,"scan_type":"Checkov Scan","total":14,"triage_open":13,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"semgrep","id":1,"scan_type":"Semgrep JSON Report","total":7,"triage_open":6,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"pip-audit-1","id":7,"scan_type":"pip-audit Scan","total":48,"triage_open":24,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"trivy-fs","id":3,"scan_type":"Trivy Scan","total":6,"triage_open":5,"triage_open_verified_true":5,"any_verified_true":6}
+{"title":"tflint","id":8,"scan_type":"SARIF","total":3,"triage_open":3,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"npm-audit-1","id":6,"scan_type":"NPM Audit v7+ Scan","total":2,"triage_open":2,"triage_open_verified_true":0,"any_verified_true":0}
+Result: MATCH. Exactly one trivy-fs (id 3) and one trivy-image (id 4) Trivy Scan Test. Triage-open Trivy: 65
+(5 trivy-fs + 60 trivy-image), all 65 verified=true. Every non-Trivy Test: 0 verified=true. Matches the 29.4
+after-pr-b baseline. Snapshot file mode 0600 as written by the helper (finding JSON only, no token, no host).
+
+----------------------------------------------------------------------------------------------------
+Step 3: re-read PR #35, merge with --match-head-commit
+----------------------------------------------------------------------------------------------------
+$ date -u
+2026-10-05T01:21:53Z
+$ gh pr view 35 -R OttawaCloudConsulting/security-platform --json number,state,headRefOid,mergeable,mergeStateStatus
+{"headRefOid":"d2e813d9a67369b40f4202d33b357bb4fe4911e6","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","number":35,"state":"OPEN"}
+Result: head equals the approved SHA; OPEN.
+
+DOING:  gh pr merge 35 --merge --match-head-commit d2e813d9a67369b40f4202d33b357bb4fe4911e6
+EXPECT: exit 0, PR MERGED with a merge commit
+$ date -u
+2026-10-05T01:21:54Z
+$ gh pr merge 35 -R OttawaCloudConsulting/security-platform --merge --match-head-commit d2e813d9a67369b40f4202d33b357bb4fe4911e6
+exit 0
+$ date -u
+2026-10-05T01:21:57Z
+$ gh pr view 35 -R OttawaCloudConsulting/security-platform --json state,mergedAt,mergeCommit,headRefOid
+{"headRefOid":"d2e813d9a67369b40f4202d33b357bb4fe4911e6","mergeCommit":{"oid":"a53f6fb773a782411a9d32ea5457d8d2a31ba465"},"mergedAt":"2026-10-05T01:21:56Z","state":"MERGED"}
+Result: MATCH. PR #35 MERGED at 2026-10-05T01:21:56Z (after the before snapshot captured_at 2026-10-05T01:21:11Z).
+Merge commit a53f6fb773a782411a9d32ea5457d8d2a31ba465. No --squash, --auto or --delete-branch. No tag command run.
+
+----------------------------------------------------------------------------------------------------
+Step 3 (cont.): origin/main readback
+----------------------------------------------------------------------------------------------------
+$ git -C repos/security-platform fetch origin --tags
+From https://github.com/OttawaCloudConsulting/security-platform
+   aa48081..a53f6fb  main       -> origin/main
+exit 0
+$ git -C repos/security-platform rev-parse origin/main
+a53f6fb773a782411a9d32ea5457d8d2a31ba465
+$ git rev-list --parents -n1 a53f6fb773a782411a9d32ea5457d8d2a31ba465
+a53f6fb773a782411a9d32ea5457d8d2a31ba465 aa48081681ee1e578c50d6a0d9e5ead6ff6afc67 d2e813d9a67369b40f4202d33b357bb4fe4911e6
+$ git show origin/main:.github/workflows/security.yml | grep -c '"verified=false",'   (expect 1)
+1
+$ git show origin/main:scripts/check-workflow-uploads.sh | grep -c 'CHECK_COUNT = 22'   (expect 1)
+1
+$ git show origin/main:scripts/defectdojo-import-proof.sh | grep -c 'prove_verified'   (expect >= 2)
+3
+$ git show origin/main:scripts/defectdojo-lifecycle-assert.sh | grep -c 'arrive verified=true'   (expect 0)
+0
+$ git diff --stat a53f6fb773a782411a9d32ea5457d8d2a31ba465^1 a53f6fb773a782411a9d32ea5457d8d2a31ba465
+ .github/workflows/security.yml         |   8 +
+ scripts/check-workflow-uploads.sh      |  59 ++-
+ scripts/defectdojo-import-proof.sh     | 843 ++++++++++++++++++++++++++++++++-
+ scripts/defectdojo-lifecycle-assert.sh |  12 +-
+ 4 files changed, 911 insertions(+), 11 deletions(-)
+$ git diff --quiet d2e813d a53f6fb773a782411a9d32ea5457d8d2a31ba465   (merge tree == approved head tree)
+exit 0
+$ git ls-remote --tags origin 'v1*'   (post-merge)
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+21c50379710bd945c55d4f8a18cc205bb6b6bfca	refs/tags/v1.3.0
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67	refs/tags/v1.3.0^{}
+Result: MATCH. origin/main = a53f6fb; parents aa48081 (first, old main) and d2e813d (second = approved head);
+merge tree identical to d2e813d; '"verified=false",' 1; CHECK_COUNT = 22 1; prove_verified 3 (>= 2);
+'arrive verified=true' 0; diff stat exactly the four PR A files. v1* tag listing byte-identical to the pre-merge
+listing above (v1 and v1.3.0^{} still aa48081; no v1.4.0) = the 29.5-05 baseline. No tag moved.
+
+----------------------------------------------------------------------------------------------------
+Step 4: PR A cleanup (PR Security `closed` run) and engagement-gone probe
+----------------------------------------------------------------------------------------------------
+$ gh run list -R OttawaCloudConsulting/security-platform --workflow pr-security.yml --branch fix/phase-29.5-verified-false --json databaseId,event,headSha,status,conclusion,createdAt -L 5
+[{"conclusion":"success","createdAt":"2026-10-05T01:21:59Z","databaseId":37251143233,"event":"pull_request","headSha":"d2e813d9a67369b40f4202d33b357bb4fe4911e6","status":"completed"},{"conclusion":"success","createdAt":"2026-10-05T00:46:23Z","databaseId":37248805409,"event":"pull_request","headSha":"d2e813d9a67369b40f4202d33b357bb4fe4911e6","status":"completed"}]
+$ gh run view 37251143233 -R OttawaCloudConsulting/security-platform --json event,headSha,conclusion,createdAt,jobs
+{"event":"pull_request","headSha":"d2e813d9a67369b40f4202d33b357bb4fe4911e6","conclusion":"success","createdAt":"2026-10-05T01:21:59Z","jobs":[{"name":"security / DefectDojo Cleanup","conclusion":"success"},{"name":"security / Container — Trivy Image","conclusion":"skipped"},{"name":"security / Secrets — Gitleaks","conclusion":"skipped"},{"name":"security / IaC — Checkov","conclusion":"skipped"},{"name":"security / SCA — Trivy Filesystem","conclusion":"skipped"},{"name":"security / DefectDojo Import","conclusion":"skipped"},{"name":"security / SAST — Semgrep CE","conclusion":"skipped"}]}
+Run 37251143233 was created 2026-10-05T01:21:59Z, 3 s after mergedAt; only the DefectDojo Cleanup job ran (every scan
+job and DefectDojo Import skipped), which is the `closed` event path. DefectDojo Cleanup: success.
+
+$ DEFECTDOJO_URL=<homelab, not recorded> DEFECTDOJO_ADMIN_TOKEN_FILE=$HOME/.config/defectdojo/homelab-admin.token bash scripts/defectdojo-lifecycle-assert.sh snapshot --product OttawaCloudConsulting/security-platform --out <abs evidence dir> --engagement ci/fix/phase-29.5-verified-false --label 29.5-pr-a-gone-probe
+started 2026-10-05T01:22:36Z
+==> SNAPSHOT-ENGAGEMENT: FAIL - 0 engagements named exactly 'ci/fix/phase-29.5-verified-false' in product 1, expected 1
+
+=== Summary ===
+SKIPPED - 1 sub-check(s) did not run. A SKIP IS NOT A PASS:
+  - the remaining snapshot assertions: not evaluated, they depend on SNAPSHOT-ENGAGEMENT
+
+FAILED - one or more live checks did not produce the expected result:
+  - SNAPSHOT-ENGAGEMENT: 0 engagements named exactly 'ci/fix/phase-29.5-verified-false' in product 1, expected 1
+exit 1, finished 2026-10-05T01:22:36Z
+No 29.5-pr-a-gone-probe-snapshot.json was written (ls of the evidence dir shows none; nothing to delete).
+Result: MATCH. The probe aborts with SNAPSHOT-ENGAGEMENT "0 engagements named exactly" (exit 1, expected): PR A's
+engagement ci/fix/phase-29.5-verified-false is gone.
+
+----------------------------------------------------------------------------------------------------
+Step 5: Scheduled Security run list (after merge)
+----------------------------------------------------------------------------------------------------
+$ date -u
+2026-10-05T01:23:04Z
+$ gh run list -R OttawaCloudConsulting/security-platform --workflow scheduled-security.yml --json databaseId,event,headSha,status,conclusion,createdAt -L 10
+[{"conclusion":"success","createdAt":"2026-10-04T20:00:58Z","databaseId":37230464825,"event":"workflow_dispatch","headSha":"aa48081681ee1e578c50d6a0d9e5ead6ff6afc67","status":"completed"},{"conclusion":"success","createdAt":"2026-10-04T18:55:19Z","databaseId":37226275966,"event":"workflow_dispatch","headSha":"2dccff51de278c29a18f2349da7d7f3f5a568579","status":"completed"},{"conclusion":"success","createdAt":"2026-10-04T11:18:33Z","databaseId":37198294074,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"failure","createdAt":"2026-10-03T10:02:00Z","databaseId":37115036934,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"success","createdAt":"2026-10-02T10:02:29Z","databaseId":36993235781,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"success","createdAt":"2026-10-01T10:02:47Z","databaseId":36846632465,"event":"schedule","headSha":"30afdb9fb56516c6b06c5275212b42bcac30cc94","status":"completed"},{"conclusion":"failure","createdAt":"2026-09-30T10:02:40Z","databaseId":36699956848,"event":"schedule","headSha":"fdabac9464f2baaeaa276f8934dc8d353295b355","status":"completed"},{"conclusion":"success","createdAt":"2026-09-29T10:02:41Z","databaseId":36553070357,"event":"schedule","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"},{"conclusion":"success","createdAt":"2026-09-29T01:59:33Z","databaseId":36510481745,"event":"workflow_dispatch","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"},{"conclusion":"success","createdAt":"2026-09-29T00:18:24Z","databaseId":36502430372,"event":"workflow_dispatch","headSha":"2fda1ace44fdff510afa7c25b43e23dbe1dc4e2d","status":"completed"}]
+
+Result: MATCH. Newest Scheduled Security run is still 37230464825 (workflow_dispatch, aa48081, 2026-10-04T20:00:58Z).
+No Scheduled Security run was created after the before snapshot (2026-10-05T01:21:11Z); no cron import to attribute.
+
+Task 2 verdict: MATCH on every step. PR A is on main untagged (a53f6fb), the D-12 before state is captured, and PR
+A's engagement is gone. Continue to Task 3 (the single approved dispatch).
