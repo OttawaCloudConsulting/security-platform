@@ -1,0 +1,54 @@
+{
+  "source_file": ".planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/evidence/29.5-05-pr-a-run.txt",
+  "proof_run_id": 37248805435,
+  "pr_security_run_id": 37248805409,
+  "proof_final_line": "PROOF PASS - 189 assertions",
+  "pr_a": {
+    "number": 35,
+    "repo": "OttawaCloudConsulting/security-platform",
+    "head_sha": "d2e813d9a67369b40f4202d33b357bb4fe4911e6"
+  },
+  "d04": {
+    "positive_call1": [
+      "positive call 1: the engagement holds 8 Tests ['checkov', 'gitleaks', 'npm-audit-1', 'pip-audit-1', 'semgrep', 'tflint', 'trivy-fs', 'trivy-image'] (expected exactly ['checkov', 'gitleaks', 'npm-audit-1', 'pip-audit-1', 'semgrep', 'tflint', 'trivy-fs', 'trivy-image']); missing none, extra none, repeated none",
+      "positive call 1: 157 findings in 8 Tests all verified=false; per-Test counts checkov=14,gitleaks=18,npm-audit-1=2,pip-audit-1=47,semgrep=7,tflint=3,trivy-fs=6,trivy-image=60"
+    ],
+    "positive_call2": [
+      "positive call 2: the engagement holds 8 Tests ['checkov', 'gitleaks', 'npm-audit-1', 'pip-audit-1', 'semgrep', 'tflint', 'trivy-fs', 'trivy-image'] (expected exactly ['checkov', 'gitleaks', 'npm-audit-1', 'pip-audit-1', 'semgrep', 'tflint', 'trivy-fs', 'trivy-image']); missing none, extra none, repeated none",
+      "positive call 2: 157 findings in 8 Tests all verified=false; per-Test counts checkov=14,gitleaks=18,npm-audit-1=2,pip-audit-1=47,semgrep=7,tflint=3,trivy-fs=6,trivy-image=60"
+    ],
+    "negative_control": [
+      "negative control (old body): the engagement holds 8 Tests ['checkov', 'gitleaks', 'npm-audit-1', 'pip-audit-1', 'semgrep', 'tflint', 'trivy-fs', 'trivy-image'] (expected exactly ['checkov', 'gitleaks', 'npm-audit-1', 'pip-audit-1', 'semgrep', 'tflint', 'trivy-fs', 'trivy-image']); missing none, extra none, repeated none",
+      "negative control (old body): 66 of 66 non-duplicate Trivy Scan findings read verified=true (expected all, count > 0; 28-05 and the Phase 29 live split reproduced); Trivy Status in the reports: trivy-fs.json fixed=6; trivy-image.json affected=48,fix_deferred=7,fixed=4,will_not_fix=1; per-Test verified true/false checkov=0/14,gitleaks=0/18,npm-audit-1=0/2,pip-audit-1=0/47,semgrep=0/7,tflint=0/3,trivy-fs=6/0,trivy-image=60/0",
+      "negative control (old body): 91 of 91 non-Trivy findings read verified=false (expected all, count > 0)"
+    ],
+    "newreimport": [
+      "reimport of the full trivy-fs.json into ci/main created 1 new finding(s) (expected exactly 1): 5 findings before, 6 after",
+      "new finding #1252 ('CVE-2020-8203 Lodash 4.17.15', component 'lodash') reads verified=False duplicate=False; it is the removed CVE-2020-8203 lodash 4.17.15 with Status fixed (parser maps to verified True; stored false)"
+    ]
+  },
+  "d05_reset": {
+    "still_true": 66,
+    "of": 66,
+    "now_false": 0,
+    "measured_detail": "measured: still_true=66 of 66 pre-fix Trivy ids after the committed-body reimport (source prediction: all still true; outcome equals prediction); now_false=0",
+    "persistence_detail": "persistence: 66 reset ids still verified=false after a further committed-body reimport",
+    "equals_source_prediction": true
+  },
+  "d06_triager": {
+    "a": "(a) non-Trivy finding 1090 (semgrep) PATCHed verified=true kept verified=true after the committed-body reimport (active=true)",
+    "b": "(b) trivy-fs finding 1247 PATCHed verified=true kept verified=true after the committed-body reimport (active=true)"
+  },
+  "d07_reactivate": {
+    "x_id": 1253,
+    "test_title": "gitleaks",
+    "step3_verified": true,
+    "step3_active": true,
+    "step4_verified": true,
+    "step5_active": true,
+    "step5_is_mitigated": false,
+    "step5_verified": false,
+    "detail": "measured: X=1253 (gitleaks) step3 verified=true active=true; step4 mitigated verified=true; step5 reactivated active=true is_mitigated=false verified=false (source prediction: verified=false after reactivation)"
+  },
+  "reset_predicted_needed": true
+}
