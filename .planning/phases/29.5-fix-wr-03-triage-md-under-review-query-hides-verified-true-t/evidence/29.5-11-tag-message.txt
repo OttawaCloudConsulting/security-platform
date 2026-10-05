@@ -1,0 +1,46 @@
+v1.4.0: DefectDojo import sends verified=false so Trivy findings enter Under Review
+
+Minor release over v1.3.0 (aa48081): a triage-semantics change. No
+workflow_call input, secret, job id or name, SARIF category, artifact name
+or action pin changes. Only the dd-import run body in
+.github/workflows/security.yml differs from v1.3.0, plus a comment.
+
+Change (Phase 29.5, ADR-032):
+- the dd-import fields list sends verified=false on every reimport-scan
+  call, so findings from every parser arrive unverified
+- before this release the import sent no verified field, and DefectDojo
+  3.3.200's Trivy parser set verified=true from each vulnerability's
+  status; Trivy findings were therefore hidden from the TRIAGE.md Under
+  Review query (verified=false)
+- Verified now means one thing: a triager confirmed the finding is real
+
+Evidence:
+- kind proof, DefectDojo Import Proof run 37248805435: PROOF PASS - 189
+  assertions, 0 FAIL lines; P-VERIFIED-FALSE 7, P-VERIFIED-BODY 3,
+  P-VERIFIED-NEWREIMPORT 2, P-VERIFIED-RESET 2, P-VERIFIED-TRIAGER 2,
+  P-VERIFIED-REACTIVATE 1 PASS; all 157 findings in 8 Tests read
+  verified=false on first import and on reimport, while the old body
+  (negative control) left 66 of 66 Trivy findings verified=true
+- live ci/main readback after the upgrade: 65 of 65 earlier Trivy
+  findings still read verified=true (0 flipped), and that reimport
+  brought 0 new Trivy findings; that new Trivy findings arrive unverified
+  is shown by the kind proof
+
+Upgrade note:
+- Trivy findings now enter Under Review
+- findings imported before v1.4.0 keep verified=true: a reimport does not
+  reset Verified on a finding that is still active; run the one-time
+  reset in TRIAGE.md, section "One-time reset after upgrading to v1.4.0";
+  measured live on ci/main: 65 findings reset, 0 left verified=true, no
+  non-Trivy finding changed
+- a Verified set by a triager on an active finding is kept by reimport
+- a finding that is fixed and later comes back returns unverified, so it
+  re-enters Under Review even if it was Verified before it was fixed
+- repositories that do not enable the DefectDojo import see no change:
+  the import job still runs only when vars.DEFECTDOJO_URL is set
+- Mode A (copy-paste) adopters change only when they re-copy the workflow;
+  @v1.3.0 and earlier pins are unchanged
+
+Unchanged surfaces: workflow_call inputs and secrets, the five scanner
+check names and the DefectDojo job names, SARIF categories, artifact
+names and every uses: pin are identical to v1.3.0.

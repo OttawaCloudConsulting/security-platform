@@ -1,0 +1,214 @@
+29.5-11 v1 consumer impact check (D-16 items 1, 3, 4 and the pre-tag half of 2; Dependabot) before the v1.4.0 release decision
+captured_at: 2026-10-05T03:39:29Z
+tools: Python 3.12.0, PyYAML 6.0.3, jq-1.8.2, gh 2.102.0, git 2.54.0
+repo: OttawaCloudConsulting/security-platform (local clone repos/security-platform)
+No tag was created or moved by this task. v1 was not touched.
+
+== Release SHA (R) ==
+$ git -C repos/security-platform fetch origin --tags
+$ git -C repos/security-platform rev-parse origin/main
+6c0d5319b1c328f135b47acd47e1a5e92ae2b10c
+$ git -C repos/security-platform log -1 --format='%H %P %s' origin/main
+6c0d5319b1c328f135b47acd47e1a5e92ae2b10c a53f6fb773a782411a9d32ea5457d8d2a31ba465 9456cbb19acaf0fe3f2204ff853139057edf4121 Merge pull request #36 from OttawaCloudConsulting/docs/phase-29.5-triage-verified
+R = origin/main = PR B (#36) merge SHA = 29.5-10 "release candidate: 6c0d5319b1c328f135b47acd47e1a5e92ae2b10c". MATCH.
+PR A (#35) merge commit a53f6fb773a782411a9d32ea5457d8d2a31ba465 (first parent of R).
+
+$ git -C repos/security-platform ls-remote --tags origin
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67	refs/tags/v1
+fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4	refs/tags/v1.0.0
+cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef	refs/tags/v1.0.0^{}
+414fd3beb5a6d79d52316150a192803a4b0ece78	refs/tags/v1.1.0
+0f7e4e141d2a300d4be9a54efc137eb4510bb7ea	refs/tags/v1.1.0^{}
+c1565b35e88de4e70e61d79292943c15b3fe67f6	refs/tags/v1.1.1
+917352c00987023fa5ff1e6cdabc16987eb114dd	refs/tags/v1.1.1^{}
+b8ae59df7dcf6aec798dac699ca334d68812939d	refs/tags/v1.2.0
+fdabac9464f2baaeaa276f8934dc8d353295b355	refs/tags/v1.2.0^{}
+21c50379710bd945c55d4f8a18cc205bb6b6bfca	refs/tags/v1.3.0
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67	refs/tags/v1.3.0^{}
+8d47cf9f86e9f79a42a57a2b4298d34b5dcda449	refs/tags/v2.0
+c6395e145643c21a724df9225f3a5210d5d98bde	refs/tags/v2.0^{}
+No v1.4.0. v1 (lightweight) = v1.3.0^{} = aa48081. Matches the planning facts.
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v1 --jq '{type:.object.type, sha:.object.sha}'
+{"sha":"aa48081681ee1e578c50d6a0d9e5ead6ff6afc67","type":"commit"}
+$ gh api repos/OttawaCloudConsulting/security-platform/git/ref/tags/v1.4.0
+gh: Not Found (HTTP 404)
+
+$ git -C repos/security-platform log --oneline v1.3.0..6c0d531
+6c0d531 Merge pull request #36 from OttawaCloudConsulting/docs/phase-29.5-triage-verified
+9456cbb docs(29.5-09): TRIAGE.md Under Review holds Trivy findings from v1.4.0 (D-08, D-09)
+a53f6fb Merge pull request #35 from OttawaCloudConsulting/fix/phase-29.5-verified-false
+d2e813d test(29.5-04): P-VERIFIED-RESET, P-VERIFIED-TRIAGER, P-VERIFIED-REACTIVATE measurements (D-05, D-06, D-07, D-11)
+e57b621 test(29.5-03): P-VERIFIED-BODY, P-VERIFIED-FALSE (8 Tests, old-body negative control), P-VERIFIED-NEWREIMPORT (D-10, D-04)
+be0441e docs(29.5-01): lifecycle-assert text matches verified=false import (D-13)
+d2db557 fix(29.5-01): dd-import sends verified=false so every parser lands unverified (D-01, D-02)
+c796165 test(29.5-01): VERIFIED-FALSE gate requires verified=false in the dd-import fields list (D-14)
+$ git -C repos/security-platform diff --stat v1.3.0..6c0d531
+ .github/workflows/security.yml         |   8 +
+ kubernetes/defectdojo/TRIAGE.md        |  82 +++-
+ scripts/check-workflow-uploads.sh      |  59 ++-
+ scripts/defectdojo-import-proof.sh     | 843 ++++++++++++++++++++++++++++++++-
+ scripts/defectdojo-lifecycle-assert.sh |  12 +-
+ 5 files changed, 991 insertions(+), 13 deletions(-)
+
+== D-16 item 1: structural surface vs v1.3.0 ==
+$ git -C repos/security-platform diff v1.3.0..6c0d5319b1c328f135b47acd47e1a5e92ae2b10c -- .github/workflows/security.yml
+diff --git a/.github/workflows/security.yml b/.github/workflows/security.yml
+index 6a66ed4..5037a53 100644
+--- a/.github/workflows/security.yml
++++ b/.github/workflows/security.yml
+@@ -1353,6 +1353,13 @@ jobs:
+       # closes fixed findings (close_old_findings) instead of piling up a new
+       # Test per run as import-scan would (D-07, D-09).
+       #
++      # Every reimport-scan call also sends verified=false, so findings from
++      # every parser arrive unverified and the TRIAGE.md Under Review query
++      # (verified=false) matches them. Without it DefectDojo 3.3.200's Trivy
++      # parser sets verified=true from each vulnerability's Status. A Verified
++      # set by a triager on an active, still-reported finding is not touched
++      # by reimport (Phase 29.5, ADR-032).
++      #
+       # An explicit, unique test_title on every call: Trivy fs and Trivy image
+       # share the scan_type "Trivy Scan", and without a title reimport takes
+       # the LAST Test of that scan_type, so the two would overwrite each other.
+@@ -1544,6 +1551,7 @@ jobs:
+                           "test_title=" + test_title,
+                           "auto_create_context=true",
+                           "close_old_findings=true",
++                          "verified=false",  # every parser lands unverified; Verified = a triager confirmed it (ADR-032)
+                           "branch_tag=" + branch[:150],
+                           "commit_hash=" + env.get("GITHUB_SHA", ""),
+                           "build_id=" + env.get("GITHUB_RUN_ID", ""),
+(2 hunks, 8 added lines, 0 removed; both hunks lie inside the defectdojo-import job, in the dd-import step:
+the @@1353 hunk is a comment block, the @@1544 hunk is the fields list in the dd-import run body.)
+
+Tool: .planning/phases/29.4-.../29.4-surface-diff.py (python3, reused as is, no executable bit)
+$ git -C repos/security-platform show v1.3.0:.github/workflows/security.yml > <scratch>/v130.yml
+$ git -C repos/security-platform show 6c0d5319b1c328f135b47acd47e1a5e92ae2b10c:.github/workflows/security.yml > <scratch>/rel.yml
+
+Real run:
+$ python3 29.4-surface-diff.py <scratch>/v130.yml <scratch>/rel.yml --expect defectdojo-import=dd-import
+STRUCTURE: IDENTICAL (all keys except run)
+CHANGED RUN BODIES (1):
+  defectdojo-import = dd-import
+SURFACE-DIFF: PASS
+exit=0
+
+Negative (changed SARIF category):
+$ sed 's/category: trivy-image /category: trivy-image-x /' rel.yml > neg1.yml
+1024c1024
+<           category: trivy-image     # MANDATORY — distinguishes this analysis
+---
+>           category: trivy-image-x     # MANDATORY — distinguishes this analysis
+$ python3 29.4-surface-diff.py <scratch>/v130.yml <scratch>/neg1.yml --expect defectdojo-import=dd-import
+STRUCTURE: DIFFERENT
+  $.jobs.container.steps[8].with.category: 'trivy-image' != 'trivy-image-x'
+CHANGED RUN BODIES (1):
+  defectdojo-import = dd-import
+SURFACE-DIFF: FAIL
+neg1 exit=1
+
+Limit: PyYAML drops comments, so the @@1353 comment hunk is invisible to the tool. The verbatim diff above
+covers it: the only non-run-body change is that comment block. Tool + diff together confirm "only the
+dd-import run body changed, plus comments". Non-run structure identical: on.workflow_call inputs and
+secrets, job ids and names, SARIF category values, artifact names and uses: pins.
+
+Existing gate at R:
+$ git -C repos/security-platform worktree add --detach <scratch>/release 6c0d5319b1c328f135b47acd47e1a5e92ae2b10c
+HEAD is now at 6c0d531 Merge pull request #36 from OttawaCloudConsulting/docs/phase-29.5-triage-verified
+$ (cd <scratch>/release && bash scripts/check-workflow-uploads.sh)
+check-workflow-uploads: parsing every workflow file in .github/workflows (*.yml, *.yaml)
+PASS - 22 checks, 0 failures
+exit=0
+$ git -C repos/security-platform worktree remove <scratch>/release
+(worktree list afterwards: only the main clone)
+Verdict PASS.
+
+== D-16 item 2: tag identity (pre-tag half) ==
+$ git -C repos/security-platform rev-parse 'v1^{}'
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67
+$ git -C repos/security-platform rev-parse 'v1.3.0^{}'
+aa48081681ee1e578c50d6a0d9e5ead6ff6afc67
+$ git -C repos/security-platform cat-file -t v1
+commit   (lightweight, ADR-018)
+R = 6c0d5319b1c328f135b47acd47e1a5e92ae2b10c
+$ git show 6c0d531:.github/workflows/security.yml | grep -cF '"verified=false",'
+1
+$ git show v1.3.0:.github/workflows/security.yml | grep -cF '"verified=false",'
+0
+Verdict PASS (pre-tag). Post-tag half (v1^{} == v1.4.0^{} == R through the API) is Task 3, after the operator decision.
+
+== D-16 item 3: consumers without the DefectDojo import ==
+jobs.defectdojo-import if: line, both sides at L1275:
+v130.yml:1275:    if: always() && github.event.action != 'closed' && vars.DEFECTDOJO_URL != ''
+rel.yml:1275:    if: always() && github.event.action != 'closed' && vars.DEFECTDOJO_URL != ''
+$ cmp <(sed -n 1275p v130.yml) <(sed -n 1275p rel.yml) && echo BYTE-EQUAL
+BYTE-EQUAL
+PyYAML: jobs['defectdojo-import']['if'] on both sides:
+"always() && github.event.action != 'closed' && vars.DEFECTDOJO_URL != ''" (name 'DefectDojo Import')
+The only workflow change (verified=false) is inside this job's dd-import step. Consumers without
+vars.DEFECTDOJO_URL never run the import job, so v1.4.0 is a no-op for them.
+Verdict PASS.
+
+== D-16 item 4: @v1 callers ==
+$ gh search code "security-platform/.github/workflows/security.yml@v1" --owner OttawaCloudConsulting --json repository,path
+OttawaCloudConsulting/security-platform	README.md
+OttawaCloudConsulting/security-platform	cicd/README.md
+OttawaCloudConsulting/security-platform	.github/workflows/scheduled-security.yml
+OttawaCloudConsulting/security-platform	.github/workflows/pr-security.yml
+$ gh search code "OttawaCloudConsulting/security-platform/.github/workflows/security.yml@" --json repository,path
+same 4 hits, nothing outside security-platform.
+$ git -C repos/security-platform grep -n "security.yml@" 6c0d531 -- .github/workflows README.md cicd/README.md
+6c0d531:.github/workflows/pr-security.yml:20:# `uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1`
+6c0d531:.github/workflows/scheduled-security.yml:14:# `uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1`
+6c0d531:README.md:6:`uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1`
+6c0d531:cicd/README.md:55:2. **Reference as a reusable workflow**: `uses: OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1`.
+All four are documentation or comment lines; security-platform's own workflows do not call @v1.
+Contents-API scan of every repository in the org (gh repo list OttawaCloudConsulting --limit 200):
+  for each repo, gh api repos/<repo>/contents/.github/workflows, then each workflow file raw.
+  Pass 1 (strict): grep -nE '^[[:space:]]*-?[[:space:]]*uses:[[:space:]]*OttawaCloudConsulting/security-platform/'
+    repos_total=61 repos_with_workflows_dir=10 repos_without=51 workflow_files_scanned=20 matching_uses_lines=0
+  Pass 2 (broad): grep -nE 'uses:.*security\.yml@'
+    repos_total=61 repos_with_workflows_dir=10 repos_without=51 workflow_files_scanned=20 matching_uses_lines=2
+    OttawaCloudConsulting/security-platform:.github/workflows/pr-security.yml:20:# `uses: ...security.yml@v1`   (comment)
+    OttawaCloudConsulting/security-platform:.github/workflows/scheduled-security.yml:14:# `uses: ...security.yml@v1`   (comment)
+Callers found: 0 (no workflow in the visible org repositories calls security.yml at any ref).
+Limit: only OttawaCloudConsulting default branches visible to this token were scanned. Callers in
+personal accounts, other organisations, private repositories outside the org, or on non-default
+branches cannot be enumerated. Operator to confirm there are no out-of-org @v1 callers.
+Verdict PASS (0 visible @v1 callers; limit stated).
+
+== Dependabot PRs touching security.yml ==
+$ gh pr list -R OttawaCloudConsulting/security-platform --state open --json number,title,author,baseRefOid,headRefOid,files
+  (filtered to files[].path == ".github/workflows/security.yml")
+31	chore(deps): bump github/codeql-action/upload-sarif from 4.38.1 to 4.38.2	app/dependabot	30afdb9	d1b128f
+30	chore(deps): bump bridgecrewio/checkov-action from 12.3125.0 to 12.3126.0	app/dependabot	30afdb9	e473364
+All open PRs: #31 and #30 only, both still open and held.
+$ gh pr list -R OttawaCloudConsulting/security-platform --state merged --search "merged:>=2026-10-04T20:00:00Z" --json number,title,mergedAt,mergeCommit
+36	Phase 29.5: TRIAGE.md Under Review holds Trivy findings from v1.4.0 (PR B)	2026-10-05T03:30:48Z	6c0d5319b1c328f135b47acd47e1a5e92ae2b10c
+35	Phase 29.5: dd-import sends verified=false so Trivy findings enter Under Review (PR A)	2026-10-05T01:21:56Z	a53f6fb773a782411a9d32ea5457d8d2a31ba465
+$ git -C repos/security-platform log --oneline a53f6fb773a782411a9d32ea5457d8d2a31ba465..6c0d5319b1c328f135b47acd47e1a5e92ae2b10c -- .github/workflows/security.yml
+(empty)
+$ git -C repos/security-platform diff --quiet a53f6fb 6c0d531 -- .github/workflows && echo unchanged
+unchanged
+Verdict PASS: #30/#31 held; nothing touched security.yml after PR A.
+Follow-up after the tag: #30 and #31 (base 30afdb9) need a rebase/recreate and review.
+
+== Tag message (D-16, D-17) ==
+evidence/29.5-11-tag-message.txt. Sources: kind proof run 37248805435 and the PER-LABEL COUNTS block in
+evidence/29.5-05-pr-a-run.txt (PROOF PASS - 189 assertions, FAIL lines 0; P-VERIFIED-FALSE 7, -BODY 3,
+-NEWREIMPORT 2, -RESET 2, -TRIAGER 2, -REACTIVATE 1); live ci/main readback 29.5-07-d12-fix.json
+(before_open_trivy_true 65, still_true 65, now_false 0, new_trivy 0); D-05 outcome 29.5-08-d05-reset.json
+(needed true, reset_count 65, after_open_trivy_true 0, non_trivy_verified_changed 0); TRIAGE.md at R section
+"One-time reset after upgrading to v1.4.0" (L120); 29.5-06-rulings.json l36_l40_sentence_allowed true
+(reactivation sentence included).
+Lint: no line starting with '#', no trailing whitespace; every line <= 79 characters except the title
+line (83 characters), whose text is fixed by the plan. Round trip in a scratch repo: git tag -a t1 -F
+29.5-11-tag-message.txt, then git cat-file tag t1 | sed '1,/^$/d' is byte-identical to the file.
+
+== Overall ==
+d16_1 PASS, d16_2_pre PASS (post-tag half in Task 3), d16_3 PASS, d16_4 PASS (limit stated; operator to
+confirm out-of-org), dependabot PASS. No STOP condition.
+
+== Plan 29.5-11 Task 1 <verify><automated> ==
+Run verbatim at 2026-10-05T03:45Z: exit 0. Homelab-literal grep (10.40. | infra.ottawacloudconsulting |
+homelab-admin | occ-homelab | smoke.test) and trailing-whitespace grep over all three Task 1 files: no match.

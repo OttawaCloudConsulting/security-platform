@@ -1,0 +1,122 @@
+{
+  "captured_at": "2026-10-05T03:39:29Z",
+  "repo": "OttawaCloudConsulting/security-platform",
+  "release_sha": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c",
+  "origin_main": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c",
+  "release_sha_check": "origin/main == PR B (#36) merge SHA == 29.5-10 release candidate: MATCH",
+  "pr_a": {
+    "number": 35,
+    "merge_commit": "a53f6fb773a782411a9d32ea5457d8d2a31ba465"
+  },
+  "pr_b": {
+    "number": 36,
+    "merge_commit": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c"
+  },
+  "tags_before": {
+    "v1": {
+      "type": "commit",
+      "sha": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67"
+    },
+    "v1_3_0": {
+      "tag_object": "21c50379710bd945c55d4f8a18cc205bb6b6bfca",
+      "commit": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67"
+    },
+    "v1_4_0": null
+  },
+  "d16_1": {
+    "command": "git diff v1.3.0..R -- .github/workflows/security.yml; python3 29.4-surface-diff.py v130.yml rel.yml --expect defectdojo-import=dd-import; negative: category trivy-image -> trivy-image-x; bash scripts/check-workflow-uploads.sh in a worktree at R",
+    "result": {
+      "diff_hunks": [
+        "@@ -1353,6 +1353,13 @@ comment block (7 lines) in the dd-import step",
+        "@@ -1544,6 +1551,7 @@ \"verified=false\" in the dd-import fields list"
+      ],
+      "lines_added": 8,
+      "lines_removed": 0,
+      "surface_tool_real": {
+        "exit": 0,
+        "structure": "IDENTICAL (all keys except run)",
+        "changed_run_bodies": [
+          "defectdojo-import = dd-import"
+        ],
+        "verdict_line": "SURFACE-DIFF: PASS"
+      },
+      "surface_tool_negative": {
+        "exit": 1,
+        "difference": "$.jobs.container.steps[8].with.category: 'trivy-image' != 'trivy-image-x'",
+        "verdict_line": "SURFACE-DIFF: FAIL"
+      },
+      "check_workflow_uploads": "PASS - 22 checks, 0 failures",
+      "limit": "PyYAML drops comments; the @@1353 comment hunk is covered by the verbatim diff"
+    },
+    "verdict": "PASS"
+  },
+  "d16_2_pre": {
+    "command": "git rev-parse v1^{}; git rev-parse v1.3.0^{}; git show R:.github/workflows/security.yml | grep -cF '\"verified=false\",'",
+    "result": {
+      "v1_deref": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67",
+      "v1_3_0_deref": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67",
+      "v1_type": "commit",
+      "release_sha": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c",
+      "verified_false_count_at_R": 1,
+      "verified_false_count_at_v1_3_0": 0,
+      "post_tag_half": "Task 3 API readback"
+    },
+    "verdict": "PASS"
+  },
+  "d16_3": {
+    "command": "jobs.defectdojo-import if: at v1.3.0 and R (L1275, cmp byte-equal; PyYAML read)",
+    "result": {
+      "if_v1_3_0": "always() && github.event.action != 'closed' && vars.DEFECTDOJO_URL != ''",
+      "if_R": "always() && github.event.action != 'closed' && vars.DEFECTDOJO_URL != ''",
+      "byte_equal": true,
+      "statement": "consumers without vars.DEFECTDOJO_URL never run the import job, so v1.4.0 is a no-op for them"
+    },
+    "verdict": "PASS"
+  },
+  "d16_4": {
+    "command": "gh search code \"security-platform/.github/workflows/security.yml@v1\" --owner OttawaCloudConsulting; gh search code \"OttawaCloudConsulting/security-platform/.github/workflows/security.yml@\"; Contents-API scan of gh repo list OttawaCloudConsulting --limit 200",
+    "result": {
+      "search_hits": [
+        "security-platform README.md",
+        "security-platform cicd/README.md",
+        "security-platform .github/workflows/scheduled-security.yml (comment)",
+        "security-platform .github/workflows/pr-security.yml (comment)"
+      ],
+      "repos_total": 61,
+      "repos_with_workflows_dir": 10,
+      "repos_without": 51,
+      "workflow_files_scanned": 20,
+      "strict_uses_matches": 0,
+      "broad_uses_matches": 2,
+      "broad_matches_note": "both are comment lines in security-platform own workflows",
+      "callers": [],
+      "limit": "only OttawaCloudConsulting default branches visible to this token; callers in personal accounts, other orgs, private repos outside the org or on non-default branches cannot be enumerated; operator to confirm"
+    },
+    "verdict": "PASS"
+  },
+  "dependabot": {
+    "command": "gh pr list -R OttawaCloudConsulting/security-platform --state open --json number,title,author,files (security.yml); git log --oneline a53f6fb..R -- .github/workflows/security.yml",
+    "result": {
+      "open_touching_security_yml": [
+        {
+          "number": 31,
+          "title": "chore(deps): bump github/codeql-action/upload-sarif from 4.38.1 to 4.38.2",
+          "author": "app/dependabot",
+          "base": "30afdb9",
+          "head": "d1b128f"
+        },
+        {
+          "number": 30,
+          "title": "chore(deps): bump bridgecrewio/checkov-action from 12.3125.0 to 12.3126.0",
+          "author": "app/dependabot",
+          "base": "30afdb9",
+          "head": "e473364"
+        }
+      ],
+      "held": true,
+      "log_pr_a_merge_to_R": "",
+      "follow_up": "#30/#31 need rebase/recreate and review after the tag"
+    },
+    "verdict": "PASS"
+  }
+}
