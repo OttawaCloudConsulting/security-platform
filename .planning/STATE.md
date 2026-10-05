@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Phase 29.6 context gathered
-last_updated: "2026-10-05T23:47:37.902Z"
-last_activity: 2026-10-05 -- Phase 29.6 planning complete
+stopped_at: Completed 29.6-01-PLAN.md
+last_updated: "2026-10-05T23:56:22.140Z"
+last_activity: 2026-10-05
 progress:
   total_phases: 7
   completed_phases: 7
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-10)
 
 **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
-**Current focus:** Phase 29.6 — close 27 uat item 3 closed pr reopen race and refresh stale
+**Current focus:** Phase 29.6 — close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-
 
 ## Current Position
 
-Phase: 29.6
-Plan: Not started
+Phase: 29.6 (close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-) — EXECUTING
+Plan: 2 of 15
 Status: Ready to execute
-Last activity: 2026-10-05 -- Phase 29.6 planning complete
+Last activity: 2026-10-05
 
 ## Performance Metrics
 
@@ -386,6 +386,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.5]: PR B #36 merged with --merge --match-head-commit 9456cbb after operator approval; merge SHA 6c0d531 is the v1.4.0 release candidate; no tag, v1 not moved
 - [Phase 29.5]: v1.4.0 cut (annotated 07bac54) and v1 moved aa48081 -> 6c0d531 after operator reply 'Approve'; API-verified; external @v1 caller confirmation not given, D-16 item 4 limit stands; Dependabot #30/#31 held
 - [Phase 29.5]: ADR-032 written after the v1.4.0 tag (dated 2026-10-05, tagger date); supersedes the ADR-026 "Trivy originals arrive Verified" tradeoff in prose and closes 28-REVIEW WR-03; ADR-026 byte-unchanged vs eb21269 — D-18 append-only ADRs; ADR-032 records that the operator did not confirm the absence of external @v1 callers
+- [Phase 29.6]: 29.6-01: 27-UAT items 1-2 pass on live evidence (schedule run 36553070357; homelab ci/main snapshot 278 findings / 8 tests); item 3 pending for plan 11
 
 ### Pending Todos
 
@@ -579,12 +580,13 @@ Carried forward from v1.1 close:
 | Phase 29.5 P10 | 5min | 2 tasks | 1 files |
 | Phase 29.5 P11 | 25min | 3 tasks | 4 files |
 | Phase 29.5 P12 | 10min | 3 tasks | 4 files |
+| Phase 29.6 P01 | 5min | 2 tasks | 6 files |
 
 ## Session Continuity
 
-Last session: 2026-10-05T21:28:26.706Z
-Stopped at: Phase 29.6 context gathered
-Resume file: .planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-CONTEXT.md
+Last session: 2026-10-05T23:56:17.506Z
+Stopped at: Completed 29.6-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
