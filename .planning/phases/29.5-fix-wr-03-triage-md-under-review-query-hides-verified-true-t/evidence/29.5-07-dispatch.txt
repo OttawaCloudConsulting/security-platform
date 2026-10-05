@@ -1,0 +1,124 @@
+29.5-07 Task 3: Scheduled Security dispatch on the PR A merge, after snapshot, D-12 fix verdict, live D-05 measurement
+====================================================================================================
+
+Approval: the operator's Task 1 reply (verbatim in evidence/29.5-07-merge.txt): "write the file
+`~/.config/defectdojo/homelab-url` and then proceed"; orchestrator interpretation: "proceed" approves the merge AND
+one `gh workflow run scheduled-security.yml --ref main` dispatch. No re-dispatch is approved.
+
+DOING:  (1) cron check against the Task 2 run lists; (2) gh workflow run scheduled-security.yml -R
+        OttawaCloudConsulting/security-platform --ref main (once); resolve the run; wait; record job conclusions
+        and runners; (3) read-only after snapshot, label 29.5-main-after-fix; (4) 29.5-ci-main-verified-diff.sh
+        --mode fix --out evidence/29.5-07-d12-fix.json.
+EXPECT: run event workflow_dispatch, headSha == PR A merge SHA a53f6fb773a782411a9d32ea5457d8d2a31ba465; every
+        job success except DefectDojo Cleanup skipped; DefectDojo Import success on the ARC runner (label
+        occ-homelab-defectdojo); diff verdict PASS with new_trivy_open_true 0 and non_trivy_verified_changed 0;
+        by kind (29.5-06, reset_predicted_needed true) still_true expected = before_open_trivy (65), reset_needed true.
+IF MATCH:    commit this evidence; D-05 is decided by the live reset_needed value.
+IF MISMATCH: STOP, no re-dispatch or rerun (a 429 included), commit evidence so far, present FAILED / THEORY /
+             PROPOSE. NEW_TRIVY_VERIFIED is the live D-04 signal and stops the phase.
+
+Note: trailing whitespace is stripped from command output in this file (docs-repo pre-commit hook).
+The DefectDojo base URL and token are not written here.
+
+----------------------------------------------------------------------------------------------------
+Step 1: cron check
+----------------------------------------------------------------------------------------------------
+Scheduled Security list after the merge (evidence/29.5-07-merge.txt Step 5): newest run 37230464825
+(workflow_dispatch, aa48081, 2026-10-04T20:00:58Z). No run on the merge SHA existed before the dispatch, and the
+window (01:21Z to 01:25Z) is far from the 10:00 UTC cron. The dispatch below is the first post-merge import of
+ci/main. No cron run landed inside the window.
+
+----------------------------------------------------------------------------------------------------
+Step 2: the one approved dispatch
+----------------------------------------------------------------------------------------------------
+$ date -u
+2026-10-05T01:23:36Z
+$ gh workflow run scheduled-security.yml -R OttawaCloudConsulting/security-platform --ref main
+https://github.com/OttawaCloudConsulting/security-platform/actions/runs/37251249025
+exit 0
+$ gh run list -R OttawaCloudConsulting/security-platform --workflow scheduled-security.yml --json databaseId,event,headSha,status,conclusion,createdAt -L 3   (8 s later)
+[{"conclusion":"","createdAt":"2026-10-05T01:23:37Z","databaseId":37251249025,"event":"workflow_dispatch","headSha":"a53f6fb773a782411a9d32ea5457d8d2a31ba465","status":"in_progress"},{"conclusion":"success","createdAt":"2026-10-04T20:00:58Z","databaseId":37230464825,"event":"workflow_dispatch","headSha":"aa48081681ee1e578c50d6a0d9e5ead6ff6afc67","status":"completed"},{"conclusion":"success","createdAt":"2026-10-04T18:55:19Z","databaseId":37226275966,"event":"workflow_dispatch","headSha":"2dccff51de278c29a18f2349da7d7f3f5a568579","status":"completed"}]
+-> run 37251249025, event workflow_dispatch, created 2026-10-05T01:23:37Z (after the command), headSha
+   a53f6fb773a782411a9d32ea5457d8d2a31ba465 == PR A merge SHA. MATCH (D-01 live: the first post-merge ci/main
+   reimport ran the new body). Exactly one dispatch was made in this plan.
+
+Background poll (45 s interval):
+01:23:52Z in_progress
+01:24:38Z completed success
+$ gh run view 37251249025 -R OttawaCloudConsulting/security-platform --json event,headSha,status,conclusion,createdAt,updatedAt
+{"conclusion":"success","createdAt":"2026-10-05T01:23:37Z","event":"workflow_dispatch","headSha":"a53f6fb773a782411a9d32ea5457d8d2a31ba465","status":"completed","updatedAt":"2026-10-05T01:24:33Z"}
+
+$ gh api repos/OttawaCloudConsulting/security-platform/actions/runs/37251249025/jobs   (name, conclusion, started, completed, runner_name, labels)
+security / Secrets — Gitleaks	success	2026-10-05T01:23:41Z	2026-10-05T01:24:00Z	GitHub Actions 1000001420	ubuntu-latest
+security / Container — Trivy Image	success	2026-10-05T01:23:41Z	2026-10-05T01:24:05Z	GitHub Actions 1000001422	ubuntu-latest
+security / SCA — Trivy Filesystem	success	2026-10-05T01:23:41Z	2026-10-05T01:24:18Z	GitHub Actions 1000001421	ubuntu-latest
+security / SAST — Semgrep CE	success	2026-10-05T01:23:41Z	2026-10-05T01:24:16Z	GitHub Actions 1000001423	ubuntu-latest
+security / IaC — Checkov	success	2026-10-05T01:23:42Z	2026-10-05T01:24:15Z	GitHub Actions 1000001424	ubuntu-latest
+security / DefectDojo Cleanup	skipped	2026-10-05T01:23:40Z	2026-10-05T01:23:39Z	-	occ-homelab-defectdojo
+security / DefectDojo Import	success	2026-10-05T01:24:23Z	2026-10-05T01:24:32Z	occ-homelab-defectdojo-qqrsp-runner-9lcrd	occ-homelab-defectdojo
+-> every scan job success on ubuntu-latest (Container — Trivy Image success, no 429); security / DefectDojo Import
+   success on ARC runner occ-homelab-defectdojo-qqrsp-runner-9lcrd (label occ-homelab-defectdojo), 01:24:23Z to
+   01:24:32Z. DefectDojo Cleanup skipped (as designed outside pull_request closed). MATCH.
+
+$ gh run view 37251249025 --log --job 111579290237 | grep -i 'verified=false\|IMPORTED:\|DefectDojo import verified'   (host redacted)
+2026-10-05T01:24:26.3239997Z                 "verified=false",  # every parser lands unverified; Verified = a triager confirmed it (ADR-032)
+2026-10-05T01:24:26.3328359Z                 print("IMPORTED: {} scan_type={} test={} http=201 test_id={} after_total={}".format(
+2026-10-05T01:24:30.7136601Z IMPORTED: semgrep-results.json scan_type=Semgrep JSON Report test=semgrep http=201 test_id=1 after_total=7
+2026-10-05T01:24:30.7137441Z IMPORTED: checkov-results.json scan_type=Checkov Scan test=checkov http=201 test_id=2 after_total=14
+2026-10-05T01:24:30.7138317Z IMPORTED: trivy-fs.json scan_type=Trivy Scan test=trivy-fs http=201 test_id=3 after_total=6
+2026-10-05T01:24:30.7139170Z IMPORTED: trivy-image.json scan_type=Trivy Scan test=trivy-image http=201 test_id=4 after_total=180
+2026-10-05T01:24:30.7140018Z IMPORTED: gitleaks-results.json scan_type=Gitleaks Scan test=gitleaks http=201 test_id=5 after_total=18
+2026-10-05T01:24:30.7140898Z IMPORTED: npm-audit-1.json scan_type=NPM Audit v7+ Scan test=npm-audit-1 http=201 test_id=6 after_total=2
+2026-10-05T01:24:30.7141750Z IMPORTED: pip-audit-1.json scan_type=pip-audit Scan test=pip-audit-1 http=201 test_id=7 after_total=48
+2026-10-05T01:24:30.7142517Z IMPORTED: tflint.sarif scan_type=SARIF test=tflint http=201 test_id=8 after_total=3
+2026-10-05T01:24:30.7331755Z print("DefectDojo import verified: {} report(s) into {} / {}".format(
+2026-10-05T01:24:30.7561990Z DefectDojo import verified: 8 report(s) into OttawaCloudConsulting/security-platform / ci/main
+-> the executed import script carries `"verified=false",` (the PR A body) and both Trivy reimports returned 201
+   into the ci/main Tests 3 (trivy-fs) and 4 (trivy-image). Run list after the run:
+[{"conclusion":"success","createdAt":"2026-10-05T01:23:37Z","databaseId":37251249025,"event":"workflow_dispatch","headSha":"a53f6fb773a782411a9d32ea5457d8d2a31ba465","status":"completed"},{"conclusion":"success","createdAt":"2026-10-04T20:00:58Z","databaseId":37230464825,"event":"workflow_dispatch","headSha":"aa48081681ee1e578c50d6a0d9e5ead6ff6afc67","status":"completed"},{"conclusion":"success","createdAt":"2026-10-04T18:55:19Z","databaseId":37226275966,"event":"workflow_dispatch","headSha":"2dccff51de278c29a18f2349da7d7f3f5a568579","status":"completed"}]
+
+----------------------------------------------------------------------------------------------------
+Step 3: after snapshot
+----------------------------------------------------------------------------------------------------
+$ DEFECTDOJO_URL=<homelab, not recorded> DEFECTDOJO_ADMIN_TOKEN_FILE=$HOME/.config/defectdojo/homelab-admin.token bash scripts/defectdojo-lifecycle-assert.sh snapshot --product OttawaCloudConsulting/security-platform --out <abs evidence dir> --engagement ci/main --label 29.5-main-after-fix
+started 2026-10-05T01:24:55Z
+snapshot ci/main: 278 findings
+wrote .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/evidence/29.5-main-after-fix-snapshot.json
+exit 0, finished 2026-10-05T01:24:58Z
+captured_at: 2026-10-05T01:24:58Z  engagement_id: 1  product_id: 1
+tests: [{"id":7,"title":"pip-audit-1","scan_type":"pip-audit Scan"},{"id":4,"title":"trivy-image","scan_type":"Trivy Scan"},{"id":5,"title":"gitleaks","scan_type":"Gitleaks Scan"},{"id":1,"title":"semgrep","scan_type":"Semgrep JSON Report"},{"id":6,"title":"npm-audit-1","scan_type":"NPM Audit v7+ Scan"},{"id":2,"title":"checkov","scan_type":"Checkov Scan"},{"id":8,"title":"tflint","scan_type":"SARIF"},{"id":3,"title":"trivy-fs","scan_type":"Trivy Scan"}]
+per-Test counts (same definition as the before snapshot):
+{"title":"pip-audit-1","id":7,"total":48,"triage_open":24,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"trivy-image","id":4,"total":180,"triage_open":60,"triage_open_verified_true":60,"any_verified_true":180}
+{"title":"gitleaks","id":5,"total":18,"triage_open":18,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"semgrep","id":1,"total":7,"triage_open":6,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"npm-audit-1","id":6,"total":2,"triage_open":2,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"checkov","id":2,"total":14,"triage_open":13,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"tflint","id":8,"total":3,"triage_open":3,"triage_open_verified_true":0,"any_verified_true":0}
+{"title":"trivy-fs","id":3,"total":6,"triage_open":5,"triage_open_verified_true":5,"any_verified_true":6}
+
+----------------------------------------------------------------------------------------------------
+Step 4: D-12 fix diff
+----------------------------------------------------------------------------------------------------
+$ bash .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-ci-main-verified-diff.sh --mode fix --before evidence/29.5-main-before-fix-snapshot.json --after evidence/29.5-main-after-fix-snapshot.json --out evidence/29.5-07-d12-fix.json
+{"mode":"fix","verdict":"PASS","engagement_id":1,"trivy_test_ids":{"trivy-fs":3,"trivy-image":4},"counts":{"before_open_trivy":65,"before_open_trivy_true":65,"still_true":65,"now_false":0,"no_longer_open":0,"new_trivy":0,"new_trivy_open":0,"new_trivy_open_true":0,"non_trivy_verified_changed":0},"reset_needed":true,"now_false_ids":[],"new_trivy":[],"failures":[]}
+still_true_ids: [23,24,25,26,27,1156,1157,1158,1159,1160,1161,1162,1163,1164,1165,1166,1167,1168,1169,1170,1171,1172,1173,1174,1175,1176,1177,1178,1179,1180,1181,1182,1183,1184,1185,1186,1187,1188,1189,1190,1191,1192,1193,1194,1195,1196,1197,1198,1199,1200,1201,1202,1203,1204,1205,1206,1207,1208,1209,1210,1211,1212,1213,1214,1215]
+exit 0 (PASS); stderr empty
+
+Recorded verbatim:
+  before_open_trivy   = 65
+  still_true          = 65
+  now_false           = 0
+  new_trivy           = 0
+  new_trivy_open_true = 0
+  reset_needed        = true
+  (also: before_open_trivy_true 65, no_longer_open 0, new_trivy_open 0, non_trivy_verified_changed 0)
+
+no new Trivy findings in the window; 'new findings arrive verified=false' rests on kind evidence (D-09)
+
+Result: MATCH. Verdict PASS, no NEW_TRIVY_VERIFIED, no non-Trivy verified change. As predicted by kind
+(29.5-06: reset_predicted_needed true), a reimport with verified=false does not clear verified=true on findings that
+were already active: all 65 pre-fix triage-open Trivy findings still read verified=true. reset_needed = true is the
+live D-05 decision input for plan 08 (the one-time reset is needed).
+
+Task 3 verdict: MATCH on every step. No re-dispatch, no tag, no v1 move, no DefectDojo write by the executor.
