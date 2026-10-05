@@ -1,0 +1,44 @@
+29.5-08 D-05 one-time reset: Task 1 read-only candidate listing
+================================================================
+
+Branch: evidence/29.5-07-d12-fix.json reset_needed = true (counts.still_true = 65,
+before_open_trivy = 65, now_false = 0). The NEEDED branch applies.
+
+What ran (2026-10-05T01:30:42Z UTC)
+-----------------------------------
+Steps 1-2 of 29.5-reset-recipe.md only. The bash block was cut at the "# Step 3" line
+into a scratch copy, so the confirmation prompt and the PATCH loop were not in the
+script that ran (grep -c PATCH on the copy = 0). The copy ran with stdin from /dev/null.
+In the copy only, the three placeholder lines were set as follows:
+  DD=$DD                       (from $HOME/.config/defectdojo/homelab-url, https)
+  TOKEN_FILE=<operator admin token file>
+  ENG=1                        (ci/main engagement)
+Two capture lines were added: one copies the Step 1 response body, one copies the Step 2
+body and the id list. The committed recipe still holds the TRIAGE.md placeholders.
+
+Requests sent (both GET; the token was read from a 0600 header file via -H @"$HDR", so
+it was not on the command line):
+  curl -q -sS --proto =https --proto-redir =https -H @"$HDR" -X GET \
+    "$DD/api/v2/tests/?engagement=1&limit=100"                         -> 200, ssl_verify_result 0
+  curl -q -sS --proto =https --proto-redir =https -H @"$HDR" -X GET \
+    "$DD/api/v2/findings/?test__engagement=1&active=true&verified=true&false_p=false&out_of_scope=false&risk_accepted=false&duplicate=false&is_mitigated=false&limit=1000"
+                                                                       -> 200, ssl_verify_result 0
+The script exited 0, and the EXIT trap removed the header file and the body file.
+
+Results
+-------
+Step 1: 8 Tests on engagement 1. Trivy Scan Tests: trivy-fs = 3, trivy-image = 4.
+Step 2: next == null (one page). The server returned 65 rows, and the client-side
+re-check of Test membership and every flag kept all 65.
+  Candidate count: 65
+  Per Test: trivy-fs (Test 3) = 5 ids 23-27; trivy-image (Test 4) = 60 ids 1156-1215.
+  Full list: evidence/29.5-08-reset-candidates.json candidate_ids (sorted).
+
+Cross-check with 29.5-07 still_true_ids
+---------------------------------------
+test "$(jq -c .candidate_ids 29.5-08-reset-candidates.json)" = "$(jq -c '.still_true_ids|sort' 29.5-07-d12-fix.json)"
+-> EQUAL (65 = 65, same ids). Between the 29.5-07 readback and this listing, no cron
+import and no triager changed the in-scope set.
+
+No PATCH and no other DefectDojo write was sent in Task 1. The reset waits for Task 2,
+where the operator approves this id list and chooses who runs it.
