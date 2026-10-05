@@ -470,13 +470,27 @@ Plans:
 
 ### Phase 29.6: Close 27 UAT item 3 (closed-PR reopen race) and refresh stale 27-HUMAN-UAT.md (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** 27-HUMAN-UAT.md matches the evidence: items 1-2 pass on a live re-read (schedule run 36553070357; homelab ci/main readback), and item 3 is settled by a live, scripted close-reopen-merge race on a deleted throwaway Mode B repository whose ruleset is first proven to enforce (UNSTABLE -> BLOCKED -> CLEAN), run on red head SHAs in two variants with three attempts each; if every attempt is blocked, item 3 passes and ADR-033 resolves ADR-024 NOT-verified item 2, otherwise the phase stops for the operator (D-11)
+**Requirements**: none (UAT closure)
 **Depends on:** Phase 29
-**Plans:** 0 plans
+**Plans:** 15 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 29.6 to break down)
+- [ ] 29.6-01-PLAN.md — live readback of UAT items 1-2 into evidence; 27-HUMAN-UAT items 1-2 pass (D-13, D-14, D-15, D-17)
+- [ ] 29.6-02-PLAN.md — scratch seed (Mode B caller, alpine Dockerfile, ruleset body) and operator bootstrap/PR scripts (D-02, D-03, D-05)
+- [ ] 29.6-03-PLAN.md — snap logger, close-run detector (proven on PR #21) and pre-coded verdict/refusal classifier (D-07, D-10, D-18, D-19)
+- [ ] 29.6-04-PLAN.md — operator race driver 29.6-race.sh with dry-run rehearsal (D-07, D-08, D-09, D-18, D-19)
+- [ ] 29.6-05-PLAN.md — v1 start, private scratch repo bootstrap, PR-0 report-only green, live contexts (D-01, D-02, D-03, D-04, D-20)
+- [ ] 29.6-06-PLAN.md — GATE_MODE=blocking, red set, UNSTABLE on SHA-2 (D-05, D-20)
+- [ ] 29.6-07-PLAN.md — ruleset POST + set-required-checks apply, BLOCKED on SHA-2, refusal classified (D-01, D-04, D-05, D-19)
+- [ ] 29.6-08-PLAN.md — CLEAN attribution, enforcement verdict, proceed/public-fallback gate (D-04, D-20)
+- [ ] 29.6-09-PLAN.md — race variant (a), 3 attempts on red PRs, D-11 gate (D-08, D-09, D-10, D-11, D-18)
+- [ ] 29.6-10-PLAN.md — race variant (b), 3 attempts on red PRs, final D-11 gate (D-08, D-09, D-11, D-12)
+- [ ] 29.6-11-PLAN.md — v1 end, evidence manifest, operator repo delete, 404 readback (D-02, D-06)
+- [ ] 29.6-12-PLAN.md — 27-HUMAN-UAT item 3, 27-VERIFICATION append, milestone audit annotations (D-12, D-16, D-17)
+- [ ] 29.6-13-PLAN.md — ADR-033 and ADR index row resolving ADR-024 NOT-verified item 2 (D-12, D-16, D-19)
+- [ ] 29.6-14-PLAN.md — conditional D-04 public fallback, part 1: gate token from the plan 08 ruling (no-op when private enforcement proven), public flip, ruleset DELETE, GATE_MODE unset, fresh pr0p, UNSTABLE replay (D-01, D-04, D-05, D-20)
+- [ ] 29.6-15-PLAN.md — conditional D-04 public fallback, part 2: BLOCKED, refusal and CLEAN replay with -public verdict and ruling; writes evidence/29.6-race-target.json on every path (D-01, D-04, D-05, D-19, D-20)
 
 ### Phase 29.7: Bookkeeping: ROADMAP checkboxes, requirements-completed frontmatter, CLAUDE.md ADR range, gsd-sdk tooling ledger (INSERTED)
 
