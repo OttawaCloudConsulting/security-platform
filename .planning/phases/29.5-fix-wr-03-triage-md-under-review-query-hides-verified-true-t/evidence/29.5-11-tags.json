@@ -1,0 +1,132 @@
+{
+  "captured_at": "2026-10-05T03:54:22Z",
+  "method": "ADR-018 API verification (gh api git/ref/tags/*, git/tags/*, git/ref/heads/main) + git ls-remote --tags origin + local rev-parse",
+  "operator_reply": "approve",
+  "operator_reply_verbatim": "Approve",
+  "operator_reply_channel": "relayed verbatim by the execute-phase orchestrator from the human user after the Task 2 checkpoint:decision",
+  "tagged_at": "2026-10-05T03:53:31Z",
+  "release_sha": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c",
+  "pr_a": {
+    "number": 35,
+    "merge_commit": "a53f6fb773a782411a9d32ea5457d8d2a31ba465"
+  },
+  "pr_b": {
+    "number": 36,
+    "merge_commit": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c"
+  },
+  "origin_main": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c",
+  "v1": {
+    "sha": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c",
+    "type": "commit"
+  },
+  "v1_4_0": {
+    "sha": "07bac542cdacdc754b19ff377ec36ba5cbf895d7",
+    "type": "tag",
+    "url": "https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/tags/07bac542cdacdc754b19ff377ec36ba5cbf895d7"
+  },
+  "v1_4_0_tag_object": {
+    "tag": "v1.4.0",
+    "object": {
+      "sha": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c",
+      "type": "commit",
+      "url": "https://api.github.com/repos/OttawaCloudConsulting/security-platform/git/commits/6c0d5319b1c328f135b47acd47e1a5e92ae2b10c"
+    },
+    "tagger": {
+      "name": "OCC",
+      "date": "2026-10-05T03:53:32Z"
+    },
+    "signature_verified": false,
+    "message_byte_identical_to_evidence_tag_message": true,
+    "message_bytes": 2508
+  },
+  "v1_4_0_commit": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c",
+  "v1_3_0": {
+    "sha": "21c50379710bd945c55d4f8a18cc205bb6b6bfca",
+    "type": "tag",
+    "commit": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67",
+    "unchanged": true
+  },
+  "v1_previous": {
+    "type": "commit",
+    "sha": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67"
+  },
+  "local_rev_parse": {
+    "v1^{}": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c",
+    "v1.4.0^{}": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c",
+    "v1.3.0^{}": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67",
+    "v1_object_type": "commit"
+  },
+  "d16_2": {
+    "v1_deref": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c",
+    "v1_4_0_deref": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c",
+    "equal_to_release": true,
+    "verdict": "PASS"
+  },
+  "ls_remote_tags_before": [
+    "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67\trefs/tags/v1",
+    "fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4\trefs/tags/v1.0.0",
+    "cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef\trefs/tags/v1.0.0^{}",
+    "414fd3beb5a6d79d52316150a192803a4b0ece78\trefs/tags/v1.1.0",
+    "0f7e4e141d2a300d4be9a54efc137eb4510bb7ea\trefs/tags/v1.1.0^{}",
+    "c1565b35e88de4e70e61d79292943c15b3fe67f6\trefs/tags/v1.1.1",
+    "917352c00987023fa5ff1e6cdabc16987eb114dd\trefs/tags/v1.1.1^{}",
+    "b8ae59df7dcf6aec798dac699ca334d68812939d\trefs/tags/v1.2.0",
+    "fdabac9464f2baaeaa276f8934dc8d353295b355\trefs/tags/v1.2.0^{}",
+    "21c50379710bd945c55d4f8a18cc205bb6b6bfca\trefs/tags/v1.3.0",
+    "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67\trefs/tags/v1.3.0^{}",
+    "8d47cf9f86e9f79a42a57a2b4298d34b5dcda449\trefs/tags/v2.0",
+    "c6395e145643c21a724df9225f3a5210d5d98bde\trefs/tags/v2.0^{}"
+  ],
+  "ls_remote_tags_after": [
+    "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c\trefs/tags/v1",
+    "fabc3e35b8e64c8bbc7fe311c45d43ea8c33cfd4\trefs/tags/v1.0.0",
+    "cdf2c211ed4c4397e8b3fed9e25cec93ffaca5ef\trefs/tags/v1.0.0^{}",
+    "414fd3beb5a6d79d52316150a192803a4b0ece78\trefs/tags/v1.1.0",
+    "0f7e4e141d2a300d4be9a54efc137eb4510bb7ea\trefs/tags/v1.1.0^{}",
+    "c1565b35e88de4e70e61d79292943c15b3fe67f6\trefs/tags/v1.1.1",
+    "917352c00987023fa5ff1e6cdabc16987eb114dd\trefs/tags/v1.1.1^{}",
+    "b8ae59df7dcf6aec798dac699ca334d68812939d\trefs/tags/v1.2.0",
+    "fdabac9464f2baaeaa276f8934dc8d353295b355\trefs/tags/v1.2.0^{}",
+    "21c50379710bd945c55d4f8a18cc205bb6b6bfca\trefs/tags/v1.3.0",
+    "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67\trefs/tags/v1.3.0^{}",
+    "07bac542cdacdc754b19ff377ec36ba5cbf895d7\trefs/tags/v1.4.0",
+    "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c\trefs/tags/v1.4.0^{}",
+    "8d47cf9f86e9f79a42a57a2b4298d34b5dcda449\trefs/tags/v2.0",
+    "c6395e145643c21a724df9225f3a5210d5d98bde\trefs/tags/v2.0^{}"
+  ],
+  "other_tags_unchanged": "v1.0.0, v1.1.0, v1.1.1, v1.2.0, v1.3.0, v2.0 byte-identical in ls-remote before/after; only v1 moved (aa48081 -> 6c0d531) and v1.4.0 added",
+  "d16_4_external_callers": {
+    "confirmation_requested": true,
+    "confirmation_given": false,
+    "operator_reply_verbatim": "Approve",
+    "note": "The Task 2 checkpoint asked the operator to confirm there are no @v1 callers outside the org. The reply \"Approve\" approves the release but does not state that confirmation. No confirmation is inferred.",
+    "limit_stands": "only OttawaCloudConsulting default branches visible to this token; callers in personal accounts, other orgs, private repos outside the org or on non-default branches cannot be enumerated; operator to confirm"
+  },
+  "github_release_created": false,
+  "not_done": [
+    "no Dependabot PR merged",
+    "no workflow dispatched",
+    "no other tag created or moved"
+  ],
+  "rollback": "git -C repos/security-platform tag -f v1 aa48081681ee1e578c50d6a0d9e5ead6ff6afc67 && git -C repos/security-platform push -f origin refs/tags/v1 (v1.4.0 stays; @v1.3.0 is the immutable escape hatch)",
+  "doing_expect": {
+    "pre_checks": {
+      "origin_main": "6c0d5319b1c328f135b47acd47e1a5e92ae2b10c (== R)",
+      "v1": "aa48081681ee1e578c50d6a0d9e5ead6ff6afc67, type commit",
+      "v1_4_0": "absent locally and in ls-remote",
+      "verdict": "PASS, so tagging proceeded"
+    },
+    "doing": [
+      "git tag -a v1.4.0 R -F evidence/29.5-11-tag-message.txt",
+      "git push origin v1.4.0",
+      "git tag -f v1 R",
+      "git push -f origin refs/tags/v1"
+    ],
+    "expect": "push 1 creates [new tag] v1.4.0; push 2 force-updates v1 aa48081...6c0d531; API v1 = commit R, v1.4.0 = tag object that dereferences to R",
+    "result": {
+      "push_v1_4_0": "* [new tag] v1.4.0 -> v1.4.0",
+      "push_v1": "+ aa48081...6c0d531 v1 -> v1 (forced update)",
+      "match": true
+    }
+  }
+}
