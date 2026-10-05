@@ -849,6 +849,11 @@ because the job is not a required check. Never make it one. A cancelled cleanup 
   the old SHA-tagged image findings and creates the new set. False Positive, Out of Scope or Risk
   Accepted dispositions on the old image findings must be set again on the new ones. Repositories
   with no Dockerfile see no change.
+- **Upgrading to `v1.4.0` puts Trivy findings in the untriaged queue.** From `v1.4.0` the import
+  sends `verified=false`, so Trivy findings (dependency and container-image) enter Under Review like
+  every other finding, and Verified means a triager confirmed the finding. Findings imported before
+  the upgrade keep `verified=true` until the one-time reset in TRIAGE.md is run. A finding that is
+  fixed and later comes back returns unverified.
 - **Triage only on the default branch.** Disposition findings on the `ci/<default>` engagement, for
   example `ci/main`, never on a `ci/<pr-branch>` engagement: that engagement is deleted when the PR
   closes, and a disposition set there is lost.
