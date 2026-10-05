@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: ready_to_plan
-stopped_at: Phase 29.5 complete (12/12) — ready to discuss Phase 29.6
-last_updated: 2026-10-05T18:21:30.502Z
+status: planning
+stopped_at: Phase 29.6 context gathered
+last_updated: "2026-10-05T21:28:26.729Z"
 last_activity: 2026-10-05
 progress:
   total_phases: 7
   completed_phases: 7
   total_plans: 75
-  completed_plans: 118
+  completed_plans: 75
   percent: 100
 ---
 
@@ -582,9 +582,9 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-10-05T04:02:56.649Z
-Stopped at: Completed 29.5-12-PLAN.md
-Resume file: None
+Last session: 2026-10-05T21:28:26.706Z
+Stopped at: Phase 29.6 context gathered
+Resume file: .planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-CONTEXT.md
 
 ## Operator Next Steps
 
