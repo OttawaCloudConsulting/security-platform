@@ -1,0 +1,440 @@
+# 29.5-02 offline self-test of 29.5-ci-main-verified-diff.sh
+
+Generated: 2026-10-04T23:54:23Z
+B (real Phase 29.4 ci/main snapshot, unchanged): .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-main-after-pr-b-snapshot.json
+B sha256: 979b4979975f648e478dc94ba894d127f4022167a2a4b922e9ae9dc346eedb75
+Scratch copies built with jq in the session scratchpad (B never edited).
+Synthetic new finding id = max id + 1 = 1216; flipped non-Trivy finding id = 1; kept-true id in case 6 = 23
+
+## Case 1: fix, B vs B
+
+Command: bash .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-ci-main-verified-diff.sh --mode fix --before .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-main-after-pr-b-snapshot.json --after .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-main-after-pr-b-snapshot.json --out <scratch>
+Exit: 0 (expected 0)
+Stderr:
+Verdict JSON:
+  {
+    "mode": "fix",
+    "verdict": "PASS",
+    "engagement_id": 1,
+    "trivy_test_ids": {
+      "trivy-fs": 3,
+      "trivy-image": 4
+    },
+    "counts": {
+      "before_open_trivy": 65,
+      "before_open_trivy_true": 65,
+      "still_true": 65,
+      "now_false": 0,
+      "no_longer_open": 0,
+      "new_trivy": 0,
+      "new_trivy_open": 0,
+      "new_trivy_open_true": 0,
+      "non_trivy_verified_changed": 0
+    },
+    "reset_needed": true,
+    "still_true_ids": "65 ids",
+    "now_false_ids": "0 ids",
+    "new_trivy": [],
+    "failures": [],
+    "reset_ids": null
+  }
+Check: .verdict=="PASS" and .counts.before_open_trivy==65 and .counts.still_true==65 and .reset_needed==true and (.failures|length)==0
+RESULT: MATCH
+
+## Case 2: fix, B vs all open Trivy verified=false
+
+Command: bash .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-ci-main-verified-diff.sh --mode fix --before .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-main-after-pr-b-snapshot.json --after <scratch>/all-false.json --out <scratch>
+Exit: 0 (expected 0)
+Stderr:
+Verdict JSON:
+  {
+    "mode": "fix",
+    "verdict": "PASS",
+    "engagement_id": 1,
+    "trivy_test_ids": {
+      "trivy-fs": 3,
+      "trivy-image": 4
+    },
+    "counts": {
+      "before_open_trivy": 65,
+      "before_open_trivy_true": 65,
+      "still_true": 0,
+      "now_false": 65,
+      "no_longer_open": 0,
+      "new_trivy": 0,
+      "new_trivy_open": 0,
+      "new_trivy_open_true": 0,
+      "non_trivy_verified_changed": 0
+    },
+    "reset_needed": false,
+    "still_true_ids": "0 ids",
+    "now_false_ids": "65 ids",
+    "new_trivy": [],
+    "failures": [],
+    "reset_ids": null
+  }
+Check: .verdict=="PASS" and .counts.still_true==0 and .counts.now_false==65 and .reset_needed==false
+RESULT: MATCH
+
+## Case 3: fix, B vs one synthetic new verified Trivy finding
+
+Command: bash .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-ci-main-verified-diff.sh --mode fix --before .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-main-after-pr-b-snapshot.json --after <scratch>/new-trivy-true.json --out <scratch>
+Exit: 1 (expected 1)
+Stderr:
+Verdict JSON:
+  {
+    "mode": "fix",
+    "verdict": "FAIL",
+    "engagement_id": 1,
+    "trivy_test_ids": {
+      "trivy-fs": 3,
+      "trivy-image": 4
+    },
+    "counts": {
+      "before_open_trivy": 65,
+      "before_open_trivy_true": 65,
+      "still_true": 65,
+      "now_false": 0,
+      "no_longer_open": 0,
+      "new_trivy": 1,
+      "new_trivy_open": 1,
+      "new_trivy_open_true": 1,
+      "non_trivy_verified_changed": 0
+    },
+    "reset_needed": true,
+    "still_true_ids": "65 ids",
+    "now_false_ids": "0 ids",
+    "new_trivy": [
+      {
+        "id": 1216,
+        "test": 4,
+        "verified": true,
+        "active": true,
+        "duplicate": false,
+        "is_mitigated": false
+      }
+    ],
+    "failures": [
+      {
+        "code": "NEW_TRIVY_VERIFIED",
+        "detail": "new triage-open Trivy finding(s) read verified=true after the fix (the import still verifies)",
+        "ids": [
+          1216
+        ]
+      }
+    ],
+    "reset_ids": null
+  }
+Check: [.failures[]|.code]==["NEW_TRIVY_VERIFIED"] and .failures[0].ids==[1216]
+RESULT: MATCH
+
+## Case 4: fix, B vs one non-Trivy verified flip
+
+Command: bash .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-ci-main-verified-diff.sh --mode fix --before .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-main-after-pr-b-snapshot.json --after <scratch>/non-trivy-flip.json --out <scratch>
+Exit: 1 (expected 1)
+Stderr:
+Verdict JSON:
+  {
+    "mode": "fix",
+    "verdict": "FAIL",
+    "engagement_id": 1,
+    "trivy_test_ids": {
+      "trivy-fs": 3,
+      "trivy-image": 4
+    },
+    "counts": {
+      "before_open_trivy": 65,
+      "before_open_trivy_true": 65,
+      "still_true": 65,
+      "now_false": 0,
+      "no_longer_open": 0,
+      "new_trivy": 0,
+      "new_trivy_open": 0,
+      "new_trivy_open_true": 0,
+      "non_trivy_verified_changed": 1
+    },
+    "reset_needed": true,
+    "still_true_ids": "65 ids",
+    "now_false_ids": "0 ids",
+    "new_trivy": [],
+    "failures": [
+      {
+        "code": "NON_TRIVY_VERIFIED_CHANGED",
+        "detail": "non-Trivy finding(s) whose verified changed",
+        "ids": [
+          1
+        ]
+      }
+    ],
+    "reset_ids": null
+  }
+Check: [.failures[]|.code]==["NON_TRIVY_VERIFIED_CHANGED"] and .failures[0].ids==[1]
+RESULT: MATCH
+
+## Case 5: reset, B vs case-2 copy
+
+Command: bash .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-ci-main-verified-diff.sh --mode reset --before .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-main-after-pr-b-snapshot.json --after <scratch>/all-false.json --out <scratch>
+Exit: 0 (expected 0)
+Stderr:
+Verdict JSON:
+  {
+    "mode": "reset",
+    "verdict": "PASS",
+    "engagement_id": 1,
+    "trivy_test_ids": {
+      "trivy-fs": 3,
+      "trivy-image": 4
+    },
+    "counts": {
+      "before_open_trivy_true": 65,
+      "reset_count": 65,
+      "after_open_trivy_true": 0,
+      "non_trivy_verified_changed": 0,
+      "out_of_scope_trivy_changed": 0
+    },
+    "reset_ids": "65 ids",
+    "failures": [],
+    "still_true_ids": null,
+    "now_false_ids": null
+  }
+Check: .verdict=="PASS" and .counts.reset_count==65 and .counts.after_open_trivy_true==0
+RESULT: MATCH
+
+## Case 6: reset, B vs all but one open Trivy set false
+
+Command: bash .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-ci-main-verified-diff.sh --mode reset --before .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-main-after-pr-b-snapshot.json --after <scratch>/all-but-one-false.json --out <scratch>
+Exit: 1 (expected 1)
+Stderr:
+Verdict JSON:
+  {
+    "mode": "reset",
+    "verdict": "FAIL",
+    "engagement_id": 1,
+    "trivy_test_ids": {
+      "trivy-fs": 3,
+      "trivy-image": 4
+    },
+    "counts": {
+      "before_open_trivy_true": 65,
+      "reset_count": 64,
+      "after_open_trivy_true": 1,
+      "non_trivy_verified_changed": 0,
+      "out_of_scope_trivy_changed": 0
+    },
+    "reset_ids": "64 ids",
+    "failures": [
+      {
+        "code": "RESET_INCOMPLETE",
+        "detail": "triage-open Trivy finding(s) still read verified=true after the reset",
+        "ids": [
+          23
+        ]
+      }
+    ],
+    "still_true_ids": null,
+    "now_false_ids": null
+  }
+Check: [.failures[]|.code]==["RESET_INCOMPLETE"] and .failures[0].ids==[23] and .counts.reset_count==64
+RESULT: MATCH
+
+## Case 7: reset, B vs case-2 copy plus one non-Trivy flip
+
+Command: bash .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-ci-main-verified-diff.sh --mode reset --before .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-main-after-pr-b-snapshot.json --after <scratch>/all-false-non-trivy-flip.json --out <scratch>
+Exit: 1 (expected 1)
+Stderr:
+Verdict JSON:
+  {
+    "mode": "reset",
+    "verdict": "FAIL",
+    "engagement_id": 1,
+    "trivy_test_ids": {
+      "trivy-fs": 3,
+      "trivy-image": 4
+    },
+    "counts": {
+      "before_open_trivy_true": 65,
+      "reset_count": 65,
+      "after_open_trivy_true": 0,
+      "non_trivy_verified_changed": 1,
+      "out_of_scope_trivy_changed": 0
+    },
+    "reset_ids": "65 ids",
+    "failures": [
+      {
+        "code": "RESET_SCOPE_NON_TRIVY",
+        "detail": "the reset changed verified on non-Trivy finding(s)",
+        "ids": [
+          1
+        ]
+      }
+    ],
+    "still_true_ids": null,
+    "now_false_ids": null
+  }
+Check: [.failures[]|.code]==["RESET_SCOPE_NON_TRIVY"] and .failures[0].ids==[1]
+RESULT: MATCH
+
+## Case 8: guard, trivy-fs Test removed from .tests
+
+Command: bash .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-ci-main-verified-diff.sh --mode fix --before .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-main-after-pr-b-snapshot.json --after <scratch>/no-trivy-fs.json --out <scratch>
+Exit: 2 (expected 2)
+Stderr:
+  ERROR: <scratch>/no-trivy-fs.json has 0 Tests titled trivy-fs with scan_type Trivy Scan, expected 1
+Verdict JSON:
+  (none)
+Check: exit code only
+RESULT: MATCH
+
+Case 8 named reason present: yes
+
+Cases 9 and 10 are additions beyond the plan's eight cases, so that every failure code is proven to fire.
+Case 10 flips non-triage-open Trivy finding id 22 (test 3, active=false, risk_accepted=true).
+
+## Case 9: fix, all-false copy as before vs B as after (open Trivy false to true)
+
+Command: bash .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-ci-main-verified-diff.sh --mode fix --before <scratch>/all-false.json --after .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-main-after-pr-b-snapshot.json --out <scratch>
+Exit: 1 (expected 1)
+Stderr:
+Verdict JSON:
+  {
+    "mode": "fix",
+    "verdict": "FAIL",
+    "engagement_id": 1,
+    "trivy_test_ids": {
+      "trivy-fs": 3,
+      "trivy-image": 4
+    },
+    "counts": {
+      "before_open_trivy": 65,
+      "before_open_trivy_true": 0,
+      "still_true": 65,
+      "now_false": 0,
+      "no_longer_open": 0,
+      "new_trivy": 0,
+      "new_trivy_open": 0,
+      "new_trivy_open_true": 0,
+      "non_trivy_verified_changed": 0
+    },
+    "reset_needed": true,
+    "still_true_ids": "65 ids",
+    "now_false_ids": "0 ids",
+    "new_trivy": [],
+    "failures": [
+      {
+        "code": "TRIVY_BECAME_VERIFIED",
+        "detail": "Trivy finding(s) open on both sides that went from verified=false to verified=true",
+        "ids": [
+          23,
+          24,
+          25,
+          26,
+          27,
+          1156,
+          1157,
+          1158,
+          1159,
+          1160,
+          1161,
+          1162,
+          1163,
+          1164,
+          1165,
+          1166,
+          1167,
+          1168,
+          1169,
+          1170,
+          1171,
+          1172,
+          1173,
+          1174,
+          1175,
+          1176,
+          1177,
+          1178,
+          1179,
+          1180,
+          1181,
+          1182,
+          1183,
+          1184,
+          1185,
+          1186,
+          1187,
+          1188,
+          1189,
+          1190,
+          1191,
+          1192,
+          1193,
+          1194,
+          1195,
+          1196,
+          1197,
+          1198,
+          1199,
+          1200,
+          1201,
+          1202,
+          1203,
+          1204,
+          1205,
+          1206,
+          1207,
+          1208,
+          1209,
+          1210,
+          1211,
+          1212,
+          1213,
+          1214,
+          1215
+        ]
+      }
+    ],
+    "reset_ids": null
+  }
+Check: [.failures[]|.code]==["TRIVY_BECAME_VERIFIED"] and (.failures[0].ids|length)==65
+RESULT: MATCH
+
+## Case 10: reset, B vs case-2 copy plus one non-open Trivy verified flip
+
+Command: bash .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-ci-main-verified-diff.sh --mode reset --before .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/evidence/29.4-main-after-pr-b-snapshot.json --after <scratch>/all-false-nonopen-trivy-flip.json --out <scratch>
+Exit: 1 (expected 1)
+Stderr:
+Verdict JSON:
+  {
+    "mode": "reset",
+    "verdict": "FAIL",
+    "engagement_id": 1,
+    "trivy_test_ids": {
+      "trivy-fs": 3,
+      "trivy-image": 4
+    },
+    "counts": {
+      "before_open_trivy_true": 65,
+      "reset_count": 65,
+      "after_open_trivy_true": 0,
+      "non_trivy_verified_changed": 0,
+      "out_of_scope_trivy_changed": 1
+    },
+    "reset_ids": "65 ids",
+    "failures": [
+      {
+        "code": "RESET_SCOPE_TRIVY",
+        "detail": "the reset changed verified on Trivy finding(s) that were not triage-open before",
+        "ids": [
+          22
+        ]
+      }
+    ],
+    "still_true_ids": null,
+    "now_false_ids": null
+  }
+Check: [.failures[]|.code]==["RESET_SCOPE_TRIVY"] and .failures[0].ids==[22]
+RESULT: MATCH
+
+## Totals
+
+MATCH: 10  MISMATCH: 0
+B unchanged: yes
