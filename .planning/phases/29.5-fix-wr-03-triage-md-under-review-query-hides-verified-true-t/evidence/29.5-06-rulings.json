@@ -1,0 +1,17 @@
+{
+  "captured_at": "2026-10-05T01:07:18Z",
+  "reactivation_ruling": "accept",
+  "operator_reply_verbatim": "accept",
+  "operator_comment": null,
+  "reset_predicted_needed": true,
+  "step5_verified": false,
+  "pr_a": {
+    "number": 35,
+    "repo": "OttawaCloudConsulting/security-platform",
+    "head_sha": "d2e813d9a67369b40f4202d33b357bb4fe4911e6",
+    "state_at_ruling": "OPEN"
+  },
+  "l36_l40_sentence_allowed": true,
+  "d05_note": "reset_predicted_needed is the kind prediction only; the binding D-05 decision is made from the live readback in plan 07",
+  "source_kind_results": ".planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/evidence/29.5-06-kind-results.json"
+}
