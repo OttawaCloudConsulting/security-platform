@@ -124,7 +124,12 @@ set -euo pipefail
 # D-04; --hook only, last, in fresh products proof/verified-new,
 # proof/verified-old, proof/verified-newreimport: committed body lands every
 # finding verified=false; the body without the field lands non-duplicate Trivy
-# findings verified=true).
+# findings verified=true); P-VERIFIED-RESET (D-05/D-11 measurement, printed:
+# pre-fix verified=true Trivy ids after a committed-body reimport, then reset
+# persistence), P-VERIFIED-TRIAGER (D-06: a triager-set Verified survives the
+# committed-body reimport; a FAIL is the D-07 stop) and P-VERIFIED-REACTIVATE
+# (D-07 measurement, printed: a triager-Verified finding mitigated and then
+# reactivated, in fresh product proof/verified-reactivate).
 #
 # Every committed-body run (dd-gate, dd-import, dd-verify, dd-delete,
 # dd-cleanup-verify) uses the ci-importer token. The one exception is
@@ -2718,9 +2723,8 @@ PY
 # between the marker lines is extracted verbatim by the offline proof.
 # Exit codes: 0 written; 3 no unique element or fewer than 2 elements; 4 the
 # count did not drop by exactly 1; 5 any other JSON shape. The report goes to
-# OUT_FILE.log. Called by P-VERIFIED-REACTIVATE (29.5-04); until then only
-# the offline proof runs it.
-# shellcheck disable=SC2329  # see above: the 29.5-04 caller lands next
+# OUT_FILE.log. Called by P-VERIFIED-REACTIVATE (vf_reactivate) and by the
+# offline proof.
 vf_drop_one() {
   local src_file="$1" out_file="$2" rc=0
   rm -f "$out_file"
@@ -2953,6 +2957,314 @@ verified_import_settle() {
   return 0
 }
 
+# vf_patch_verified LABEL ID BOOL: one admin PATCH {"verified": BOOL} on
+# finding ID, the triager stand-in of P-VERIFIED-TRIAGER, P-VERIFIED-RESET
+# and P-VERIFIED-REACTIVATE. The write shape is the P-DISPOSITION one
+# (disposition_write): the admin header by path (-H @file), the JSON body
+# from a 0600 file removed after use, api_call (curl -q first). A failure is
+# a named proof_fail under LABEL and a return 1, never an abort, so earlier
+# groups stay visible. The response must echo verified=BOOL: a PATCH that
+# answered 200 without taking can then never pass for a reimport effect.
+vf_patch_verified() {
+  local label="$1" id="$2" want="$3" rc=0 res code got
+  local body="${PROOF_DIR}/vf-patch-${id}.json" resp="${PROOF_DIR}/vf-patch-${id}-resp.json"
+  jq -n --argjson v "$want" '{verified: $v}' > "$body"
+  chmod 600 "$body"
+  res="$(api_call "$resp" -X PATCH -H "@${PROOF_ADMIN_HDR}" -H 'Content-Type: application/json' \
+    --data-binary "@${body}" "${BASE_URL}/api/v2/findings/${id}/" 2>"${resp}.err")" || rc=$?
+  rm -f "$body"
+  code="${res%% *}"
+  if [ "$rc" -ne 0 ] || [ "$code" != "200" ]; then
+    proof_fail "$label" "PATCH verified=${want} on finding ${id} returned ${code:-none} (curl exit ${rc}; see ${resp}): $(snippet "$resp" "${resp}.err")"
+    return 1
+  fi
+  got="$(jq -r '.verified' "$resp" 2>/dev/null)" || got="unparseable"
+  if [ "$got" != "$want" ]; then
+    proof_fail "$label" "PATCH verified=${want} on finding ${id} returned 200 but the response reads verified=${got} (see ${resp})"
+    return 1
+  fi
+  echo "    ${label}: PATCH /api/v2/findings/${id}/ verified=${want} -> ${code}"
+}
+
+# vf_measure MODE READ IDS [PART]: the read-side verdicts of P-VERIFIED-RESET
+# and P-VERIFIED-TRIAGER on READ, a findings-by-id output. MODE reset: IDS are
+# the pre-fix verified=true Trivy ids; print still_true=<n> of <m> verbatim, a
+# measurement (PASS once every id was read back; the text says whether the
+# outcome equals the source prediction, all still true). MODE persist: IDS
+# were PATCHed verified=false and reimported once more; every one must read
+# verified=false. MODE triager: IDS is the one PATCHed verified=true finding
+# (PART a: non-Trivy, proof/verified-old; PART b: trivy-fs,
+# proof/verified-newreimport); it must still read verified=true, and a FAIL is
+# the D-07 STOP.
+vf_measure() {
+  local mode="$1" log="${PROOF_DIR}/assert-vf-$1-${4:-x}.log" a_rc=0 pid="P-VERIFIED-RESET"
+  [ "$mode" = "triager" ] && pid="P-VERIFIED-TRIAGER"
+  PROOF_VF_MODE="$mode" PROOF_VF_READ="$2" PROOF_VF_IDS="$3" PROOF_VF_PART="${4:-}" \
+    python3 - > "$log" 2>&1 <<'PY' || a_rc=$?
+import json
+import os
+import sys
+
+env = os.environ
+mode = env.get("PROOF_VF_MODE", "")
+pid = "P-VERIFIED-TRIAGER" if mode == "triager" else "P-VERIFIED-RESET"
+failures = 0
+
+
+def say(ok, detail):
+    global failures
+    print("PROOF: {} {} {}".format(pid, "PASS" if ok else "FAIL", detail))
+    if not ok:
+        failures += 1
+
+
+try:
+    with open(env["PROOF_VF_READ"], encoding="utf-8") as handle:
+        read = json.load(handle)
+    ids = [x.strip() for x in env.get("PROOF_VF_IDS", "").split(",") if x.strip()]
+    missing = [i for i in ids if i not in read]
+    if mode == "reset":
+        true_ids = [i for i in ids if i in read and read[i]["verified"] is True]
+        false_ids = [i for i in ids if i in read and read[i]["verified"] is False]
+        n, m = len(true_ids), len(ids)
+        if missing:
+            say(False, "measurement incomplete: {} of {} pre-fix Trivy ids missing from the readback: {}".format(
+                len(missing), m, ",".join(missing[:20])))
+        else:
+            say(True, "measured: still_true={} of {} pre-fix Trivy ids after the committed-body reimport "
+                "(source prediction: all still true; outcome {} prediction); now_false={}{}".format(
+                    n, m, "equals" if n == m else "differs from", len(false_ids),
+                    "" if not false_ids else "; now-false ids: " + ",".join(false_ids[:20])))
+    elif mode == "persist":
+        again = [i for i in ids if i in read and read[i]["verified"] is not False]
+        if missing or again:
+            say(False, "persistence: {} of {} reset ids read verified=true again after a further committed-body "
+                "reimport ({}){}".format(len(again), len(ids), ",".join(again[:20]) or "none",
+                                         "" if not missing else "; missing from the readback: " + ",".join(missing)))
+        else:
+            say(True, "persistence: {} reset ids still verified=false after a further committed-body reimport".format(
+                len(ids)))
+    elif mode == "triager":
+        part = env.get("PROOF_VF_PART", "")
+        what = "non-Trivy finding" if part == "a" else "trivy-fs finding"
+        fid = ids[0] if len(ids) == 1 else None
+        if fid is None or fid not in read:
+            say(False, "({}) {} {} missing from the readback; D-07 STOP condition unmeasured".format(
+                part, what, env.get("PROOF_VF_IDS", "")))
+        else:
+            f = read[fid]
+            name = "{} ({})".format(fid, f.get("test_title")) if part == "a" else fid
+            if f["verified"] is True:
+                say(True, "({}) {} {} PATCHed verified=true kept verified=true after the committed-body reimport "
+                    "(active={})".format(part, what, name, json.dumps(f["active"])))
+            else:
+                say(False, "({}) D-07 STOP: triager-set Verified cleared by reimport-scan with verified=false: {} {} "
+                    "PATCHed verified=true reads verified={} active={} after the committed-body reimport".format(
+                        part, what, name, json.dumps(f["verified"]), json.dumps(f["active"])))
+    else:
+        say(False, "unknown vf_measure mode {!r}".format(mode))
+except (OSError, KeyError, TypeError, ValueError) as exc:
+    say(False, "{} assertions aborted: {}".format(mode, exc))
+sys.exit(1 if failures else 0)
+PY
+  tally_assert_log "$log"
+  if [ "$a_rc" -ne 0 ] && ! grep -q "^PROOF: ${pid} FAIL" "$log"; then
+    proof_fail "$pid" "the ${mode} assertion script exited ${a_rc} without reporting a failed assertion (see ${log})"
+  fi
+}
+
+# The Trivy Tests of a snapshot, by the plan 03 rule (verified_assert): scan
+# type "Trivy Scan" and title trivy-fs or trivy-image.
+readonly VF_JQ_TRIVY='def trivy_tests: [.tests | to_entries[] | select(.value.scan_type == "Trivy Scan" and (.value.title == "trivy-fs" or .value.title == "trivy-image")) | .key];'
+
+# vf_old_continue REPORTS: P-VERIFIED-RESET (D-05, D-11) and
+# P-VERIFIED-TRIAGER (a) (D-06), continuing PROOF_VF_OLD_PRODUCT after the
+# old-body negative control (VF_OLD_SNAP). T_TRUE = the non-duplicate Trivy
+# ids reading verified=true; N = the lowest-id active, non-duplicate,
+# non-Trivy finding reading verified=false (gitleaks or semgrep preferred),
+# PATCHed verified=true. One committed-body reimport of REPORTS, then the same
+# ids are read back. Reset persistence: every T_TRUE id still true is PATCHed
+# verified=false (the one-time reset), one more committed-body reimport, and
+# each must still read false.
+vf_old_continue() {
+  local all="$1" t_true="" n_id="" still="" sel_rc=0 patch_ok=1 id ids pid="P-VERIFIED-RESET"
+  local read1="${PROOF_DIR}/vf-old-read-1.json" read2="${PROOF_DIR}/vf-old-read-2.json"
+  local -a still_ids
+  t_true="$(jq -r "${VF_JQ_TRIVY}"' trivy_tests as $t | [.findings[] | select((.test | tostring) as $x | $t | any(. == $x)) | select(.duplicate == false and .verified == true) | .id] | sort | map(tostring) | join(",")' "$VF_OLD_SNAP")" || sel_rc=$?
+  if [ "$sel_rc" -ne 0 ]; then
+    proof_fail "P-VERIFIED-RESET" "selecting the pre-fix verified=true Trivy ids from ${VF_OLD_SNAP} failed (jq exit ${sel_rc}); case skipped"
+    t_true=""
+  elif [ -z "$t_true" ]; then
+    proof_fail "P-VERIFIED-RESET" "no pre-fix verified=true Trivy ids to measure; mechanics broken"
+  else
+    echo "    P-VERIFIED-RESET: $(awk -F, '{ print NF }' <<< "$t_true") pre-fix non-duplicate Trivy ids read verified=true in ${PROOF_VF_OLD_PRODUCT}"
+  fi
+  sel_rc=0
+  n_id="$(jq -r "${VF_JQ_TRIVY}"' . as $s | trivy_tests as $t | [.findings[] | select((.test | tostring) as $x | $t | any(. == $x) | not) | select(.active == true and .duplicate == false and .verified == false)] as $c | (([$c[] | select($s.tests[(.test | tostring)].title as $ti | $ti == "gitleaks" or $ti == "semgrep")] | sort_by(.id) | .[0].id) // ($c | sort_by(.id) | .[0].id) // "none") | tostring' "$VF_OLD_SNAP")" || sel_rc=$?
+  if [ "$sel_rc" -ne 0 ] || ! [[ "$n_id" =~ ^[0-9]+$ ]]; then
+    proof_fail "P-VERIFIED-TRIAGER" "(a) no active, non-duplicate, non-Trivy finding reading verified=false in ${PROOF_VF_OLD_PRODUCT} (selection '${n_id}', jq exit ${sel_rc}); case skipped"
+    n_id=""
+  elif ! vf_patch_verified "P-VERIFIED-TRIAGER" "$n_id" true; then
+    n_id=""
+  fi
+  if [ -z "$t_true" ] && [ -z "$n_id" ]; then
+    return 0
+  fi
+  [ -z "$t_true" ] && pid="P-VERIFIED-TRIAGER"
+  verified_import_settle "$pid" "vf-old-reset-1" "$PROOF_VF_OLD_PRODUCT" "$all" "${PROOF_DIR}/vf-old-reset-1.json" || return 0
+  ids="${t_true}${t_true:+${n_id:+,}}${n_id}"
+  if ! findings_by_ids "$ids" "$read1"; then
+    proof_fail "$pid" "reading back ${ids} after the committed-body reimport failed: $(snippet "${read1}.err")"
+    return 0
+  fi
+  [ -n "$t_true" ] && vf_measure reset "$read1" "$t_true"
+  [ -n "$n_id" ] && vf_measure triager "$read1" "$n_id" a
+  [ -n "$t_true" ] || return 0
+
+  # Reset persistence (D-05): the one-time reset, simulated.
+  sel_rc=0
+  still="$(jq -r --arg ids "$t_true" '($ids | split(",")) as $w | [to_entries[] | select(.key as $k | $w | any(. == $k)) | select(.value.verified == true) | .key | tonumber] | sort | map(tostring) | join(",")' "$read1")" || sel_rc=$?
+  if [ "$sel_rc" -ne 0 ]; then
+    proof_fail "P-VERIFIED-RESET" "persistence: selecting the still-true ids from ${read1} failed (jq exit ${sel_rc})"
+    return 0
+  fi
+  if [ -z "$still" ]; then
+    proof_pass "P-VERIFIED-RESET" "persistence: not applicable (0 still true)"
+    return 0
+  fi
+  IFS=, read -r -a still_ids <<< "$still"
+  for id in "${still_ids[@]}"; do
+    vf_patch_verified "P-VERIFIED-RESET" "$id" false || patch_ok=0
+  done
+  if [ "$patch_ok" -ne 1 ]; then
+    return 0
+  fi
+  verified_import_settle "P-VERIFIED-RESET" "vf-old-reset-2" "$PROOF_VF_OLD_PRODUCT" "$all" "${PROOF_DIR}/vf-old-reset-2.json" || return 0
+  if ! findings_by_ids "$still" "$read2"; then
+    proof_fail "P-VERIFIED-RESET" "persistence: reading back ${still} after the further reimport failed: $(snippet "${read2}.err")"
+    return 0
+  fi
+  vf_measure persist "$read2" "$still"
+}
+
+# vf_read_x STEP ID: read finding ID (P-VERIFIED-REACTIVATE's X) into
+# VF_X_ACTIVE, VF_X_MIT and VF_X_VER, and print them. Returns 1 after a
+# named proof_fail when the read fails.
+vf_read_x() {
+  local step="$1" id="$2" out="${PROOF_DIR}/vf-react-x-${1}.json" state=""
+  VF_X_ACTIVE="?"
+  VF_X_MIT="?"
+  VF_X_VER="?"
+  if ! findings_by_ids "$id" "$out"; then
+    proof_fail "P-VERIFIED-REACTIVATE" "step ${step}: reading finding ${id} failed: $(snippet "${out}.err")"
+    return 1
+  fi
+  state="$(jq -r --arg id "$id" '.[$id] | "\(.active) \(.is_mitigated) \(.verified)"' "$out" 2>/dev/null)" || state=""
+  if [ -z "$state" ]; then
+    proof_fail "P-VERIFIED-REACTIVATE" "step ${step}: finding ${id} missing from the readback ${out}"
+    return 1
+  fi
+  read -r VF_X_ACTIVE VF_X_MIT VF_X_VER <<< "$state"
+  echo "    P-VERIFIED-REACTIVATE step ${step}: X=${id} active=${VF_X_ACTIVE} is_mitigated=${VF_X_MIT} verified=${VF_X_VER}"
+}
+
+# vf_reactivate: P-VERIFIED-REACTIVATE (D-07 measurement, RESEARCH Finding 4)
+# in PROOF_VF_REACTIVATE_PRODUCT, committed body, ci/main, one report:
+# gitleaks-results.json (REACTIVATE_REPORT, measured in
+# evidence/29.5-03-helpers-offline.txt: a top-level array of 18 with distinct
+# Fingerprints). FULL is the report as is, TRIM the vf_drop_one copy.
+#   0 import FULL                      S0
+#   1 import TRIM                      X = the one S0-active, non-duplicate
+#                                      finding the trim mitigates
+#   2 import FULL                      X reactivated (active, not mitigated)
+#   3 PATCH X verified=true            X verified=true, active
+#   4 import TRIM                      X mitigated; verified recorded
+#   5 import FULL                      X reactivated; verified recorded
+# X's active, is_mitigated and verified are printed after steps 2 to 5. The
+# verdict FAILs only on mechanics (steps 1 to 5 as above); the step 4 and 5
+# verified values are measurements for the operator ruling (plan 06), never a
+# pass condition. Source prediction: verified=false after the reactivation.
+vf_reactivate() {
+  local report="gitleaks-results.json" pid="P-VERIFIED-REACTIVATE" product="$PROOF_VF_REACTIVATE_PRODUCT"
+  local full="${PROOF_DIR}/reports-vf-react-full" trim="${PROOF_DIR}/reports-vf-react-trim"
+  local trimfile="${PROOF_DIR}/vf-react-trim-${report}" s0="${PROOF_DIR}/vf-react-0.json"
+  local r1="${PROOF_DIR}/vf-react-1-read.json" drop_rc=0 sel_rc=0 act0 mit x title dup
+  local s3_ver s3_act s4_ver s5_act s5_mit s5_ver
+  if [ ! -f "${DD_PROOF_REPORTS}/${report}" ]; then
+    proof_fail "$pid" "${report} is absent from ${DD_PROOF_REPORTS}; case skipped"
+    return 0
+  fi
+  vf_drop_one "${DD_PROOF_REPORTS}/${report}" "$trimfile" || drop_rc=$?
+  sed -e 's/^/    /' "${trimfile}.log"
+  if [ "$drop_rc" -ne 0 ]; then
+    proof_fail "$pid" "building the trimmed ${report} failed (exit ${drop_rc}): $(snippet "${trimfile}.log"); case skipped"
+    return 0
+  fi
+  rm -rf "$full" "$trim"
+  mkdir -p "$full" "$trim"
+  cp "${DD_PROOF_REPORTS}/${report}" "${full}/${report}"
+  cp "$trimfile" "${trim}/${report}"
+
+  verified_import_settle "$pid" "vf-react-0" "$product" "$full" "$s0" || return 0
+  act0="$(jq -r '[.findings[] | select(.active == true) | .id] | sort | map(tostring) | join(",")' "$s0")" || sel_rc=$?
+  if [ "$sel_rc" -ne 0 ] || [ -z "$act0" ]; then
+    proof_fail "$pid" "mechanics: no active finding after importing the full ${report} (jq exit ${sel_rc})"
+    return 0
+  fi
+  verified_import_settle "$pid" "vf-react-1" "$product" "$trim" "${PROOF_DIR}/vf-react-1.json" || return 0
+  if ! findings_by_ids "$act0" "$r1"; then
+    proof_fail "$pid" "step 1: reading back the S0-active ids failed: $(snippet "${r1}.err")"
+    return 0
+  fi
+  sel_rc=0
+  mit="$(jq -r '[.[] | select(.is_mitigated == true) | .id] | sort | map(tostring) | join(",")' "$r1")" || sel_rc=$?
+  if [ "$sel_rc" -ne 0 ] || [ -z "$mit" ] || [[ "$mit" == *,* ]]; then
+    proof_fail "$pid" "mechanics: $(awk -F, '{ print NF }' <<< "$mit") findings mitigated by the trimmed report, expected 1 (${mit:-none})"
+    return 0
+  fi
+  x="$mit"
+  sel_rc=0
+  dup="$(jq -r --argjson id "$x" '[.findings[] | select(.id == $id) | .duplicate] | .[0] | tostring' "$s0")" || sel_rc=$?
+  title="$(jq -r --arg id "$x" '.[$id].test_title // "?"' "$r1")" || title="?"
+  if [ "$sel_rc" -ne 0 ] || [ "$dup" != "false" ]; then
+    proof_fail "$pid" "mechanics: X=${x} (${title}) read duplicate=${dup} in S0, expected false (a duplicate takes a different reactivation branch)"
+    return 0
+  fi
+  echo "    ${pid} step 1: X=${x} (${title}) is the one finding the trimmed report mitigated"
+
+  verified_import_settle "$pid" "vf-react-2" "$product" "$full" "${PROOF_DIR}/vf-react-2.json" || return 0
+  vf_read_x 2 "$x" || return 0
+  if [ "$VF_X_ACTIVE" != "true" ] || [ "$VF_X_MIT" != "false" ]; then
+    proof_fail "$pid" "mechanics: step 2 full report did not reactivate X=${x}: active=${VF_X_ACTIVE} is_mitigated=${VF_X_MIT} verified=${VF_X_VER}"
+    return 0
+  fi
+  vf_patch_verified "$pid" "$x" true || return 0
+  vf_read_x 3 "$x" || return 0
+  s3_ver="$VF_X_VER"
+  s3_act="$VF_X_ACTIVE"
+  if [ "$s3_ver" != "true" ] || [ "$s3_act" != "true" ]; then
+    proof_fail "$pid" "mechanics: step 3 X=${x} reads active=${s3_act} verified=${s3_ver} after PATCH verified=true, expected both true"
+    return 0
+  fi
+  verified_import_settle "$pid" "vf-react-4" "$product" "$trim" "${PROOF_DIR}/vf-react-4.json" || return 0
+  vf_read_x 4 "$x" || return 0
+  s4_ver="$VF_X_VER"
+  if [ "$VF_X_MIT" != "true" ]; then
+    proof_fail "$pid" "mechanics: step 4 trimmed report did not mitigate X=${x}: active=${VF_X_ACTIVE} is_mitigated=${VF_X_MIT} verified=${VF_X_VER}"
+    return 0
+  fi
+  verified_import_settle "$pid" "vf-react-5" "$product" "$full" "${PROOF_DIR}/vf-react-5.json" || return 0
+  vf_read_x 5 "$x" || return 0
+  s5_act="$VF_X_ACTIVE"
+  s5_mit="$VF_X_MIT"
+  s5_ver="$VF_X_VER"
+  if [ "$s5_act" != "true" ] || [ "$s5_mit" != "false" ]; then
+    proof_fail "$pid" "mechanics: step 5 full report did not reactivate X=${x}: active=${s5_act} is_mitigated=${s5_mit} verified=${s5_ver}"
+    return 0
+  fi
+  proof_pass "$pid" "measured: X=${x} (${title}) step3 verified=${s3_ver} active=${s3_act}; step4 mitigated verified=${s4_ver}; step5 reactivated active=${s5_act} is_mitigated=${s5_mit} verified=${s5_ver} (source prediction: verified=false after reactivation)"
+}
+
 # prove_verified: P-VERIFIED-* (Phase 29.5 D-10, D-04, D-11). Runs last,
 # inside prove_dedup_triage (dedup on, async_wait set), in fresh products.
 # P-VERIFIED-BODY builds the old body (the committed dd-import body minus the
@@ -2965,11 +3277,17 @@ verified_import_settle() {
 # P-VERIFIED-NEWREIMPORT: in PROOF_VF_NEWREIMPORT_PRODUCT, ci/main from a
 # trivy-fs.json missing one True-mapping vulnerability, then the full file:
 # the one finding the reimporter creates must read verified=false.
+# P-VERIFIED-RESET (D-05, D-11) and P-VERIFIED-TRIAGER (a) continue
+# PROOF_VF_OLD_PRODUCT (vf_old_continue); P-VERIFIED-TRIAGER (b) PATCHes one
+# trivy-fs finding between the two NEWREIMPORT calls; P-VERIFIED-REACTIVATE
+# (D-07) runs in PROOF_VF_REACTIVATE_PRODUCT (vf_reactivate). RESET and
+# REACTIVATE print their values verbatim as measurements; a TRIAGER FAIL is
+# the D-07 STOP.
 # Every failure is a proof_fail followed by moving on (or return 0): earlier
 # groups, P-IMAGE-TAG included, must stay visible.
 prove_verified() {
   local committed="$DEDUP_B_IMPORT" old="${PROOF_DIR}/dd-import-old-body.sh"
-  local have_old=1 strip_rc=0 diff_rc=0 n_field counts call saved
+  local have_old=1 strip_rc=0 diff_rc=0 old_rc=0 n_field counts call saved
   local all="${PROOF_DIR}/reports-vf-all"
   echo
   echo "=== imports send verified=false; Trivy findings enter Under Review (P-VERIFIED-*) ==="
@@ -3025,7 +3343,6 @@ prove_verified() {
   else
     saved="$DEDUP_B_IMPORT"
     DEDUP_B_IMPORT="$old"
-    local old_rc=0
     verified_import_settle "P-VERIFIED-FALSE" "vf-old" "$PROOF_VF_OLD_PRODUCT" "$all" "$VF_OLD_SNAP" || old_rc=$?
     DEDUP_B_IMPORT="$saved"
     if [ "$old_rc" -eq 0 ]; then
@@ -3033,23 +3350,55 @@ prove_verified() {
     fi
   fi
 
-  # ── P-VERIFIED-NEWREIMPORT (D-04, T-29.5-10) ──────────────────────────────
+  # ── P-VERIFIED-RESET, P-VERIFIED-TRIAGER (a) (D-05, D-11, D-06, T-29.5-13/14)
+  if [ "$have_old" -eq 1 ] && [ "$old_rc" -eq 0 ]; then
+    vf_old_continue "$all"
+  else
+    proof_fail "P-VERIFIED-RESET" "skipped: the old-body negative control did not run, so ${PROOF_VF_OLD_PRODUCT} holds no pre-fix ids"
+    proof_fail "P-VERIFIED-TRIAGER" "(a) skipped: the old-body negative control did not run"
+  fi
+
+  # ── P-VERIFIED-NEWREIMPORT (D-04, T-29.5-10), P-VERIFIED-TRIAGER (b) (D-06)
   local trimmed="${PROOF_DIR}/reports-vf-trimmed" full="${PROOF_DIR}/reports-vf-trivyfs-full" drop_rc=0
+  local y_id="" y_rc=0 y_read="${PROOF_DIR}/vf-newreimport-y.json"
   vf_drop_trivy_fs "$DD_PROOF_REPORTS" "$trimmed" || drop_rc=$?
   sed -e 's/^/    /' "${trimmed}.log"
   if [ "$drop_rc" -ne 0 ]; then
     proof_fail "P-VERIFIED-NEWREIMPORT" "building the trimmed trivy-fs.json failed (exit ${drop_rc}): $(snippet "${trimmed}.log"); case skipped"
-    return 0
+    proof_fail "P-VERIFIED-TRIAGER" "(b) skipped: no trimmed trivy-fs.json (see P-VERIFIED-NEWREIMPORT)"
+  else
+    rm -rf "$full"
+    mkdir -p "$full"
+    cp "${DD_PROOF_REPORTS}/trivy-fs.json" "${full}/trivy-fs.json"
+    if verified_import_settle "P-VERIFIED-NEWREIMPORT" "vf-newreimport-1" "$PROOF_VF_NEWREIMPORT_PRODUCT" "$trimmed" \
+        "${PROOF_DIR}/vf-newreimport-1.json"; then
+      # Y: the lowest-id active, non-duplicate trivy-fs finding of S1. Its
+      # parser value was overridden to false, so a true after call 2 can only
+      # come from this PATCH. A failed PATCH skips only the Y readback.
+      y_id="$(jq -r '. as $s | [.findings[] | select($s.tests[(.test | tostring)].title == "trivy-fs" and .active == true and .duplicate == false and .verified == false)] | sort_by(.id) | (.[0].id // "none") | tostring' \
+        "${PROOF_DIR}/vf-newreimport-1.json")" || y_rc=$?
+      if [ "$y_rc" -ne 0 ] || ! [[ "$y_id" =~ ^[0-9]+$ ]]; then
+        proof_fail "P-VERIFIED-TRIAGER" "(b) no active, non-duplicate trivy-fs finding reading verified=false in ${PROOF_VF_NEWREIMPORT_PRODUCT} (selection '${y_id}', jq exit ${y_rc}); case skipped"
+        y_id=""
+      elif ! vf_patch_verified "P-VERIFIED-TRIAGER" "$y_id" true; then
+        y_id=""
+      fi
+      if verified_import_settle "P-VERIFIED-NEWREIMPORT" "vf-newreimport-2" "$PROOF_VF_NEWREIMPORT_PRODUCT" "$full" \
+          "${PROOF_DIR}/vf-newreimport-2.json"; then
+        verified_assert newreimport "${PROOF_DIR}/vf-newreimport-2.json" 2 "${PROOF_DIR}/vf-newreimport-1.json"
+        if [ -n "$y_id" ]; then
+          if findings_by_ids "$y_id" "$y_read"; then
+            vf_measure triager "$y_read" "$y_id" b
+          else
+            proof_fail "P-VERIFIED-TRIAGER" "(b) reading back finding ${y_id} failed: $(snippet "${y_read}.err")"
+          fi
+        fi
+      fi
+    fi
   fi
-  rm -rf "$full"
-  mkdir -p "$full"
-  cp "${DD_PROOF_REPORTS}/trivy-fs.json" "${full}/trivy-fs.json"
-  if verified_import_settle "P-VERIFIED-NEWREIMPORT" "vf-newreimport-1" "$PROOF_VF_NEWREIMPORT_PRODUCT" "$trimmed" \
-      "${PROOF_DIR}/vf-newreimport-1.json" &&
-    verified_import_settle "P-VERIFIED-NEWREIMPORT" "vf-newreimport-2" "$PROOF_VF_NEWREIMPORT_PRODUCT" "$full" \
-      "${PROOF_DIR}/vf-newreimport-2.json"; then
-    verified_assert newreimport "${PROOF_DIR}/vf-newreimport-2.json" 2 "${PROOF_DIR}/vf-newreimport-1.json"
-  fi
+
+  # ── P-VERIFIED-REACTIVATE (D-07 measurement, T-29.5-15) ───────────────────
+  vf_reactivate
   return 0
 }
 
@@ -3561,8 +3910,9 @@ PY
   # out of the set: its PR import would give two copies of one original and
   # P-SUPPRESS's "exactly one" would fail for a reason that is not a
   # suppression defect. Verified is not a criterion: the committed dd-import
-  # body sends no `verified` field and 3.3.200 lands these originals with
-  # verified=true (measured in 28-05). The FP PATCH clears it, because
+  # body sends verified=false (Phase 29.5), so originals imported by this
+  # harness land verified=false. The FP PATCH still sends verified=false,
+  # because findings imported before v1.4.0 can carry verified=true and
   # DefectDojo refuses a verified false positive.
   PROOF_DISP_SNAP="$disp_snap" PROOF_DISP_IDS="$disp_ids" \
     python3 - > "${disp_ids}.log" 2>&1 <<'PY' || sel_rc=$?
