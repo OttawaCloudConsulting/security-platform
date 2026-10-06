@@ -1,0 +1,110 @@
+29.6-07 Task 1: Default ruleset created and the five required contexts applied (operator-approved live writes)
+====================================================================================================
+
+Checkpoint question put to the operator by the orchestrator (AskUserQuestion, 2026-10-06):
+
+    Plan 07 Task 1 needs these live writes on the scratch repo: a POST that creates the Default ruleset,
+    a dry run, then one PUT that adds the 5 required checks with no bypass actors. Who runs them?
+
+Operator reply (verbatim, the option the human user selected, relayed by the orchestrator):
+
+    You run them now
+    ("I run commands 1 to 3 in order, check each rc and expected output, and stop on any mismatch.
+    The merge attempt comes later as a separate approval.")
+
+Who executed the commands: the orchestrating Claude session ran commands 1-3 below, in this session, on the
+operator's explicit instruction above. The operator did NOT type them. The plan's wording (operator runs them)
+was superseded by this explicit operator approval; it is recorded here as such. The merge attempt (Task 3) is
+NOT covered by this approval.
+
+Disclosures (D-01, D-05, T-29.6-24):
+  - bypass_actors is [] in the POST body and in the merged PUT document; no bypass actor is ever added (D-01).
+  - Self-lockout is accepted: the repo OttawaCloudConsulting/sp-reopen-race-scratch is disposable. Escape is
+    PUT enforcement: disabled, DELETE rulesets/<id>, or the D-06 repo delete; a ruleset does not gate its own
+    administration (D-05).
+  - set-required-checks.sh is PUT-only, so the ruleset was first created by a raw POST (D-05).
+  - The script's lockout banner is hard-coded to name security-platform; on this repo that text is harmless and
+    was ignored (research Pattern 3). No security-platform ruleset was touched: --repo names the scratch repo
+    explicitly and a dry run preceded the apply (T-29.6-24).
+  - --verify-sha is SHA-1 (the all-green report-only head), satisfying the script's ORDERING note: green in
+    report-only (plan 05), then red under blocking (plan 06), then apply.
+
+Pre-flight (read-only, prior executor): repos/security-platform/scripts/set-required-checks.sh identical to
+origin/main 6c0d531; 0 rulesets on the scratch repo; PR #1 OPEN on SHA-2 172d2c237f9ef6045d26df0b42a4e5d6b97ebee0,
+mergeStateStatus UNSTABLE, mergeable MERGEABLE; GATE_MODE=blocking; SHA-1 88ac58b2ffa0a00fa51878ea1ce233ec47ec647f
+had all five contexts success under app 15368.
+
+R     = OttawaCloudConsulting/sp-reopen-race-scratch
+PD    = /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-
+E     = $PD/evidence
+REPO  = /Users/christian/git-repos/OCC-github/development_environment/security_solution
+S     = /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad
+SHA-1 = 88ac58b2ffa0a00fa51878ea1ce233ec47ec647f   (pr0 "open" head_sha in 29.6-prs.jsonl)
+ID    = 24593937   (jq -r .id of 29.6-07-ruleset-created.json)
+
+Commands (all exited rc=0, in this order):
+  1. gh api --method POST repos/OttawaCloudConsulting/sp-reopen-race-scratch/rulesets --input $PD/29.6-seed/ruleset-default.json > $E/29.6-07-ruleset-created.json
+     (issued 2026-10-06T16:37:25Z, local clock)
+  2. bash $REPO/repos/security-platform/scripts/set-required-checks.sh --repo OttawaCloudConsulting/sp-reopen-race-scratch --ruleset 24593937 --out $E/29.6-07-ruleset-merged.json
+     (dry run)
+  3. bash $REPO/repos/security-platform/scripts/set-required-checks.sh --repo OttawaCloudConsulting/sp-reopen-race-scratch --ruleset 24593937 --out $E/29.6-07-ruleset-merged.json --verify-sha 88ac58b2ffa0a00fa51878ea1ce233ec47ec647f --apply --yes-i-understand-lockout
+     (issued 2026-10-06T16:37:43Z, local clock)
+
+Key results:
+  - POST rc=0; created id 24593937; name Default; enforcement active; bypass_actors []; current_user_can_bypass
+    never; rules [deletion, non_fast_forward] (the raw response is 29.6-07-ruleset-created.json, unmodified).
+  - Dry run rc=0: BEFORE [deletion, non_fast_forward] -> AFTER [deletion, non_fast_forward,
+    required_status_checks, pull_request]; "DRY RUN complete. No write made to GitHub."
+  - Apply rc=0: verify-sha OK at SHA-1 (all five contexts live, app id 15368); PUT ruleset 24593937; read-back
+    four rule types and the five contexts, each integration_id 15368, strict_required_status_checks_policy false.
+
+Notes:
+  - 29.6-07-ruleset-merged.json was written by both the dry run and the apply (same --out path; the apply
+    overwrote it). Its committed content is the apply's merged document, which is the body that was PUT.
+  - The issue timestamps above are the local clock at issue time, not server values. Server values are in the
+    responses: created_at 2026-10-06T12:37:25.754-04:00 (16:37:25.754Z), updated_at after the PUT
+    2026-10-06T12:37:45.230-04:00 (16:37:45.230Z).
+  - The server's PUT response carries pull_request parameters the merged document omits (required_reviewers,
+    allowed_merge_methods, require_extra_approval_for_unattributed_changes): server defaults, not a mismatch.
+  - Both stderr captures are empty (0 bytes). The script prints the PUT response without a trailing newline, so
+    "Read-back:" follows the JSON on the same line in the apply stdout; that is verbatim.
+  - Trailing whitespace is stripped from command output in this file (docs-repo pre-commit hook).
+  - Output below is copied from the session's raw capture files in $S.
+
+--- 1. 29.6-07-ruleset-created.json (raw POST response; rc=0) ---
+{"id":24593937,"name":"Default","target":"branch","source_type":"Repository","source":"OttawaCloudConsulting/sp-reopen-race-scratch","enforcement":"active","conditions":{"ref_name":{"exclude":[],"include":["~DEFAULT_BRANCH"]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"}],"node_id":"RRS_lACqUmVwb3NpdG9yec5T5mw2zgF3RhE","created_at":"2026-10-06T12:37:25.754-04:00","updated_at":"2026-10-06T12:37:25.782-04:00","bypass_actors":[],"current_user_can_bypass":"never","_links":{"self":{"href":"https://api.github.com/repos/OttawaCloudConsulting/sp-reopen-race-scratch/rulesets/24593937"},"html":{"href":"https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch/rules/24593937"}}}
+
+--- 2. 29.6-07-dryrun-stdout.txt ---
+BEFORE rule types: ['deletion', 'non_fast_forward']
+AFTER  rule types: ['deletion', 'non_fast_forward', 'required_status_checks', 'pull_request']
+Merged document written to /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-07-ruleset-merged.json
+Every pre-existing rule type preserved; 5 contexts added, each pinned to integration_id 15368.
+DRY RUN complete. No write made to GitHub. Merged document: /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-07-ruleset-merged.json
+
+--- 2. 29.6-07-dryrun-stderr.txt (0 bytes) ---
+--- 2. 29.6-07-dryrun-rc.txt ---
+0
+
+--- 3. 29.6-07-apply-stdout.txt ---
+verify-sha: checking five contexts appear live at 88ac58b2ffa0a00fa51878ea1ce233ec47ec647f (app.id 15368)
+verify-sha OK — all five contexts found live with app id 15368
+BEFORE rule types: ['deletion', 'non_fast_forward']
+AFTER  rule types: ['deletion', 'non_fast_forward', 'required_status_checks', 'pull_request']
+Merged document written to /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-07-ruleset-merged.json
+Every pre-existing rule type preserved; 5 contexts added, each pinned to integration_id 15368.
+APPLYING — PUT repos/OttawaCloudConsulting/sp-reopen-race-scratch/rulesets/24593937 from /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-07-ruleset-merged.json
+{"id":24593937,"name":"Default","target":"branch","source_type":"Repository","source":"OttawaCloudConsulting/sp-reopen-race-scratch","enforcement":"active","conditions":{"ref_name":{"exclude":[],"include":["~DEFAULT_BRANCH"]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":false,"do_not_enforce_on_create":false,"required_status_checks":[{"context":"security / SAST — Semgrep CE","integration_id":15368},{"context":"security / IaC — Checkov","integration_id":15368},{"context":"security / SCA — Trivy Filesystem","integration_id":15368},{"context":"security / Container — Trivy Image","integration_id":15368},{"context":"security / Secrets — Gitleaks","integration_id":15368}]}},{"type":"pull_request","parameters":{"required_approving_review_count":0,"dismiss_stale_reviews_on_push":false,"required_reviewers":[],"require_code_owner_review":false,"require_last_push_approval":false,"required_review_thread_resolution":false,"require_extra_approval_for_unattributed_changes":true,"allowed_merge_methods":["merge","squash","rebase"]}}],"node_id":"RRS_lACqUmVwb3NpdG9yec5T5mw2zgF3RhE","created_at":"2026-10-06T12:37:25.754-04:00","updated_at":"2026-10-06T12:37:45.230-04:00","bypass_actors":[],"current_user_can_bypass":"never","_links":{"self":{"href":"https://api.github.com/repos/OttawaCloudConsulting/sp-reopen-race-scratch/rulesets/24593937"},"html":{"href":"https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch/rules/24593937"}}}Read-back: repos/OttawaCloudConsulting/sp-reopen-race-scratch/rules/branches/main rule types:
+deletion
+non_fast_forward
+required_status_checks
+pull_request
+Read-back: required contexts on ruleset 24593937:
+security / SAST — Semgrep CE
+security / IaC — Checkov
+security / SCA — Trivy Filesystem
+security / Container — Trivy Image
+security / Secrets — Gitleaks
+
+--- 3. 29.6-07-apply-stderr.txt (0 bytes) ---
+--- 3. 29.6-07-apply-rc.txt ---
+0
