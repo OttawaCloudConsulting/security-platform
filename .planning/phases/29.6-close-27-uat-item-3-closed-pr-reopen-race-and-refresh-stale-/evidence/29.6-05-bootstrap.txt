@@ -1,0 +1,107 @@
+29.6-05 Task 2: scratch repo creation (bootstrap) and PR-0 open
+====================================================================================================
+
+Checkpoint question put to the operator by the orchestrator (AskUserQuestion, 2026-10-06):
+
+    Plan 05 says you, the operator, run the repo-creation and PR-0 commands yourself (live-write boundary,
+    ADR-019). Should I run them for you instead?
+
+Operator reply (verbatim, the option the human user selected, relayed by the orchestrator):
+
+    You run them now
+    ("I run bootstrap, then pr.sh open, from this session. Their output goes to the continuation executor,
+    which records it as operator-approved evidence.")
+
+Who executed the commands: the orchestrating Claude session ran both commands below, in this session, on the
+operator's explicit instruction above. The operator did NOT type them. The plan's original wording ("the agent
+does not run them") was superseded by this explicit operator approval; it is recorded here as such.
+
+Disclosures (plan 05 Task 2, a-d):
+  (a) a new PRIVATE repo OttawaCloudConsulting/sp-reopen-race-scratch is created (D-01, D-04) and seeded on main
+      with the Mode B caller (D-02), alpine Dockerfile, README;
+  (b) PR-0 (branch race/pr0) is opened, running five scans in report-only on private-repo Actions minutes
+      (~5 min per run; ~100-150 min across the phase, research Pitfall 9);
+  (c) no DefectDojo variable or secret is set (D-03);
+  (d) the repo is deleted at the end (D-06) only after evidence capture, as its own checkpoint.
+
+PD    = /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-
+CLONE = /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone
+
+Commands (both exited rc=0):
+  1. bash $PD/29.6-bootstrap.sh --clone-dir $CLONE
+  2. bash $PD/29.6-pr.sh open --clone-dir $CLONE --label pr0
+
+Key results: repo created PRIVATE (readback isPrivate true, visibility PRIVATE, owner OttawaCloudConsulting);
+main seed commit c10eecb; PR-0 = PR #1, branch race/pr0, head 88ac58b2ffa0a00fa51878ea1ce233ec47ec647f,
+opened 2026-10-06T16:21:42.912+00:00.
+
+Note: trailing whitespace is stripped from command output in this file (docs-repo pre-commit hook).
+Output below is copied from the session's raw capture files (29.6-05-bootstrap-out.txt, 29.6-05-pr0-out.txt).
+
+----------------------------------------------------------------------------------------------------
+Command 1 output: bash $PD/29.6-bootstrap.sh --clone-dir $CLONE   (rc=0)
+----------------------------------------------------------------------------------------------------
+=== 29.6-bootstrap — preconditions (nothing is written until all pass) ===
+clone dir (realpath)       : /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone
+clone parent (realpath)    : /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad
+  ok: clone dir is outside the planning repo
+  ok: clone dir does not exist
+  ok: seed files present in /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-seed
+gh login                   : OttawaCloudConsulting
+OttawaCloudConsulting type     : User
+  ok: authenticated as OttawaCloudConsulting (type User)
+gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch rc    : 1
+  ok: OttawaCloudConsulting/sp-reopen-race-scratch does not exist (HTTP 404)
+
+=== 29.6-bootstrap — writes ===
++ gh repo create OttawaCloudConsulting/sp-reopen-race-scratch --private --description Phase 29.6 throwaway; delete after evidence (D-06)
+https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch
++ git init -b main /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone
+Initialized empty Git repository in /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone/.git/
++ mkdir -p /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone/.github/workflows
++ cp /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-seed/pr-security.yml /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone/.github/workflows/pr-security.yml
++ cp /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-seed/Dockerfile /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone/Dockerfile
++ cp /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-seed/README.md /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone/README.md
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone add .github/workflows/pr-security.yml Dockerfile README.md
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone commit -m seed: Mode B caller + minimal Dockerfile
+[main (root-commit) c10eecb] seed: Mode B caller + minimal Dockerfile
+ 3 files changed, 56 insertions(+)
+ create mode 100644 .github/workflows/pr-security.yml
+ create mode 100644 Dockerfile
+ create mode 100644 README.md
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone remote add origin https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
+  ok: origin = https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone push -u origin main
+To https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
+ * [new branch]      main -> main
+branch 'main' set up to track 'origin/main'.
+
+=== 29.6-bootstrap — readback ===
+{"defaultBranchRef":{"name":"main"},"isPrivate":true,"owner":{"id":"MDQ6VXNlcjYwMDIwMDA0","login":"OttawaCloudConsulting"},"visibility":"PRIVATE"}
+=== bootstrap complete ===
+
+----------------------------------------------------------------------------------------------------
+Command 2 output: bash $PD/29.6-pr.sh open --clone-dir $CLONE --label pr0   (rc=0)
+----------------------------------------------------------------------------------------------------
+=== 29.6-pr open — label pr0 ===
+  ok: clone /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone is outside the planning repo; origin = https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone fetch origin
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone checkout -b race/pr0 origin/main
+Switched to a new branch 'race/pr0'
+branch 'race/pr0' set up to track 'origin/main'.
++ mkdir -p /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone/attempts
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone add attempts/pr0.txt
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone commit -m 29.6 attempt pr0
+[race/pr0 88ac58b] 29.6 attempt pr0
+ 1 file changed, 1 insertion(+)
+ create mode 100644 attempts/pr0.txt
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone push -u origin race/pr0
+remote:
+remote: Create a pull request for 'race/pr0' on GitHub by visiting:
+remote:      https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch/pull/new/race/pr0
+remote:
+To https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
+ * [new branch]      race/pr0 -> race/pr0
+branch 'race/pr0' set up to track 'origin/race/pr0'.
+PR URL: https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch/pull/1
+{"label":"pr0","pr":1,"branch":"race/pr0","head_sha":"88ac58b2ffa0a00fa51878ea1ce233ec47ec647f","ts":"2026-10-06T16:21:42.912+00:00","action":"open"}
