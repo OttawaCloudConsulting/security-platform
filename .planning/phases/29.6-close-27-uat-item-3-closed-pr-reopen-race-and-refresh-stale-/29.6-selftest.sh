@@ -117,9 +117,61 @@ live_snap() {
   fi
 }
 
+run_fixture() { # $1 fixture name; sets VRC and VOUT. Runs on a private copy so
+  # the committed fixture directory never gains a verdict.json.
+  local work
+  work="$(mktemp -d)/$1"
+  cp -R "${FIX}/$1" "$work"
+  VRC=0
+  VOUT=$(bash "$VERDICT" "$work" 2>/dev/null) || VRC=$?
+  rm -rf "$(dirname "$work")"
+}
+
+expect_fixture() { # $1 case, $2 fixture, $3 expected rc, $4 jq predicate
+  run_fixture "$2"
+  if [ "$VRC" -eq "$3" ] && jq -e "$4" <<<"$VOUT" >/dev/null 2>&1; then
+    report "$1" PASS "rc=${VRC} verdict=$(jq -r .verdict <<<"$VOUT") refusal_source=$(jq -r .refusal_source <<<"$VOUT")"
+  else
+    report "$1" FAIL "rc=${VRC} expected_rc=$3 out=$(jq -c '{verdict,reason,refusal_source}' <<<"$VOUT" 2>/dev/null || printf '%s' "$VOUT")"
+  fi
+}
+
 verdict_cases() {
-  echo "verdict section not implemented yet (plan 29.6-03 Task 2)" >&2
-  return 1
+  local close_s reopen_s skew out rc
+  expect_fixture blocked_client blocked-client 0 \
+    '.verdict == "blocked" and .refusal_source == "client-side" and .precondition_red == true and (.refusal_line | test("base branch policy prohibits the merge"))'
+  expect_fixture blocked_server blocked-server 0 \
+    '.verdict == "blocked" and .refusal_source == "server-side" and .variant_a_precondition == true'
+  expect_fixture lost lost 9 \
+    '.verdict == "lost" and .merged == true and .reopen_complete_at_post_merge == false and .refusal_source == null'
+
+  # Attribution under simulated clock skew: t_close is later than the close
+  # run's created_at; suites must still be attributed by set difference.
+  close_s=$(jq -r '.[] | select(.conclusion == "skipped") | .check_suite_id' "${FIX}/lost/runs.json")
+  reopen_s=$(jq -r '[.[] | select(.conclusion != "skipped")] | max_by(.id) | .check_suite_id' "${FIX}/lost/runs.json")
+  skew=$(jq -n --slurpfile m "${FIX}/lost/meta.json" --slurpfile r "${FIX}/lost/runs.json" \
+    '$m[0].t_close > ($r[0][] | select(.conclusion == "skipped") | .created_at)')
+  run_fixture lost
+  if [ "$skew" = "true" ] && jq -e --argjson c "$close_s" --argjson o "$reopen_s" \
+      '.close_suite == $c and .reopen_suite == $o' <<<"$VOUT" >/dev/null 2>&1; then
+    report attribution_clock_skew PASS "t_close>close created_at; close_suite=${close_s} reopen_suite=${reopen_s}"
+  else
+    report attribution_clock_skew FAIL "skew=${skew} expected close=${close_s} reopen=${reopen_s} got=$(jq -c '{close_suite,reopen_suite}' <<<"$VOUT" 2>/dev/null)"
+  fi
+
+  expect_fixture invalid_green invalid-green 1 \
+    '.verdict == "invalid" and .precondition_red == false and .merged == true'
+  expect_fixture anomaly anomaly 4 \
+    '.verdict == "anomaly" and .merge_rc == 0'
+  expect_fixture unclassified unclassified 0 \
+    '.verdict == "blocked" and .refusal_source == "unclassified" and .refusal_line == null'
+
+  rc=0; out=$(bash "$VERDICT" --classify-stderr "${FIX}/flag-hint-only-stderr.txt" 2>/dev/null) || rc=$?
+  if [ "$rc" -eq 0 ] && [ "$out" = "unclassified" ]; then
+    report classify_flag_hints_only PASS "rc=0 -> unclassified"
+  else
+    report classify_flag_hints_only FAIL "rc=${rc} out='${out}'"
+  fi
 }
 
 case "${1:-}" in
@@ -128,7 +180,7 @@ case "${1:-}" in
     [ "$FAILS" -eq 0 ] && [ "$CASES" -eq 5 ] || exit 1
     ;;
   verdict)
-    verdict_cases || exit 1
+    verdict_cases
     [ "$FAILS" -eq 0 ] && [ "$CASES" -eq 8 ] || exit 1
     ;;
   all)

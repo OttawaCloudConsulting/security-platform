@@ -1,0 +1,31 @@
+{
+  "label": "fixture-anomaly",
+  "variant": "b",
+  "repo": "OttawaCloudConsulting/race-fixture",
+  "pr": 7,
+  "head_sha": "f1x7e50000000000000000000000000000000000",
+  "contexts": [
+    "security / Secrets — Gitleaks",
+    "security / SCA — Trivy Filesystem",
+    "security / IaC — Checkov",
+    "security / SAST — Semgrep CE",
+    "security / Container — Trivy Image"
+  ],
+  "gate_mode": "blocking",
+  "current_user_can_bypass": "never",
+  "bypass_actors": [],
+  "t_close": "2026-10-06T12:04:00.000Z",
+  "t_reopen_start": "2026-10-06T12:05:01.100Z",
+  "t_reopen_end": "2026-10-06T12:05:01.900Z",
+  "t_premerge_read": "2026-10-06T12:05:02.000Z",
+  "premerge_state": {
+    "mergeStateStatus": "UNKNOWN",
+    "mergeable": "UNKNOWN",
+    "headRefOid": "f1x7e50000000000000000000000000000000000"
+  },
+  "t_merge_start": "2026-10-06T12:05:02.100Z",
+  "t_merge_end": "2026-10-06T12:05:03.400Z",
+  "close_rc": 0,
+  "reopen_rc": 0,
+  "merge_rc": 0
+}
