@@ -1,0 +1,7 @@
+[
+  "security / Container — Trivy Image",
+  "security / IaC — Checkov",
+  "security / SAST — Semgrep CE",
+  "security / SCA — Trivy Filesystem",
+  "security / Secrets — Gitleaks"
+]

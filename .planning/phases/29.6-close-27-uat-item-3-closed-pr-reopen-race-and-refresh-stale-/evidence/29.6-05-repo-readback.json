@@ -1,0 +1,21 @@
+{
+  "captured_at": "2026-10-06T16:22:49Z",
+  "repo": {
+    "defaultBranchRef": {
+      "name": "main"
+    },
+    "isPrivate": true,
+    "owner": {
+      "id": "MDQ6VXNlcjYwMDIwMDA0",
+      "login": "OttawaCloudConsulting"
+    },
+    "visibility": "PRIVATE"
+  },
+  "actions_permissions": {
+    "enabled": true,
+    "allowed_actions": "all",
+    "sha_pinning_required": false
+  },
+  "variables": [],
+  "secrets": []
+}

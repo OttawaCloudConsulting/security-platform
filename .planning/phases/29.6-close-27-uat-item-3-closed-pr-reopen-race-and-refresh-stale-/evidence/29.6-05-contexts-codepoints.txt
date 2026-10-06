@@ -1,0 +1,51 @@
+Codepoint proof for the five required context names read live from PR-0 (D-01).
+Source: 29.6-05-contexts.json, derived by:
+  bash 29.6-snap.sh checkruns_all OttawaCloudConsulting/sp-reopen-race-scratch 88ac58b2ffa0a00fa51878ea1ce233ec47ec647f \
+    > 29.6-05-pr0-checkruns-green.json
+  jq '[.[] | select(.run == 37495100157) | .name | select(startswith("security / ") and (contains("DefectDojo")|not))] | unique' \
+    29.6-05-pr0-checkruns-green.json > 29.6-05-contexts.json
+
+Non-ASCII codepoints per name:
+  'security / Container — Trivy Image': U+2014 EM DASH (0x2014)
+  'security / IaC — Checkov': U+2014 EM DASH (0x2014)
+  'security / SAST — Semgrep CE': U+2014 EM DASH (0x2014)
+  'security / SCA — Trivy Filesystem': U+2014 EM DASH (0x2014)
+  'security / Secrets — Gitleaks': U+2014 EM DASH (0x2014)
+
+Distinct non-ASCII codepoints across all five: ['0x2014']
+
+Full codepoint dump of name[0]: 'security / Container — Trivy Image'
+  U+0073  LATIN SMALL LETTER S         's'
+  U+0065  LATIN SMALL LETTER E         'e'
+  U+0063  LATIN SMALL LETTER C         'c'
+  U+0075  LATIN SMALL LETTER U         'u'
+  U+0072  LATIN SMALL LETTER R         'r'
+  U+0069  LATIN SMALL LETTER I         'i'
+  U+0074  LATIN SMALL LETTER T         't'
+  U+0079  LATIN SMALL LETTER Y         'y'
+  U+0020  SPACE                        ' '
+  U+002F  SOLIDUS                      '/'
+  U+0020  SPACE                        ' '
+  U+0043  LATIN CAPITAL LETTER C       'C'
+  U+006F  LATIN SMALL LETTER O         'o'
+  U+006E  LATIN SMALL LETTER N         'n'
+  U+0074  LATIN SMALL LETTER T         't'
+  U+0061  LATIN SMALL LETTER A         'a'
+  U+0069  LATIN SMALL LETTER I         'i'
+  U+006E  LATIN SMALL LETTER N         'n'
+  U+0065  LATIN SMALL LETTER E         'e'
+  U+0072  LATIN SMALL LETTER R         'r'
+  U+0020  SPACE                        ' '
+  U+2014  EM DASH                      '—'
+  U+0020  SPACE                        ' '
+  U+0054  LATIN CAPITAL LETTER T       'T'
+  U+0072  LATIN SMALL LETTER R         'r'
+  U+0069  LATIN SMALL LETTER I         'i'
+  U+0076  LATIN SMALL LETTER V         'v'
+  U+0079  LATIN SMALL LETTER Y         'y'
+  U+0020  SPACE                        ' '
+  U+0049  LATIN CAPITAL LETTER I       'I'
+  U+006D  LATIN SMALL LETTER M         'm'
+  U+0061  LATIN SMALL LETTER A         'a'
+  U+0067  LATIN SMALL LETTER G         'g'
+  U+0065  LATIN SMALL LETTER E         'e'
