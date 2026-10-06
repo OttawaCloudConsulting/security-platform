@@ -1,0 +1,16 @@
+CASE checkruns_all PASS rc=0 entries=22
+CASE newest_per_context PASS rc=0 contexts=5 all skipped suite=97920771553
+CASE close_run_detect_positive PASS rc=0 run_id=36158851741 suite=97920771553 (A8: runs_for_sha found the close run)
+CASE close_run_detect_negative PASS rc=1 detected=false
+settle read 1/1: mergeStateStatus=UNKNOWN (previous='')
+NOT SETTLED(3): mergeStateStatus last 'UNKNOWN' after 1 reads (previous=''). Not a verdict.
+CASE settle_merge_state PASS rc=3 stdout='' (no fallback value)
+CASE blocked_client PASS rc=0 verdict=blocked refusal_source=client-side
+CASE blocked_server PASS rc=0 verdict=blocked refusal_source=server-side
+CASE lost PASS rc=9 verdict=lost refusal_source=null
+CASE attribution_clock_skew PASS t_close>close created_at; close_suite=91000000002 reopen_suite=91000000003
+CASE invalid_green PASS rc=1 verdict=invalid refusal_source=null
+CASE anomaly PASS rc=4 verdict=anomaly refusal_source=null
+CASE unclassified PASS rc=0 verdict=blocked refusal_source=unclassified
+CASE classify_flag_hints_only PASS rc=0 -> unclassified
+SELFTEST PASS
