@@ -473,11 +473,11 @@ Plans:
 **Goal:** 27-HUMAN-UAT.md matches the evidence: items 1-2 pass on a live re-read (schedule run 36553070357; homelab ci/main readback), and item 3 is settled by a live, scripted close-reopen-merge race on a deleted throwaway Mode B repository whose ruleset is first proven to enforce (UNSTABLE -> BLOCKED -> CLEAN), run on red head SHAs in two variants with three attempts each; if every attempt is blocked, item 3 passes and ADR-033 resolves ADR-024 NOT-verified item 2, otherwise the phase stops for the operator (D-11)
 **Requirements**: none (UAT closure)
 **Depends on:** Phase 29
-**Plans:** 1/15 plans executed
+**Plans:** 2/15 plans executed
 
 Plans:
 - [x] 29.6-01-PLAN.md — live readback of UAT items 1-2 into evidence; 27-HUMAN-UAT items 1-2 pass (D-13, D-14, D-15, D-17)
-- [ ] 29.6-02-PLAN.md — scratch seed (Mode B caller, alpine Dockerfile, ruleset body) and operator bootstrap/PR scripts (D-02, D-03, D-05)
+- [x] 29.6-02-PLAN.md — scratch seed (Mode B caller, alpine Dockerfile, ruleset body) and operator bootstrap/PR scripts (D-02, D-03, D-05)
 - [ ] 29.6-03-PLAN.md — snap logger, close-run detector (proven on PR #21) and pre-coded verdict/refusal classifier (D-07, D-10, D-18, D-19)
 - [ ] 29.6-04-PLAN.md — operator race driver 29.6-race.sh with dry-run rehearsal (D-07, D-08, D-09, D-18, D-19)
 - [ ] 29.6-05-PLAN.md — v1 start, private scratch repo bootstrap, PR-0 report-only green, live contexts (D-01, D-02, D-03, D-04, D-20)
