@@ -1,0 +1,65 @@
+29.6-06 Task 1: GATE_MODE=blocking and empty commit to PR-0 (operator gate window)
+====================================================================================================
+
+Checkpoint question put to the operator by the orchestrator (AskUserQuestion, 2026-10-06):
+
+    Plan 06 needs two live writes on the scratch repo: set GATE_MODE=blocking, then push an empty commit
+    to PR #1. Who runs them?
+
+Operator reply (verbatim, the option the human user selected, relayed by the orchestrator):
+
+    You run them now
+    ("I run both commands in order from this session. The continuation executor records them in the
+    evidence as run by this session with your approval.")
+
+Who executed the commands: the orchestrating Claude session ran both commands below, in this session, on the
+operator's explicit instruction above. The operator did NOT type them. The plan's wording (operator runs them)
+was superseded by this explicit operator approval; it is recorded here as such.
+
+Disclosures (D-05, D-18): GATE_MODE=blocking is set on the throwaway repo OttawaCloudConsulting/sp-reopen-race-scratch
+only (repository-wide there; no other repo touched). It stays set through the race except during the plan 08 CLEAN
+step. No ruleset exists yet (0 rulesets at pre-flight), so nothing can be blocked by this window.
+
+Pre-flight (read-only, prior executor): 29.6-pr.sh empty-commit --dry-run rc=0; no Actions variables on the scratch
+repo; 0 rulesets; PR #1 OPEN on SHA-1 88ac58b2ffa0a00fa51878ea1ce233ec47ec647f, mergeStateStatus CLEAN; clone clean
+and level with origin; 29.6-prs.jsonl held only the pr0 open line.
+
+PD    = /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-
+CLONE = /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone
+
+Commands (both exited rc=0, in this order):
+  1. gh variable set GATE_MODE --body blocking -R OttawaCloudConsulting/sp-reopen-race-scratch
+  2. bash $PD/29.6-pr.sh empty-commit --clone-dir $CLONE --label pr0
+
+Key results: push 88ac58b..172d2c2 to race/pr0.
+  SHA-1 (prev_sha) = 88ac58b2ffa0a00fa51878ea1ce233ec47ec647f
+  SHA-2 (head_sha) = 172d2c237f9ef6045d26df0b42a4e5d6b97ebee0
+  SHA-2 != SHA-1: yes. The pr0 empty-commit line is present in 29.6-prs.jsonl (line 2).
+
+Note: trailing whitespace is stripped from command output in this file (docs-repo pre-commit hook).
+Output below is copied from the session's raw capture files (29.6-06-var-out.txt, 29.6-06-empty-commit-out.txt).
+The timestamp in the first capture is the local clock at issue time, not a server value (server created_at is in Task 2).
+
+--- 1. 29.6-06-var-out.txt ---
+$ gh variable set GATE_MODE --body blocking -R OttawaCloudConsulting/sp-reopen-race-scratch
+2026-10-06T16:28:57Z
+rc=0
+
+--- 2. 29.6-06-empty-commit-out.txt ---
+=== 29.6-pr empty-commit — label pr0 ===
+  ok: clone /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone is outside the planning repo; origin = https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone checkout race/pr0
+Already on 'race/pr0'
+Your branch is up to date with 'origin/race/pr0'.
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone pull --ff-only
+Already up to date.
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone commit --allow-empty -m 29.6 retrigger pr0
+[race/pr0 172d2c2] 29.6 retrigger pr0
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone push
+To https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
+   88ac58b..172d2c2  race/pr0 -> race/pr0
+{"label":"pr0","branch":"race/pr0","head_sha":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","prev_sha":"88ac58b2ffa0a00fa51878ea1ce233ec47ec647f","ts":"2026-10-06T16:29:01.455+00:00","action":"empty-commit"}
+
+--- 29.6-prs.jsonl (after the window) ---
+{"label":"pr0","pr":1,"branch":"race/pr0","head_sha":"88ac58b2ffa0a00fa51878ea1ce233ec47ec647f","ts":"2026-10-06T16:21:42.912+00:00","action":"open"}
+{"label":"pr0","branch":"race/pr0","head_sha":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","prev_sha":"88ac58b2ffa0a00fa51878ea1ce233ec47ec647f","ts":"2026-10-06T16:29:01.455+00:00","action":"empty-commit"}
