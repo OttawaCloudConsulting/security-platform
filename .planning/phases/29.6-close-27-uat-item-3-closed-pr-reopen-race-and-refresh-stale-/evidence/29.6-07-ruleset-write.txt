@@ -108,3 +108,38 @@ security / Secrets — Gitleaks
 --- 3. 29.6-07-apply-stderr.txt (0 bytes) ---
 --- 3. 29.6-07-apply-rc.txt ---
 0
+
+====================================================================================================
+29.6-07 Task 2: ruleset readback and BLOCKED on the unchanged red SHA-2 (read-only, agent)
+R=OttawaCloudConsulting/sp-reopen-race-scratch  PR=1  RULESET=24593937  SHA-2=172d2c237f9ef6045d26df0b42a4e5d6b97ebee0
+No GitHub writes. Every call is a GET (gh api <path> without a method override, gh pr view).
+
+$ gh api repos/$R/rulesets/24593937 > 29.6-07-ruleset-after.json
+$ gh api repos/$R/rules/branches/main > 29.6-07-rules-branches-main.json
+$ source $PD/29.6-snap.sh; pr_state $R 1; settle_merge_state $R 1 UNSTABLE; pr_state $R 1
+--- script output (stdout+stderr) ---
+start 2026-10-06T16:40:53.566Z
+pr_state before settle: {"state":"OPEN","mergeStateStatus":"BLOCKED","mergeable":"MERGEABLE","headRefOid":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0"}
+settle read 1/20: mergeStateStatus=BLOCKED (previous='UNSTABLE')
+settle rc=0 mss=BLOCKED
+pr_state after settle: {"state":"OPEN","mergeStateStatus":"BLOCKED","mergeable":"MERGEABLE","headRefOid":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0"}
+{
+  "sha": "172d2c237f9ef6045d26df0b42a4e5d6b97ebee0",
+  "mergeStateStatus": "BLOCKED",
+  "mergeable": "MERGEABLE",
+  "ts": "2026-10-06T16:40:56.777Z",
+  "pr": 1,
+  "headRefOid": "172d2c237f9ef6045d26df0b42a4e5d6b97ebee0",
+  "settle_prev": "UNSTABLE",
+  "current_user_can_bypass": "never",
+  "note": "settle_merge_state rc=0; re-read after settle mergeStateStatus=BLOCKED; ruleset 24593937 active with five required contexts"
+}
+
+Assertions (all exit 0):
+  ruleset-after: enforcement active; bypass_actors []; current_user_can_bypass never
+  rule types (sorted): ["deletion","non_fast_forward","pull_request","required_status_checks"]
+  required contexts (sorted) == 29.6-05-contexts.json, each integration_id 15368; strict_required_status_checks_policy false
+  rules/branches/main: [{"type":"deletion","ruleset_id":24593937},{"type":"non_fast_forward","ruleset_id":24593937},{"type":"required_status_checks","ruleset_id":24593937},{"type":"pull_request","ruleset_id":24593937}]
+  PR #1 head before and after the settle = SHA-2 (nothing pushed since plan 06)
+  mergeStateStatus BLOCKED on SHA-2, the same SHA that read UNSTABLE in 29.6-06-merge-state-unstable.json
+Result: UNSTABLE -> BLOCKED on one unchanged SHA (D-20 step 2). The ruleset is enforced on this private repo.
