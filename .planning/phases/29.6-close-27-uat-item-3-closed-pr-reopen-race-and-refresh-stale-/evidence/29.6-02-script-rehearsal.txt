@@ -1,0 +1,312 @@
+# 29.6-02 script rehearsal — offline / dry-run only; no live write was made.
+# Captured: 2026-10-06T00:02:01+00:00
+# cwd: /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale- ; scratchpad abbreviated as $SP in commands below is /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad
+
+## 1. syntax and executable-bit checks
+$ bash -n 29.6-bootstrap.sh
+[rc=0]
+
+$ bash -n 29.6-pr.sh
+[rc=0]
+
+$ test ! -x 29.6-bootstrap.sh
+[rc=0]
+
+$ test ! -x 29.6-pr.sh
+[rc=0]
+
+$ ls -l 29.6-bootstrap.sh 29.6-pr.sh
+-rw-r--r--@ 1 christian  staff   7340 Oct  5 20:01 29.6-bootstrap.sh
+-rw-r--r--@ 1 christian  staff  11500 Oct  5 20:01 29.6-pr.sh
+[rc=0]
+
+## 2. bypass-flag / '|| true' gate on non-comment lines (expect empty output, grep rc=1)
+$ grep -hv '^[[:space:]]*#' 29.6-bootstrap.sh 29.6-pr.sh | grep -E -- '--admin|--auto|--delete-branch|\|\| true'
+[rc=1]
+
+$ grep -n -- '--match-head-commit' 29.6-pr.sh
+28:#   - merge-attempt pins the head with --match-head-commit and NEVER passes the
+246:    echo "DRY-RUN: gh pr merge ${PR} -R ${REPO} --squash --match-head-commit ${SHA} >${f_out} 2>${f_err}"
+258:  gh pr merge "$PR" -R "$REPO" --squash --match-head-commit "$SHA" >"$f_out" 2>"$f_err"
+[rc=0]
+
+## 3. bootstrap refuses a clone dir inside the planning repo (expect rc=1, even in --dry-run)
+$ bash 29.6-bootstrap.sh --clone-dir /Users/christian/git-repos/OCC-github/development_environment/security_solution/x --dry-run
+=== 29.6-bootstrap — preconditions (nothing is written until all pass) ===
+clone dir (realpath)       : /Users/christian/git-repos/OCC-github/development_environment/security_solution/x
+clone parent (realpath)    : /Users/christian/git-repos/OCC-github/development_environment/security_solution
+ABORT(1): the clone dir's parent is inside the planning repo (/Users/christian/git-repos/OCC-github/development_environment/security_solution).
+          A scratch clone there could push planning content. Choose a dir outside it.
+[rc=1]
+
+$ bash 29.6-bootstrap.sh --clone-dir /Users/christian/git-repos/OCC-github/development_environment/security_solution/repos/x --dry-run
+=== 29.6-bootstrap — preconditions (nothing is written until all pass) ===
+clone dir (realpath)       : /Users/christian/git-repos/OCC-github/development_environment/security_solution/repos/x
+clone parent (realpath)    : /Users/christian/git-repos/OCC-github/development_environment/security_solution/repos
+ABORT(1): the clone dir's parent is inside the planning repo (/Users/christian/git-repos/OCC-github/development_environment/security_solution).
+          A scratch clone there could push planning content. Choose a dir outside it.
+[rc=1]
+
+## 4. bootstrap full dry-run against a scratchpad dir (read-only gh calls; writes printed as DRY-RUN)
+$ bash 29.6-bootstrap.sh --clone-dir /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/sp-reopen-race-scratch --dry-run
+=== 29.6-bootstrap — preconditions (nothing is written until all pass) ===
+clone dir (realpath)       : /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/sp-reopen-race-scratch
+clone parent (realpath)    : /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad
+  ok: clone dir is outside the planning repo
+  ok: clone dir does not exist
+  ok: seed files present in /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-seed
+gh login                   : OttawaCloudConsulting
+OttawaCloudConsulting type     : User
+  ok: authenticated as OttawaCloudConsulting (type User)
+gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch rc    : 1
+  ok: OttawaCloudConsulting/sp-reopen-race-scratch does not exist (HTTP 404)
+
+=== 29.6-bootstrap — writes ===
+DRY-RUN: gh repo create OttawaCloudConsulting/sp-reopen-race-scratch --private --description Phase 29.6 throwaway; delete after evidence (D-06)
+DRY-RUN: git init -b main /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/sp-reopen-race-scratch
+DRY-RUN: mkdir -p /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/sp-reopen-race-scratch/.github/workflows
+DRY-RUN: cp /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-seed/pr-security.yml /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/sp-reopen-race-scratch/.github/workflows/pr-security.yml
+DRY-RUN: cp /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-seed/Dockerfile /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/sp-reopen-race-scratch/Dockerfile
+DRY-RUN: cp /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-seed/README.md /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/sp-reopen-race-scratch/README.md
+DRY-RUN: git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/sp-reopen-race-scratch add .github/workflows/pr-security.yml Dockerfile README.md
+DRY-RUN: git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/sp-reopen-race-scratch commit -m seed: Mode B caller + minimal Dockerfile
+DRY-RUN: git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/sp-reopen-race-scratch remote add origin https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
+DRY-RUN: assert `git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/sp-reopen-race-scratch remote get-url origin` = https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
+DRY-RUN: git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/sp-reopen-race-scratch push -u origin main
+
+=== 29.6-bootstrap — readback ===
+DRY-RUN: gh repo view OttawaCloudConsulting/sp-reopen-race-scratch --json visibility,owner,defaultBranchRef,isPrivate
+=== dry-run complete; nothing was written ===
+[rc=0]
+
+## 5. merge-attempt dry-run (zero gh calls; expect DRY-RUN merge line, rc=0)
+$ bash 29.6-pr.sh merge-attempt --pr 1 --sha deadbeef --out-prefix /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/x --dry-run
+=== 29.6-pr merge-attempt — PR #1 head deadbeef ===
+DRY-RUN: gh pr merge 1 -R OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit deadbeef >/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/x-stdout.txt 2>/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/x-stderr.txt
+DRY-RUN: echo $? >/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/x-rc.txt
+DRY-RUN: gh pr view 1 -R OttawaCloudConsulting/sp-reopen-race-scratch --json state,mergedAt,mergeCommit,headRefOid >/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/x-pr-after.json
+=== dry-run complete; nothing was written ===
+[rc=0]
+
+## 6. merge-attempt usage guards (expect rc=2)
+$ bash 29.6-pr.sh merge-attempt --pr 1 --sha NOTHEX --out-prefix /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/x --dry-run
+usage(2): --sha must be lowercase hex; got 'NOTHEX'
+[rc=2]
+
+$ bash 29.6-pr.sh merge-attempt --pr abc --sha deadbeef --out-prefix /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/x --dry-run
+usage(2): --pr must be numeric; got 'abc'
+[rc=2]
+
+## 7. open / empty-commit guards against a LOCAL fake clone (no network, no push)
+$ bash 29.6-pr.sh open --clone-dir /Users/christian/git-repos/OCC-github/development_environment/security_solution --label t1 --dry-run
+=== 29.6-pr open — label t1 ===
+ABORT(1): clone dir /Users/christian/git-repos/OCC-github/development_environment/security_solution is inside the planning repo (/Users/christian/git-repos/OCC-github/development_environment/security_solution).
+[rc=1]
+
+$ bash 29.6-pr.sh open --clone-dir /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-wrong --label t1 --dry-run
+=== 29.6-pr open — label t1 ===
+ABORT(1): origin of /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-wrong is 'https://github.com/OttawaCloudConsulting/security-platform.git', not 'https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git'. Refusing to push.
+[rc=1]
+
+$ bash 29.6-pr.sh open --clone-dir /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right --label 'bad label' --dry-run
+usage(2): --label must match [A-Za-z0-9._-]+ (it becomes a branch and a filename); got 'bad label'
+[rc=2]
+
+$ bash 29.6-pr.sh open --clone-dir /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right --label t1 --dry-run
+=== 29.6-pr open — label t1 ===
+  ok: clone /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right is outside the planning repo; origin = https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
+DRY-RUN: git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right fetch origin
+DRY-RUN: git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right checkout -b race/t1 origin/main
+DRY-RUN: mkdir -p /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right/attempts
+DRY-RUN: write /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right/attempts/t1.txt <- 't1 2026-10-06T00:02:06.684+00:00'
+DRY-RUN: git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right add attempts/t1.txt
+DRY-RUN: git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right commit -m 29.6 attempt t1
+DRY-RUN: git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right push -u origin race/t1
+DRY-RUN: gh pr create -R OttawaCloudConsulting/sp-reopen-race-scratch --base main --head race/t1 --title "29.6 race t1" --body "Phase 29.6 throwaway PR t1"
+DRY-RUN: append {label,pr,branch,head_sha,ts,action:open} to /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-prs.jsonl
+[rc=0]
+
+$ bash 29.6-pr.sh empty-commit --clone-dir /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right --label t1 --dry-run
+=== 29.6-pr empty-commit — label t1 ===
+  ok: clone /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right is outside the planning repo; origin = https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
+DRY-RUN: git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right checkout race/t1
+DRY-RUN: git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right pull --ff-only
+DRY-RUN: prev_sha=$(git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right rev-parse HEAD)
+DRY-RUN: git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right commit --allow-empty -m "29.6 retrigger t1"
+DRY-RUN: git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right push
+DRY-RUN: append {label,branch,head_sha,prev_sha,ts,action:empty-commit} to /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-prs.jsonl
+[rc=0]
+
+$ bash 29.6-pr.sh bogus
+usage: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-pr.sh open          --clone-dir DIR --label L [--dry-run]
+       bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-pr.sh empty-commit  --clone-dir DIR --label L [--dry-run]
+       bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-pr.sh merge-attempt --pr N --sha S --out-prefix P [--dry-run]
+[rc=2]
+
+$ test ! -e /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-prs.jsonl
+[rc=0]
+
+
+## 8. ERR trap maps a git failure inside a function to exit 2 (local fake clone; branch race/t1 absent, fails before any push)
+$ bash 29.6-pr.sh empty-commit --clone-dir /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right --label t1
+=== 29.6-pr empty-commit — label t1 ===
+  ok: clone /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right is outside the planning repo; origin = https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/fake-right checkout race/t1
+error: pathspec 'race/t1' did not match any file(s) known to git
+INFRA FAILURE(2): command failed at line 89 of 29.6-pr.sh. State may be partial.
+[rc=2]
+
+## INCIDENT NOTE (read before section 9)
+# Section 9 was meant to be fully offline: a PATH stub at $SP/stubbin/gh. The stub was
+# deliberately left NON-executable (project rule: never set the executable bit), so PATH
+# lookup skipped it and the REAL gh ran. Real `gh pr merge 1 -R
+# OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit deadbeef` was
+# therefore invoked 4 times. The scratch repo does not exist (see the clean HTTP 404 in
+# section 4), so every call failed at repository resolution
+# ("GraphQL: Could not resolve to a Repository", rc=1) before any mutation. ZERO writes occurred.
+# Incidental observation: these runs show the live infra-failure path — merge rc!=0, then
+# `gh pr view` fails -> ERR trap -> exit 2 — and that the -stdout/-stderr/-rc files are written
+# before that exit (so a re-run needs a fresh --out-prefix; section 10 shows that refusal).
+# The matrix was then re-run correctly in section 9b with an exported bash function stub,
+# gated on `type gh` = function, with an empty GH_CONFIG_DIR and no token in the environment.
+
+## 9. merge-attempt outcome matrix against an OFFLINE PATH stub of gh ($SP/stubbin/gh; no network)
+$ PATH=/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/stubbin:$PATH STUB_MERGE_RC=1 STUB_STATE=OPEN   bash 29.6-pr.sh merge-attempt --pr 1 --sha deadbeef --out-prefix /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m-refused
+=== 29.6-pr merge-attempt — PR #1 head deadbeef ===
+gh pr merge rc: 1
+--- stdout (m-refused-stdout.txt) ---
+--- stderr (m-refused-stderr.txt) ---
+GraphQL: Could not resolve to a Repository with the name 'OttawaCloudConsulting/sp-reopen-race-scratch'. (repository)
+GraphQL: Could not resolve to a Repository with the name 'OttawaCloudConsulting/sp-reopen-race-scratch'. (repository)
+INFRA FAILURE(2): command failed at line 268 of 29.6-pr.sh. State may be partial.
+[rc=2]
+
+$ ls /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m-refused-*; cat /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m-refused-rc.txt /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m-refused-stderr.txt
+/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m-refused-pr-after.json
+/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m-refused-rc.txt
+/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m-refused-stderr.txt
+/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m-refused-stdout.txt
+1
+GraphQL: Could not resolve to a Repository with the name 'OttawaCloudConsulting/sp-reopen-race-scratch'. (repository)
+[rc=0]
+
+$ PATH=/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/stubbin:$PATH STUB_MERGE_RC=0 STUB_STATE=MERGED bash 29.6-pr.sh merge-attempt --pr 1 --sha deadbeef --out-prefix /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m-merged
+=== 29.6-pr merge-attempt — PR #1 head deadbeef ===
+gh pr merge rc: 1
+--- stdout (m-merged-stdout.txt) ---
+--- stderr (m-merged-stderr.txt) ---
+GraphQL: Could not resolve to a Repository with the name 'OttawaCloudConsulting/sp-reopen-race-scratch'. (repository)
+GraphQL: Could not resolve to a Repository with the name 'OttawaCloudConsulting/sp-reopen-race-scratch'. (repository)
+INFRA FAILURE(2): command failed at line 268 of 29.6-pr.sh. State may be partial.
+[rc=2]
+
+$ PATH=/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/stubbin:$PATH STUB_MERGE_RC=0 STUB_STATE=OPEN   bash 29.6-pr.sh merge-attempt --pr 1 --sha deadbeef --out-prefix /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m-rc0open
+=== 29.6-pr merge-attempt — PR #1 head deadbeef ===
+gh pr merge rc: 1
+--- stdout (m-rc0open-stdout.txt) ---
+--- stderr (m-rc0open-stderr.txt) ---
+GraphQL: Could not resolve to a Repository with the name 'OttawaCloudConsulting/sp-reopen-race-scratch'. (repository)
+GraphQL: Could not resolve to a Repository with the name 'OttawaCloudConsulting/sp-reopen-race-scratch'. (repository)
+INFRA FAILURE(2): command failed at line 268 of 29.6-pr.sh. State may be partial.
+[rc=2]
+
+$ PATH=/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/stubbin:$PATH STUB_MERGE_RC=1 STUB_STATE=CLOSED bash 29.6-pr.sh merge-attempt --pr 1 --sha deadbeef --out-prefix /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m-closed
+=== 29.6-pr merge-attempt — PR #1 head deadbeef ===
+gh pr merge rc: 1
+--- stdout (m-closed-stdout.txt) ---
+--- stderr (m-closed-stderr.txt) ---
+GraphQL: Could not resolve to a Repository with the name 'OttawaCloudConsulting/sp-reopen-race-scratch'. (repository)
+GraphQL: Could not resolve to a Repository with the name 'OttawaCloudConsulting/sp-reopen-race-scratch'. (repository)
+INFRA FAILURE(2): command failed at line 268 of 29.6-pr.sh. State may be partial.
+[rc=2]
+
+## 10. merge-attempt refuses to overwrite an existing capture (expect rc=1)
+$ PATH=/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/stubbin:$PATH STUB_MERGE_RC=1 STUB_STATE=OPEN   bash 29.6-pr.sh merge-attempt --pr 1 --sha deadbeef --out-prefix /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m-refused
+=== 29.6-pr merge-attempt — PR #1 head deadbeef ===
+ABORT(1): /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m-refused-stdout.txt already exists. Refusing to overwrite evidence; choose a new --out-prefix.
+[rc=1]
+
+
+## 9b. merge-attempt outcome matrix, re-run with an exported bash FUNCTION stub of gh
+#     (no exec bit; GH_CONFIG_DIR=$SP/empty-ghcfg and GH_TOKEN/GITHUB_TOKEN unset, so a fallthrough to real gh cannot authenticate)
+$ type gh | head -1
+gh is a function
+[rc=0]
+
+$ STUB_MERGE_RC=1 STUB_STATE=OPEN   bash 29.6-pr.sh merge-attempt --pr 1 --sha deadbeef --out-prefix /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m2-refused
+=== 29.6-pr merge-attempt — PR #1 head deadbeef ===
+gh pr merge rc: 1
+--- stdout (m2-refused-stdout.txt) ---
+stub merge stdout
+--- stderr (m2-refused-stderr.txt) ---
+stub merge stderr: Pull request is not mergeable
+pr-after: {"state":"OPEN","mergedAt":null,"mergeCommit":null,"headRefOid":"deadbeef"}
+=== REFUSED as expected (rc 1); PR #1 still OPEN ===
+[rc=0]
+
+$ STUB_MERGE_RC=0 STUB_STATE=MERGED bash 29.6-pr.sh merge-attempt --pr 1 --sha deadbeef --out-prefix /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m2-merged
+=== 29.6-pr merge-attempt — PR #1 head deadbeef ===
+gh pr merge rc: 0
+--- stdout (m2-merged-stdout.txt) ---
+stub merge stdout
+--- stderr (m2-merged-stderr.txt) ---
+stub merge stderr: Pull request is not mergeable
+pr-after: {"state":"MERGED","mergedAt":null,"mergeCommit":null,"headRefOid":"deadbeef"}
+
+########################################################################
+## THE MERGE SUCCEEDED. THE GATE DID NOT HOLD. STOP.                  ##
+## PR #1 state=MERGED (gh rc=0)
+## Do not run anything else. Report this immediately.                ##
+########################################################################
+[rc=9]
+
+$ STUB_MERGE_RC=1 STUB_STATE=MERGED bash 29.6-pr.sh merge-attempt --pr 1 --sha deadbeef --out-prefix /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m2-merged-rc1
+=== 29.6-pr merge-attempt — PR #1 head deadbeef ===
+gh pr merge rc: 1
+--- stdout (m2-merged-rc1-stdout.txt) ---
+stub merge stdout
+--- stderr (m2-merged-rc1-stderr.txt) ---
+stub merge stderr: Pull request is not mergeable
+pr-after: {"state":"MERGED","mergedAt":null,"mergeCommit":null,"headRefOid":"deadbeef"}
+
+########################################################################
+## THE MERGE SUCCEEDED. THE GATE DID NOT HOLD. STOP.                  ##
+## PR #1 state=MERGED (gh rc=1)
+## Do not run anything else. Report this immediately.                ##
+########################################################################
+[rc=9]
+
+$ STUB_MERGE_RC=0 STUB_STATE=OPEN   bash 29.6-pr.sh merge-attempt --pr 1 --sha deadbeef --out-prefix /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m2-rc0open
+=== 29.6-pr merge-attempt — PR #1 head deadbeef ===
+gh pr merge rc: 0
+--- stdout (m2-rc0open-stdout.txt) ---
+stub merge stdout
+--- stderr (m2-rc0open-stderr.txt) ---
+stub merge stderr: Pull request is not mergeable
+pr-after: {"state":"OPEN","mergedAt":null,"mergeCommit":null,"headRefOid":"deadbeef"}
+ANOMALY(4): gh pr merge returned 0 but PR #1 is OPEN, not MERGED.
+[rc=4]
+
+$ STUB_MERGE_RC=1 STUB_STATE=CLOSED bash 29.6-pr.sh merge-attempt --pr 1 --sha deadbeef --out-prefix /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/m2-closed
+=== 29.6-pr merge-attempt — PR #1 head deadbeef ===
+gh pr merge rc: 1
+--- stdout (m2-closed-stdout.txt) ---
+stub merge stdout
+--- stderr (m2-closed-stderr.txt) ---
+stub merge stderr: Pull request is not mergeable
+pr-after: {"state":"CLOSED","mergedAt":null,"mergeCommit":null,"headRefOid":"deadbeef"}
+ANOMALY(4): merge refused (rc 1) but PR #1 is CLOSED, not OPEN.
+[rc=4]
+
+$ cd /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad && ls m2-refused-* && cat m2-refused-rc.txt m2-refused-stdout.txt m2-refused-stderr.txt m2-refused-pr-after.json
+m2-refused-pr-after.json
+m2-refused-rc.txt
+m2-refused-stderr.txt
+m2-refused-stdout.txt
+1
+stub merge stdout
+stub merge stderr: Pull request is not mergeable
+{"state":"OPEN","mergedAt":null,"mergeCommit":null,"headRefOid":"deadbeef"}
+[rc=0]
+
+# END — no live GitHub write was made during this rehearsal; evidence/29.6-prs.jsonl was not created.
