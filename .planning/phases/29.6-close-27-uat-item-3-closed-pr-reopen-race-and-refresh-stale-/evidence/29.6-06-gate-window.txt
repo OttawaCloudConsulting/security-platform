@@ -63,3 +63,72 @@ To https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
 --- 29.6-prs.jsonl (after the window) ---
 {"label":"pr0","pr":1,"branch":"race/pr0","head_sha":"88ac58b2ffa0a00fa51878ea1ce233ec47ec647f","ts":"2026-10-06T16:21:42.912+00:00","action":"open"}
 {"label":"pr0","branch":"race/pr0","head_sha":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","prev_sha":"88ac58b2ffa0a00fa51878ea1ce233ec47ec647f","ts":"2026-10-06T16:29:01.455+00:00","action":"empty-commit"}
+
+====================================================================================================
+29.6-06 Task 2: blocking mode reached the callee, red set, UNSTABLE on SHA-2 (read-only)
+R=OttawaCloudConsulting/sp-reopen-race-scratch  PR=1  SHA-2=172d2c237f9ef6045d26df0b42a4e5d6b97ebee0
+Note: trailing whitespace and ANSI escapes stripped (docs-repo pre-commit hook).
+
+--- GATE_MODE variable, server-side ---
+$ gh api repos/$R/actions/variables/GATE_MODE --jq '{name,value,created_at,updated_at}'
+{"created_at":"2026-10-06T16:28:58Z","name":"GATE_MODE","updated_at":"2026-10-06T16:28:58Z","value":"blocking"}
+
+--- run discovery on SHA-2 ---
+$ gh run list -R $R --json databaseId,status,conclusion,headSha,event,workflowName,headBranch   (first read)
+[{"conclusion":"","databaseId":37496059742,"event":"pull_request","headBranch":"race/pr0","headSha":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","status":"in_progress","workflowName":"PR Security"},{"conclusion":"success","databaseId":37495100157,"event":"pull_request","headBranch":"race/pr0","headSha":"88ac58b2ffa0a00fa51878ea1ce233ec47ec647f","status":"completed","workflowName":"PR Security"}]
+
+--- bounded completion poll (30 x 10 s cap) ---
+1 16:30:02 in_progress
+2 16:30:13 in_progress
+3 16:30:24 in_progress
+4 16:30:34 completed failure
+
+--- run id: 37496059742 ---
+$ gh run view 37496059742 -R $R --json status,conclusion,headSha,event
+{"conclusion":"failure","event":"pull_request","headSha":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","status":"completed"}
+$ gh api repos/$R/actions/runs/37496059742 --jq .referenced_workflows
+[{"path":"OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1","ref":"refs/tags/v1","sha":"6c0d5319b1c328f135b47acd47e1a5e92ae2b10c"}]
+callee SHA equals plan 05 run (6c0d5319b1c328f135b47acd47e1a5e92ae2b10c, v1 at start): MATCH
+
+--- gate_mode lines from the run log ---
+$ gh run view 37496059742 -R $R --log | grep -F 'gate_mode='   (echo-source lines omitted; output lines only)
+security / SCA — Trivy Filesystem	UNKNOWN STEP	2026-10-06T16:29:12.4086729Z gate_mode=blocking
+security / SAST — Semgrep CE	UNKNOWN STEP	2026-10-06T16:29:11.5788528Z gate_mode=blocking
+security / Container — Trivy Image	UNKNOWN STEP	2026-10-06T16:29:12.4623149Z gate_mode=blocking
+security / Secrets — Gitleaks	UNKNOWN STEP	2026-10-06T16:29:12.5064967Z gate_mode=blocking
+security / IaC — Checkov	UNKNOWN STEP	2026-10-06T16:29:34.5135629Z gate_mode=blocking
+All five scan jobs print gate_mode=blocking. The caller at SHA-2 (.github/workflows/pr-security.yml) has NO with:
+block (secrets: DEFECTDOJO_API_TOKEN only), so the value reached the Mode B callee through vars.GATE_MODE.
+
+--- failing jobs and steps ---
+$ gh api repos/$R/actions/runs/<id>/jobs   (Semgrep and Checkov jobs; failed step names)
+run 37496059742 (SHA-2, blocking):    Semgrep => failure | Run Semgrep ; Checkov => failure | Run Checkov
+run 37495100157 (SHA-1, report-only): Semgrep => success ; Checkov => success
+The failing step is the scanner step itself (blocking exit on findings). The 'Code scanning is not enabled' SARIF
+upload error appears in BOTH runs (20 log lines in the green SHA-1 run), so it is not the cause of red.
+
+--- check runs on SHA-2 (filter=all, app 15368): evidence/29.6-06-checkruns-unstable.json ---
+{"name":"security / SCA — Trivy Filesystem","id":112380785750,"conclusion":"success","run":37496059742}
+{"name":"security / SAST — Semgrep CE","id":112380785980,"conclusion":"failure","run":37496059742}
+{"name":"security / Container — Trivy Image","id":112380786029,"conclusion":"success","run":37496059742}
+{"name":"security / Secrets — Gitleaks","id":112380786196,"conclusion":"success","run":37496059742}
+{"name":"security / IaC — Checkov","id":112380786754,"conclusion":"failure","run":37496059742}
+{"name":"security / DefectDojo Cleanup","id":112380787998,"conclusion":"skipped","run":37496059742}
+{"name":"security / DefectDojo Import","id":112381396090,"conclusion":"skipped","run":37496059742}
+
+--- measured red set: evidence/29.6-06-red-set.json ---
+{"red":["security / IaC — Checkov","security / SAST — Semgrep CE"],"checkov_failed_ids":["CKV_DOCKER_2","CKV_DOCKER_3"],"semgrep_finding_ids":["dockerfile.security.missing-user.missing-user"]}
+Two of five required contexts red, the same count ADR-019 saw. Checkov: CKV_DOCKER_2 (no HEALTHCHECK),
+CKV_DOCKER_3 (no USER) on /Dockerfile. Semgrep: dockerfile.security.missing-user.missing-user (1 blocking finding).
+Artifacts downloaded (read) to the session scratchpad: 29.6-06-checkov/, 29.6-06-semgrep/.
+
+--- PR-0 merge state on SHA-2 (nothing required) ---
+$ gh api repos/$R/rulesets --jq length
+0
+$ bash 29.6-snap.sh settle_merge_state $R 1 CLEAN
+settle read 1/20: mergeStateStatus=UNSTABLE (previous='CLEAN')
+UNSTABLE
+rc=0
+$ bash 29.6-snap.sh pr_state $R 1   -> evidence/29.6-06-merge-state-unstable.json
+{"sha":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","mergeStateStatus":"UNSTABLE","mergeable":"MERGEABLE","ts":"2026-10-06T16:31:41.010Z","pr":1,"headRefOid":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","settle_prev":"CLEAN","note":"settle_merge_state rc=0, settled on read 1/20; no ruleset exists (nothing required)"}
+D-20 step 1: UNSTABLE on red SHA-2 with no ruleset (nothing required).
