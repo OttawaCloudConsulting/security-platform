@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.6-04-PLAN.md
-last_updated: "2026-10-06T03:09:19.707Z"
+stopped_at: Completed 29.6-05-PLAN.md
+last_updated: "2026-10-06T16:26:31.000Z"
 last_activity: 2026-10-06
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.6 (close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-) — EXECUTING
-Plan: 5 of 15
+Plan: 6 of 15
 Status: Ready to execute
 Last activity: 2026-10-06
 
@@ -391,6 +391,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.6]: 29.6-03: verdict precedence fixed in code (rc/state anomaly > invalid > attribution anomaly > variant-a invalid > lost/anomaly > blocked); suites attributed by set difference
 - [Phase 29.6]: 29.6-03: close_run_detect returns 1 for not-yet (poll-safe when sourced), exits 2 on gh failure; detector loops all new-suite candidates
 - [Phase 29.6]: 29.6-04: 29.6-race.sh creates the attempt dir only after every D-18 guard passes (exit 1 leaves nothing; label reusable); BLOCKED asserted pre-close only; one D-19 pr view between reopen and merge; --dry-run has an in-script gh tripwire
+- [Phase 29.6]: 29.6-05: scratch repo sp-reopen-race-scratch (private) and PR-0 (#1) created by the orchestrating session on explicit operator approval; PR-0 report-only green; contexts read live from run 37495100157 (equal D-01, U+2014 only); referenced_workflows v1 sha matches v1 start; token lacks delete_repo (plan 11)
 
 ### Pending Todos
 
@@ -588,11 +589,12 @@ Carried forward from v1.1 close:
 | Phase 29.6 P02 | 12min | 2 tasks | 8 files |
 | Phase 29.6 P03 | 20min | 2 tasks | 55 files |
 | Phase 29.6 P04 | 25min | 2 tasks | 2 files |
+| Phase 29.6 P05 | 15min | 3 tasks | 9 files |
 
 ## Session Continuity
 
-Last session: 2026-10-06T03:09:19.707Z
-Stopped at: Completed 29.6-04-PLAN.md
+Last session: 2026-10-06T16:26:31.000Z
+Stopped at: Completed 29.6-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
