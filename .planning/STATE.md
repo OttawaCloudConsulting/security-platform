@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.6-02-PLAN.md
-last_updated: "2026-10-06T00:05:04.956Z"
+stopped_at: Completed 29.6-03-PLAN.md
+last_updated: "2026-10-06T00:30:04.778Z"
 last_activity: 2026-10-06
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.6 (close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-) — EXECUTING
-Plan: 3 of 15
+Plan: 4 of 15
 Status: Ready to execute
 Last activity: 2026-10-06
 
@@ -388,6 +388,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.5]: ADR-032 written after the v1.4.0 tag (dated 2026-10-05, tagger date); supersedes the ADR-026 "Trivy originals arrive Verified" tradeoff in prose and closes 28-REVIEW WR-03; ADR-026 byte-unchanged vs eb21269 — D-18 append-only ADRs; ADR-032 records that the operator did not confirm the absence of external @v1 callers
 - [Phase 29.6]: 29.6-01: 27-UAT items 1-2 pass on live evidence (schedule run 36553070357; homelab ci/main snapshot 278 findings / 8 tests); item 3 pending for plan 11
 - [Phase 29.6]: 29.6-02: scratch Dockerfile pinned to public.ecr.aws alpine:3.20@sha256:d9e853e8...b6bc; operator scripts use set -E + ERR trap (infra failure = exit 2); merge-attempt exits 9 on MERGED regardless of rc
+- [Phase 29.6]: 29.6-03: verdict precedence fixed in code (rc/state anomaly > invalid > attribution anomaly > variant-a invalid > lost/anomaly > blocked); suites attributed by set difference
+- [Phase 29.6]: 29.6-03: close_run_detect returns 1 for not-yet (poll-safe when sourced), exits 2 on gh failure; detector loops all new-suite candidates
 
 ### Pending Todos
 
@@ -583,11 +585,12 @@ Carried forward from v1.1 close:
 | Phase 29.5 P12 | 10min | 3 tasks | 4 files |
 | Phase 29.6 P01 | 5min | 2 tasks | 6 files |
 | Phase 29.6 P02 | 12min | 2 tasks | 8 files |
+| Phase 29.6 P03 | 20min | 2 tasks | 55 files |
 
 ## Session Continuity
 
-Last session: 2026-10-06T00:05:04.946Z
-Stopped at: Completed 29.6-01-PLAN.md
+Last session: 2026-10-06T00:30:04.778Z
+Stopped at: Completed 29.6-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
