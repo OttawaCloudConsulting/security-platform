@@ -1,0 +1,30 @@
+# 29.6-05 pre-flight transcript (read-only), captured 2026-10-06T03:11:33Z
+
+$ gh api users/OttawaCloudConsulting --jq '{login,type}'
+{"login":"OttawaCloudConsulting","type":"User"}
+rc=0
+
+$ gh api orgs/OttawaCloudConsulting
+{"message":"Not Found","documentation_url":"https://docs.github.com/rest/orgs/orgs#get-an-organization","status":"404"}gh: Not Found (HTTP 404)
+gh: This API operation needs the "admin:org" scope. To request it, run:  gh auth refresh -h github.com -s admin:org
+rc=1
+
+$ gh auth status
+github.com
+  ✓ Logged in to github.com account OttawaCloudConsulting (keyring)
+  - Active account: true
+  - Git operations protocol: https
+  - Token: [REDACTED]
+  - Token scopes: 'gist', 'read:org', 'repo', 'workflow'
+rc=0
+
+$ gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch
+{"message":"Not Found","documentation_url":"https://docs.github.com/rest/repos/repos#get-a-repository","status":"404"}gh: Not Found (HTTP 404)
+rc=1
+
+$ gh --version
+gh version 2.102.0 (2026-09-30)
+https://github.com/cli/cli/releases/tag/v2.102.0
+rc=0
+
+NOTE: token scopes lack delete_repo; D-06 deletion needs 'gh auth refresh -h github.com -s delete_repo' or the web UI.
