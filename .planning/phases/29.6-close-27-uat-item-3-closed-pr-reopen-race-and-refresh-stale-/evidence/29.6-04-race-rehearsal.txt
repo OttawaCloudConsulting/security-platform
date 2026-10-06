@@ -1,0 +1,221 @@
+# 29.6-04 race driver rehearsal (offline, dry-run)
+# generated 2026-10-06T02:49:36.982Z by an executor shell; cwd /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-
+# No live GitHub read or write. gh is an exported bash function tripwire (not a file on PATH);
+# GH_CONFIG_DIR points to an empty temp dir and GH_TOKEN/GITHUB_TOKEN are unset, so a real gh could not authenticate.
+
+$ type -t gh
+function
+$ bash -c 'type -t gh'   # child shell sees the exported function
+function
+$ ls -ld "$GH_CONFIG_DIR"; ls -A "$GH_CONFIG_DIR" | wc -l
+drwx------@ /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T/tmp.3QARtZWmkD
+0
+$ env | grep -cE "^(GH_TOKEN|GITHUB_TOKEN)="
+0
+
+## live-input files at rehearsal time (the dry run must pass whether or not they exist; it never opens them)
+absent:  evidence/29.6-05-contexts.json
+absent:  evidence/29.6-race-target.json
+absent:  evidence/29.6-07-ruleset-created.json
+absent:  evidence/29.6-07-ruleset-created-public.json
+$ ls -d evidence/29.6-race-* 2>/dev/null | wc -l   # before
+0
+$ ls -l 29.6-race.sh
+-rw-r--r--@ 29.6-race.sh
+
+$ bash 29.6-race.sh --variant a --attempt a1:101 --dry-run
+=== 29.6-race.sh DRY-RUN: variant a, 1 attempt(s), repo OttawaCloudConsulting/sp-reopen-race-scratch ===
+no GitHub reads or writes; no attempt directory; live-input files are not opened
+
+=== 29.6-race DRY-RUN: variant a, attempt a1, PR #101 ===
+  ok: attempt dir /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-a1 does not exist (it is NOT created under --dry-run)
+  pre-close guard the live run checks, in order (reads only; exit 1 on any failure, nothing written):
+    P1 /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-target.json exists and .proceed == true (D-04/D-20)
+    P2 RULESET_ID = .id of evidence/<.ruleset_created_file>, which must be 29.6-07-ruleset-created.json or 29.6-07-ruleset-created-public.json -> <RULESET_ID>
+    P3 CONTEXTS_JSON = /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-05-contexts.json, exactly five names -> ["<CONTEXT_1>","<CONTEXT_2>","<CONTEXT_3>","<CONTEXT_4>","<CONTEXT_5>"]
+    P4 gh variable get GATE_MODE -R OttawaCloudConsulting/sp-reopen-race-scratch  == blocking
+    P5 gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch/rules/branches/main --jq '[.[].type]'  contains required_status_checks
+    P6 gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch/rulesets/<RULESET_ID>  bypass_actors == [] and current_user_can_bypass == never
+    P7 pr_state OttawaCloudConsulting/sp-reopen-race-scratch 101  state OPEN; SHA := headRefOid -> <HEAD_SHA>
+    P8 newest_per_context OttawaCloudConsulting/sp-reopen-race-scratch <HEAD_SHA> CONTEXTS_JSON  five completed, none missing, >= 1 failure
+    P9 settle_merge_state OttawaCloudConsulting/sp-reopen-race-scratch 101 ""  == BLOCKED  (pre-close only: the 22-04 guard inverted)
+  then: mkdir attempt dir; meta.json; snap pre-close -> timeline.jsonl; PRE_SUITES := pre-close suite ids
+DRY-RUN: gh pr close 101 -R OttawaCloudConsulting/sp-reopen-race-scratch
+DRY-RUN: wait close_run_detect OttawaCloudConsulting/sp-reopen-race-scratch <HEAD_SHA> <PRE_SUITES> ["<CONTEXT_1>","<CONTEXT_2>","<CONTEXT_3>","<CONTEXT_4>","<CONTEXT_5>"] (every 2 s, up to 60 reads; timeout -> exit 3, PR left CLOSED)
+  then: snap pre-reopen -> timeline.jsonl
+DRY-RUN: gh pr reopen 101 -R OttawaCloudConsulting/sp-reopen-race-scratch
+DRY-RUN: gh pr view 101 -R OttawaCloudConsulting/sp-reopen-race-scratch --json mergeStateStatus,mergeable,headRefOid   (D-19: the single read between reopen and merge; recorded, not asserted)
+DRY-RUN: gh pr merge 101 -R OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit <HEAD_SHA> >/Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-a1/merge-stdout.txt 2>/Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-a1/merge-stderr.txt
+  then: snap post-merge; gh pr view 101 -R OttawaCloudConsulting/sp-reopen-race-scratch --json state,mergedAt,mergeCommit,headRefOid >pr-after.json
+  then: snap settle-<n> every 3 s up to 120 times until the reopen suite completes; snap final
+  then: checkruns-final.json, runs.json, pr-timeline.json (gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch/issues/101/timeline --paginate --slurp), meta.json
+DRY-RUN: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-verdict.sh /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-a1
+  then: verdict exit 0 -> next attempt; 9 -> RACE LOST banner, exit 9; other non-zero -> stop with that code
+
+=== dry-run complete; nothing was read from or written to GitHub ===
+exit=0
+
+$ bash 29.6-race.sh --variant b --attempt b1:201 --attempt b2:202 --dry-run
+=== 29.6-race.sh DRY-RUN: variant b, 2 attempt(s), repo OttawaCloudConsulting/sp-reopen-race-scratch ===
+no GitHub reads or writes; no attempt directory; live-input files are not opened
+
+=== 29.6-race DRY-RUN: variant b, attempt b1, PR #201 ===
+  ok: attempt dir /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-b1 does not exist (it is NOT created under --dry-run)
+  pre-close guard the live run checks, in order (reads only; exit 1 on any failure, nothing written):
+    P1 /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-target.json exists and .proceed == true (D-04/D-20)
+    P2 RULESET_ID = .id of evidence/<.ruleset_created_file>, which must be 29.6-07-ruleset-created.json or 29.6-07-ruleset-created-public.json -> <RULESET_ID>
+    P3 CONTEXTS_JSON = /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-05-contexts.json, exactly five names -> ["<CONTEXT_1>","<CONTEXT_2>","<CONTEXT_3>","<CONTEXT_4>","<CONTEXT_5>"]
+    P4 gh variable get GATE_MODE -R OttawaCloudConsulting/sp-reopen-race-scratch  == blocking
+    P5 gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch/rules/branches/main --jq '[.[].type]'  contains required_status_checks
+    P6 gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch/rulesets/<RULESET_ID>  bypass_actors == [] and current_user_can_bypass == never
+    P7 pr_state OttawaCloudConsulting/sp-reopen-race-scratch 201  state OPEN; SHA := headRefOid -> <HEAD_SHA>
+    P8 newest_per_context OttawaCloudConsulting/sp-reopen-race-scratch <HEAD_SHA> CONTEXTS_JSON  five completed, none missing, >= 1 failure
+    P9 settle_merge_state OttawaCloudConsulting/sp-reopen-race-scratch 201 ""  == BLOCKED  (pre-close only: the 22-04 guard inverted)
+  then: mkdir attempt dir; meta.json; snap pre-close -> timeline.jsonl; PRE_SUITES := pre-close suite ids
+DRY-RUN: gh pr close 201 -R OttawaCloudConsulting/sp-reopen-race-scratch
+DRY-RUN: gh pr reopen 201 -R OttawaCloudConsulting/sp-reopen-race-scratch
+DRY-RUN: gh pr view 201 -R OttawaCloudConsulting/sp-reopen-race-scratch --json mergeStateStatus,mergeable,headRefOid   (D-19: the single read between reopen and merge; recorded, not asserted)
+DRY-RUN: gh pr merge 201 -R OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit <HEAD_SHA> >/Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-b1/merge-stdout.txt 2>/Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-b1/merge-stderr.txt
+  then: snap post-merge; gh pr view 201 -R OttawaCloudConsulting/sp-reopen-race-scratch --json state,mergedAt,mergeCommit,headRefOid >pr-after.json
+  then: snap settle-<n> every 3 s up to 120 times until the reopen suite completes; snap final
+  then: checkruns-final.json, runs.json, pr-timeline.json (gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch/issues/201/timeline --paginate --slurp), meta.json
+DRY-RUN: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-verdict.sh /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-b1
+  then: verdict exit 0 -> next attempt; 9 -> RACE LOST banner, exit 9; other non-zero -> stop with that code
+
+=== 29.6-race DRY-RUN: variant b, attempt b2, PR #202 ===
+  ok: attempt dir /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-b2 does not exist (it is NOT created under --dry-run)
+  pre-close guard the live run checks, in order (reads only; exit 1 on any failure, nothing written):
+    P1 /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-target.json exists and .proceed == true (D-04/D-20)
+    P2 RULESET_ID = .id of evidence/<.ruleset_created_file>, which must be 29.6-07-ruleset-created.json or 29.6-07-ruleset-created-public.json -> <RULESET_ID>
+    P3 CONTEXTS_JSON = /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-05-contexts.json, exactly five names -> ["<CONTEXT_1>","<CONTEXT_2>","<CONTEXT_3>","<CONTEXT_4>","<CONTEXT_5>"]
+    P4 gh variable get GATE_MODE -R OttawaCloudConsulting/sp-reopen-race-scratch  == blocking
+    P5 gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch/rules/branches/main --jq '[.[].type]'  contains required_status_checks
+    P6 gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch/rulesets/<RULESET_ID>  bypass_actors == [] and current_user_can_bypass == never
+    P7 pr_state OttawaCloudConsulting/sp-reopen-race-scratch 202  state OPEN; SHA := headRefOid -> <HEAD_SHA>
+    P8 newest_per_context OttawaCloudConsulting/sp-reopen-race-scratch <HEAD_SHA> CONTEXTS_JSON  five completed, none missing, >= 1 failure
+    P9 settle_merge_state OttawaCloudConsulting/sp-reopen-race-scratch 202 ""  == BLOCKED  (pre-close only: the 22-04 guard inverted)
+  then: mkdir attempt dir; meta.json; snap pre-close -> timeline.jsonl; PRE_SUITES := pre-close suite ids
+DRY-RUN: gh pr close 202 -R OttawaCloudConsulting/sp-reopen-race-scratch
+DRY-RUN: gh pr reopen 202 -R OttawaCloudConsulting/sp-reopen-race-scratch
+DRY-RUN: gh pr view 202 -R OttawaCloudConsulting/sp-reopen-race-scratch --json mergeStateStatus,mergeable,headRefOid   (D-19: the single read between reopen and merge; recorded, not asserted)
+DRY-RUN: gh pr merge 202 -R OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit <HEAD_SHA> >/Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-b2/merge-stdout.txt 2>/Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-b2/merge-stderr.txt
+  then: snap post-merge; gh pr view 202 -R OttawaCloudConsulting/sp-reopen-race-scratch --json state,mergedAt,mergeCommit,headRefOid >pr-after.json
+  then: snap settle-<n> every 3 s up to 120 times until the reopen suite completes; snap final
+  then: checkruns-final.json, runs.json, pr-timeline.json (gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch/issues/202/timeline --paginate --slurp), meta.json
+DRY-RUN: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-verdict.sh /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-b2
+  then: verdict exit 0 -> next attempt; 9 -> RACE LOST banner, exit 9; other non-zero -> stop with that code
+
+=== dry-run complete; nothing was read from or written to GitHub ===
+exit=0
+
+$ bash 29.6-race.sh --variant c --attempt x:1
+usage(2): --variant must be a or b; got 'c'
+usage: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-race.sh --variant a|b --attempt LABEL:PR [--attempt LABEL:PR ...] [--dry-run]
+       up to three --attempt pairs; LABEL matches [A-Za-z0-9._-]+, PR is a positive integer
+exit=2
+
+$ bash 29.6-race.sh --variant a --attempt a1:notanumber --dry-run
+usage(2): PR must be a positive integer; got 'notanumber'
+usage: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-race.sh --variant a|b --attempt LABEL:PR [--attempt LABEL:PR ...] [--dry-run]
+       up to three --attempt pairs; LABEL matches [A-Za-z0-9._-]+, PR is a positive integer
+exit=2
+
+$ bash 29.6-race.sh --variant b --attempt b1:1 --attempt b2:2 --attempt b3:3 --attempt b4:4 --dry-run
+usage(2): between one and three --attempt LABEL:PR pairs are required (D-09); got 4
+usage: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-race.sh --variant a|b --attempt LABEL:PR [--attempt LABEL:PR ...] [--dry-run]
+       up to three --attempt pairs; LABEL matches [A-Za-z0-9._-]+, PR is a positive integer
+exit=2
+
+$ bash 29.6-race.sh --variant b --attempt b1:5 --attempt b1:6 --dry-run
+usage(2): label 'b1' given twice
+usage: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-race.sh --variant a|b --attempt LABEL:PR [--attempt LABEL:PR ...] [--dry-run]
+       up to three --attempt pairs; LABEL matches [A-Za-z0-9._-]+, PR is a positive integer
+exit=2
+
+## order check: DRY-RUN lines per attempt (variant a: close, detector wait, reopen, pre-merge read, merge; variant b: no wait)
+$ bash 29.6-race.sh --variant a --attempt a1:101 --dry-run | grep '^DRY-RUN:' | awk '{print $2, $3, $4}'
+gh pr close
+wait close_run_detect OttawaCloudConsulting/sp-reopen-race-scratch
+gh pr reopen
+gh pr view
+gh pr merge
+bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-verdict.sh /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-a1
+$ bash 29.6-race.sh --variant b --attempt b1:201 --attempt b2:202 --dry-run | grep '^DRY-RUN:' | awk '{print $2, $3, $4}'
+gh pr close
+gh pr reopen
+gh pr view
+gh pr merge
+bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-verdict.sh /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-b1
+gh pr close
+gh pr reopen
+gh pr view
+gh pr merge
+bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-verdict.sh /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-b2
+
+$ ls -d evidence/29.6-race-* 2>/dev/null | wc -l   # after (dry run created no attempt dir)
+0
+# TRIPWIRE-OUTER lines above: none means neither the script nor its tripwire path reached gh.
+
+## SUPPLEMENT: live code path exercised offline against a stubbed gh (not required by the plan)
+# A scratch copy of 29.6-race.sh (only the PD= line changed, to a scratchpad dir with its own evidence/ and
+# synthetic live-input files) was run with gh replaced by an exported bash function backed by a python
+# state machine (ghstub.py). Same isolation: type -t gh == function in parent and child, empty GH_CONFIG_DIR,
+# no token. Nothing in this repository's evidence/ was read or written. Output filtered to key lines.
+# cmp of the scratch copy against the committed script, ignoring the PD= line:
+identical apart from PD=
+
+$ [stub blocked, variant a] bash 29.6-race.sh --variant a --attempt t1:101
+  2026-10-06T03:07:42.885Z close run detected: {"run_id":2000,"suite":200,"run_conclusion":"skipped"}
+  2026-10-06T03:07:43.725Z .. 2026-10-06T03:07:44.103Z reopen rc 0
+  2026-10-06T03:07:44.297Z .. 2026-10-06T03:07:44.655Z D-19 pre-merge state: {"mergeStateStatus": "UNKNOWN", "mergeable": "MERGEABLE", "headRefOid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+  2026-10-06T03:07:44.870Z .. 2026-10-06T03:07:45.305Z gh pr merge 101 -R OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  rc 1
+  settled after 3 snap(s): reopen suite complete on every context
+  "verdict": "blocked",
+=== attempt t1: BLOCKED (verdict exit 0) ===
+=== all 1 attempt(s) BLOCKED. exit 0 ===
+race exit=0
+# stub call log, in order, filtered to writes, the D-19 view and actions/runs reads (detector reads before reopen; final dump after merge):
+   1 pr close 101
+   3 api repos/OttawaCloudConsulting/sp-reopen-race-scratch/actions/runs?event=pull_request&head_sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&per_page=100
+   1 pr reopen 101
+   1 pr view 101
+   1 pr merge 101
+   1 api repos/OttawaCloudConsulting/sp-reopen-race-scratch/actions/runs?event=pull_request&head_sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&per_page=100
+
+$ [stub blocked, variant b] bash 29.6-race.sh --variant b --attempt t2:101
+  2026-10-06T03:07:52.187Z .. 2026-10-06T03:07:52.579Z reopen rc 0
+  2026-10-06T03:07:52.782Z .. 2026-10-06T03:07:53.190Z D-19 pre-merge state: {"mergeStateStatus": "UNKNOWN", "mergeable": "MERGEABLE", "headRefOid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+  2026-10-06T03:07:53.436Z .. 2026-10-06T03:07:53.816Z gh pr merge 101 -R OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  rc 1
+  settled after 3 snap(s): reopen suite complete on every context
+  "verdict": "blocked",
+=== attempt t2: BLOCKED (verdict exit 0) ===
+=== all 1 attempt(s) BLOCKED. exit 0 ===
+race exit=0
+
+$ [stub lost, variant b] bash 29.6-race.sh --variant b --attempt l1:101 --attempt l2:102   # must stop after l1
+  2026-10-06T03:08:00.507Z .. 2026-10-06T03:08:00.864Z reopen rc 0
+  2026-10-06T03:08:01.043Z .. 2026-10-06T03:08:01.485Z D-19 pre-merge state: {"mergeStateStatus": "UNKNOWN", "mergeable": "MERGEABLE", "headRefOid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+  2026-10-06T03:08:01.681Z .. 2026-10-06T03:08:02.065Z gh pr merge 101 -R OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  rc 0
+  settled after 3 snap(s): reopen suite complete on every context
+  "verdict": "lost",
+## RACE LOST. THE MERGE WAS ACCEPTED ON A RED HEAD SHA.               ##
+## D-11: STOP. Run nothing else. Report to the operator.              ##
+race exit=9
+$ ls -d evidence/29.6-race-l*
+evidence/29.6-race-l1
+
+$ [stub green head] bash 29.6-race.sh --variant b --attempt g1:101
+ABORT(1): head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa is not red: all five newest must be completed with >= 1 failure (D-18). A green-prior attempt is non-discriminating.
+          Nothing was written to GitHub for this attempt; its PR is untouched.
+race exit=1
+# gh write calls made: 0; attempt dir created: 0
+
+$ [existing attempt dir] mkdir evidence/29.6-race-t1 exists from above; bash 29.6-race.sh --variant a --attempt t1:101
+ABORT(1): <SCRATCH_PD>/evidence/29.6-race-t1 already exists. Refusing to overwrite evidence; use a new label.
+race exit=1
+
+$ [stub close run never appears] POLL_DETECT_ITERATIONS=3 bash 29.6-race.sh --variant a --attempt d1:101
+DETECTOR TIMEOUT(3): the close run was not detected after 3 reads.
+                     PR #101 is LEFT CLOSED. It was NOT reopened.
+race exit=3
+# gh pr reopen calls after timeout: 0
