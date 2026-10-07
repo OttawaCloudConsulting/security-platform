@@ -1,0 +1,15 @@
+{
+  "sha": "377b4caf2a6d33f161cf9c9bcb8987976905fc42",
+  "mergeStateStatus": "CLEAN",
+  "mergeable": "MERGEABLE",
+  "ts": "2026-10-07T12:48:18.440Z",
+  "pr": 1,
+  "state": "OPEN",
+  "headRefOid": "377b4caf2a6d33f161cf9c9bcb8987976905fc42",
+  "settle_prev": "BLOCKED",
+  "current_user_can_bypass": "never",
+  "run_id": 37623424945,
+  "run_conclusion": "success",
+  "gate_mode": "report-only (GATE_MODE unset; all five scan jobs log gate_mode=report-only)",
+  "note": "settle_merge_state rc=0, settled on read 1/20; pr_state re-read after settle CLEAN; ruleset 24593937 unchanged vs 29.6-07-ruleset-after.json (all keys incl. updated_at), five contexts still required"
+}

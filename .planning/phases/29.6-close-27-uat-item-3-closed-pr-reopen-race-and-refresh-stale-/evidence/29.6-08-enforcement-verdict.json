@@ -1,0 +1,61 @@
+{
+  "repo": "OttawaCloudConsulting/sp-reopen-race-scratch",
+  "visibility": "PRIVATE",
+  "ruleset_id": 24593937,
+  "pr": 1,
+  "sha1": "88ac58b2ffa0a00fa51878ea1ce233ec47ec647f",
+  "sha2": "172d2c237f9ef6045d26df0b42a4e5d6b97ebee0",
+  "sha3": "377b4caf2a6d33f161cf9c9bcb8987976905fc42",
+  "readings": [
+    {
+      "sha": "172d2c237f9ef6045d26df0b42a4e5d6b97ebee0",
+      "state": "UNSTABLE",
+      "source_file": "evidence/29.6-06-merge-state-unstable.json",
+      "ts": "2026-10-06T16:31:41.010Z",
+      "context": "GATE_MODE=blocking, two required-to-be contexts red, 0 rulesets"
+    },
+    {
+      "sha": "172d2c237f9ef6045d26df0b42a4e5d6b97ebee0",
+      "state": "BLOCKED",
+      "source_file": "evidence/29.6-07-merge-state-blocked.json",
+      "ts": "2026-10-06T16:40:56.777Z",
+      "context": "same SHA-2, ruleset 24593937 applied with five required contexts"
+    },
+    {
+      "sha": "377b4caf2a6d33f161cf9c9bcb8987976905fc42",
+      "state": "CLEAN",
+      "source_file": "evidence/29.6-08-merge-state-clean.json",
+      "ts": "2026-10-07T12:48:18.440Z",
+      "context": "GATE_MODE unset (report-only), all five required contexts success (evidence/29.6-08-checkruns-clean.json, run 37623424945), ruleset unchanged"
+    }
+  ],
+  "refusal": {
+    "rc": 1,
+    "source": "client-side",
+    "line": "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#1 is not mergeable: the base branch policy prohibits the merge.",
+    "classifier": "29.6-verdict.sh --classify-stderr",
+    "files": [
+      "evidence/29.6-07-refusal.txt",
+      "evidence/29.6-07-refusal-stderr.txt",
+      "evidence/29.6-07-refusal-rc.txt",
+      "evidence/29.6-07-refusal-pr-after.json"
+    ],
+    "pr_after": {
+      "state": "OPEN",
+      "mergedAt": null
+    },
+    "note": "D-19: no direct REST merge attempted; the server merge endpoint was not reached, so ADR-019 NOT-verified item 2 stays open"
+  },
+  "bypass": {
+    "bypass_actors": [],
+    "current_user_can_bypass": "never",
+    "source_file": "evidence/29.6-07-ruleset-after.json; re-read 2026-10-07 in plan 08 Task 2, identical incl. updated_at 2026-10-06T12:37:45.230-04:00"
+  },
+  "red_set": [
+    "security / IaC — Checkov",
+    "security / SAST — Semgrep CE"
+  ],
+  "enforcement_proven": true,
+  "fallback_used": false,
+  "reason": "UNSTABLE (SHA-2, no ruleset) -> BLOCKED (same SHA-2, five contexts required) -> CLEAN (SHA-3, same five contexts still required, all success); merge attempt on BLOCKED refused rc 1 with PR still OPEN; bypass_actors [] and current_user_can_bypass never. The BLOCKED state is attributed to the red required checks, not the pull_request rule. Caveat: the refusal was client-side (gh read BLOCKED and declined); server-side refusal is unproven (D-19)."
+}
