@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.6-14-PLAN.md
-last_updated: "2026-10-07T12:58:41.734Z"
+stopped_at: Completed 29.6-15-PLAN.md
+last_updated: "2026-10-07T13:01:54.961Z"
 last_activity: 2026-10-07
 progress:
   total_phases: 7
@@ -396,6 +396,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.6]: 29.6-07: Default ruleset 24593937 (five contexts, app 15368, strict false, bypass_actors [], current_user_can_bypass never) created/applied by the orchestrating session on explicit operator approval; PR-0 UNSTABLE -> BLOCKED on unchanged SHA-2; operator ran the merge attempt in their own terminal: gh rc 1, 'base branch policy prohibits the merge', classified client-side, PR #1 still OPEN; no REST merge (D-19) so ADR-019 NOT-verified item 2 stays open
 - [Phase 29.6]: 29.6-08 enforcement gate ruled proceed: SHA-3 377b4caf CLEAN with ruleset 24593937 unchanged, enforcement_proven true on the PRIVATE scratch repo; operator selected 'proceed (Recommended)'; plan 14 records skipped, plan 15 targets this verdict; GATE_MODE unset until plan 09; never merge PR #1
 - [Phase 29.6]: Plan 14 fallback gate skipped on ruling proceed: D-04 public fallback not used; scratch repo stays PRIVATE with ruleset 24593937
+- [Phase 29.6]: Plan 15 skip path: evidence/29.6-race-target.json points the race at the PRIVATE verdict and ruleset 24593937 (29.6-07-ruleset-created.json) with proceed true; no public replay
 
 ### Pending Todos
 
@@ -598,11 +599,12 @@ Carried forward from v1.1 close:
 | Phase 29.6 P07 | 15min | 3 tasks | 11 files |
 | Phase 29.6 P08 | ~20min | 3 tasks | 6 files |
 | Phase 29.6 P14 | 5min | 3 tasks | 3 files |
+| Phase 29.6 P15 | 5min | 3 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-10-07T12:58:47.022Z
-Stopped at: Completed 29.6-14-PLAN.md (fallback gate skipped: private enforcement proven; no GitHub writes; GATE_MODE unset until plan 09; never merge PR #1)
+Last session: 2026-10-07T13:01:54.961Z
+Stopped at: Completed 29.6-15-PLAN.md (skip path; race-target.json private, ruleset 24593937, proceed true; no GitHub writes; next is plan 09; GATE_MODE unset until plan 09; never merge PR #1)
 Resume file: None
 
 ## Operator Next Steps
