@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: 29.6-09 Task 2 checkpoint (race not run)
-last_updated: "2026-10-07T13:11:08.180Z"
+stopped_at: 29.6-09 Task 3 D-11 gate checkpoint (variant a 3/3 blocked; awaiting ruling)
+last_updated: "2026-10-07T23:27:33.506Z"
 last_activity: 2026-10-07
 progress:
   total_phases: 7
@@ -603,8 +603,8 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-10-07T13:11:08.180Z
-Stopped at: 29.6-09 Task 2 checkpoint (Task 1 committed 24d57cd: GATE_MODE=blocking; PRs #2 a1, #3 a2, #4 a3 red Checkov+Semgrep and BLOCKED; race.sh --variant a NOT run; no attempt dirs; never merge PR #1)
+Last session: 2026-10-07T23:27:33.506Z
+Stopped at: 29.6-09 Task 3 D-11 gate checkpoint (Task 2 committed 9e901ad: race.sh --variant a exit 0, a1-a3 all blocked (a1 client-side, a2/a3 server-side "5 of 5 required status checks are queued"); 29.6-race-verdict.json overall blocked, counts.a.blocked 3; 29.6-09-d11-gate.txt NOT written, awaiting operator ruling; GATE_MODE still blocking; PRs #1-#4 OPEN; never merge PR #1)
 Resume file: None
 
 ## Operator Next Steps
