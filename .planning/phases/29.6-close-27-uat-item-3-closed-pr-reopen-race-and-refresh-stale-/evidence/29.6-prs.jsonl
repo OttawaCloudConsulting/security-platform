@@ -1,3 +1,6 @@
 {"label":"pr0","pr":1,"branch":"race/pr0","head_sha":"88ac58b2ffa0a00fa51878ea1ce233ec47ec647f","ts":"2026-10-06T16:21:42.912+00:00","action":"open"}
 {"label":"pr0","branch":"race/pr0","head_sha":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","prev_sha":"88ac58b2ffa0a00fa51878ea1ce233ec47ec647f","ts":"2026-10-06T16:29:01.455+00:00","action":"empty-commit"}
 {"label":"pr0","branch":"race/pr0","head_sha":"377b4caf2a6d33f161cf9c9bcb8987976905fc42","prev_sha":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","ts":"2026-10-07T12:46:15.949+00:00","action":"empty-commit"}
+{"label":"a1","pr":2,"branch":"race/a1","head_sha":"8d3641e3d45615f20b12c208273f74b88bc1f472","ts":"2026-10-07T13:07:14.310+00:00","action":"open"}
+{"label":"a2","pr":3,"branch":"race/a2","head_sha":"9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d","ts":"2026-10-07T13:07:25.634+00:00","action":"open"}
+{"label":"a3","pr":4,"branch":"race/a3","head_sha":"3803e8ad51243ed81ab6067f5061b26aab75fe65","ts":"2026-10-07T13:07:36.419+00:00","action":"open"}

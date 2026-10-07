@@ -1,0 +1,207 @@
+29.6-09 Task 1: re-arm GATE_MODE=blocking and open variant (a) PRs a1, a2, a3 (operator-approved writes)
+====================================================================================================
+
+Checkpoint question put to the operator by the orchestrator (AskUserQuestion, 2026-10-07):
+
+    Plan 09 Task 1: set GATE_MODE=blocking, then open red PRs a1, a2, a3 on the scratch repo. No race yet.
+    Who runs it?
+
+Operator reply (verbatim, the option the human user selected, relayed by the orchestrator):
+
+    You run them now
+    ("I run the 4 commands one at a time and check rc=0 before each next one. On any failure I stop. A
+    continuation then confirms each PR is red and BLOCKED, and stops at the race checkpoint.")
+
+Who executed the commands: the orchestrating Claude session ran the four commands below, one at a time, checking
+rc=0 before each next one, on the operator's explicit instruction above. The operator did NOT type them. The plan's
+wording (operator runs them) was superseded by this explicit operator approval; it is recorded here as such.
+No race was run. PR #1 (pr0) was not touched.
+
+Pre-flight (read-only, prior executor, 2026-10-07): race-target proceed true; enforcement verdict
+29.6-08-enforcement-verdict.json enforcement_proven true; repo PRIVATE; ruleset 24593937 active, bypass_actors [],
+current_user_can_bypass never; GATE_MODE unset; only PR #1 open (CLEAN on SHA-3 377b4caf...); clone clean;
+dry-runs of 29.6-pr.sh open --label a1 and 29.6-race.sh --variant a both rc 0 with no writes.
+
+PD    = /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-
+S     = /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad
+CLONE = $S/29.6-scratch-clone
+
+Commands (all exited rc=0, in this order):
+  1. gh variable set GATE_MODE --body blocking -R OttawaCloudConsulting/sp-reopen-race-scratch
+  2. bash $PD/29.6-pr.sh open --clone-dir $CLONE --label a1   -> PR #2, race/a1, 8d3641e3d45615f20b12c208273f74b88bc1f472
+  3. bash $PD/29.6-pr.sh open --clone-dir $CLONE --label a2   -> PR #3, race/a2, 9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d
+  4. bash $PD/29.6-pr.sh open --clone-dir $CLONE --label a3   -> PR #4, race/a3, 3803e8ad51243ed81ab6067f5061b26aab75fe65
+
+Note: trailing whitespace is stripped from command output in this file (docs-repo pre-commit hook). Output below is
+copied from the session's raw capture files $S/29.6-09-arm.{ts,txt} and $S/29.6-09-open-a{1,2,3}.txt, each with the
+rc line appended by the capturing session. The arm .ts value is the python3 UTC clock just before command 1.
+
+--- 1. gh variable set GATE_MODE --body blocking ---
+ts (just before): 2026-10-07T13:07:02.889+00:00
+output (gh variable set prints nothing on success), capture file content:
+    rc=0
+
+--- 29.6-pr.sh open --label a1 ---
+=== 29.6-pr open — label a1 ===
+  ok: clone /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone is outside the planning repo; origin = https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone fetch origin
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone checkout -b race/a1 origin/main
+Switched to a new branch 'race/a1'
+branch 'race/a1' set up to track 'origin/main'.
++ mkdir -p /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone/attempts
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone add attempts/a1.txt
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone commit -m 29.6 attempt a1
+[race/a1 8d3641e] 29.6 attempt a1
+ 1 file changed, 1 insertion(+)
+ create mode 100644 attempts/a1.txt
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone push -u origin race/a1
+remote:
+remote: Create a pull request for 'race/a1' on GitHub by visiting:
+remote:      https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch/pull/new/race/a1
+remote:
+To https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
+ * [new branch]      race/a1 -> race/a1
+branch 'race/a1' set up to track 'origin/race/a1'.
+PR URL: https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch/pull/2
+{"label":"a1","pr":2,"branch":"race/a1","head_sha":"8d3641e3d45615f20b12c208273f74b88bc1f472","ts":"2026-10-07T13:07:14.310+00:00","action":"open"}
+rc=0
+
+--- 29.6-pr.sh open --label a2 ---
+=== 29.6-pr open — label a2 ===
+  ok: clone /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone is outside the planning repo; origin = https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone fetch origin
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone checkout -b race/a2 origin/main
+Switched to a new branch 'race/a2'
+branch 'race/a2' set up to track 'origin/main'.
++ mkdir -p /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone/attempts
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone add attempts/a2.txt
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone commit -m 29.6 attempt a2
+[race/a2 9d0dbc0] 29.6 attempt a2
+ 1 file changed, 1 insertion(+)
+ create mode 100644 attempts/a2.txt
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone push -u origin race/a2
+remote:
+remote: Create a pull request for 'race/a2' on GitHub by visiting:
+remote:      https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch/pull/new/race/a2
+remote:
+To https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
+ * [new branch]      race/a2 -> race/a2
+branch 'race/a2' set up to track 'origin/race/a2'.
+PR URL: https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch/pull/3
+{"label":"a2","pr":3,"branch":"race/a2","head_sha":"9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d","ts":"2026-10-07T13:07:25.634+00:00","action":"open"}
+rc=0
+
+--- 29.6-pr.sh open --label a3 ---
+=== 29.6-pr open — label a3 ===
+  ok: clone /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone is outside the planning repo; origin = https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone fetch origin
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone checkout -b race/a3 origin/main
+Switched to a new branch 'race/a3'
+branch 'race/a3' set up to track 'origin/main'.
++ mkdir -p /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone/attempts
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone add attempts/a3.txt
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone commit -m 29.6 attempt a3
+[race/a3 3803e8a] 29.6 attempt a3
+ 1 file changed, 1 insertion(+)
+ create mode 100644 attempts/a3.txt
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone push -u origin race/a3
+remote:
+remote: Create a pull request for 'race/a3' on GitHub by visiting:
+remote:      https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch/pull/new/race/a3
+remote:
+To https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
+ * [new branch]      race/a3 -> race/a3
+branch 'race/a3' set up to track 'origin/race/a3'.
+PR URL: https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch/pull/4
+{"label":"a3","pr":4,"branch":"race/a3","head_sha":"3803e8ad51243ed81ab6067f5061b26aab75fe65","ts":"2026-10-07T13:07:36.419+00:00","action":"open"}
+rc=0
+
+--- 29.6-prs.jsonl (after the writes) ---
+{"label":"pr0","pr":1,"branch":"race/pr0","head_sha":"88ac58b2ffa0a00fa51878ea1ce233ec47ec647f","ts":"2026-10-06T16:21:42.912+00:00","action":"open"}
+{"label":"pr0","branch":"race/pr0","head_sha":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","prev_sha":"88ac58b2ffa0a00fa51878ea1ce233ec47ec647f","ts":"2026-10-06T16:29:01.455+00:00","action":"empty-commit"}
+{"label":"pr0","branch":"race/pr0","head_sha":"377b4caf2a6d33f161cf9c9bcb8987976905fc42","prev_sha":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","ts":"2026-10-07T12:46:15.949+00:00","action":"empty-commit"}
+{"label":"a1","pr":2,"branch":"race/a1","head_sha":"8d3641e3d45615f20b12c208273f74b88bc1f472","ts":"2026-10-07T13:07:14.310+00:00","action":"open"}
+{"label":"a2","pr":3,"branch":"race/a2","head_sha":"9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d","ts":"2026-10-07T13:07:25.634+00:00","action":"open"}
+{"label":"a3","pr":4,"branch":"race/a3","head_sha":"3803e8ad51243ed81ab6067f5061b26aab75fe65","ts":"2026-10-07T13:07:36.419+00:00","action":"open"}
+
+====================================================================================================
+Read-only confirmation (continuation executor, 2026-10-07)
+
+$ gh variable get GATE_MODE -R OttawaCloudConsulting/sp-reopen-race-scratch   (13:08:21Z)
+blocking   (rc=0)
+
+--- bounded completion poll (40 x 10 s cap) on the three head SHAs ---
+1 13:08:33 | 8d3641e in_progress null | 9d0dbc0 in_progress null | 3803e8a in_progress null
+2 13:08:45 | 8d3641e completed failure | 9d0dbc0 in_progress null | 3803e8a in_progress null
+3 13:08:57 | 8d3641e completed failure | 9d0dbc0 completed failure | 3803e8a in_progress null
+4 13:09:09 | 8d3641e completed failure | 9d0dbc0 completed failure | 3803e8a completed failure
+
+--- per-PR readback (runs_for_sha, run view, referenced_workflows, gate_mode log lines, check runs app 15368,
+    newest_per_context vs evidence/29.6-05-contexts.json, settle_merge_state PREV='', pr_state) ---
+=== a1 PR 2
+[{"id":37626034987,"created_at":"2026-10-07T13:07:18Z","status":"completed","conclusion":"failure","check_suite_id":101926119248,"event":"pull_request","run_attempt":1}]
+{"conclusion":"failure","event":"pull_request","headSha":"8d3641e3d45615f20b12c208273f74b88bc1f472","status":"completed"}
+[{"path":"OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1","ref":"refs/tags/v1","sha":"6c0d5319b1c328f135b47acd47e1a5e92ae2b10c"}]
+security / SCA — Trivy Filesystem	UNKNOWN STEP	2026-10-07T13:07:25.1084326Z gate_mode=blocking
+security / SAST — Semgrep CE	UNKNOWN STEP	2026-10-07T13:07:23.5514718Z gate_mode=blocking
+security / Secrets — Gitleaks	UNKNOWN STEP	2026-10-07T13:07:24.4729181Z gate_mode=blocking
+security / IaC — Checkov	UNKNOWN STEP	2026-10-07T13:07:48.9903855Z gate_mode=blocking
+security / Container — Trivy Image	UNKNOWN STEP	2026-10-07T13:07:24.8465465Z gate_mode=blocking
+{"name":"security / SCA — Trivy Filesystem","id":112807899838,"conclusion":"success","run":37626034987}
+{"name":"security / SAST — Semgrep CE","id":112807900079,"conclusion":"failure","run":37626034987}
+{"name":"security / Secrets — Gitleaks","id":112807900103,"conclusion":"success","run":37626034987}
+{"name":"security / IaC — Checkov","id":112807900140,"conclusion":"failure","run":37626034987}
+{"name":"security / Container — Trivy Image","id":112807900193,"conclusion":"success","run":37626034987}
+{"name":"security / DefectDojo Cleanup","id":112807902000,"conclusion":"skipped","run":37626034987}
+{"name":"security / DefectDojo Import","id":112808513072,"conclusion":"skipped","run":37626034987}
+[{"name":"security / Container — Trivy Image","id":112807900193,"status":"completed","conclusion":"success","suite":101926119248,"run":37626034987,"started_at":"2026-10-07T13:07:21Z","completed_at":"2026-10-07T13:08:34Z"},{"name":"security / IaC — Checkov","id":112807900140,"status":"completed","conclusion":"failure","suite":101926119248,"run":37626034987,"started_at":"2026-10-07T13:07:21Z","completed_at":"2026-10-07T13:08:42Z"},{"name":"security / SAST — Semgrep CE","id":112807900079,"status":"completed","conclusion":"failure","suite":101926119248,"run":37626034987,"started_at":"2026-10-07T13:07:21Z","completed_at":"2026-10-07T13:08:36Z"},{"name":"security / SCA — Trivy Filesystem","id":112807899838,"status":"completed","conclusion":"success","suite":101926119248,"run":37626034987,"started_at":"2026-10-07T13:07:21Z","completed_at":"2026-10-07T13:08:35Z"},{"name":"security / Secrets — Gitleaks","id":112807900103,"status":"completed","conclusion":"success","suite":101926119248,"run":37626034987,"started_at":"2026-10-07T13:07:21Z","completed_at":"2026-10-07T13:08:17Z"}]
+settle read 1/20: mergeStateStatus=BLOCKED (previous='')
+settled=BLOCKED rc=0
+2026-10-07T13:09:29.056Z
+{"state":"OPEN","mergeStateStatus":"BLOCKED","mergeable":"MERGEABLE","headRefOid":"8d3641e3d45615f20b12c208273f74b88bc1f472"}
+=== a2 PR 3
+[{"id":37626056015,"created_at":"2026-10-07T13:07:28Z","status":"completed","conclusion":"failure","check_suite_id":101926181025,"event":"pull_request","run_attempt":1}]
+{"conclusion":"failure","event":"pull_request","headSha":"9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d","status":"completed"}
+[{"path":"OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1","ref":"refs/tags/v1","sha":"6c0d5319b1c328f135b47acd47e1a5e92ae2b10c"}]
+security / Secrets — Gitleaks	UNKNOWN STEP	2026-10-07T13:07:35.6765936Z gate_mode=blocking
+security / SCA — Trivy Filesystem	UNKNOWN STEP	2026-10-07T13:07:34.7593192Z gate_mode=blocking
+security / Container — Trivy Image	UNKNOWN STEP	2026-10-07T13:07:34.9533019Z gate_mode=blocking
+security / IaC — Checkov	UNKNOWN STEP	2026-10-07T13:07:51.7835552Z gate_mode=blocking
+security / SAST — Semgrep CE	UNKNOWN STEP	2026-10-07T13:07:34.9712530Z gate_mode=blocking
+{"name":"security / Secrets — Gitleaks","id":112807973465,"conclusion":"success","run":37626056015}
+{"name":"security / SCA — Trivy Filesystem","id":112807973761,"conclusion":"success","run":37626056015}
+{"name":"security / Container — Trivy Image","id":112807973787,"conclusion":"success","run":37626056015}
+{"name":"security / IaC — Checkov","id":112807973951,"conclusion":"failure","run":37626056015}
+{"name":"security / SAST — Semgrep CE","id":112807973986,"conclusion":"failure","run":37626056015}
+{"name":"security / DefectDojo Cleanup","id":112807975234,"conclusion":"skipped","run":37626056015}
+{"name":"security / DefectDojo Import","id":112808611535,"conclusion":"skipped","run":37626056015}
+[{"name":"security / Container — Trivy Image","id":112807973787,"status":"completed","conclusion":"success","suite":101926181025,"run":37626056015,"started_at":"2026-10-07T13:07:31Z","completed_at":"2026-10-07T13:08:55Z"},{"name":"security / IaC — Checkov","id":112807973951,"status":"completed","conclusion":"failure","suite":101926181025,"run":37626056015,"started_at":"2026-10-07T13:07:31Z","completed_at":"2026-10-07T13:08:48Z"},{"name":"security / SAST — Semgrep CE","id":112807973986,"status":"completed","conclusion":"failure","suite":101926181025,"run":37626056015,"started_at":"2026-10-07T13:07:31Z","completed_at":"2026-10-07T13:08:54Z"},{"name":"security / SCA — Trivy Filesystem","id":112807973761,"status":"completed","conclusion":"success","suite":101926181025,"run":37626056015,"started_at":"2026-10-07T13:07:31Z","completed_at":"2026-10-07T13:08:49Z"},{"name":"security / Secrets — Gitleaks","id":112807973465,"status":"completed","conclusion":"success","suite":101926181025,"run":37626056015,"started_at":"2026-10-07T13:07:31Z","completed_at":"2026-10-07T13:08:29Z"}]
+settle read 1/20: mergeStateStatus=BLOCKED (previous='')
+settled=BLOCKED rc=0
+2026-10-07T13:09:38.975Z
+{"state":"OPEN","mergeStateStatus":"BLOCKED","mergeable":"MERGEABLE","headRefOid":"9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d"}
+=== a3 PR 4
+[{"id":37626079540,"created_at":"2026-10-07T13:07:39Z","status":"completed","conclusion":"failure","check_suite_id":101926245697,"event":"pull_request","run_attempt":1}]
+{"conclusion":"failure","event":"pull_request","headSha":"3803e8ad51243ed81ab6067f5061b26aab75fe65","status":"completed"}
+[{"path":"OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1","ref":"refs/tags/v1","sha":"6c0d5319b1c328f135b47acd47e1a5e92ae2b10c"}]
+security / Container — Trivy Image	UNKNOWN STEP	2026-10-07T13:07:45.6113983Z gate_mode=blocking
+security / SCA — Trivy Filesystem	UNKNOWN STEP	2026-10-07T13:07:45.4509783Z gate_mode=blocking
+security / IaC — Checkov	UNKNOWN STEP	2026-10-07T13:08:02.9473557Z gate_mode=blocking
+security / SAST — Semgrep CE	UNKNOWN STEP	2026-10-07T13:07:45.1478208Z gate_mode=blocking
+security / Secrets — Gitleaks	UNKNOWN STEP	2026-10-07T13:07:44.9580985Z gate_mode=blocking
+{"name":"security / Container — Trivy Image","id":112808052538,"conclusion":"success","run":37626079540}
+{"name":"security / SCA — Trivy Filesystem","id":112808052838,"conclusion":"success","run":37626079540}
+{"name":"security / IaC — Checkov","id":112808052844,"conclusion":"failure","run":37626079540}
+{"name":"security / SAST — Semgrep CE","id":112808052903,"conclusion":"failure","run":37626079540}
+{"name":"security / Secrets — Gitleaks","id":112808053028,"conclusion":"success","run":37626079540}
+{"name":"security / DefectDojo Cleanup","id":112808055859,"conclusion":"skipped","run":37626079540}
+{"name":"security / DefectDojo Import","id":112808698202,"conclusion":"skipped","run":37626079540}
+[{"name":"security / Container — Trivy Image","id":112808052538,"status":"completed","conclusion":"success","suite":101926245697,"run":37626079540,"started_at":"2026-10-07T13:07:42Z","completed_at":"2026-10-07T13:09:07Z"},{"name":"security / IaC — Checkov","id":112808052844,"status":"completed","conclusion":"failure","suite":101926245697,"run":37626079540,"started_at":"2026-10-07T13:07:41Z","completed_at":"2026-10-07T13:08:57Z"},{"name":"security / SAST — Semgrep CE","id":112808052903,"status":"completed","conclusion":"failure","suite":101926245697,"run":37626079540,"started_at":"2026-10-07T13:07:42Z","completed_at":"2026-10-07T13:08:59Z"},{"name":"security / SCA — Trivy Filesystem","id":112808052838,"status":"completed","conclusion":"success","suite":101926245697,"run":37626079540,"started_at":"2026-10-07T13:07:41Z","completed_at":"2026-10-07T13:08:52Z"},{"name":"security / Secrets — Gitleaks","id":112808053028,"status":"completed","conclusion":"success","suite":101926245697,"run":37626079540,"started_at":"2026-10-07T13:07:42Z","completed_at":"2026-10-07T13:08:36Z"}]
+settle read 1/20: mergeStateStatus=BLOCKED (previous='')
+settled=BLOCKED rc=0
+2026-10-07T13:09:48.061Z
+{"state":"OPEN","mergeStateStatus":"BLOCKED","mergeable":"MERGEABLE","headRefOid":"3803e8ad51243ed81ab6067f5061b26aab75fe65"}
+
+Result: a1 (PR #2), a2 (PR #3), a3 (PR #4) each OPEN, settled BLOCKED, all five newest required contexts completed,
+red = [IaC — Checkov, SAST — Semgrep CE]; all five scan jobs logged gate_mode=blocking; callee SHA 6c0d5319 (same as
+plans 05/06/08). Recorded in evidence/29.6-09-preconditions.json. D-18 precondition met for the variant (a) race.

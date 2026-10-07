@@ -1,0 +1,203 @@
+{
+  "a1": {
+    "pr": 2,
+    "head_sha": "8d3641e3d45615f20b12c208273f74b88bc1f472",
+    "run_id": 37626034987,
+    "run_conclusion": "failure",
+    "gate_mode": "blocking",
+    "newest": [
+      {
+        "name": "security / Container — Trivy Image",
+        "id": 112807900193,
+        "status": "completed",
+        "conclusion": "success",
+        "suite": 101926119248,
+        "run": 37626034987,
+        "started_at": "2026-10-07T13:07:21Z",
+        "completed_at": "2026-10-07T13:08:34Z"
+      },
+      {
+        "name": "security / IaC — Checkov",
+        "id": 112807900140,
+        "status": "completed",
+        "conclusion": "failure",
+        "suite": 101926119248,
+        "run": 37626034987,
+        "started_at": "2026-10-07T13:07:21Z",
+        "completed_at": "2026-10-07T13:08:42Z"
+      },
+      {
+        "name": "security / SAST — Semgrep CE",
+        "id": 112807900079,
+        "status": "completed",
+        "conclusion": "failure",
+        "suite": 101926119248,
+        "run": 37626034987,
+        "started_at": "2026-10-07T13:07:21Z",
+        "completed_at": "2026-10-07T13:08:36Z"
+      },
+      {
+        "name": "security / SCA — Trivy Filesystem",
+        "id": 112807899838,
+        "status": "completed",
+        "conclusion": "success",
+        "suite": 101926119248,
+        "run": 37626034987,
+        "started_at": "2026-10-07T13:07:21Z",
+        "completed_at": "2026-10-07T13:08:35Z"
+      },
+      {
+        "name": "security / Secrets — Gitleaks",
+        "id": 112807900103,
+        "status": "completed",
+        "conclusion": "success",
+        "suite": 101926119248,
+        "run": 37626034987,
+        "started_at": "2026-10-07T13:07:21Z",
+        "completed_at": "2026-10-07T13:08:17Z"
+      }
+    ],
+    "red": [
+      "security / IaC — Checkov",
+      "security / SAST — Semgrep CE"
+    ],
+    "all_newest_completed": true,
+    "mergeStateStatus": "BLOCKED",
+    "state": "OPEN"
+  },
+  "a2": {
+    "pr": 3,
+    "head_sha": "9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d",
+    "run_id": 37626056015,
+    "run_conclusion": "failure",
+    "gate_mode": "blocking",
+    "newest": [
+      {
+        "name": "security / Container — Trivy Image",
+        "id": 112807973787,
+        "status": "completed",
+        "conclusion": "success",
+        "suite": 101926181025,
+        "run": 37626056015,
+        "started_at": "2026-10-07T13:07:31Z",
+        "completed_at": "2026-10-07T13:08:55Z"
+      },
+      {
+        "name": "security / IaC — Checkov",
+        "id": 112807973951,
+        "status": "completed",
+        "conclusion": "failure",
+        "suite": 101926181025,
+        "run": 37626056015,
+        "started_at": "2026-10-07T13:07:31Z",
+        "completed_at": "2026-10-07T13:08:48Z"
+      },
+      {
+        "name": "security / SAST — Semgrep CE",
+        "id": 112807973986,
+        "status": "completed",
+        "conclusion": "failure",
+        "suite": 101926181025,
+        "run": 37626056015,
+        "started_at": "2026-10-07T13:07:31Z",
+        "completed_at": "2026-10-07T13:08:54Z"
+      },
+      {
+        "name": "security / SCA — Trivy Filesystem",
+        "id": 112807973761,
+        "status": "completed",
+        "conclusion": "success",
+        "suite": 101926181025,
+        "run": 37626056015,
+        "started_at": "2026-10-07T13:07:31Z",
+        "completed_at": "2026-10-07T13:08:49Z"
+      },
+      {
+        "name": "security / Secrets — Gitleaks",
+        "id": 112807973465,
+        "status": "completed",
+        "conclusion": "success",
+        "suite": 101926181025,
+        "run": 37626056015,
+        "started_at": "2026-10-07T13:07:31Z",
+        "completed_at": "2026-10-07T13:08:29Z"
+      }
+    ],
+    "red": [
+      "security / IaC — Checkov",
+      "security / SAST — Semgrep CE"
+    ],
+    "all_newest_completed": true,
+    "mergeStateStatus": "BLOCKED",
+    "state": "OPEN"
+  },
+  "a3": {
+    "pr": 4,
+    "head_sha": "3803e8ad51243ed81ab6067f5061b26aab75fe65",
+    "run_id": 37626079540,
+    "run_conclusion": "failure",
+    "gate_mode": "blocking",
+    "newest": [
+      {
+        "name": "security / Container — Trivy Image",
+        "id": 112808052538,
+        "status": "completed",
+        "conclusion": "success",
+        "suite": 101926245697,
+        "run": 37626079540,
+        "started_at": "2026-10-07T13:07:42Z",
+        "completed_at": "2026-10-07T13:09:07Z"
+      },
+      {
+        "name": "security / IaC — Checkov",
+        "id": 112808052844,
+        "status": "completed",
+        "conclusion": "failure",
+        "suite": 101926245697,
+        "run": 37626079540,
+        "started_at": "2026-10-07T13:07:41Z",
+        "completed_at": "2026-10-07T13:08:57Z"
+      },
+      {
+        "name": "security / SAST — Semgrep CE",
+        "id": 112808052903,
+        "status": "completed",
+        "conclusion": "failure",
+        "suite": 101926245697,
+        "run": 37626079540,
+        "started_at": "2026-10-07T13:07:42Z",
+        "completed_at": "2026-10-07T13:08:59Z"
+      },
+      {
+        "name": "security / SCA — Trivy Filesystem",
+        "id": 112808052838,
+        "status": "completed",
+        "conclusion": "success",
+        "suite": 101926245697,
+        "run": 37626079540,
+        "started_at": "2026-10-07T13:07:41Z",
+        "completed_at": "2026-10-07T13:08:52Z"
+      },
+      {
+        "name": "security / Secrets — Gitleaks",
+        "id": 112808053028,
+        "status": "completed",
+        "conclusion": "success",
+        "suite": 101926245697,
+        "run": 37626079540,
+        "started_at": "2026-10-07T13:07:42Z",
+        "completed_at": "2026-10-07T13:08:36Z"
+      }
+    ],
+    "red": [
+      "security / IaC — Checkov",
+      "security / SAST — Semgrep CE"
+    ],
+    "all_newest_completed": true,
+    "mergeStateStatus": "BLOCKED",
+    "state": "OPEN"
+  },
+  "ts_measured_utc": "2026-10-07T13:09:29.056Z..2026-10-07T13:09:48.061Z",
+  "gate_mode_variable": "blocking",
+  "repo": "OttawaCloudConsulting/sp-reopen-race-scratch"
+}
