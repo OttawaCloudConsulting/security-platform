@@ -1,0 +1,10 @@
+{
+  "fallback": false,
+  "visibility": "private",
+  "enforcement_verdict_file": "29.6-08-enforcement-verdict.json",
+  "ruleset_created_file": "29.6-07-ruleset-created.json",
+  "pr0_label": "pr0",
+  "ruling_file": "29.6-08-enforcement-ruling.txt",
+  "proceed": true,
+  "ts": "2026-10-07T13:01:08.752Z"
+}
