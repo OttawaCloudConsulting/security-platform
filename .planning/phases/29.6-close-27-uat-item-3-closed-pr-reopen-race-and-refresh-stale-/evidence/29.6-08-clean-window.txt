@@ -81,3 +81,62 @@ pr0 empty-commit lines in 29.6-prs.jsonl: 2 (>= 2 required)
 $ gh variable list -R OttawaCloudConsulting/sp-reopen-race-scratch --json name,value
 []
 GATE_MODE absent: yes. Plan verify command exit code: 0.
+
+====================================================================================================
+29.6-08 Task 2: CLEAN readback on SHA-3 and enforcement verdict (read-only, continuation executor)
+R=OttawaCloudConsulting/sp-reopen-race-scratch  PR=1  SHA-3=377b4caf2a6d33f161cf9c9bcb8987976905fc42
+Note: trailing whitespace and ANSI escapes stripped (docs-repo pre-commit hook).
+
+--- run discovery on SHA-3 (first read 2026-10-07T12:47:34Z) ---
+$ bash 29.6-snap.sh runs_for_sha $R $SHA3
+[{"id":37623424945,"created_at":"2026-10-07T12:46:22Z","status":"in_progress","conclusion":null,"check_suite_id":101918687257,"event":"pull_request","run_attempt":1}]
+
+--- bounded completion poll (40 x 10 s cap) ---
+1 12:47:40 in_progress
+2 12:47:50 completed success
+
+--- run id: 37623424945 ---
+$ gh run view 37623424945 -R $R --json status,conclusion,headSha,event
+{"conclusion":"success","event":"pull_request","headSha":"377b4caf2a6d33f161cf9c9bcb8987976905fc42","status":"completed"}
+$ gh api repos/$R/actions/runs/37623424945 --jq .referenced_workflows
+[{"path":"OttawaCloudConsulting/security-platform/.github/workflows/security.yml@v1","ref":"refs/tags/v1","sha":"6c0d5319b1c328f135b47acd47e1a5e92ae2b10c"}]
+callee SHA equals plans 05/06 runs (6c0d5319b1c328f135b47acd47e1a5e92ae2b10c): MATCH
+
+--- gate_mode lines from the run log ---
+$ gh run view 37623424945 -R $R --log | grep -F 'gate_mode='   (echo-source lines omitted; output lines only)
+security / SAST — Semgrep CE	UNKNOWN STEP	2026-10-07T12:46:28.6838902Z gate_mode=report-only
+security / SCA — Trivy Filesystem	UNKNOWN STEP	2026-10-07T12:46:30.2835009Z gate_mode=report-only
+security / Container — Trivy Image	UNKNOWN STEP	2026-10-07T12:46:30.4556008Z gate_mode=report-only
+security / IaC — Checkov	UNKNOWN STEP	2026-10-07T12:46:52.1764139Z gate_mode=report-only
+security / Secrets — Gitleaks	UNKNOWN STEP	2026-10-07T12:46:30.1550612Z gate_mode=report-only
+All five scan jobs print gate_mode=report-only (GATE_MODE unset; plan 06 run printed gate_mode=blocking).
+
+--- check runs on SHA-3 (filter=all, app 15368): evidence/29.6-08-checkruns-clean.json ---
+{"name":"security / SAST — Semgrep CE","id":112799091560,"conclusion":"success","run":37623424945}
+{"name":"security / SCA — Trivy Filesystem","id":112799091777,"conclusion":"success","run":37623424945}
+{"name":"security / Container — Trivy Image","id":112799091858,"conclusion":"success","run":37623424945}
+{"name":"security / IaC — Checkov","id":112799091862,"conclusion":"success","run":37623424945}
+{"name":"security / Secrets — Gitleaks","id":112799091882,"conclusion":"success","run":37623424945}
+{"name":"security / DefectDojo Cleanup","id":112799156390,"conclusion":"skipped","run":37623424945}
+{"name":"security / DefectDojo Import","id":112799676208,"conclusion":"skipped","run":37623424945}
+Newest-by-id per required context (evidence/29.6-05-contexts.json): 5 of 5 completed success (jq assert rc=0).
+
+--- ruleset 24593937 re-read ---
+$ gh api repos/$R/rulesets/24593937   compared with evidence/29.6-07-ruleset-after.json
+diff of jq -S 'del(.updated_at)' on both: empty (rc=0). updated_at both 2026-10-06T12:37:45.230-04:00 (unchanged).
+{"enforcement":"active","bypass_actors":[],"current_user_can_bypass":"never"}
+$ gh repo view $R --json visibility
+{"visibility":"PRIVATE"}
+
+--- PR-0 merge state on SHA-3 (five contexts still required): evidence/29.6-08-merge-state-clean.json ---
+$ source 29.6-snap.sh; settle_merge_state $R 1 BLOCKED
+settle read 1/20: mergeStateStatus=CLEAN (previous='BLOCKED')
+CLEAN  (rc=0)
+$ pr_state $R 1   (ts 2026-10-07T12:48:18.440Z)
+{"state":"OPEN","mergeStateStatus":"CLEAN","mergeable":"MERGEABLE","headRefOid":"377b4caf2a6d33f161cf9c9bcb8987976905fc42"}
+D-20 step 3: BLOCKED (SHA-2) -> CLEAN (SHA-3) with the ruleset unchanged; BLOCKED is attributed to the red
+required checks, not to the pull_request rule. PR #1 was NOT merged and must not be merged.
+
+--- enforcement verdict: evidence/29.6-08-enforcement-verdict.json ---
+{"readings":[{"sha":"172d2c23","state":"UNSTABLE"},{"sha":"172d2c23","state":"BLOCKED"},{"sha":"377b4caf","state":"CLEAN"}],"refusal":{"rc":1,"source":"client-side"},"bypass":{"bypass_actors":[],"current_user_can_bypass":"never"},"enforcement_proven":true,"fallback_used":false}
+Task 2 plan verify: exit 0.
