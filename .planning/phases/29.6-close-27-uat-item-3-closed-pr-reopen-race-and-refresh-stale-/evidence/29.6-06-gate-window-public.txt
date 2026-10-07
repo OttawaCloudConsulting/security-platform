@@ -1,0 +1,5 @@
+29.6-06-gate-window-public: skipped (skipped: private enforcement proven)
+Gate: evidence/29.6-14-fallback-gate.txt token is not 'in-progress: public fallback'.
+No GATE_MODE write, no empty commit, no SHA-2p.
+Not written on this path: 29.6-06-checkruns-unstable-public.json, 29.6-06-merge-state-unstable-public.json, 29.6-06-red-set-public.json; 29.6-prs.jsonl untouched; private 29.6-06-* files unchanged.
+No GitHub read or write was made by this task; no checkpoint presented.
