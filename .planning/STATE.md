@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.6-15-PLAN.md
-last_updated: "2026-10-07T13:01:54.961Z"
+stopped_at: 29.6-09 Task 2 checkpoint (race not run)
+last_updated: "2026-10-07T13:11:08.180Z"
 last_activity: 2026-10-07
 progress:
   total_phases: 7
@@ -603,8 +603,8 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-10-07T13:01:54.961Z
-Stopped at: Completed 29.6-15-PLAN.md (skip path; race-target.json private, ruleset 24593937, proceed true; no GitHub writes; next is plan 09; GATE_MODE unset until plan 09; never merge PR #1)
+Last session: 2026-10-07T13:11:08.180Z
+Stopped at: 29.6-09 Task 2 checkpoint (Task 1 committed 24d57cd: GATE_MODE=blocking; PRs #2 a1, #3 a2, #4 a3 red Checkov+Semgrep and BLOCKED; race.sh --variant a NOT run; no attempt dirs; never merge PR #1)
 Resume file: None
 
 ## Operator Next Steps
