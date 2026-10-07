@@ -1,0 +1,105 @@
+29.6-07 Task 3: Merge attempt on BLOCKED PR-0 (PR #1, red SHA-2), refusal captured and classified (D-19)
+=======================================================================================================
+
+Checkpoint question put to the operator by the orchestrator (AskUserQuestion, 2026-10-07):
+
+    Plan 07 Task 3: one merge attempt on PR #1, which is BLOCKED and red. It is expected to be refused.
+    If it merges, I stop the phase. Who runs it?
+
+Operator reply (verbatim, the option the human user selected, relayed by the orchestrator):
+
+    I'll run it myself
+
+Who executed the command: the OPERATOR typed and ran the command below in their own terminal, outside this
+Claude session. This differs from Task 1 of this plan and from plans 05/06, where the orchestrating Claude
+session ran the live writes on the operator's "You run them now" approval. No Claude session ran the merge
+attempt.
+
+R     = OttawaCloudConsulting/sp-reopen-race-scratch
+PD    = /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-
+E     = $PD/evidence
+PR-0  = PR #1
+SHA-2 = 172d2c237f9ef6045d26df0b42a4e5d6b97ebee0 (red under GATE_MODE=blocking; UNSTABLE in plan 06, BLOCKED in Task 2)
+Ruleset = 24593937 "Default" (Task 1)
+
+Pre-condition (Task 2, commit 20d2a5d): PR #1 read BLOCKED on SHA-2 at 2026-10-06T16:40:56.777Z;
+bypass_actors [], current_user_can_bypass "never".
+
+Command the operator ran (command 4 of the plan interfaces, with an `echo` of the script rc appended):
+
+    bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-pr.sh merge-attempt --pr 1 --sha 172d2c237f9ef6045d26df0b42a4e5d6b97ebee0 --out-prefix /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-07-refusal; echo "script rc=$?"
+
+What 29.6-pr.sh merge-attempt runs (29.6-pr.sh line 258): gh pr merge 1 -R $R --squash --match-head-commit SHA-2,
+stdout and stderr redirected to separate files. No --admin, no --auto, no bypass flag.
+
+Operator's pasted output (verbatim):
+
+    occ-al-ctmbp2023:~ christian$ bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-pr.sh merge-attempt --pr 1 --sha 172d2c237f9ef6045d26df0b42a4e5d6b97ebee0 --out-prefix /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-07-refusal; echo "script rc=$?"
+    === 29.6-pr merge-attempt — PR #1 head 172d2c237f9ef6045d26df0b42a4e5d6b97ebee0 ===
+    gh pr merge rc: 1
+    --- stdout (29.6-07-refusal-stdout.txt) ---
+    --- stderr (29.6-07-refusal-stderr.txt) ---
+    X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#1 is not mergeable: the base branch policy prohibits the merge.
+    To have the pull request merged after all the requirements have been met, add the `--auto` flag.
+    To use administrator privileges to immediately merge the pull request, add the `--admin` flag.
+    pr-after: {"headRefOid":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","mergeCommit":null,"mergedAt":null,"state":"OPEN"}
+    === REFUSED as expected (rc 1); PR #1 still OPEN ===
+
+The paste does NOT include the `script rc=` line that the operator's trailing `echo` would have printed.
+
+Return codes (kept separate):
+  (a) gh pr merge rc = 1. Captured by the script in 29.6-07-refusal-rc.txt (content "1") and printed as
+      "gh pr merge rc: 1".
+  (b) 29.6-pr.sh's own exit code: NOT CAPTURED in the paste. Not recorded as a fact here.
+  (c) INFERENCE (not observed): the banner "=== REFUSED as expected (rc N); PR #N still OPEN ===" is emitted
+      only at 29.6-pr.sh line 290, which is followed by `return 0` (line 291) and the dispatcher's `exit 0`
+      (line 300). The exit-9 (MERGED) branch (lines 273-281) and both exit-4 anomaly branches (lines 282-289)
+      precede it. The banner's presence in the paste therefore implies the script exited 0, the expected path
+      per the plan's how-to-verify step 2. This is an inference from the script source, not an observed rc.
+
+Capture files (written by the script on the operator's machine, local mtimes):
+  29.6-07-refusal-stdout.txt    0 bytes    2026-10-07T08:36:39-0400 (12:36:39Z)
+  29.6-07-refusal-stderr.txt    316 bytes  2026-10-07T08:36:40-0400 (12:36:40Z)
+                                sha256 08b7bb81a43d10ea5b615639798b90184136979b3dfa534fedb2eb35d892ffa4
+  29.6-07-refusal-rc.txt        "1"        2026-10-07T08:36:40-0400 (12:36:40Z)
+  29.6-07-refusal-pr-after.json            2026-10-07T08:36:41-0400 (12:36:41Z)
+The paste carries no timestamp; the mtimes above are local-filesystem evidence of when the attempt ran.
+
+stdout: empty (0 bytes).
+
+stderr (29.6-07-refusal-stderr.txt, verbatim):
+
+    X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#1 is not mergeable: the base branch policy prohibits the merge.
+    To have the pull request merged after all the requirements have been met, add the `--auto` flag.
+    To use administrator privileges to immediately merge the pull request, add the `--admin` flag.
+
+The `--auto` and `--admin` lines are gh's own hint boilerplate. Nothing was run with either flag.
+
+Classification (D-19): client-side
+  Command: bash $PD/29.6-verdict.sh --classify-stderr $E/29.6-07-refusal-stderr.txt
+  Output:  client-side   (classifier rc 0, run 2026-10-07 by this session, read-only)
+  Basis:   the stderr matches CLIENT_RE (29.6-verdict.sh line 59) on "base branch policy prohibits the merge",
+           the ADR-019 verbatim client-side text. No SERVER_RE token (GraphQL, HTTP 4xx, Repository rule
+           violation, required status check) appears in the stderr.
+  Meaning: this is a text-pattern classification of gh's message. gh read the PR as BLOCKED and declined the
+           merge locally; the server's merge endpoint was not reached by this attempt. The proof is "gh refused
+           locally because the server reported BLOCKED", not "the server refused a merge request".
+
+No direct REST merge (gh api -X PUT repos/$R/pulls/1/merge) was attempted, per D-19. Therefore ADR-019
+NOT-verified item 2 (the server-side merge endpoint refusal) STAYS OPEN, unless the race itself (later plans)
+produces a server-side refusal.
+
+PR state after (29.6-07-refusal-pr-after.json, fresh gh pr view by the script after the attempt):
+  state OPEN, mergedAt null, mergeCommit null, headRefOid 172d2c237f9ef6045d26df0b42a4e5d6b97ebee0 (SHA-2)
+
+Re-read at the refusal (T-29.6-21), read-only, by this session at 2026-10-07T12:37:44Z (about one minute after
+the operator's attempt, not simultaneous):
+  gh api repos/$R/rulesets/24593937 --jq '{id,name,enforcement,bypass_actors,current_user_can_bypass,updated_at}'
+    {"bypass_actors":[],"current_user_can_bypass":"never","enforcement":"active","id":24593937,"name":"Default","updated_at":"2026-10-06T12:37:45.230-04:00"}
+    (gh rc 0; updated_at unchanged since the Task 1 apply)
+  gh pr view 1 -R $R --json state,mergedAt,headRefOid,mergeStateStatus
+    {"headRefOid":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","mergeStateStatus":"BLOCKED","mergedAt":null,"state":"OPEN"}
+    (gh rc 0; still BLOCKED on SHA-2, nothing pushed)
+
+Result: merge refused (gh rc 1), PR #1 still OPEN with mergedAt null, refusal classified client-side.
+The exit-9 STOP condition did not occur.
