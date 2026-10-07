@@ -1,0 +1,43 @@
+29.6-08 Task 3: Enforcement gate decision (D-04, D-20)
+=======================================================
+
+Input: evidence/29.6-08-enforcement-verdict.json
+  repo                     OttawaCloudConsulting/sp-reopen-race-scratch (PRIVATE)
+  ruleset_id               24593937 (unchanged since plan 07, updated_at 2026-10-06T12:37:45.230-04:00)
+  readings                 UNSTABLE  SHA-2 172d2c237f9ef6045d26df0b42a4e5d6b97ebee0  2026-10-06T16:31:41.010Z
+                           BLOCKED   SHA-2 172d2c237f9ef6045d26df0b42a4e5d6b97ebee0  2026-10-06T16:40:56.777Z
+                           CLEAN     SHA-3 377b4caf2a6d33f161cf9c9bcb8987976905fc42  2026-10-07T12:48:18.440Z
+  refusal                  rc 1, source client-side, PR still OPEN:
+                           "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#1 is not mergeable: the base branch policy prohibits the merge."
+  bypass                   bypass_actors [], current_user_can_bypass never
+  enforcement_proven       true
+  fallback_used            false
+  caveat                   server-side merge refusal unproven (D-19); ADR-019 NOT-verified item 2 stays open
+
+Question put to the operator by the orchestrator (AskUserQuestion, 2026-10-07):
+
+    Enforcement is proven on the private scratch repo. How should the plan 08 enforcement gate rule?
+
+Options presented, in this order and with these labels:
+
+    proceed (Recommended)
+    public-fallback
+    stop
+
+Note: the orchestrator presented "proceed" as the recommended option; the label the operator saw carried the
+"(Recommended)" marker. This is recorded as part of the verbatim reply.
+
+Operator reply (verbatim, the option the human user selected, relayed by the orchestrator):
+
+    proceed (Recommended)
+
+Recorded at (UTC, python3): 2026-10-07T12:55:46.170Z
+
+Consequences (no action taken here):
+  - Plan 29.6-14 Task 1 records `skipped: private enforcement proven`; no public flip.
+  - Plan 29.6-15 writes evidence/29.6-race-target.json pointing at this verdict and ruleset 24593937.
+  - GATE_MODE stays unset until plan 09 sets it to blocking (D-18).
+  - PR #1 is CLEAN on SHA-3 and must never be merged.
+
+Normalised ruling (parsed by plan 29.6-14 Task 1):
+ruling: proceed
