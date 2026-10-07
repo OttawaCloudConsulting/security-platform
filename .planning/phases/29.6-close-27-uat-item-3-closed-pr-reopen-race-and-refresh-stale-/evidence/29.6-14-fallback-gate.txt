@@ -1,0 +1,8 @@
+29.6-14-fallback-gate: skipped: private enforcement proven
+ruling: proceed
+recorded_at: 2026-10-07T12:57:49.289Z
+
+Source: evidence/29.6-08-enforcement-ruling.txt (single normalised ruling line, verbatim above).
+Assertion: jq -e '.enforcement_proven==true' evidence/29.6-08-enforcement-verdict.json -> true
+Consequence: plan 29.6-14 Tasks 2-3 record skip headers only; no public flip, no ruleset DELETE, no GATE_MODE change, no pr0p.
+No GitHub read or write was made by this task.
