@@ -1,0 +1,481 @@
+29.6-09 Task 2: race variant (a) over a1 (PR #2), a2 (PR #3), a3 (PR #4) (operator-approved writes)
+=================================================================================================
+
+Checkpoint question put to the operator by the orchestrator (AskUserQuestion, 2026-10-07):
+
+    Plan 09 Task 2: run race variant (a) on PRs #2, #3 and #4. That is up to 3 closes, 3 reopens and 3 merge
+    attempts that should all be refused, and it stops on exit 9. Who runs it?
+
+Operator reply (verbatim, the option the human user selected, relayed by the orchestrator):
+
+    You run it now
+    ("I run the exact race command in the background with real exit-code capture, wait for it to finish, and
+    report the exit code. On 9, 3 or any other non-zero code I stop.")
+
+Who executed the command: the orchestrating Claude session ran the race command exactly as the prior Task 2
+checkpoint specified (a single line, output redirected to a log file, exit code captured to an rc file, no tee),
+as a background process, on the operator's explicit approval above. The operator did NOT type it. The plan's
+wording (operator runs it) was superseded by this explicit operator approval; it is recorded here as such.
+PR #1 (pr0) was not touched.
+
+PD = /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-
+S  = /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad
+
+Command (the plan's interface command with the PR numbers from 29.6-09-preconditions.json; stdout and stderr
+redirected together to $S/29.6-09-race.log, exit code written to $S/29.6-09-race.rc):
+
+    bash $PD/29.6-race.sh --variant a --attempt a1:2 --attempt a2:3 --attempt a3:4
+
+Note on the command text: the argument list above is fixed by the plan's interface and by the log's own banner
+and per-attempt headers (variant a, 3 attempts, a1 PR #2, a2 PR #3, a3 PR #4). The exact redirect syntax of the
+shell line lived in the orchestrator's checkpoint and is not reproduced character-for-character here.
+
+Captures (copied verbatim from $S):
+  $S/29.6-09-race.ts  : 2026-10-07T23:18:17.926+00:00   (python3 UTC, written immediately before the race started)
+  $S/29.6-09-race.rc  : exit=0
+  $S/29.6-09-race.log : 407 lines, interleaved stdout/stderr (reproduced in full below)
+
+exit code: 0   (race.sh: 0 = all attempts blocked)
+
+Timing gap (recorded factually): Task 1 armed GATE_MODE and opened a1-a3 around 2026-10-07T13:07Z (their runs
+started 13:07:21Z, completed by ~13:08:34Z, per 29.6-09-preconditions.json). The race started at
+2026-10-07T23:18:17.926Z, about 10 hours later. The plan sets no freshness limit between Task 1 and Task 2. The
+race.sh pre-close guard (D-18) re-verified everything at race time for each PR, and the log shows it passed:
+race target proceed true and ruleset 24593937; GATE_MODE = blocking; required_status_checks in force on main;
+bypass_actors [] and current_user_can_bypass never; PR OPEN on the recorded head SHA; five newest completed with
+>= 1 failure; settled mergeStateStatus BLOCKED. The pre-close suite on each PR at race time was the same suite
+recorded in 29.6-09-preconditions.json (a1 101926119248, a2 101926181025, a3 101926245697), so no new run landed
+on any head SHA during the gap.
+
+Per-attempt results (from the log and each attempt dir's verdict.json, all produced by 29.6-verdict.sh):
+  a1 PR #2 head 8d3641e3d45615f20b12c208273f74b88bc1f472: merge rc 1, merged false, verdict blocked,
+     refusal client-side: "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#2 is not mergeable: the
+     base branch policy prohibits the merge."  D-19 pre-merge state: mergeStateStatus UNKNOWN, mergeable UNKNOWN.
+  a2 PR #3 head 9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d: merge rc 1, merged false, verdict blocked,
+     refusal server-side: "GraphQL: Repository rule violations found" (stderr continues "5 of 5 required status
+     checks are queued.").  D-19 pre-merge state: mergeStateStatus UNKNOWN, mergeable UNKNOWN.
+  a3 PR #4 head 3803e8ad51243ed81ab6067f5061b26aab75fe65: merge rc 1, merged false, verdict blocked,
+     refusal server-side: "GraphQL: Repository rule violations found" (stderr continues "5 of 5 required status
+     checks are queued.").  D-19 pre-merge state: mergeStateStatus UNKNOWN, mergeable MERGEABLE.
+  In every attempt the close suite's five check runs concluded "skipped" before the reopen (variant (a) window
+  reached), and the reopen suite's runs were queued or in_progress at the post-merge snap.
+
+Attempt dirs: every attempt the script reported running has a dir with verdict.json, merge-stderr.txt and
+checkruns-final.json: evidence/29.6-race-a1/, evidence/29.6-race-a2/, evidence/29.6-race-a3/.
+
+Read-only check afterwards (orchestrator, gh pr list): PRs #1-#4 all OPEN, mergedAt null.
+Re-checked read-only by the continuation executor (gh pr list --state all): #1 OPEN 377b4caf, #2 OPEN 8d3641e3,
+#3 OPEN 9d0dbc0f, #4 OPEN 3803e8ad; mergedAt empty on all four.
+
+----- BEGIN $S/29.6-09-race.log (verbatim) -----
+=== 29.6-race.sh LIVE: variant a, 3 attempt(s), repo OttawaCloudConsulting/sp-reopen-race-scratch ===
+
+=== 29.6-race: variant a, attempt a1, PR #2 — pre-close guard (D-18) ===
+  ok: race target proceed == true; ruleset 24593937 (29.6-07-ruleset-created.json)
+  ok: contexts ["security / Container — Trivy Image","security / IaC — Checkov","security / SAST — Semgrep CE","security / SCA — Trivy Filesystem","security / Secrets — Gitleaks"]
+  ok: GATE_MODE = blocking
+  rule types on main: ["deletion","non_fast_forward","required_status_checks","pull_request"]
+  ok: required_status_checks is in force on main
+  ruleset 24593937: bypass_actors=[] current_user_can_bypass=never
+  ok: no bypass (bypass_actors [] and current_user_can_bypass never)
+  PR #2: {"state":"OPEN","mergeStateStatus":"BLOCKED","mergeable":"MERGEABLE","headRefOid":"8d3641e3d45615f20b12c208273f74b88bc1f472"}
+  ok: PR #2 OPEN, head 8d3641e3d45615f20b12c208273f74b88bc1f472
+  newest per context: [{"name":"security / Container — Trivy Image","status":"completed","conclusion":"success","suite":101926119248},{"name":"security / IaC — Checkov","status":"completed","conclusion":"failure","suite":101926119248},{"name":"security / SAST — Semgrep CE","status":"completed","conclusion":"failure","suite":101926119248},{"name":"security / SCA — Trivy Filesystem","status":"completed","conclusion":"success","suite":101926119248},{"name":"security / Secrets — Gitleaks","status":"completed","conclusion":"success","suite":101926119248}]
+  ok: five newest completed, >= 1 failure (red head SHA)
+settle read 1/20: mergeStateStatus=BLOCKED (previous='')
+  ok: settled mergeStateStatus BLOCKED (the pre-close guard; nothing asserts state after the close)
+  snap pre-close written; pre-close suites [101926119248]
+
+=== RACE: variant a, PR #2 ===
++ 2026-10-07T23:18:22.032Z gh pr close 2 -R OttawaCloudConsulting/sp-reopen-race-scratch
+✓ Closed pull request OttawaCloudConsulting/sp-reopen-race-scratch#2 (29.6 race a1)
+  detector read 1/60: not yet ({"run_id":null,"run_status":null,"run_conclusion":null})
+  detector read 2/60: not yet ({"run_id":null,"run_status":null,"run_conclusion":null})
+  detector read 3/60: not yet ({"run_id":37701506654,"run_status":"in_progress","run_conclusion":null})
+  detector read 4/60: not yet ({"run_id":37701506654,"run_status":"in_progress","run_conclusion":null})
+  detector read 5/60: not yet ({"run_id":37701506654,"run_status":"completed","run_conclusion":"skipped"})
+  2026-10-07T23:18:39.186Z close run detected: {"run_id":37701506654,"suite":102139415126,"run_conclusion":"skipped"}
+  snap pre-reopen written
+✓ Reopened pull request OttawaCloudConsulting/sp-reopen-race-scratch#2 (29.6 race a1)
+  2026-10-07T23:18:40.552Z .. 2026-10-07T23:18:42.524Z reopen rc 0
+  2026-10-07T23:18:42.717Z .. 2026-10-07T23:18:43.315Z D-19 pre-merge state: {"headRefOid":"8d3641e3d45615f20b12c208273f74b88bc1f472","mergeStateStatus":"UNKNOWN","mergeable":"UNKNOWN"}
+  2026-10-07T23:18:43.529Z .. 2026-10-07T23:18:44.259Z gh pr merge 2 -R OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit 8d3641e3d45615f20b12c208273f74b88bc1f472  rc 1
+--- merge-stdout.txt ---
+--- merge-stderr.txt ---
+X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#2 is not mergeable: the base branch policy prohibits the merge.
+To have the pull request merged after all the requirements have been met, add the `--auto` flag.
+To use administrator privileges to immediately merge the pull request, add the `--admin` flag.
+------------------------
+  snap post-merge written; pr-after: {"headRefOid":"8d3641e3d45615f20b12c208273f74b88bc1f472","mergeCommit":null,"mergedAt":null,"state":"OPEN"}
+  settle 1/120: [{"status":"queued","conclusion":null,"suite":102139492102},{"status":"queued","conclusion":null,"suite":102139492102},{"status":"queued","conclusion":null,"suite":102139492102},{"status":"queued","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102}]
+  settle 2/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102}]
+  settle 3/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102}]
+  settle 4/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102}]
+  settle 5/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102}]
+  settle 6/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102}]
+  settle 7/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102}]
+  settle 8/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102}]
+  settle 9/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102}]
+  settle 10/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102}]
+  settle 11/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102}]
+  settle 12/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"completed","conclusion":"success","suite":102139492102}]
+  settle 13/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"completed","conclusion":"success","suite":102139492102}]
+  settle 14/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"completed","conclusion":"success","suite":102139492102}]
+  settle 15/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"completed","conclusion":"success","suite":102139492102}]
+  settle 16/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"completed","conclusion":"success","suite":102139492102}]
+  settle 17/120: [{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"in_progress","conclusion":null,"suite":102139492102},{"status":"completed","conclusion":"failure","suite":102139492102},{"status":"completed","conclusion":"success","suite":102139492102},{"status":"completed","conclusion":"success","suite":102139492102}]
+  settled after 18 snap(s): reopen suite complete on every context
+  snap final; checkruns-final.json, runs.json, pr-timeline.json, meta.json written
+
+=== verdict: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-verdict.sh /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-a1 ===
+{
+  "label": "a1",
+  "variant": "a",
+  "pr": 2,
+  "head_sha": "8d3641e3d45615f20b12c208273f74b88bc1f472",
+  "precondition_red": true,
+  "variant_a_precondition": true,
+  "gate_mode": "blocking",
+  "current_user_can_bypass": "never",
+  "merge_rc": 1,
+  "merged": false,
+  "refusal_source": "client-side",
+  "refusal_line": "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#2 is not mergeable: the base branch policy prohibits the merge.",
+  "close_suite": 102139415126,
+  "reopen_suite": 102139492102,
+  "close_suite_conclusions": [
+    {
+      "name": "security / Container — Trivy Image",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "conclusion": "skipped"
+    }
+  ],
+  "reopen_contexts_at_post_merge": [
+    {
+      "name": "security / Container — Trivy Image",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139492102
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139492102
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139492102
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139492102
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139492102
+    }
+  ],
+  "reopen_complete_at_post_merge": false,
+  "verdict": "blocked",
+  "reason": "merge refused (rc 1), refusal client-side; runs.json agrees with the suite attribution"
+}
+=== attempt a1: BLOCKED (verdict exit 0) ===
+
+=== 29.6-race: variant a, attempt a2, PR #3 — pre-close guard (D-18) ===
+  ok: race target proceed == true; ruleset 24593937 (29.6-07-ruleset-created.json)
+  ok: contexts ["security / Container — Trivy Image","security / IaC — Checkov","security / SAST — Semgrep CE","security / SCA — Trivy Filesystem","security / Secrets — Gitleaks"]
+  ok: GATE_MODE = blocking
+  rule types on main: ["deletion","non_fast_forward","required_status_checks","pull_request"]
+  ok: required_status_checks is in force on main
+  ruleset 24593937: bypass_actors=[] current_user_can_bypass=never
+  ok: no bypass (bypass_actors [] and current_user_can_bypass never)
+  PR #3: {"state":"OPEN","mergeStateStatus":"BLOCKED","mergeable":"MERGEABLE","headRefOid":"9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d"}
+  ok: PR #3 OPEN, head 9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d
+  newest per context: [{"name":"security / Container — Trivy Image","status":"completed","conclusion":"success","suite":101926181025},{"name":"security / IaC — Checkov","status":"completed","conclusion":"failure","suite":101926181025},{"name":"security / SAST — Semgrep CE","status":"completed","conclusion":"failure","suite":101926181025},{"name":"security / SCA — Trivy Filesystem","status":"completed","conclusion":"success","suite":101926181025},{"name":"security / Secrets — Gitleaks","status":"completed","conclusion":"success","suite":101926181025}]
+  ok: five newest completed, >= 1 failure (red head SHA)
+settle read 1/20: mergeStateStatus=BLOCKED (previous='')
+  ok: settled mergeStateStatus BLOCKED (the pre-close guard; nothing asserts state after the close)
+  snap pre-close written; pre-close suites [101926181025]
+
+=== RACE: variant a, PR #3 ===
++ 2026-10-07T23:20:13.776Z gh pr close 3 -R OttawaCloudConsulting/sp-reopen-race-scratch
+✓ Closed pull request OttawaCloudConsulting/sp-reopen-race-scratch#3 (29.6 race a2)
+  detector read 1/60: not yet ({"run_id":null,"run_status":null,"run_conclusion":null})
+  detector read 2/60: not yet ({"run_id":37701685632,"run_status":"in_progress","run_conclusion":null})
+  detector read 3/60: not yet ({"run_id":37701685632,"run_status":"completed","run_conclusion":"skipped"})
+  detector read 4/60: not yet ({"run_id":37701685632,"run_status":"completed","run_conclusion":"skipped"})
+  2026-10-07T23:20:28.330Z close run detected: {"run_id":37701685632,"suite":102139890207,"run_conclusion":"skipped"}
+  snap pre-reopen written
+✓ Reopened pull request OttawaCloudConsulting/sp-reopen-race-scratch#3 (29.6 race a2)
+  2026-10-07T23:20:29.732Z .. 2026-10-07T23:20:31.544Z reopen rc 0
+  2026-10-07T23:20:31.750Z .. 2026-10-07T23:20:32.337Z D-19 pre-merge state: {"headRefOid":"9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d","mergeStateStatus":"UNKNOWN","mergeable":"UNKNOWN"}
+  2026-10-07T23:20:32.538Z .. 2026-10-07T23:20:34.512Z gh pr merge 3 -R OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit 9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d  rc 1
+--- merge-stdout.txt ---
+--- merge-stderr.txt ---
+GraphQL: Repository rule violations found
+
+5 of 5 required status checks are queued.
+
+ (mergePullRequest)
+------------------------
+  snap post-merge written; pr-after: {"headRefOid":"9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d","mergeCommit":null,"mergedAt":null,"state":"OPEN"}
+  settle 1/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"queued","conclusion":null,"suite":102139962032}]
+  settle 2/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"queued","conclusion":null,"suite":102139962032}]
+  settle 3/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"queued","conclusion":null,"suite":102139962032}]
+  settle 4/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"queued","conclusion":null,"suite":102139962032}]
+  settle 5/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"queued","conclusion":null,"suite":102139962032}]
+  settle 6/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"queued","conclusion":null,"suite":102139962032}]
+  settle 7/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"queued","conclusion":null,"suite":102139962032}]
+  settle 8/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"queued","conclusion":null,"suite":102139962032}]
+  settle 9/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032}]
+  settle 10/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032}]
+  settle 11/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032}]
+  settle 12/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032}]
+  settle 13/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032}]
+  settle 14/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032}]
+  settle 15/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032}]
+  settle 16/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"completed","conclusion":"failure","suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032}]
+  settle 17/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"completed","conclusion":"failure","suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"completed","conclusion":"success","suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032}]
+  settle 18/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"completed","conclusion":"failure","suite":102139962032},{"status":"completed","conclusion":"failure","suite":102139962032},{"status":"completed","conclusion":"success","suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032}]
+  settle 19/120: [{"status":"in_progress","conclusion":null,"suite":102139962032},{"status":"completed","conclusion":"failure","suite":102139962032},{"status":"completed","conclusion":"failure","suite":102139962032},{"status":"completed","conclusion":"success","suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032}]
+  settle 20/120: [{"status":"completed","conclusion":"success","suite":102139962032},{"status":"completed","conclusion":"failure","suite":102139962032},{"status":"completed","conclusion":"failure","suite":102139962032},{"status":"completed","conclusion":"success","suite":102139962032},{"status":"in_progress","conclusion":null,"suite":102139962032}]
+  settled after 21 snap(s): reopen suite complete on every context
+  snap final; checkruns-final.json, runs.json, pr-timeline.json, meta.json written
+
+=== verdict: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-verdict.sh /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-a2 ===
+{
+  "label": "a2",
+  "variant": "a",
+  "pr": 3,
+  "head_sha": "9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d",
+  "precondition_red": true,
+  "variant_a_precondition": true,
+  "gate_mode": "blocking",
+  "current_user_can_bypass": "never",
+  "merge_rc": 1,
+  "merged": false,
+  "refusal_source": "server-side",
+  "refusal_line": "GraphQL: Repository rule violations found",
+  "close_suite": 102139890207,
+  "reopen_suite": 102139962032,
+  "close_suite_conclusions": [
+    {
+      "name": "security / Container — Trivy Image",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "conclusion": "skipped"
+    }
+  ],
+  "reopen_contexts_at_post_merge": [
+    {
+      "name": "security / Container — Trivy Image",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139962032
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139962032
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139962032
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139962032
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139962032
+    }
+  ],
+  "reopen_complete_at_post_merge": false,
+  "verdict": "blocked",
+  "reason": "merge refused (rc 1), refusal server-side; runs.json agrees with the suite attribution"
+}
+=== attempt a2: BLOCKED (verdict exit 0) ===
+
+=== 29.6-race: variant a, attempt a3, PR #4 — pre-close guard (D-18) ===
+  ok: race target proceed == true; ruleset 24593937 (29.6-07-ruleset-created.json)
+  ok: contexts ["security / Container — Trivy Image","security / IaC — Checkov","security / SAST — Semgrep CE","security / SCA — Trivy Filesystem","security / Secrets — Gitleaks"]
+  ok: GATE_MODE = blocking
+  rule types on main: ["deletion","non_fast_forward","required_status_checks","pull_request"]
+  ok: required_status_checks is in force on main
+  ruleset 24593937: bypass_actors=[] current_user_can_bypass=never
+  ok: no bypass (bypass_actors [] and current_user_can_bypass never)
+  PR #4: {"state":"OPEN","mergeStateStatus":"BLOCKED","mergeable":"MERGEABLE","headRefOid":"3803e8ad51243ed81ab6067f5061b26aab75fe65"}
+  ok: PR #4 OPEN, head 3803e8ad51243ed81ab6067f5061b26aab75fe65
+  newest per context: [{"name":"security / Container — Trivy Image","status":"completed","conclusion":"success","suite":101926245697},{"name":"security / IaC — Checkov","status":"completed","conclusion":"failure","suite":101926245697},{"name":"security / SAST — Semgrep CE","status":"completed","conclusion":"failure","suite":101926245697},{"name":"security / SCA — Trivy Filesystem","status":"completed","conclusion":"success","suite":101926245697},{"name":"security / Secrets — Gitleaks","status":"completed","conclusion":"success","suite":101926245697}]
+  ok: five newest completed, >= 1 failure (red head SHA)
+settle read 1/20: mergeStateStatus=BLOCKED (previous='')
+  ok: settled mergeStateStatus BLOCKED (the pre-close guard; nothing asserts state after the close)
+  snap pre-close written; pre-close suites [101926245697]
+
+=== RACE: variant a, PR #4 ===
++ 2026-10-07T23:22:17.481Z gh pr close 4 -R OttawaCloudConsulting/sp-reopen-race-scratch
+✓ Closed pull request OttawaCloudConsulting/sp-reopen-race-scratch#4 (29.6 race a3)
+  detector read 1/60: not yet ({"run_id":null,"run_status":null,"run_conclusion":null})
+  detector read 2/60: not yet ({"run_id":37701888738,"run_status":"in_progress","run_conclusion":null})
+  detector read 3/60: not yet ({"run_id":37701888738,"run_status":"in_progress","run_conclusion":null})
+  detector read 4/60: not yet ({"run_id":37701888738,"run_status":"in_progress","run_conclusion":null})
+  2026-10-07T23:22:32.261Z close run detected: {"run_id":37701888738,"suite":102140431436,"run_conclusion":"skipped"}
+  snap pre-reopen written
+✓ Reopened pull request OttawaCloudConsulting/sp-reopen-race-scratch#4 (29.6 race a3)
+  2026-10-07T23:22:33.763Z .. 2026-10-07T23:22:35.548Z reopen rc 0
+  2026-10-07T23:22:35.724Z .. 2026-10-07T23:22:36.406Z D-19 pre-merge state: {"headRefOid":"3803e8ad51243ed81ab6067f5061b26aab75fe65","mergeStateStatus":"UNKNOWN","mergeable":"MERGEABLE"}
+  2026-10-07T23:22:36.583Z .. 2026-10-07T23:22:39.421Z gh pr merge 4 -R OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit 3803e8ad51243ed81ab6067f5061b26aab75fe65  rc 1
+--- merge-stdout.txt ---
+--- merge-stderr.txt ---
+GraphQL: Repository rule violations found
+
+5 of 5 required status checks are queued.
+
+ (mergePullRequest)
+------------------------
+  snap post-merge written; pr-after: {"headRefOid":"3803e8ad51243ed81ab6067f5061b26aab75fe65","mergeCommit":null,"mergedAt":null,"state":"OPEN"}
+  settle 1/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752}]
+  settle 2/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752}]
+  settle 3/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752}]
+  settle 4/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752}]
+  settle 5/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752}]
+  settle 6/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752}]
+  settle 7/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752}]
+  settle 8/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752}]
+  settle 9/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752}]
+  settle 10/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752}]
+  settle 11/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752}]
+  settle 12/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752}]
+  settle 13/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752}]
+  settle 14/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"completed","conclusion":"success","suite":102140501752}]
+  settle 15/120: [{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"completed","conclusion":"success","suite":102140501752}]
+  settle 16/120: [{"status":"completed","conclusion":"success","suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"completed","conclusion":"success","suite":102140501752}]
+  settle 17/120: [{"status":"completed","conclusion":"success","suite":102140501752},{"status":"completed","conclusion":"failure","suite":102140501752},{"status":"completed","conclusion":"failure","suite":102140501752},{"status":"in_progress","conclusion":null,"suite":102140501752},{"status":"completed","conclusion":"success","suite":102140501752}]
+  settled after 18 snap(s): reopen suite complete on every context
+  snap final; checkruns-final.json, runs.json, pr-timeline.json, meta.json written
+
+=== verdict: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-verdict.sh /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-a3 ===
+{
+  "label": "a3",
+  "variant": "a",
+  "pr": 4,
+  "head_sha": "3803e8ad51243ed81ab6067f5061b26aab75fe65",
+  "precondition_red": true,
+  "variant_a_precondition": true,
+  "gate_mode": "blocking",
+  "current_user_can_bypass": "never",
+  "merge_rc": 1,
+  "merged": false,
+  "refusal_source": "server-side",
+  "refusal_line": "GraphQL: Repository rule violations found",
+  "close_suite": 102140431436,
+  "reopen_suite": 102140501752,
+  "close_suite_conclusions": [
+    {
+      "name": "security / Container — Trivy Image",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "conclusion": "skipped"
+    }
+  ],
+  "reopen_contexts_at_post_merge": [
+    {
+      "name": "security / Container — Trivy Image",
+      "status": "in_progress",
+      "conclusion": null,
+      "suite": 102140501752
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "status": "in_progress",
+      "conclusion": null,
+      "suite": 102140501752
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "status": "in_progress",
+      "conclusion": null,
+      "suite": 102140501752
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102140501752
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102140501752
+    }
+  ],
+  "reopen_complete_at_post_merge": false,
+  "verdict": "blocked",
+  "reason": "merge refused (rc 1), refusal server-side; runs.json agrees with the suite attribution"
+}
+=== attempt a3: BLOCKED (verdict exit 0) ===
+
+=== all 3 attempt(s) BLOCKED. exit 0 ===
+----- END $S/29.6-09-race.log -----
+
+race.ts: 2026-10-07T23:18:17.926+00:00
+race.rc: exit=0

@@ -1,0 +1,106 @@
+{
+  "label": "a2",
+  "variant": "a",
+  "repo": "OttawaCloudConsulting/sp-reopen-race-scratch",
+  "pr": 3,
+  "head_sha": "9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d",
+  "contexts": [
+    "security / Container — Trivy Image",
+    "security / IaC — Checkov",
+    "security / SAST — Semgrep CE",
+    "security / SCA — Trivy Filesystem",
+    "security / Secrets — Gitleaks"
+  ],
+  "gate_mode": "blocking",
+  "current_user_can_bypass": "never",
+  "bypass_actors": [],
+  "ruleset_id": 24593937,
+  "ruleset_created_file": "29.6-07-ruleset-created.json",
+  "rule_types_main": [
+    "deletion",
+    "non_fast_forward",
+    "required_status_checks",
+    "pull_request"
+  ],
+  "pre_close_settled_merge_state": "BLOCKED",
+  "pre_suites": [
+    101926181025
+  ],
+  "t_close": "2026-10-07T23:20:13.776Z",
+  "close_rc": 0,
+  "detect": {
+    "detected": true,
+    "run_id": 37701685632,
+    "suite": 102139890207,
+    "run_status": "completed",
+    "run_conclusion": "skipped",
+    "newest": [
+      {
+        "name": "security / Container — Trivy Image",
+        "id": 113066410773,
+        "status": "completed",
+        "conclusion": "skipped",
+        "suite": 102139890207,
+        "run": 37701685632,
+        "started_at": "2026-10-07T23:20:24Z",
+        "completed_at": "2026-10-07T23:20:17Z"
+      },
+      {
+        "name": "security / IaC — Checkov",
+        "id": 113066419140,
+        "status": "completed",
+        "conclusion": "skipped",
+        "suite": 102139890207,
+        "run": 37701685632,
+        "started_at": "2026-10-07T23:20:26Z",
+        "completed_at": "2026-10-07T23:20:17Z"
+      },
+      {
+        "name": "security / SAST — Semgrep CE",
+        "id": 113066410877,
+        "status": "completed",
+        "conclusion": "skipped",
+        "suite": 102139890207,
+        "run": 37701685632,
+        "started_at": "2026-10-07T23:20:24Z",
+        "completed_at": "2026-10-07T23:20:17Z"
+      },
+      {
+        "name": "security / SCA — Trivy Filesystem",
+        "id": 113066372895,
+        "status": "completed",
+        "conclusion": "skipped",
+        "suite": 102139890207,
+        "run": 37701685632,
+        "started_at": "2026-10-07T23:20:17Z",
+        "completed_at": "2026-10-07T23:20:17Z"
+      },
+      {
+        "name": "security / Secrets — Gitleaks",
+        "id": 113066407843,
+        "status": "completed",
+        "conclusion": "skipped",
+        "suite": 102139890207,
+        "run": 37701685632,
+        "started_at": "2026-10-07T23:20:24Z",
+        "completed_at": "2026-10-07T23:20:17Z"
+      }
+    ]
+  },
+  "t_detect": "2026-10-07T23:20:28.330Z",
+  "t_reopen_start": "2026-10-07T23:20:29.732Z",
+  "t_reopen_end": "2026-10-07T23:20:31.544Z",
+  "reopen_rc": 0,
+  "t_premerge_read": "2026-10-07T23:20:31.750Z",
+  "t_premerge_read_end": "2026-10-07T23:20:32.337Z",
+  "premerge_state": {
+    "mergeStateStatus": "UNKNOWN",
+    "mergeable": "UNKNOWN",
+    "headRefOid": "9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d"
+  },
+  "t_merge_start": "2026-10-07T23:20:32.538Z",
+  "t_merge_end": "2026-10-07T23:20:34.512Z",
+  "merge_rc": 1,
+  "settle_timeout": false,
+  "t_final_dumps": "2026-10-07T23:22:12.783Z"
+}

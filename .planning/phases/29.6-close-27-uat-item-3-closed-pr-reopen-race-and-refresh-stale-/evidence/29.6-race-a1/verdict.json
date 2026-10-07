@@ -1,0 +1,73 @@
+{
+  "label": "a1",
+  "variant": "a",
+  "pr": 2,
+  "head_sha": "8d3641e3d45615f20b12c208273f74b88bc1f472",
+  "precondition_red": true,
+  "variant_a_precondition": true,
+  "gate_mode": "blocking",
+  "current_user_can_bypass": "never",
+  "merge_rc": 1,
+  "merged": false,
+  "refusal_source": "client-side",
+  "refusal_line": "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#2 is not mergeable: the base branch policy prohibits the merge.",
+  "close_suite": 102139415126,
+  "reopen_suite": 102139492102,
+  "close_suite_conclusions": [
+    {
+      "name": "security / Container — Trivy Image",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "conclusion": "skipped"
+    }
+  ],
+  "reopen_contexts_at_post_merge": [
+    {
+      "name": "security / Container — Trivy Image",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139492102
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139492102
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139492102
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139492102
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102139492102
+    }
+  ],
+  "reopen_complete_at_post_merge": false,
+  "verdict": "blocked",
+  "reason": "merge refused (rc 1), refusal client-side; runs.json agrees with the suite attribution"
+}

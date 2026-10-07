@@ -1,0 +1,5 @@
+GraphQL: Repository rule violations found
+
+5 of 5 required status checks are queued.
+
+ (mergePullRequest)
