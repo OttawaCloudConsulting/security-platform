@@ -1,0 +1,5 @@
+29.6-14-reset: skipped (skipped: private enforcement proven)
+Gate: evidence/29.6-14-fallback-gate.txt token is not 'in-progress: public fallback'.
+No visibility flip, no ruleset DELETE (private ruleset 24593937 retained), no GATE_MODE change, no pr0p opened.
+Not written on this path: 29.6-14-reset-readback.json, 29.6-05-pr0-checkruns-green-public.json; 29.6-prs.jsonl untouched.
+No GitHub read or write was made by this task; no checkpoint presented.
