@@ -1,0 +1,7 @@
+29.6-07-ruleset-write-public: skipped (skipped: private enforcement proven)
+Gate: evidence/29.6-14-fallback-gate.txt token is not 'in-progress: public fallback'.
+29.6-06-merge-state-unstable-public.json was not written by plan 14 (skip path), so no public UNSTABLE baseline exists.
+No public ruleset POST, no set-required-checks.sh dry run or apply, no ruleset readback, no merge-state settle.
+Not written on this path: 29.6-07-ruleset-created-public.json, 29.6-07-ruleset-merged-public.json, 29.6-07-ruleset-after-public.json, 29.6-07-rules-branches-main-public.json, 29.6-07-merge-state-blocked-public.json.
+Private ruleset 24593937 (evidence/29.6-07-ruleset-created.json) is unchanged.
+No GitHub read or write was made by this task; no checkpoint presented.
