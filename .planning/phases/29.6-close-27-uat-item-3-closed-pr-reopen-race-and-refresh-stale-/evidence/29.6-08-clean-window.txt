@@ -1,0 +1,83 @@
+29.6-08 Task 1: GATE_MODE unset and empty commit to PR-0 (operator gate window, CLEAN step)
+====================================================================================================
+
+Checkpoint question put to the operator by the orchestrator (AskUserQuestion, 2026-10-07):
+
+    Plan 08 Task 1 makes two writes on the scratch repo: delete GATE_MODE, then push an empty commit to PR #1.
+    Who runs them?
+
+Operator reply (verbatim, the option the human user selected, relayed by the orchestrator):
+
+    You run them now
+    ("I run cmd1 and then cmd2 with redirects that keep the real exit codes, and I stop on any non-zero rc or
+    ANOMALY. A continuation executor then reads CLEAN and stops at the Task 3 decision: proceed on private,
+    public fallback, or stop.")
+
+Who executed the commands: the orchestrating Claude session ran both commands below, in this session, on the
+operator's explicit instruction above. The operator did NOT type them. The plan's wording (operator runs them)
+was superseded by this explicit operator approval; it is recorded here as such.
+
+Disclosures (D-05, D-18): GATE_MODE is deleted on the throwaway repo OttawaCloudConsulting/sp-reopen-race-scratch
+only, so the Mode B callee runs report-only again for the CLEAN step. GATE_MODE is set to blocking again at the
+start of plan 09. The Default ruleset 24593937 is left unchanged by this window.
+
+Pre-flight (read-only, prior executor, 2026-10-07): clone level with origin at SHA-2; GATE_MODE=blocking; PR #1 OPEN
+and BLOCKED on SHA-2; ruleset 24593937 unchanged versus 29.6-07-ruleset-after.json (updated_at
+2026-10-06T12:37:45.230-04:00); repo PRIVATE; 29.6-pr.sh empty-commit --dry-run rc=0; 29.6-prs.jsonl held 2 lines.
+Precondition met: plan 07 read BLOCKED and captured a refusal.
+
+PD    = /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-
+S     = /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad
+CLONE = $S/29.6-scratch-clone
+
+Commands (both exited rc=0, in this order; no ANOMALY):
+  1. gh variable delete GATE_MODE -R OttawaCloudConsulting/sp-reopen-race-scratch
+  2. bash $PD/29.6-pr.sh empty-commit --clone-dir $CLONE --label pr0
+
+Key results: push 172d2c2..377b4ca to race/pr0.
+  SHA-2 (prev_sha) = 172d2c237f9ef6045d26df0b42a4e5d6b97ebee0
+  SHA-3 (head_sha) = 377b4caf2a6d33f161cf9c9bcb8987976905fc42
+  SHA-3 != SHA-2: yes. The pr0 empty-commit line is present in 29.6-prs.jsonl (line 3).
+
+Note: trailing whitespace is stripped from command output in this file (docs-repo pre-commit hook).
+Output below is copied from the session's raw capture files $S/29.6-08-cmd1.{ts,rc,out,err} and
+$S/29.6-08-cmd2.{ts,rc,out,err}. stdout and stderr were captured to separate files, so they are shown separately
+and their interleaving is not preserved. The .ts values are the local clock at issue time, not server values.
+
+--- 1. gh variable delete GATE_MODE ---
+$ gh variable delete GATE_MODE -R OttawaCloudConsulting/sp-reopen-race-scratch
+ts:     2026-10-07T12:46:07Z
+rc:     0
+stdout: (empty, 0 bytes)
+stderr: (empty, 0 bytes)
+
+--- 2. 29.6-pr.sh empty-commit --label pr0 ---
+$ bash $PD/29.6-pr.sh empty-commit --clone-dir $CLONE --label pr0
+ts:     2026-10-07T12:46:13Z
+rc:     0
+stdout:
+=== 29.6-pr empty-commit — label pr0 ===
+  ok: clone /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone is outside the planning repo; origin = https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone checkout race/pr0
+Your branch is up to date with 'origin/race/pr0'.
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone pull --ff-only
+Already up to date.
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone commit --allow-empty -m 29.6 retrigger pr0
+[race/pr0 377b4ca] 29.6 retrigger pr0
++ git -C /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone push
+{"label":"pr0","branch":"race/pr0","head_sha":"377b4caf2a6d33f161cf9c9bcb8987976905fc42","prev_sha":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","ts":"2026-10-07T12:46:15.949+00:00","action":"empty-commit"}
+stderr:
+Already on 'race/pr0'
+To https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git
+   172d2c2..377b4ca  race/pr0 -> race/pr0
+
+--- 29.6-prs.jsonl (after the window) ---
+{"label":"pr0","pr":1,"branch":"race/pr0","head_sha":"88ac58b2ffa0a00fa51878ea1ce233ec47ec647f","ts":"2026-10-06T16:21:42.912+00:00","action":"open"}
+{"label":"pr0","branch":"race/pr0","head_sha":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","prev_sha":"88ac58b2ffa0a00fa51878ea1ce233ec47ec647f","ts":"2026-10-06T16:29:01.455+00:00","action":"empty-commit"}
+{"label":"pr0","branch":"race/pr0","head_sha":"377b4caf2a6d33f161cf9c9bcb8987976905fc42","prev_sha":"172d2c237f9ef6045d26df0b42a4e5d6b97ebee0","ts":"2026-10-07T12:46:15.949+00:00","action":"empty-commit"}
+
+--- Task 1 automated verify (continuation executor, read-only) ---
+pr0 empty-commit lines in 29.6-prs.jsonl: 2 (>= 2 required)
+$ gh variable list -R OttawaCloudConsulting/sp-reopen-race-scratch --json name,value
+[]
+GATE_MODE absent: yes. Plan verify command exit code: 0.
