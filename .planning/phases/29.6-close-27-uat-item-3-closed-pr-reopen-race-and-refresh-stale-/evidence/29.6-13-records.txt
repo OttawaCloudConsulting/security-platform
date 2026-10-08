@@ -1,0 +1,31 @@
+29.6-13-records: written (PASS path, D-12/D-16; gate transcript: 29.6-10-d11-gate.txt)
+
+PASS selector (computed 2026-10-08 by the plan 13 executor, read-only):
+  $ jq -e '.overall=="blocked" and .counts.a.blocked==3 and .counts.b.blocked==3' 29.6-race-verdict.json
+  true
+  rc=0
+  $ grep -qx 'ruling: accept-blocked' 29.6-10-d11-gate.txt
+  rc=0
+  $ head -1 29.6-10-d11-gate.txt
+  29.6-10 Task 3: D-11 gate for the six-attempt race (variants a and b)
+  (not a `29.6-10-d11-gate: skipped` header, so G=29.6-10-d11-gate.txt)
+
+race-verdict overall: blocked
+
+Provenance input:
+  $ head -1 29.6-11-repo-delete.txt
+  29.6-11-repo-delete: deleted
+  -> ADR-033 provenance sentence uses "was deleted after capture"
+  $ jq -r .fallback 29.6-race-target.json
+  false
+  -> private-repo enforcement files (29.6-06..08) cited; no -public substitution
+
+Files written by plan 13:
+  docs/adr/adr033-closed-pr-reopen-race-does-not-merge-on-skipped-checks.md   (new; Task 1)
+  docs/adr/README.md                                                           (ADR-033 row and resolution note appended; Task 2)
+  this file
+
+Not edited (append-only, CLAUDE.md): docs/adr/adr024-defectdojo-ci-import-reimport-per-branch-and-opt-in.md,
+docs/adr/adr019-required-check-enforcement-live-exercise.md, docs/adoption-guide.md.
+
+Task 1 automated verify (plan text, run verbatim in a bash subshell): rc=0
