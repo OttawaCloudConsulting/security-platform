@@ -1,0 +1,35 @@
+29.6-09 Task 3: D-11 gate for race variant (a)
+==============================================
+
+Recorded at: 2026-10-08T02:53:58.437+00:00   (python3 UTC, ISO-ms)
+
+Evidence presented (evidence/29.6-race-verdict.json):
+  overall: blocked
+  counts.a: run 3, blocked 3, lost 0, invalid 0, anomaly 0
+  counts.b: run 0
+  a1 (PR #2): verdict blocked, merge_rc 1, merged false, refusal client-side:
+      "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#2 is not mergeable: the base branch policy prohibits the merge."
+  a2 (PR #3): verdict blocked, merge_rc 1, merged false, refusal server-side:
+      "GraphQL: Repository rule violations found" (stderr continues "5 of 5 required status checks are queued.")
+  a3 (PR #4): verdict blocked, merge_rc 1, merged false, refusal server-side:
+      "GraphQL: Repository rule violations found" (stderr continues "5 of 5 required status checks are queued.")
+  In a2 and a3 the server refused the merge on the reopen suite's queued required checks. No merge was accepted
+  in any attempt. This bears on ADR-024 NOT-verified item 2 (newer skipped over older results on PR #21).
+
+Checkpoint question put to the operator by the orchestrator (AskUserQuestion):
+
+    Race variant (a): 3 of 3 blocked, nothing lost. How should the D-11 gate rule?
+
+Options offered: "continue-b (Recommended)" / "d11-stop, delete OK" / "d11-stop, keep repo".
+The orchestrator labelled continue-b as the recommended option.
+
+Operator reply (verbatim, the option the human user selected, relayed by the orchestrator):
+
+> continue-b (Recommended)
+
+Normalised ruling (the single canonical line plans 10-13 anchor to):
+
+ruling: continue-b
+
+Consequences: GATE_MODE stays blocking through plan 10. PRs #1-#4 stay OPEN and are never merged. Variant (b)
+runs next (plan 10). No fix is proposed or started (D-11).

@@ -26,9 +26,15 @@ redirected together to $S/29.6-09-race.log, exit code written to $S/29.6-09-race
 
     bash $PD/29.6-race.sh --variant a --attempt a1:2 --attempt a2:3 --attempt a3:4
 
-Note on the command text: the argument list above is fixed by the plan's interface and by the log's own banner
-and per-attempt headers (variant a, 3 attempts, a1 PR #2, a2 PR #3, a3 PR #4). The exact redirect syntax of the
-shell line lived in the orchestrator's checkpoint and is not reproduced character-for-character here.
+Exact shell line (supplied by the orchestrator after the fact, at the D-11 gate continuation, replacing an
+earlier note that the redirect syntax was not reproduced character-for-character). The orchestrator ran it as a
+single line in a background Bash process, preceded by
+`cd /Users/christian/git-repos/OCC-github/development_environment/security_solution`:
+
+    S=/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad; python3 -c 'import datetime;print(datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds"))' > $S/29.6-09-race.ts; bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-race.sh --variant a --attempt a1:2 --attempt a2:3 --attempt a3:4 > $S/29.6-09-race.log 2>&1; echo "exit=$?" > $S/29.6-09-race.rc; cat $S/29.6-09-race.rc
+
+The argument list matches the log's own banner and per-attempt headers (variant a, 3 attempts, a1 PR #2,
+a2 PR #3, a3 PR #4).
 
 Captures (copied verbatim from $S):
   $S/29.6-09-race.ts  : 2026-10-07T23:18:17.926+00:00   (python3 UTC, written immediately before the race started)
