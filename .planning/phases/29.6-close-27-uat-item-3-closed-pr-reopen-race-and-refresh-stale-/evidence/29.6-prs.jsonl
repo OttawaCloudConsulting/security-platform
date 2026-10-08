@@ -4,3 +4,6 @@
 {"label":"a1","pr":2,"branch":"race/a1","head_sha":"8d3641e3d45615f20b12c208273f74b88bc1f472","ts":"2026-10-07T13:07:14.310+00:00","action":"open"}
 {"label":"a2","pr":3,"branch":"race/a2","head_sha":"9d0dbc0fa2d516fd6d6aa14c092b7564cd5d3b9d","ts":"2026-10-07T13:07:25.634+00:00","action":"open"}
 {"label":"a3","pr":4,"branch":"race/a3","head_sha":"3803e8ad51243ed81ab6067f5061b26aab75fe65","ts":"2026-10-07T13:07:36.419+00:00","action":"open"}
+{"label":"b1","pr":5,"branch":"race/b1","head_sha":"5ed2e01bafae3cc81db7db216834afe2dbc861a7","ts":"2026-10-08T03:14:25.966+00:00","action":"open"}
+{"label":"b2","pr":6,"branch":"race/b2","head_sha":"2a9b5d0e8cf3b694e070785c758e37b29d0377e2","ts":"2026-10-08T03:14:32.367+00:00","action":"open"}
+{"label":"b3","pr":7,"branch":"race/b3","head_sha":"a55b75cc05be1dfbd9acdaf28c0bc447d1c08dab","ts":"2026-10-08T03:14:37.258+00:00","action":"open"}
