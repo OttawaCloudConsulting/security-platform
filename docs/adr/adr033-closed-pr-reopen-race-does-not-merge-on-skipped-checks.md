@@ -325,8 +325,8 @@ conclusions; and `v1` unchanged from start to end.
    undetermined. At all three post-merge snapshots the newest-by-id run for each of the five required contexts was the
    reopen suite's queued run. Only the three variant (a) attempts are known to have run inside the window.
 5. **The interval between the reopen and the reopen suite's check runs, and what follows it.** In a2 and a3 the
-   server reported the reopen suite's five checks as queued about 2.8 s after the reopen started, so they already
-   existed. No attempt demonstrably landed a merge request before the reopen suite's check runs were created. The
+   server reported the reopen suite's five checks as queued, in reply to a merge request sent about 2.8 s after the
+   reopen started, so they already existed. No attempt demonstrably landed a merge request before the reopen suite's check runs were created. The
    risk is not confined to that interval. In b1 and b3 a close-run `skipped` check run was created after the reopen
    suite's run for a red required context. It stayed newest by id until the `final` snapshot, about 8 minutes after
    the reopen run's run for that context had completed ("Check-run ordering under variant (b)").
