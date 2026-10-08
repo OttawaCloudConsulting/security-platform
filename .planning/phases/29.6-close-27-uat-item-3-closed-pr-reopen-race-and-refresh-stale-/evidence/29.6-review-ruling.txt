@@ -48,3 +48,19 @@ ADR-033 and does not change the ruling below; the orchestrator decides whether t
 Normalised ruling:
 
 ruling: amend-keep-pass
+
+## Second operator question (CLOSED/CLEAN datum), appended by the orchestrator at 2026-10-08T21:55:05.535+00:00
+
+After the fix executor surfaced the a1-a3 pre-reopen CLOSED/CLEAN/MERGEABLE datum, the orchestrator
+verified it against evidence/29.6-race-a{1,2,3}/timeline.jsonl and put it to the operator as a separate
+AskUserQuestion. Question, verbatim:
+
+> New datum: closed red PRs read CLEAN in a1 to a3, and the evidence can't tell whether skipped overrides failure or closed PRs simply aren't evaluated. Keep the amend-keep-pass ruling?
+
+Options: "Keep ruling, add follow-up (Recommended)" / "Reopen item 3" / "Pause".
+The orchestrator labelled the first option Recommended. Operator reply, verbatim:
+
+> Keep ruling, add follow-up (Recommended)
+
+Effect: the single ruling line above (amend-keep-pass) stands unchanged. Follow-up recorded at
+.planning/todos/pending/2026-10-08-race-single-red-context-head.md (commit 4aeda75).
