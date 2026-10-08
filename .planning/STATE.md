@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: "Completed 29.6-12-PLAN.md (PASS path: 27-HUMAN-UAT item 3 pass, status complete 3/3; 27-VERIFICATION status passed with appended Phase 29.6 re-verification; v3.0 audit annotated with ADR-033 closure and variant (b) caveat; next: 29.6-13 ADR-033)"
-last_updated: "2026-10-08T19:57:25.000Z"
+stopped_at: "Completed 29.6-13-PLAN.md (PASS path: ADR-033 written and indexed, resolves ADR-024 NOT-verified item 2 with the variant (b) client-side caveat; ADR-019 item 2 narrowed; all 15 plans of 29.6 have summaries; next: phase 29.6 verification)"
+last_updated: "2026-10-08T20:04:58.595Z"
 last_activity: 2026-10-08
 progress:
   total_phases: 7
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.6 (close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-) — EXECUTING
-Plan: 13 of 15
-Status: Ready to execute
+Plan: 15 of 15 (all plans have summaries; 29.6-13 was the last executed)
+Status: All plans executed; awaiting phase verification
 Last activity: 2026-10-08
 
 ## Performance Metrics
@@ -402,6 +402,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.6]: 29.6-11 closeout: v1 stable (v1-end = v1-start, 6c0d5319); closeout captured 19:47:35Z-19:47:48Z (rc 0) and manifest complete; operator deleted sp-reopen-race-scratch outside the session ahead of the Task 2 checkpoint (method unverified, scopes unchanged, likely web UI); recorded as deleted under the PASS selector; 404 re-read 19:50:29Z; local scratch clone removed; plan 12 PASS path next
 - [Phase 29.6]: 29.6-12: PASS path (D-12/D-16) selected by the race-verdict selector; 27-HUMAN-UAT item 3 pass, 27-VERIFICATION status passed with appended re-verification, v3.0 audit annotated
 - [Phase 29.6]: 29.6-12: variant (b) client-side caveat carried into UAT item 3, re-verification row 3 and audit item 6 (not into YAML-quoted tech_debt lines)
+- [Phase 29.6]: 29.6-13: ADR-033 written (PASS path) and indexed; resolves ADR-024 NOT-verified item 2 by reference with the variant (b) client-side caveat; ADR-024/ADR-019 unchanged
+- [Phase 29.6]: 29.6-13: ADR-019 NOT-verified item 2 recorded as NARROWED, not closed (a2/a3 server-side refusals were on gh's GraphQL mergePullRequest; REST merge endpoint never run)
+- [Phase 29.6]: 29.6-13: race client-side refusals not described as 'gh read BLOCKED' (script pre-merge read was UNKNOWN in all six attempts); BLOCKED inferred from gh's message only
 
 ### Pending Todos
 
@@ -609,11 +612,12 @@ Carried forward from v1.1 close:
 | Phase 29.6 P10 | ~17h wall | 3 tasks | 9 files |
 | Phase 29.6 P11 | ~6min | 3 tasks | 25 files |
 | Phase 29.6 P12 | 5min | 2 tasks | 3 files |
+| Phase 29.6 P13 | 25min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-10-08T19:57:25.000Z
-Stopped at: Completed 29.6-12-PLAN.md (PASS path: 27-HUMAN-UAT item 3 pass, status complete 3/3; 27-VERIFICATION status passed with appended Phase 29.6 re-verification; v3.0 audit annotated with ADR-033 closure and variant (b) caveat; next: 29.6-13 ADR-033)
+Last session: 2026-10-08T20:06:00.000Z
+Stopped at: Completed 29.6-13-PLAN.md (PASS path: ADR-033 written and indexed, resolves ADR-024 NOT-verified item 2 with the variant (b) client-side caveat; ADR-019 item 2 narrowed; all 15 plans of 29.6 have summaries; next: phase 29.6 verification)
 Resume file: None
 
 ## Operator Next Steps
