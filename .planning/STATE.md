@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: "Completed 29.6-11-PLAN.md (closeout: v1 stable, manifest complete; sp-reopen-race-scratch deleted by the operator outside the session ahead of the checkpoint, method unverified; 404 confirmed; scratch clone removed; next: 29.6-12 PASS path)"
-last_updated: "2026-10-08T19:53:33.691Z"
+stopped_at: "Completed 29.6-12-PLAN.md (PASS path: 27-HUMAN-UAT item 3 pass, status complete 3/3; 27-VERIFICATION status passed with appended Phase 29.6 re-verification; v3.0 audit annotated with ADR-033 closure and variant (b) caveat; next: 29.6-13 ADR-033)"
+last_updated: "2026-10-08T19:57:25.000Z"
 last_activity: 2026-10-08
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.6 (close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-) — EXECUTING
-Plan: 12 of 15
+Plan: 13 of 15
 Status: Ready to execute
 Last activity: 2026-10-08
 
@@ -400,6 +400,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.6]: 29.6-09 D-11 gate ruled continue-b (option labelled Recommended by the orchestrator): race variant (a) 3/3 blocked, 0 lost (a1 client-side refusal; a2/a3 server-side 'Repository rule violations found', 5 of 5 required checks queued); no merge accepted; GATE_MODE stays blocking through plan 10; PRs #1-#4 OPEN, never merge; variant (b) next
 - [Phase 29.6]: 29.6-10 D-11 gate ruled accept-blocked (option labelled Recommended by the orchestrator): six-attempt race 6/6 blocked, 0 lost; item 3 passes on evidence (D-12). ADR-033 caveat: variant (b), the UAT literal, was refused client-side 3/3 so the server merge path was never reached under (b); server-side refusals (a2, a3) cite queued reopen-suite required checks and show the server path only under variant (a) timing. GATE_MODE blocking; PRs #1-#7 OPEN, never merge; plan 11 closeout next
 - [Phase 29.6]: 29.6-11 closeout: v1 stable (v1-end = v1-start, 6c0d5319); closeout captured 19:47:35Z-19:47:48Z (rc 0) and manifest complete; operator deleted sp-reopen-race-scratch outside the session ahead of the Task 2 checkpoint (method unverified, scopes unchanged, likely web UI); recorded as deleted under the PASS selector; 404 re-read 19:50:29Z; local scratch clone removed; plan 12 PASS path next
+- [Phase 29.6]: 29.6-12: PASS path (D-12/D-16) selected by the race-verdict selector; 27-HUMAN-UAT item 3 pass, 27-VERIFICATION status passed with appended re-verification, v3.0 audit annotated
+- [Phase 29.6]: 29.6-12: variant (b) client-side caveat carried into UAT item 3, re-verification row 3 and audit item 6 (not into YAML-quoted tech_debt lines)
 
 ### Pending Todos
 
@@ -606,11 +608,12 @@ Carried forward from v1.1 close:
 | Phase 29.6 P09 | ~14h wall | 3 tasks | 9 files |
 | Phase 29.6 P10 | ~17h wall | 3 tasks | 9 files |
 | Phase 29.6 P11 | ~6min | 3 tasks | 25 files |
+| Phase 29.6 P12 | 5min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-10-08T19:53:33.691Z
-Stopped at: Completed 29.6-11-PLAN.md (closeout: v1 stable, manifest complete; sp-reopen-race-scratch deleted by the operator outside the session ahead of the checkpoint, method unverified; 404 confirmed; scratch clone removed; next: 29.6-12 PASS path)
+Last session: 2026-10-08T19:57:25.000Z
+Stopped at: Completed 29.6-12-PLAN.md (PASS path: 27-HUMAN-UAT item 3 pass, status complete 3/3; 27-VERIFICATION status passed with appended Phase 29.6 re-verification; v3.0 audit annotated with ADR-033 closure and variant (b) caveat; next: 29.6-13 ADR-033)
 Resume file: None
 
 ## Operator Next Steps
