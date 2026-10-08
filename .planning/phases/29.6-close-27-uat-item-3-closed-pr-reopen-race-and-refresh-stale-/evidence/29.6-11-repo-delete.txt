@@ -1,0 +1,65 @@
+29.6-11-repo-delete: deleted
+repo: OttawaCloudConsulting/sp-reopen-race-scratch (private; ruleset 24593937)
+
+DEVIATION (D-06 procedure): the operator deleted the repository outside this session, ahead of the planned
+Task 2 checkpoint. No delete checkpoint was presented by the executor, and the orchestrator neither approved
+nor ran the delete. The delete method is UNVERIFIED: the token scopes were unchanged afterwards (no delete_repo
+ever added; see scope readback below), which suggests the web UI (Settings -> Danger Zone) rather than
+`gh repo delete`, but this was not observed. Consequently the T-29.6-34 mitigation (add delete_repo for the
+delete, remove it right after) never applied: the scope was never added to this token. Task 2's human-check
+("the delete was approved in that reply") is not literally satisfiable: "repo now deleted" is a report of a
+completed action, not an approval of a presented one.
+
+Operator words, verbatim, in order (as relayed by the orchestrator):
+  operator:     "which repo to delete?"
+  orchestrator: only sp-reopen-race-scratch, and not yet; wait for plan 11's capture and checkpoint
+  operator:     "repo now deleted"
+
+Delete precondition (Task 2 interfaces), run by the executor after the delete, on files captured before it:
+  $ jq -e '.overall=="blocked" and .counts.a.blocked==3 and .counts.b.blocked==3' 29.6-race-verdict.json
+  true
+  rc=0
+  $ grep -qx 'ruling: accept-blocked' 29.6-10-d11-gate.txt
+  rc=0
+  $ head -1 29.6-10-d11-gate.txt
+  29.6-10 Task 3: D-11 gate for the six-attempt race (variants a and b)
+  (not a `29.6-10-d11-gate: skipped` header, so G=29.6-10-d11-gate.txt; G carries no `delete-ruling:` line, grep rc=1)
+  => PASS selector holds (race verdict blocked 3 + 3, accept-blocked ruling); a `deleted` record is permitted.
+
+Capture window versus delete (all closeout gh calls rc=0; file mtimes, UTC):
+  29.6-v1-end.txt (git ls-remote of security-platform, not the scratch repo)   2026-10-08T19:47:27Z
+  first closeout capture (prs.json)                                            2026-10-08T19:47:35Z
+  last closeout capture (variables.json)                                       2026-10-08T19:47:48Z
+  orchestrator 404 readback                                                    2026-10-08T19:48:11Z
+  29.6-11-manifest.json                                                        2026-10-08T19:48:25Z
+The manifest postdates the orchestrator's 404 only because it is a local computation over the already-captured
+files on disk; building it made no repo read. Manifest: complete=true, missing=[] (84 file entries).
+
+Orchestrator readback (REPORTED to the executor, not observed by it):
+  2026-10-08T19:48:11Z  gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch -> 404
+
+Task 3 readbacks (executor, observed):
+$ gh api repos/OttawaCloudConsulting/sp-reopen-race-scratch   (ts 2026-10-08T19:50:29.162Z; stdout and stderr captured separately)
+rc=1
+stdout: {"message":"Not Found","documentation_url":"https://docs.github.com/rest/repos/repos#get-a-repository","status":"404"}
+stderr: gh: Not Found (HTTP 404)
+
+$ gh auth status   (ts 2026-10-08T19:50:29.881Z)
+rc=0
+  ✓ Logged in to github.com account OttawaCloudConsulting (keyring)
+  - Token scopes: 'gist', 'read:org', 'repo', 'workflow'
+(no delete_repo: nothing to remove; no auth change made by the executor)
+
+Local scratch clone removal:
+  CLONE=/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone
+  $ cd "$CLONE" && pwd -P
+  /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad/29.6-scratch-clone
+  assert: does not start with /Users/christian/git-repos/OCC-github/development_environment/security_solution  -> ok
+  assert: .git is a directory                                                                            -> ok
+  $ git -C "$REAL" remote get-url origin
+  https://github.com/OttawaCloudConsulting/sp-reopen-race-scratch.git   (equals the scratch URL -> ok)
+  HEAD before removal: a55b75c 29.6 attempt b3
+  $ rm -rf "$REAL"
+  rc=0
+  $ test -e "$REAL"
+  rc=1 (path gone)
