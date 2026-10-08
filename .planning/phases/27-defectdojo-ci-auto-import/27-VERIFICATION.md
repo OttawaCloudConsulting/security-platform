@@ -1,7 +1,7 @@
 ---
 phase: 27-defectdojo-ci-auto-import
 verified: 2026-09-25T22:00:00Z
-status: human_needed
+status: passed
 score: 45/45 must-haves verified
 overrides_applied: 0
 re_verification:
@@ -157,3 +157,20 @@ The re-review (`27-REVIEW.md`) found no new critical issues from the fix. One ne
 
 _Verified: 2026-09-25_
 _Verifier: Claude (gsd-verifier)_
+
+---
+
+## Re-verification (Phase 29.6) 2026-10-08
+
+The report above is unchanged. The frontmatter `human_verification:` list (L14-23), the body `**Status:** human_needed` line (L30) and the `## Human Verification Required` section (L128-136) are superseded by this section and are left as Phase 27 wrote them (append-only). The frontmatter `re_verification:` block is Phase 27's own gap-closure record and is not touched. The only in-place change is the frontmatter `status:`, now `passed`.
+
+All evidence paths below are relative to `.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/`. The throwaway scratch repository used for item 3 has since been deleted (`29.6-11-repo-delete.txt`); the local evidence files are the record.
+
+| # | Item | Verdict | Evidence |
+|---|------|---------|----------|
+| 1 | First 06:00 America/Toronto scheduled run | pass | `29.6-01-item1-run.json`, `29.6-01-item1-jobs.json`, `29.6-01-item1-cron.txt`: schedule run 36553070357 created 2026-09-29T10:02:41Z (06:02 EDT) against cron `0 6 * * *` America/Toronto, conclusion success, DefectDojo Import job on the ARC runner. GitHub schedule start is best-effort; about 2 minutes of start delay was observed. |
+| 2 | Real (non-ephemeral) consumer import | pass | `29.6-item2-snapshot.json`, `29.6-01-item2-readback.txt`: `security-platform` is its own Mode A consumer importing into the non-ephemeral https homelab DefectDojo (product `OttawaCloudConsulting/security-platform`, engagement `ci/main`, 278 findings across 8 tests). No separate repository has done a live Mode B import. |
+| 3 | Closed-PR reopen race | pass | `29.6-race-verdict.json` (overall `blocked`, counts a 3/3 and b 3/3 blocked), `29.6-race-a1/` .. `29.6-race-b3/`, `29.6-08-enforcement-verdict.json` (private repo; the same SHA read UNSTABLE before the ruleset and BLOCKED after it, and a green SHA read CLEAN), ruling `ruling: accept-blocked` in `29.6-10-d11-gate.txt`, ADR-033 (which resolves ADR-024 "What was NOT verified" item 2). 6/6 close-reopen-merge attempts on red head SHAs were refused: 4 client-side (a1, b1, b2, b3), 2 server-side (a2, a3). Caveat: variant (b), the UAT literal "close, reopen, merge quickly", was refused client-side in 3 of 3 attempts, so the server merge path was not reached under (b). The server-side refusals (a2, a3) cite "5 of 5 required status checks are queued." and show the server path only under variant (a) timing. No merge was accepted in any of the six attempts. |
+
+_Re-verified: 2026-10-08_
+_Re-verifier: Claude (gsd-executor, Phase 29.6)_
