@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.6-09-PLAN.md (D-11 gate ruling continue-b; variant (a) 3/3 blocked, 0 lost; next: 29.6-10 race variant (b); GATE_MODE stays blocking; PRs #1-#4 OPEN, never merge)
-last_updated: "2026-10-08T02:55:11.419Z"
+stopped_at: 29.6-10 Task 1 checkpoint (PRs b1-b3 not opened)
+last_updated: "2026-10-08T02:56:35.845Z"
 last_activity: 2026-10-08
 progress:
   total_phases: 7
@@ -605,8 +605,8 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-10-08T02:55:11.419Z
-Stopped at: Completed 29.6-09-PLAN.md (D-11 gate ruling continue-b; variant (a) 3/3 blocked, 0 lost; next: 29.6-10 race variant (b); GATE_MODE stays blocking; PRs #1-#4 OPEN, never merge)
+Last session: 2026-10-08T02:56:35.845Z
+Stopped at: 29.6-10 Task 1 checkpoint (path gate live: ruling continue-b, variant (a) 3/3 blocked; pre-flight read-only: GATE_MODE blocking, ruleset 24593937 active bypass [] never, PRs #1-#4 OPEN, clone clean; b1-b3 open dry-runs rc 0; no GitHub writes; never merge PRs #1-#4)
 Resume file: None
 
 ## Operator Next Steps
