@@ -473,7 +473,7 @@ Plans:
 **Goal:** 27-HUMAN-UAT.md matches the evidence: items 1-2 pass on a live re-read (schedule run 36553070357; homelab ci/main readback), and item 3 is settled by a live, scripted close-reopen-merge race on a deleted throwaway Mode B repository whose ruleset is first proven to enforce (UNSTABLE -> BLOCKED -> CLEAN), run on red head SHAs in two variants with three attempts each; if every attempt is blocked, item 3 passes and ADR-033 resolves ADR-024 NOT-verified item 2, otherwise the phase stops for the operator (D-11)
 **Requirements**: none (UAT closure)
 **Depends on:** Phase 29
-**Plans:** 10/15 plans executed
+**Plans:** 11/15 plans executed
 
 Plans:
 - [x] 29.6-01-PLAN.md — live readback of UAT items 1-2 into evidence; 27-HUMAN-UAT items 1-2 pass (D-13, D-14, D-15, D-17)
@@ -484,7 +484,7 @@ Plans:
 - [x] 29.6-06-PLAN.md — GATE_MODE=blocking, red set, UNSTABLE on SHA-2 (D-05, D-20)
 - [x] 29.6-07-PLAN.md — ruleset POST + set-required-checks apply, BLOCKED on SHA-2, refusal classified (D-01, D-04, D-05, D-19)
 - [x] 29.6-08-PLAN.md — CLEAN attribution, enforcement verdict, proceed/public-fallback gate (D-04, D-20)
-- [ ] 29.6-09-PLAN.md — race variant (a), 3 attempts on red PRs, D-11 gate (D-08, D-09, D-10, D-11, D-18)
+- [x] 29.6-09-PLAN.md — race variant (a), 3 attempts on red PRs, D-11 gate (D-08, D-09, D-10, D-11, D-18)
 - [ ] 29.6-10-PLAN.md — race variant (b), 3 attempts on red PRs, final D-11 gate (D-08, D-09, D-11, D-12)
 - [ ] 29.6-11-PLAN.md — v1 end, evidence manifest, operator repo delete, 404 readback (D-02, D-06)
 - [ ] 29.6-12-PLAN.md — 27-HUMAN-UAT item 3, 27-VERIFICATION append, milestone audit annotations (D-12, D-16, D-17)

@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: 29.6-09 Task 3 D-11 gate checkpoint (variant a 3/3 blocked; awaiting ruling)
-last_updated: "2026-10-07T23:27:33.506Z"
-last_activity: 2026-10-07
+stopped_at: Completed 29.6-09-PLAN.md (D-11 gate ruling continue-b; variant (a) 3/3 blocked, 0 lost; next: 29.6-10 race variant (b); GATE_MODE stays blocking; PRs #1-#4 OPEN, never merge)
+last_updated: "2026-10-08T02:55:11.419Z"
+last_activity: 2026-10-08
 progress:
   total_phases: 7
   completed_phases: 7
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.6 (close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-) — EXECUTING
-Plan: 9 of 15
+Plan: 10 of 15
 Status: Ready to execute
-Last activity: 2026-10-07
+Last activity: 2026-10-08
 
 ## Performance Metrics
 
@@ -397,6 +397,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.6]: 29.6-08 enforcement gate ruled proceed: SHA-3 377b4caf CLEAN with ruleset 24593937 unchanged, enforcement_proven true on the PRIVATE scratch repo; operator selected 'proceed (Recommended)'; plan 14 records skipped, plan 15 targets this verdict; GATE_MODE unset until plan 09; never merge PR #1
 - [Phase 29.6]: Plan 14 fallback gate skipped on ruling proceed: D-04 public fallback not used; scratch repo stays PRIVATE with ruleset 24593937
 - [Phase 29.6]: Plan 15 skip path: evidence/29.6-race-target.json points the race at the PRIVATE verdict and ruleset 24593937 (29.6-07-ruleset-created.json) with proceed true; no public replay
+- [Phase 29.6]: 29.6-09 D-11 gate ruled continue-b (option labelled Recommended by the orchestrator): race variant (a) 3/3 blocked, 0 lost (a1 client-side refusal; a2/a3 server-side 'Repository rule violations found', 5 of 5 required checks queued); no merge accepted; GATE_MODE stays blocking through plan 10; PRs #1-#4 OPEN, never merge; variant (b) next
 
 ### Pending Todos
 
@@ -600,11 +601,12 @@ Carried forward from v1.1 close:
 | Phase 29.6 P08 | ~20min | 3 tasks | 6 files |
 | Phase 29.6 P14 | 5min | 3 tasks | 3 files |
 | Phase 29.6 P15 | 5min | 3 tasks | 3 files |
+| Phase 29.6 P09 | ~14h wall | 3 tasks | 9 files |
 
 ## Session Continuity
 
-Last session: 2026-10-07T23:27:33.506Z
-Stopped at: 29.6-09 Task 3 D-11 gate checkpoint (Task 2 committed 9e901ad: race.sh --variant a exit 0, a1-a3 all blocked (a1 client-side, a2/a3 server-side "5 of 5 required status checks are queued"); 29.6-race-verdict.json overall blocked, counts.a.blocked 3; 29.6-09-d11-gate.txt NOT written, awaiting operator ruling; GATE_MODE still blocking; PRs #1-#4 OPEN; never merge PR #1)
+Last session: 2026-10-08T02:55:11.419Z
+Stopped at: Completed 29.6-09-PLAN.md (D-11 gate ruling continue-b; variant (a) 3/3 blocked, 0 lost; next: 29.6-10 race variant (b); GATE_MODE stays blocking; PRs #1-#4 OPEN, never merge)
 Resume file: None
 
 ## Operator Next Steps
