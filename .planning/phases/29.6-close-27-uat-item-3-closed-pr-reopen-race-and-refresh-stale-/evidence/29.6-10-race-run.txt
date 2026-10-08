@@ -1,0 +1,784 @@
+29.6-10 Task 2: race variant (b) over b1 (PR #5), b2 (PR #6), b3 (PR #7) (operator-approved writes)
+=================================================================================================
+
+Checkpoint question put to the operator by the orchestrator (AskUserQuestion, 2026-10-08):
+
+    Plan 10 Task 2: run race variant (b) on PRs #5, #6 and #7: close, reopen and merge back to back, up to 9
+    writes, stopping on exit 9. Who runs it?
+
+Operator reply (verbatim, the option the human user selected, relayed by the orchestrator):
+
+    You run it now
+    ("I run the exact one-line command in the background with real exit-code capture and wait for it to finish.
+    On 9 or any other non-zero code I stop and report.")
+
+Who executed the command: the orchestrating Claude session ran the race command as a single line in a background
+Bash process, output redirected to a log file, exit code captured to an rc file, no tee, on the operator's
+explicit approval above. The operator did NOT type it. The plan's wording (operator runs it) was superseded by
+this explicit operator approval; it is recorded here as such. PRs #1-#4 were not touched.
+
+PD = /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-
+S  = /private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad
+
+Command (the plan's interface command with the PR numbers from 29.6-10-preconditions.json; stdout and stderr
+redirected together to $S/29.6-10-race.log, exit code written to $S/29.6-10-race.rc):
+
+    bash $PD/29.6-race.sh --variant b --attempt b1:5 --attempt b2:6 --attempt b3:7
+
+Exact shell line (single line, as run by the orchestrator in the background process):
+
+    cd /Users/christian/git-repos/OCC-github/development_environment/security_solution; S=/private/tmp/claude-501/-Users-christian-git-repos-OCC-github-development-environment-security-solution/1bd70011-80e3-4ead-a136-4854d6501de1/scratchpad; python3 -c 'import datetime;print(datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds"))' > $S/29.6-10-race.ts; bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-race.sh --variant b --attempt b1:5 --attempt b2:6 --attempt b3:7 > $S/29.6-10-race.log 2>&1; echo "exit=$?" > $S/29.6-10-race.rc; cat $S/29.6-10-race.rc
+
+The argument list matches the log's own banner and per-attempt headers (variant b, 3 attempts, b1 PR #5,
+b2 PR #6, b3 PR #7).
+
+Captures (copied verbatim from $S):
+  $S/29.6-10-race.ts  : 2026-10-08T11:09:11.008+00:00   (python3 UTC, written immediately before the race started)
+  $S/29.6-10-race.rc  : exit=0
+  $S/29.6-10-race.log : 690 lines, interleaved stdout/stderr (reproduced in full below)
+
+exit code: 0   (race.sh: 0 = all attempts blocked)
+
+Timing gap (recorded factually): Task 1 opened b1-b3 at 2026-10-08T03:14:21Z, 03:14:26Z and 03:14:32Z
+($S/29.6-10-open-b*.ts). The race started at 2026-10-08T11:09:11.008Z, about 7 h 55 min later. The plan sets no
+freshness limit between Task 1 and Task 2. The race.sh pre-close guard (D-18) re-verified everything at race time
+for each PR, and the log shows it passed: race target proceed true and ruleset 24593937; GATE_MODE = blocking;
+bypass_actors [] and current_user_can_bypass never; PR OPEN on the recorded head SHA; settled mergeStateStatus
+BLOCKED. The pre-close suite on each PR at race time was the same suite recorded in 29.6-10-preconditions.json
+(b1 102193312915, b2 102193336571, b3 102193353200), so no new run landed on any head SHA during the gap.
+
+Per-attempt timings (from the log; close command start, reopen end, D-19 read, merge):
+  b1 PR #5: close start 11:09:15.846Z; reopen 11:09:17.196Z..11:09:18.932Z rc 0; D-19 read 11:09:19.135Z..19.827Z;
+            merge 11:09:20.030Z..11:09:20.814Z rc 1
+  b2 PR #6: close start 11:18:46.107Z; reopen 11:18:47.657Z..11:18:49.484Z rc 0; D-19 read 11:18:49.670Z..50.370Z;
+            merge 11:18:50.559Z..11:18:51.436Z rc 1
+  b3 PR #7: close start 11:28:16.704Z; reopen 11:28:18.349Z..11:28:19.986Z rc 0; D-19 read 11:28:20.166Z..20.846Z;
+            merge 11:28:21.027Z..11:28:21.869Z rc 1
+  Close-command start to merge-command end was about 5 s in each attempt. The ~9.5 min between attempts is
+  race.sh's own post-merge collection and settle before the next attempt's guard.
+
+Per-attempt results (from the log and each attempt dir's verdict.json, all produced by 29.6-verdict.sh):
+  b1 PR #5 head 5ed2e01bafae3cc81db7db216834afe2dbc861a7: merge rc 1, merged false, verdict blocked,
+     refusal client-side: "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#5 is not mergeable: the
+     base branch policy prohibits the merge."  D-19 pre-merge state: mergeStateStatus UNKNOWN, mergeable UNKNOWN.
+     close_suite 102319651891, reopen_suite 102319657637.
+  b2 PR #6 head 2a9b5d0e8cf3b694e070785c758e37b29d0377e2: merge rc 1, merged false, verdict blocked,
+     refusal client-side: "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#6 is not mergeable: the
+     base branch policy prohibits the merge."  D-19 pre-merge state: mergeStateStatus UNKNOWN, mergeable UNKNOWN.
+     close_suite 102322501703, reopen_suite 102322508585.
+  b3 PR #7 head a55b75cc05be1dfbd9acdaf28c0bc447d1c08dab: merge rc 1, merged false, verdict blocked,
+     refusal client-side: "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#7 is not mergeable: the
+     base branch policy prohibits the merge."  D-19 pre-merge state: mergeStateStatus UNKNOWN, mergeable UNKNOWN.
+     close_suite 102325408925, reopen_suite 102325415860.
+  In every attempt the close suite's five check runs concluded "skipped" (none "cancelled"), and the reopen
+  suite's five runs were all "queued" at the post-merge snap (reopen_complete_at_post_merge false). merge-stdout.txt
+  is empty (0 bytes) in all three attempts; each pr-after.json reads state OPEN, mergedAt null, mergeCommit null.
+
+  Recorded without interpretation: all three variant (b) refusals were client-side (gh declined before sending the
+  merge mutation), so the server-side merge path was not reached in variant (b). In variant (a), a2 and a3 reached
+  a server-side refusal. The D-19 pre-merge read was UNKNOWN/UNKNOWN in all three (b) attempts; gh's own state read
+  inside `gh pr merge`, a few hundred ms later, is not captured separately.
+
+Attempt dirs: every attempt the script reported running has a dir with verdict.json, merge-stderr.txt,
+merge-stdout.txt, checkruns-final.json, meta.json, pr-after.json, pr-timeline.json, runs.json and timeline.jsonl:
+evidence/29.6-race-b1/, evidence/29.6-race-b2/, evidence/29.6-race-b3/.
+
+Read-only check afterwards (orchestrator, gh pr list): PRs #1-#7 all OPEN, mergedAt null.
+Re-checked read-only by the continuation executor (gh pr list --state all): #1 OPEN 377b4caf, #2 OPEN 8d3641e3,
+#3 OPEN 9d0dbc0f, #4 OPEN 3803e8ad, #5 OPEN 5ed2e01b, #6 OPEN 2a9b5d0e, #7 OPEN a55b75cc; mergedAt null on all seven.
+
+----- BEGIN $S/29.6-10-race.log (verbatim) -----
+=== 29.6-race.sh LIVE: variant b, 3 attempt(s), repo OttawaCloudConsulting/sp-reopen-race-scratch ===
+
+=== 29.6-race: variant b, attempt b1, PR #5 — pre-close guard (D-18) ===
+  ok: race target proceed == true; ruleset 24593937 (29.6-07-ruleset-created.json)
+  ok: contexts ["security / Container — Trivy Image","security / IaC — Checkov","security / SAST — Semgrep CE","security / SCA — Trivy Filesystem","security / Secrets — Gitleaks"]
+  ok: GATE_MODE = blocking
+  rule types on main: ["deletion","non_fast_forward","required_status_checks","pull_request"]
+  ok: required_status_checks is in force on main
+  ruleset 24593937: bypass_actors=[] current_user_can_bypass=never
+  ok: no bypass (bypass_actors [] and current_user_can_bypass never)
+  PR #5: {"state":"OPEN","mergeStateStatus":"BLOCKED","mergeable":"MERGEABLE","headRefOid":"5ed2e01bafae3cc81db7db216834afe2dbc861a7"}
+  ok: PR #5 OPEN, head 5ed2e01bafae3cc81db7db216834afe2dbc861a7
+  newest per context: [{"name":"security / Container — Trivy Image","status":"completed","conclusion":"success","suite":102193312915},{"name":"security / IaC — Checkov","status":"completed","conclusion":"failure","suite":102193312915},{"name":"security / SAST — Semgrep CE","status":"completed","conclusion":"failure","suite":102193312915},{"name":"security / SCA — Trivy Filesystem","status":"completed","conclusion":"success","suite":102193312915},{"name":"security / Secrets — Gitleaks","status":"completed","conclusion":"success","suite":102193312915}]
+  ok: five newest completed, >= 1 failure (red head SHA)
+settle read 1/20: mergeStateStatus=BLOCKED (previous='')
+  ok: settled mergeStateStatus BLOCKED (the pre-close guard; nothing asserts state after the close)
+  snap pre-close written; pre-close suites [102193312915]
+
+=== RACE: variant b, PR #5 ===
++ 2026-10-08T11:09:15.846Z gh pr close 5 -R OttawaCloudConsulting/sp-reopen-race-scratch
+✓ Closed pull request OttawaCloudConsulting/sp-reopen-race-scratch#5 (29.6 race b1)
+✓ Reopened pull request OttawaCloudConsulting/sp-reopen-race-scratch#5 (29.6 race b1)
+  2026-10-08T11:09:17.196Z .. 2026-10-08T11:09:18.932Z reopen rc 0
+  2026-10-08T11:09:19.135Z .. 2026-10-08T11:09:19.827Z D-19 pre-merge state: {"headRefOid":"5ed2e01bafae3cc81db7db216834afe2dbc861a7","mergeStateStatus":"UNKNOWN","mergeable":"UNKNOWN"}
+  2026-10-08T11:09:20.030Z .. 2026-10-08T11:09:20.814Z gh pr merge 5 -R OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit 5ed2e01bafae3cc81db7db216834afe2dbc861a7  rc 1
+--- merge-stdout.txt ---
+--- merge-stderr.txt ---
+X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#5 is not mergeable: the base branch policy prohibits the merge.
+To have the pull request merged after all the requirements have been met, add the `--auto` flag.
+To use administrator privileges to immediately merge the pull request, add the `--admin` flag.
+------------------------
+  snap post-merge written; pr-after: {"headRefOid":"5ed2e01bafae3cc81db7db216834afe2dbc861a7","mergeCommit":null,"mergedAt":null,"state":"OPEN"}
+  settle 1/120: [{"status":"queued","conclusion":null,"suite":102319657637},{"status":"queued","conclusion":null,"suite":102319657637},{"status":"queued","conclusion":null,"suite":102319657637},{"status":"queued","conclusion":null,"suite":102319657637},{"status":"queued","conclusion":null,"suite":102319657637}]
+  settle 2/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 3/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 4/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 5/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 6/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 7/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 8/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 9/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 10/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 11/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 12/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 13/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 14/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 15/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 16/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 17/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 18/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 19/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 20/120: [{"status":"in_progress","conclusion":null,"suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 21/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 22/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 23/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 24/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 25/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 26/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 27/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 28/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 29/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 30/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 31/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 32/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 33/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 34/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 35/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 36/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 37/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 38/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 39/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 40/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 41/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 42/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 43/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 44/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 45/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 46/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 47/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 48/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 49/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 50/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 51/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 52/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 53/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 54/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 55/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 56/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 57/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 58/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 59/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 60/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 61/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 62/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 63/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 64/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 65/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 66/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 67/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 68/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 69/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 70/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 71/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 72/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 73/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 74/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 75/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 76/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 77/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 78/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 79/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 80/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 81/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 82/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 83/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 84/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 85/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 86/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 87/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 88/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 89/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 90/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 91/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 92/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 93/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 94/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 95/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 96/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 97/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 98/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 99/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 100/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 101/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 102/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 103/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 104/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 105/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 106/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 107/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 108/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 109/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 110/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 111/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 112/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 113/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 114/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 115/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 116/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 117/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 118/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 119/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  settle 120/120: [{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891},{"status":"completed","conclusion":"failure","suite":102319657637},{"status":"completed","conclusion":"success","suite":102319657637},{"status":"completed","conclusion":"skipped","suite":102319651891}]
+  SETTLE TIMEOUT after 120 snaps (recorded; the verdict uses the post-merge snap)
+  snap final; checkruns-final.json, runs.json, pr-timeline.json, meta.json written
+
+=== verdict: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-verdict.sh /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-b1 ===
+{
+  "label": "b1",
+  "variant": "b",
+  "pr": 5,
+  "head_sha": "5ed2e01bafae3cc81db7db216834afe2dbc861a7",
+  "precondition_red": true,
+  "variant_a_precondition": null,
+  "gate_mode": "blocking",
+  "current_user_can_bypass": "never",
+  "merge_rc": 1,
+  "merged": false,
+  "refusal_source": "client-side",
+  "refusal_line": "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#5 is not mergeable: the base branch policy prohibits the merge.",
+  "close_suite": 102319651891,
+  "reopen_suite": 102319657637,
+  "close_suite_conclusions": [
+    {
+      "name": "security / Container — Trivy Image",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "conclusion": "skipped"
+    }
+  ],
+  "reopen_contexts_at_post_merge": [
+    {
+      "name": "security / Container — Trivy Image",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102319657637
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102319657637
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102319657637
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102319657637
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102319657637
+    }
+  ],
+  "reopen_complete_at_post_merge": false,
+  "verdict": "blocked",
+  "reason": "merge refused (rc 1), refusal client-side; runs.json agrees with the suite attribution"
+}
+=== attempt b1: BLOCKED (verdict exit 0) ===
+
+=== 29.6-race: variant b, attempt b2, PR #6 — pre-close guard (D-18) ===
+  ok: race target proceed == true; ruleset 24593937 (29.6-07-ruleset-created.json)
+  ok: contexts ["security / Container — Trivy Image","security / IaC — Checkov","security / SAST — Semgrep CE","security / SCA — Trivy Filesystem","security / Secrets — Gitleaks"]
+  ok: GATE_MODE = blocking
+  rule types on main: ["deletion","non_fast_forward","required_status_checks","pull_request"]
+  ok: required_status_checks is in force on main
+  ruleset 24593937: bypass_actors=[] current_user_can_bypass=never
+  ok: no bypass (bypass_actors [] and current_user_can_bypass never)
+  PR #6: {"state":"OPEN","mergeStateStatus":"BLOCKED","mergeable":"MERGEABLE","headRefOid":"2a9b5d0e8cf3b694e070785c758e37b29d0377e2"}
+  ok: PR #6 OPEN, head 2a9b5d0e8cf3b694e070785c758e37b29d0377e2
+  newest per context: [{"name":"security / Container — Trivy Image","status":"completed","conclusion":"success","suite":102193336571},{"name":"security / IaC — Checkov","status":"completed","conclusion":"failure","suite":102193336571},{"name":"security / SAST — Semgrep CE","status":"completed","conclusion":"failure","suite":102193336571},{"name":"security / SCA — Trivy Filesystem","status":"completed","conclusion":"success","suite":102193336571},{"name":"security / Secrets — Gitleaks","status":"completed","conclusion":"success","suite":102193336571}]
+  ok: five newest completed, >= 1 failure (red head SHA)
+settle read 1/20: mergeStateStatus=BLOCKED (previous='')
+  ok: settled mergeStateStatus BLOCKED (the pre-close guard; nothing asserts state after the close)
+  snap pre-close written; pre-close suites [102193336571]
+
+=== RACE: variant b, PR #6 ===
++ 2026-10-08T11:18:46.107Z gh pr close 6 -R OttawaCloudConsulting/sp-reopen-race-scratch
+✓ Closed pull request OttawaCloudConsulting/sp-reopen-race-scratch#6 (29.6 race b2)
+✓ Reopened pull request OttawaCloudConsulting/sp-reopen-race-scratch#6 (29.6 race b2)
+  2026-10-08T11:18:47.657Z .. 2026-10-08T11:18:49.484Z reopen rc 0
+  2026-10-08T11:18:49.670Z .. 2026-10-08T11:18:50.370Z D-19 pre-merge state: {"headRefOid":"2a9b5d0e8cf3b694e070785c758e37b29d0377e2","mergeStateStatus":"UNKNOWN","mergeable":"UNKNOWN"}
+  2026-10-08T11:18:50.559Z .. 2026-10-08T11:18:51.436Z gh pr merge 6 -R OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit 2a9b5d0e8cf3b694e070785c758e37b29d0377e2  rc 1
+--- merge-stdout.txt ---
+--- merge-stderr.txt ---
+X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#6 is not mergeable: the base branch policy prohibits the merge.
+To have the pull request merged after all the requirements have been met, add the `--auto` flag.
+To use administrator privileges to immediately merge the pull request, add the `--admin` flag.
+------------------------
+  snap post-merge written; pr-after: {"headRefOid":"2a9b5d0e8cf3b694e070785c758e37b29d0377e2","mergeCommit":null,"mergedAt":null,"state":"OPEN"}
+  settle 1/120: [{"status":"queued","conclusion":null,"suite":102322508585},{"status":"queued","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"queued","conclusion":null,"suite":102322508585},{"status":"queued","conclusion":null,"suite":102322508585}]
+  settle 2/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 3/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 4/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 5/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 6/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 7/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 8/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 9/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 10/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 11/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 12/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 13/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 14/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 15/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 16/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 17/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 18/120: [{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"in_progress","conclusion":null,"suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 19/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 20/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 21/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 22/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 23/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 24/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 25/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 26/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 27/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 28/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 29/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 30/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 31/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 32/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 33/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 34/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 35/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 36/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 37/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 38/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 39/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 40/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 41/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 42/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 43/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 44/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 45/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 46/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 47/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 48/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 49/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 50/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 51/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 52/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 53/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 54/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 55/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 56/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 57/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 58/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 59/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 60/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 61/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 62/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 63/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 64/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 65/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 66/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 67/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 68/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 69/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 70/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 71/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 72/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 73/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 74/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 75/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 76/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 77/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 78/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 79/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 80/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 81/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 82/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 83/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 84/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 85/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 86/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 87/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 88/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 89/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 90/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 91/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 92/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 93/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 94/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 95/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 96/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 97/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 98/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 99/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 100/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 101/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 102/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 103/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 104/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 105/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 106/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 107/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 108/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 109/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 110/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 111/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 112/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 113/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 114/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 115/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 116/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 117/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 118/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 119/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  settle 120/120: [{"status":"completed","conclusion":"success","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"failure","suite":102322508585},{"status":"completed","conclusion":"skipped","suite":102322501703},{"status":"completed","conclusion":"skipped","suite":102322501703}]
+  SETTLE TIMEOUT after 120 snaps (recorded; the verdict uses the post-merge snap)
+  snap final; checkruns-final.json, runs.json, pr-timeline.json, meta.json written
+
+=== verdict: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-verdict.sh /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-b2 ===
+{
+  "label": "b2",
+  "variant": "b",
+  "pr": 6,
+  "head_sha": "2a9b5d0e8cf3b694e070785c758e37b29d0377e2",
+  "precondition_red": true,
+  "variant_a_precondition": null,
+  "gate_mode": "blocking",
+  "current_user_can_bypass": "never",
+  "merge_rc": 1,
+  "merged": false,
+  "refusal_source": "client-side",
+  "refusal_line": "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#6 is not mergeable: the base branch policy prohibits the merge.",
+  "close_suite": 102322501703,
+  "reopen_suite": 102322508585,
+  "close_suite_conclusions": [
+    {
+      "name": "security / Container — Trivy Image",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "conclusion": "skipped"
+    }
+  ],
+  "reopen_contexts_at_post_merge": [
+    {
+      "name": "security / Container — Trivy Image",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102322508585
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102322508585
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102322508585
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102322508585
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102322508585
+    }
+  ],
+  "reopen_complete_at_post_merge": false,
+  "verdict": "blocked",
+  "reason": "merge refused (rc 1), refusal client-side; runs.json agrees with the suite attribution"
+}
+=== attempt b2: BLOCKED (verdict exit 0) ===
+
+=== 29.6-race: variant b, attempt b3, PR #7 — pre-close guard (D-18) ===
+  ok: race target proceed == true; ruleset 24593937 (29.6-07-ruleset-created.json)
+  ok: contexts ["security / Container — Trivy Image","security / IaC — Checkov","security / SAST — Semgrep CE","security / SCA — Trivy Filesystem","security / Secrets — Gitleaks"]
+  ok: GATE_MODE = blocking
+  rule types on main: ["deletion","non_fast_forward","required_status_checks","pull_request"]
+  ok: required_status_checks is in force on main
+  ruleset 24593937: bypass_actors=[] current_user_can_bypass=never
+  ok: no bypass (bypass_actors [] and current_user_can_bypass never)
+  PR #7: {"state":"OPEN","mergeStateStatus":"BLOCKED","mergeable":"MERGEABLE","headRefOid":"a55b75cc05be1dfbd9acdaf28c0bc447d1c08dab"}
+  ok: PR #7 OPEN, head a55b75cc05be1dfbd9acdaf28c0bc447d1c08dab
+  newest per context: [{"name":"security / Container — Trivy Image","status":"completed","conclusion":"success","suite":102193353200},{"name":"security / IaC — Checkov","status":"completed","conclusion":"failure","suite":102193353200},{"name":"security / SAST — Semgrep CE","status":"completed","conclusion":"failure","suite":102193353200},{"name":"security / SCA — Trivy Filesystem","status":"completed","conclusion":"success","suite":102193353200},{"name":"security / Secrets — Gitleaks","status":"completed","conclusion":"success","suite":102193353200}]
+  ok: five newest completed, >= 1 failure (red head SHA)
+settle read 1/20: mergeStateStatus=BLOCKED (previous='')
+  ok: settled mergeStateStatus BLOCKED (the pre-close guard; nothing asserts state after the close)
+  snap pre-close written; pre-close suites [102193353200]
+
+=== RACE: variant b, PR #7 ===
++ 2026-10-08T11:28:16.704Z gh pr close 7 -R OttawaCloudConsulting/sp-reopen-race-scratch
+✓ Closed pull request OttawaCloudConsulting/sp-reopen-race-scratch#7 (29.6 race b3)
+✓ Reopened pull request OttawaCloudConsulting/sp-reopen-race-scratch#7 (29.6 race b3)
+  2026-10-08T11:28:18.349Z .. 2026-10-08T11:28:19.986Z reopen rc 0
+  2026-10-08T11:28:20.166Z .. 2026-10-08T11:28:20.846Z D-19 pre-merge state: {"headRefOid":"a55b75cc05be1dfbd9acdaf28c0bc447d1c08dab","mergeStateStatus":"UNKNOWN","mergeable":"UNKNOWN"}
+  2026-10-08T11:28:21.027Z .. 2026-10-08T11:28:21.869Z gh pr merge 7 -R OttawaCloudConsulting/sp-reopen-race-scratch --squash --match-head-commit a55b75cc05be1dfbd9acdaf28c0bc447d1c08dab  rc 1
+--- merge-stdout.txt ---
+--- merge-stderr.txt ---
+X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#7 is not mergeable: the base branch policy prohibits the merge.
+To have the pull request merged after all the requirements have been met, add the `--auto` flag.
+To use administrator privileges to immediately merge the pull request, add the `--admin` flag.
+------------------------
+  snap post-merge written; pr-after: {"headRefOid":"a55b75cc05be1dfbd9acdaf28c0bc447d1c08dab","mergeCommit":null,"mergedAt":null,"state":"OPEN"}
+  settle 1/120: [{"status":"queued","conclusion":null,"suite":102325415860},{"status":"queued","conclusion":null,"suite":102325415860},{"status":"queued","conclusion":null,"suite":102325415860},{"status":"queued","conclusion":null,"suite":102325415860},{"status":"in_progress","conclusion":null,"suite":102325415860}]
+  settle 2/120: [{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"in_progress","conclusion":null,"suite":102325415860}]
+  settle 3/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 4/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 5/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 6/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 7/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 8/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 9/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 10/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 11/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 12/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 13/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 14/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 15/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 16/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"in_progress","conclusion":null,"suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 17/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 18/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 19/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 20/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 21/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 22/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 23/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 24/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 25/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 26/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 27/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 28/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 29/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 30/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 31/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 32/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 33/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 34/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 35/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 36/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 37/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 38/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 39/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 40/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 41/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 42/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 43/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 44/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 45/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 46/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 47/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 48/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 49/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 50/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 51/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 52/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 53/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 54/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 55/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 56/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 57/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 58/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 59/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 60/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 61/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 62/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 63/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 64/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 65/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 66/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 67/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 68/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 69/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 70/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 71/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 72/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 73/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 74/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 75/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 76/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 77/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 78/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 79/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 80/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 81/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 82/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 83/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 84/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 85/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 86/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 87/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 88/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 89/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 90/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 91/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 92/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 93/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 94/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 95/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 96/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 97/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 98/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 99/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 100/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 101/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 102/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 103/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 104/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 105/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 106/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 107/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 108/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 109/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 110/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 111/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 112/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 113/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 114/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 115/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 116/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 117/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 118/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 119/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  settle 120/120: [{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"failure","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925},{"status":"completed","conclusion":"success","suite":102325415860},{"status":"completed","conclusion":"skipped","suite":102325408925}]
+  SETTLE TIMEOUT after 120 snaps (recorded; the verdict uses the post-merge snap)
+  snap final; checkruns-final.json, runs.json, pr-timeline.json, meta.json written
+
+=== verdict: bash /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-verdict.sh /Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/evidence/29.6-race-b3 ===
+{
+  "label": "b3",
+  "variant": "b",
+  "pr": 7,
+  "head_sha": "a55b75cc05be1dfbd9acdaf28c0bc447d1c08dab",
+  "precondition_red": true,
+  "variant_a_precondition": null,
+  "gate_mode": "blocking",
+  "current_user_can_bypass": "never",
+  "merge_rc": 1,
+  "merged": false,
+  "refusal_source": "client-side",
+  "refusal_line": "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#7 is not mergeable: the base branch policy prohibits the merge.",
+  "close_suite": 102325408925,
+  "reopen_suite": 102325415860,
+  "close_suite_conclusions": [
+    {
+      "name": "security / Container — Trivy Image",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "conclusion": "skipped"
+    }
+  ],
+  "reopen_contexts_at_post_merge": [
+    {
+      "name": "security / Container — Trivy Image",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102325415860
+    },
+    {
+      "name": "security / IaC — Checkov",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102325415860
+    },
+    {
+      "name": "security / SAST — Semgrep CE",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102325415860
+    },
+    {
+      "name": "security / SCA — Trivy Filesystem",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102325415860
+    },
+    {
+      "name": "security / Secrets — Gitleaks",
+      "status": "queued",
+      "conclusion": null,
+      "suite": 102325415860
+    }
+  ],
+  "reopen_complete_at_post_merge": false,
+  "verdict": "blocked",
+  "reason": "merge refused (rc 1), refusal client-side; runs.json agrees with the suite attribution"
+}
+=== attempt b3: BLOCKED (verdict exit 0) ===
+
+=== all 3 attempt(s) BLOCKED. exit 0 ===
+----- END $S/29.6-10-race.log -----
+
+race.ts: 2026-10-08T11:09:11.008+00:00
+race.rc: exit=0

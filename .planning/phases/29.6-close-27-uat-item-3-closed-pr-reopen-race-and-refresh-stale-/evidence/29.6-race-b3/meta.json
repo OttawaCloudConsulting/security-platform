@@ -1,0 +1,46 @@
+{
+  "label": "b3",
+  "variant": "b",
+  "repo": "OttawaCloudConsulting/sp-reopen-race-scratch",
+  "pr": 7,
+  "head_sha": "a55b75cc05be1dfbd9acdaf28c0bc447d1c08dab",
+  "contexts": [
+    "security / Container — Trivy Image",
+    "security / IaC — Checkov",
+    "security / SAST — Semgrep CE",
+    "security / SCA — Trivy Filesystem",
+    "security / Secrets — Gitleaks"
+  ],
+  "gate_mode": "blocking",
+  "current_user_can_bypass": "never",
+  "bypass_actors": [],
+  "ruleset_id": 24593937,
+  "ruleset_created_file": "29.6-07-ruleset-created.json",
+  "rule_types_main": [
+    "deletion",
+    "non_fast_forward",
+    "required_status_checks",
+    "pull_request"
+  ],
+  "pre_close_settled_merge_state": "BLOCKED",
+  "pre_suites": [
+    102193353200
+  ],
+  "t_close": "2026-10-08T11:28:16.704Z",
+  "close_rc": 0,
+  "t_reopen_start": "2026-10-08T11:28:18.349Z",
+  "t_reopen_end": "2026-10-08T11:28:19.986Z",
+  "reopen_rc": 0,
+  "t_premerge_read": "2026-10-08T11:28:20.166Z",
+  "t_premerge_read_end": "2026-10-08T11:28:20.846Z",
+  "premerge_state": {
+    "mergeStateStatus": "UNKNOWN",
+    "mergeable": "UNKNOWN",
+    "headRefOid": "a55b75cc05be1dfbd9acdaf28c0bc447d1c08dab"
+  },
+  "t_merge_start": "2026-10-08T11:28:21.027Z",
+  "t_merge_end": "2026-10-08T11:28:21.869Z",
+  "merge_rc": 1,
+  "settle_timeout": true,
+  "t_final_dumps": "2026-10-08T11:37:36.987Z"
+}

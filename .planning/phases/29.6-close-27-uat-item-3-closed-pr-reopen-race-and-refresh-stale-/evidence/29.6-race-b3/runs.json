@@ -1,0 +1,29 @@
+[
+  {
+    "id": 37721793470,
+    "created_at": "2026-10-08T03:14:40Z",
+    "status": "completed",
+    "conclusion": "failure",
+    "check_suite_id": 102193353200,
+    "event": "pull_request",
+    "run_attempt": 1
+  },
+  {
+    "id": 37770257064,
+    "created_at": "2026-10-08T11:28:20Z",
+    "status": "completed",
+    "conclusion": "skipped",
+    "check_suite_id": 102325408925,
+    "event": "pull_request",
+    "run_attempt": 1
+  },
+  {
+    "id": 37770259546,
+    "created_at": "2026-10-08T11:28:21Z",
+    "status": "completed",
+    "conclusion": "failure",
+    "check_suite_id": 102325415860,
+    "event": "pull_request",
+    "run_attempt": 1
+  }
+]
