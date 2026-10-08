@@ -3,7 +3,7 @@ status: complete
 phase: 27-defectdojo-ci-auto-import
 source: [27-VERIFICATION.md]
 started: 2026-09-26T02:33:56Z
-updated: 2026-10-08T19:55:51Z
+updated: 2026-10-08T21:06:54Z
 ---
 
 ## Current Test
@@ -22,7 +22,7 @@ result: pass (evidence: 29.6 evidence/29.6-item2-snapshot.json, 29.6-01-item2-re
 
 ### 3. Exercise the closed-PR reopen race (close, reopen, merge quickly)
 expected: Either the reopen run's checks complete before merge is possible, or a documented gap remains
-result: pass (evidence: 29.6 evidence/29.6-race-verdict.json, 29.6-08-enforcement-verdict.json, 29.6-race-a1..b3/ — on a ruleset proven to enforce (UNSTABLE -> BLOCKED -> CLEAN), 6/6 close-reopen-merge attempts on red head SHAs were refused (4 client-side, 2 server-side); ADR-033. Caveat: variant (b), the UAT literal "close, reopen, merge quickly", was refused client-side in 3 of 3 attempts, so the server merge path was not reached under (b); the server-side refusals (a2, a3) cite "5 of 5 required status checks are queued." and show the server path only under variant (a) timing; no merge was accepted in any attempt; ruling: accept-blocked in 29.6-10-d11-gate.txt)
+result: pass (evidence: 29.6 evidence/29.6-race-verdict.json, 29.6-08-enforcement-verdict.json, 29.6-race-a1..b3/ — on a ruleset proven to enforce (UNSTABLE -> BLOCKED -> CLEAN), 6/6 close-reopen-merge attempts on red head SHAs were refused (4 client-side, 2 server-side); ADR-033. Caveat: variant (b), the UAT literal "close, reopen, merge quickly", was refused client-side in 3 of 3 attempts, so the server merge path was not reached under (b); the server-side refusals (a2, a3) cite "5 of 5 required status checks are queued." and show the server path only under variant (a) timing; no merge was accepted in any attempt; ruling: accept-blocked in 29.6-10-d11-gate.txt. CR-01 qualifier (Phase 29.6 code review, ADR-033): in b1 and b3 the close run's skipped check run ended up newest by id on one red required context (b1 IaC — Checkov, b3 SAST — Semgrep CE) and stayed newest after the reopen run completed; each PR stayed BLOCKED only because its head was also red on a second context whose newest run was the reopen run's failure. A head red on exactly one required context was not tested (ADR-033 What was NOT verified item 12, with a follow-up). Item 3 stays closed on the measured result, no merge in 6 of 6 (ruling: amend-keep-pass in 29.6-review-ruling.txt).)
 
 ## Summary
 

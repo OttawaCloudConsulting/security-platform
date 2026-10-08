@@ -174,3 +174,7 @@ All evidence paths below are relative to `.planning/phases/29.6-close-27-uat-ite
 
 _Re-verified: 2026-10-08_
 _Re-verifier: Claude (gsd-executor, Phase 29.6)_
+
+### Amendment (Phase 29.6 code review) 2026-10-08
+
+Appended after the Phase 29.6 code review (`29.6-REVIEW.md`). Row 3 above is unchanged and stays `pass`; the report status stays `passed`. CR-01 qualifier (Phase 29.6 code review, ADR-033): in b1 and b3 the close run's skipped check run ended up newest by id on one red required context (b1 IaC — Checkov, b3 SAST — Semgrep CE) and stayed newest after the reopen run completed; each PR stayed BLOCKED only because its head was also red on a second context whose newest run was the reopen run's failure. A head red on exactly one required context was not tested (ADR-033 What was NOT verified item 12, with a follow-up). Item 3 stays closed on the measured result, no merge in 6 of 6 (ruling: amend-keep-pass in 29.6-review-ruling.txt).
