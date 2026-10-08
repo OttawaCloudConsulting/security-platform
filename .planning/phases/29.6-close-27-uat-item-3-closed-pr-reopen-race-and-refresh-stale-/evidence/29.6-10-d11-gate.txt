@@ -1,0 +1,65 @@
+29.6-10 Task 3: D-11 gate for the six-attempt race (variants a and b)
+====================================================================
+
+Recorded at: 2026-10-08T19:42:15.584+00:00   (python3 UTC, ISO-ms)
+
+Evidence presented (evidence/29.6-race-verdict.json):
+  overall: blocked
+  counts.a: run 3, blocked 3, lost 0, invalid 0, anomaly 0
+  counts.b: run 3, blocked 3, lost 0, invalid 0, anomaly 0
+  gate_mode: blocking in all six attempts; current_user_can_bypass: never in all six attempts
+
+Six-attempt table (pre-merge state from timeline.jsonl; reopen state = reopen-suite required checks at post-merge):
+
+  label  PR  variant  verdict  merge_rc  merged  refusal_source  pre-merge state read           reopen suite at post-merge
+  a1     #2  a        blocked  1         false   client-side     pre-reopen CLOSED/CLEAN        5/5 queued, incomplete
+  a2     #3  a        blocked  1         false   server-side     pre-reopen CLOSED/CLEAN        5/5 queued, incomplete
+  a3     #4  a        blocked  1         false   server-side     pre-reopen CLOSED/CLEAN        3 in_progress + 2 queued, incomplete
+  b1     #5  b        blocked  1         false   client-side     pre-close OPEN/BLOCKED         5/5 queued, incomplete
+  b2     #6  b        blocked  1         false   client-side     pre-close OPEN/BLOCKED         5/5 queued, incomplete
+  b3     #7  b        blocked  1         false   client-side     pre-close OPEN/BLOCKED         5/5 queued, incomplete
+
+  post-merge PR state: OPEN/BLOCKED in all six attempts. Close suites: all five required checks concluded skipped
+  in all six attempts (none cancelled).
+
+Refusal lines:
+  a1: "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#2 is not mergeable: the base branch policy prohibits the merge."
+  a2: "GraphQL: Repository rule violations found" (stderr continues "5 of 5 required status checks are queued.")
+  a3: "GraphQL: Repository rule violations found" (stderr continues "5 of 5 required status checks are queued.")
+  b1: "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#5 is not mergeable: the base branch policy prohibits the merge."
+  b2: "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#6 is not mergeable: the base branch policy prohibits the merge."
+  b3: "X Pull request OttawaCloudConsulting/sp-reopen-race-scratch#7 is not mergeable: the base branch policy prohibits the merge."
+
+Client-side versus server-side refusals (D-19):
+  client-side: 4 of 6 (a1, b1, b2, b3)
+  server-side: 2 of 6 (a2, a3)
+  by variant: (a) 1 client / 2 server; (b) 3 client / 0 server
+
+ADR-033 caveat (must be carried into ADR-033 verbatim in substance):
+  Variant (b), the UAT literal "close, reopen, merge quickly", was refused client-side in 3 of 3 attempts: gh's
+  local mergeability check stopped the merge, so the server merge path was never reached under variant (b).
+  The server-side refusals (a2, a3) cite the reopen suite's queued required checks ("5 of 5 required status
+  checks are queued.") and demonstrate the server path only under variant (a) timing (reopen, then a pre-merge
+  read, then merge). No merge was accepted in any of the six attempts.
+
+Checkpoint question put to the operator by the orchestrator (AskUserQuestion):
+
+    Race result: 6 of 6 blocked, nothing lost. The variant (b) refusals were all client-side. How should the plan 10 D-11 gate rule?
+
+Options offered: "accept-blocked (Recommended)" / "d11-stop, delete OK" / "d11-stop, keep repo".
+The orchestrator labelled accept-blocked as the recommended option. The orchestrator's presentation stated the
+client/server caveat above before the question was asked.
+
+Operator reply (verbatim, the option the human user selected, relayed by the orchestrator):
+
+> accept-blocked (Recommended)
+
+Normalised ruling (the single canonical line plans 11-13 anchor to):
+
+ruling: accept-blocked
+
+Consequences: item 3 passes on evidence (D-12). Plan 11 closeout runs next (v1 diff vs start, artifact capture,
+manifest, throwaway repo delete; the gh token lacks the delete_repo scope, so delete needs
+`gh auth refresh -h github.com -s delete_repo` or the web UI). Plans 12-13 write the records (27-HUMAN-UAT item 3,
+27-VERIFICATION, milestone audit, ADR-033 with the client/server caveat; ADR-024 cited for NOT-verified item 2).
+GATE_MODE stays blocking. PRs #1-#7 stay OPEN and are never merged. No fix is proposed or started.
