@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: "29.6-10 Task 2 race checkpoint (Task 1 done 1b3a8e8: PRs #5 b1, #6 b2, #7 b3 OPEN, BLOCKED, red Checkov+Semgrep, gate_mode blocking; race dry-run rc 0; race NOT run; never merge PRs #1-#4)"
-last_updated: "2026-10-08T03:20:57.194Z"
+stopped_at: "29.6-10 Task 3 D-11 decision checkpoint (Task 2 done e39c07a: race (b) exit 0, b1-b3 blocked, all client-side, D-19 pre-merge UNKNOWN/UNKNOWN; aggregate 87bae14: overall blocked, a 3/3, b 3/3; refusals 2 server-side (a2,a3) / 4 client-side; 29.6-10-d11-gate.txt NOT written; PRs #1-#7 OPEN, never merge)"
+last_updated: "2026-10-08T11:40:08.810Z"
 last_activity: 2026-10-08
 progress:
   total_phases: 7
@@ -605,8 +605,8 @@ Carried forward from v1.1 close:
 
 ## Session Continuity
 
-Last session: 2026-10-08T03:20:57.167Z
-Stopped at: 29.6-10 Task 2 race checkpoint (Task 1 done 1b3a8e8: PRs #5 b1, #6 b2, #7 b3 OPEN, BLOCKED, red Checkov+Semgrep, gate_mode blocking; race dry-run rc 0; race NOT run; never merge PRs #1-#4)
+Last session: 2026-10-08T11:40:08.810Z
+Stopped at: 29.6-10 Task 3 D-11 decision checkpoint (Task 2 done e39c07a: race (b) exit 0, b1-b3 blocked, all client-side, D-19 pre-merge UNKNOWN/UNKNOWN; aggregate 87bae14: overall blocked, a 3/3, b 3/3; refusals 2 server-side (a2,a3) / 4 client-side; 29.6-10-d11-gate.txt NOT written; PRs #1-#7 OPEN, never merge)
 Resume file: None
 
 ## Operator Next Steps
