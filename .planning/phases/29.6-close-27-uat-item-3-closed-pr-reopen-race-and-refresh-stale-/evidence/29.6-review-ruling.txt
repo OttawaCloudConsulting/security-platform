@@ -1,0 +1,50 @@
+29.6 code review: operator ruling on CR-01 (29.6-REVIEW.md, committed 8eb067c)
+==============================================================================
+
+Recorded at: 2026-10-08T21:06:54.549+00:00   (python3 UTC, ISO-ms)
+
+This file supplements 29.6-10-d11-gate.txt. That file stays the historical record of the D-11 gate and is not
+edited. The D-11 ruling (`ruling: accept-blocked`) was given without the CR-01 datum below.
+
+CR-01 summary (re-derived from 29.6-race-b1..b3/checkruns-final.json and timeline.jsonl, newest by check-run id per
+context, the 29.6-snap.sh `max_by(.id)` rule):
+  b1 (PR #5), IaC — Checkov: reopen run 113280907712 (suite 102319657637) concluded failure; close run 113280955772
+      (suite 102319651891) concluded skipped and has the higher id, so it is newest. It became newest at the
+      settle-3 snapshot (11:09:31.674Z) and was still newest at the final snapshot (11:18:36.371Z).
+      SAST — Semgrep CE: newest is the reopen failure 113280907382.
+  b3 (PR #7), SAST — Semgrep CE: reopen run 113287831272 (suite 102325415860) concluded failure; close run
+      113287866366 (suite 102325408925) concluded skipped and is newest. It became newest at the settle-2 snapshot
+      (11:28:28.489Z) and was still newest at the final snapshot (11:37:33.990Z).
+      IaC — Checkov: newest is the reopen failure 113287831155.
+  b2 (PR #6): the newest run on both red contexts is a reopen failure (Checkov 113284308908, Semgrep 113284308783).
+  Every PR stayed BLOCKED (mergeStateStatus BLOCKED in all 123 timeline snapshots of each b attempt) because at
+  least one red required context per PR still had a reopen failure as its newest run.
+  Never tested: a head red on only one required context under this ordering. On such a head, a merge request in
+  that state might not be blocked by checks.
+  Detection gap: neither 29.6-verdict.sh nor any executor flagged this; the code review found it.
+
+Checkpoint question put to the operator by the orchestrator (AskUserQuestion), verbatim:
+
+> CR-01: in b1 and b3 the close run's 'skipped' result ended up newest on a red context. The PRs stayed BLOCKED only because each head was red on two contexts. Your accept-blocked ruling was given without this. How should I proceed?
+
+Options offered: "Amend records, keep pass (Recommended)" / "Reopen item 3" / "Pause for me to read".
+The orchestrator labelled "Amend records, keep pass" as the recommended option. Its description, as presented:
+"Fix ADR-033 and the 27-UAT/27-VERIFICATION wording: add the CR-01 datum and WR-01 to WR-04, and log 'single-red
+head untested' as a NOT-verified item and follow-up. Item 3 stays closed on the measured evidence (no merge in 6 of
+6). Then verify and complete the phase."
+
+Operator reply (verbatim, the option the human user selected, relayed by the orchestrator):
+
+> Amend records, keep pass (Recommended)
+
+Note added by the executor after the ruling: while re-deriving CR-01 the executor found one further datum that was
+not in the question above. In a1, a2 and a3 the pre-reopen snapshot (PR closed; all five required contexts' newest
+runs were the close run's skipped runs; the older red failures still on the head) read
+state CLOSED, mergeStateStatus CLEAN, mergeable MERGEABLE (29.6-race-a<n>/timeline.jsonl, label pre-reopen). It has
+two readings this evidence cannot separate (a newer skipped run overrides an older failure in the merge-state
+computation; or a closed pull request is not evaluated against the ruleset's required checks). It is recorded in
+ADR-033 and does not change the ruling below; the orchestrator decides whether to put it to the operator.
+
+Normalised ruling:
+
+ruling: amend-keep-pass
