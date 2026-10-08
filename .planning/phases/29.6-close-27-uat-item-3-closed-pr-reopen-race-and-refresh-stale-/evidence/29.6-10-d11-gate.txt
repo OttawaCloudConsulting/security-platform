@@ -9,17 +9,19 @@ Evidence presented (evidence/29.6-race-verdict.json):
   counts.b: run 3, blocked 3, lost 0, invalid 0, anomaly 0
   gate_mode: blocking in all six attempts; current_user_can_bypass: never in all six attempts
 
-Six-attempt table (pre-merge state from timeline.jsonl; reopen state = reopen-suite required checks at post-merge):
+Six-attempt table (pre-merge state = D-19 premerge_state mergeStateStatus/mergeable from each attempt's meta.json;
+reopen state = reopen-suite required checks at post-merge):
 
-  label  PR  variant  verdict  merge_rc  merged  refusal_source  pre-merge state read           reopen suite at post-merge
-  a1     #2  a        blocked  1         false   client-side     pre-reopen CLOSED/CLEAN        5/5 queued, incomplete
-  a2     #3  a        blocked  1         false   server-side     pre-reopen CLOSED/CLEAN        5/5 queued, incomplete
-  a3     #4  a        blocked  1         false   server-side     pre-reopen CLOSED/CLEAN        3 in_progress + 2 queued, incomplete
-  b1     #5  b        blocked  1         false   client-side     pre-close OPEN/BLOCKED         5/5 queued, incomplete
-  b2     #6  b        blocked  1         false   client-side     pre-close OPEN/BLOCKED         5/5 queued, incomplete
-  b3     #7  b        blocked  1         false   client-side     pre-close OPEN/BLOCKED         5/5 queued, incomplete
+  label  PR  variant  verdict  merge_rc  merged  refusal_source  pre-merge state (D-19)   reopen suite at post-merge
+  a1     #2  a        blocked  1         false   client-side     UNKNOWN/UNKNOWN          5/5 queued, incomplete
+  a2     #3  a        blocked  1         false   server-side     UNKNOWN/UNKNOWN          5/5 queued, incomplete
+  a3     #4  a        blocked  1         false   server-side     UNKNOWN/MERGEABLE        3 in_progress + 2 queued, incomplete
+  b1     #5  b        blocked  1         false   client-side     UNKNOWN/UNKNOWN          5/5 queued, incomplete
+  b2     #6  b        blocked  1         false   client-side     UNKNOWN/UNKNOWN          5/5 queued, incomplete
+  b3     #7  b        blocked  1         false   client-side     UNKNOWN/UNKNOWN          5/5 queued, incomplete
 
-  post-merge PR state: OPEN/BLOCKED in all six attempts. Close suites: all five required checks concluded skipped
+  Pre-close state was OPEN/BLOCKED in all six attempts (red precondition). post-merge PR state: OPEN/BLOCKED in all
+  six attempts. Close suites: all five required checks concluded skipped
   in all six attempts (none cancelled).
 
 Refusal lines:
