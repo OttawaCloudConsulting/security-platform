@@ -497,7 +497,13 @@ Plans:
 **Goal:** [Urgent work - to be planned]
 **Requirements**: TBD
 **Depends on:** Phase 29
-**Plans:** 0 plans
+**Plans:** 7 plans in 3 waves
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 29.7 to break down)
+- [ ] 29.7-01-PLAN.md — requirements-completed backfill in 4 SUMMARYs (R-02 form) and the 3-source xcheck (wave 1)
+- [ ] 29.7-02-PLAN.md — CLAUDE.md and architecture doc: range-free ADR pointers, true Project Structure (wave 1)
+- [ ] 29.7-03-PLAN.md — re-test gsd-sdk defects L-01..L-16 on v1.42.3, scratch-only mutators (wave 1)
+- [ ] 29.7-04-PLAN.md — .planning stragglers resolved under operator ruling (wave 1, checkpoint)
+- [ ] 29.7-05-PLAN.md — ROADMAP Layout C reconcile, 29.7 Goal, STATE progress hand-set (wave 2)
+- [ ] 29.7-06-PLAN.md — GSD-SDK-DEFECTS.md ledger and PROJECT.md pointer (wave 2)
+- [ ] 29.7-07-PLAN.md — v3.0 audit CLOSED (Phase 29.7) annotations and final readback (wave 3)
