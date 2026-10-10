@@ -69,7 +69,7 @@ See `.planning/milestones/v2.0-ROADMAP.md` for full phase details.
 - [x] **Phase 29.4: Fix trivy-image cross-branch dedup: replace scan-target github.sha tag (v1 consumer impact check)** (INSERTED) - Scanned image tagged scan-target:ci so trivy-image findings dedupe across branches; released v1.3.0, ADR-031 (completed 2026-10-04)
 - [x] **Phase 29.5: Fix WR-03: TRIAGE.md Under Review query hides verified=true Trivy findings** (INSERTED) - dd-import sends verified=false on every reimport; released v1.4.0, ADR-032 (completed 2026-10-05)
 - [x] **Phase 29.6: Close 27 UAT item 3 (closed-PR reopen race) and refresh stale 27-HUMAN-UAT.md** (INSERTED) - Close-reopen-merge race refused in 6/6 attempts against an enforcing ruleset; 27-HUMAN-UAT.md refreshed, ADR-033 (completed 2026-10-08)
-- [ ] **Phase 29.7: Bookkeeping: ROADMAP checkboxes, requirements-completed frontmatter, CLAUDE.md ADR range, gsd-sdk tooling ledger** (INSERTED) - Records reconciled with the repository; gsd-sdk defects consolidated in one ledger
+- [x] **Phase 29.7: Bookkeeping: ROADMAP checkboxes, requirements-completed frontmatter, CLAUDE.md ADR range, gsd-sdk tooling ledger** (INSERTED) - Records reconciled with the repository; gsd-sdk defects consolidated in one ledger (completed 2026-10-10)
 
 ### Phase 23: Nexus Generic Chart
 
@@ -459,16 +459,16 @@ Plans:
 **Goal:** ROADMAP.md, the v3.0 SUMMARY requirements-completed frontmatter, CLAUDE.md and the architecture doc match the repository's measured state; every known gsd-sdk tooling defect is re-tested on v1.42.3 and consolidated in .planning/GSD-SDK-DEFECTS.md; the .planning working-tree stragglers are resolved under operator ruling; and the v3.0 audit's Tech Debt item 7 and deferred item 5 are annotated CLOSED (Phase 29.7), with no change to security-platform, the charts, the cluster or CI.
 **Requirements**: none (tech-debt closure)
 **Depends on:** Phase 29
-**Plans:** 7 plans in 3 waves
+**Plans:** 7/7 plans complete
 
 Plans:
-- [ ] 29.7-01-PLAN.md — requirements-completed backfill in 4 SUMMARYs (R-02 form) and the 3-source xcheck (wave 1)
-- [ ] 29.7-02-PLAN.md — CLAUDE.md and architecture doc: range-free ADR pointers, true Project Structure (wave 1)
-- [ ] 29.7-03-PLAN.md — re-test gsd-sdk defects L-01..L-16 on v1.42.3, scratch-only mutators (wave 1)
-- [ ] 29.7-04-PLAN.md — .planning stragglers resolved under operator ruling (wave 1, checkpoint)
-- [ ] 29.7-05-PLAN.md — ROADMAP Layout C reconcile, 29.7 Goal, STATE progress hand-set (wave 2)
-- [ ] 29.7-06-PLAN.md — GSD-SDK-DEFECTS.md ledger and PROJECT.md pointer (wave 2)
-- [ ] 29.7-07-PLAN.md — v3.0 audit CLOSED (Phase 29.7) annotations and final readback (wave 3)
+- [x] 29.7-01-PLAN.md — requirements-completed backfill in 4 SUMMARYs (R-02 form) and the 3-source xcheck (wave 1)
+- [x] 29.7-02-PLAN.md — CLAUDE.md and architecture doc: range-free ADR pointers, true Project Structure (wave 1)
+- [x] 29.7-03-PLAN.md — re-test gsd-sdk defects L-01..L-16 on v1.42.3, scratch-only mutators (wave 1)
+- [x] 29.7-04-PLAN.md — .planning stragglers resolved under operator ruling (wave 1, checkpoint)
+- [x] 29.7-05-PLAN.md — ROADMAP Layout C reconcile, 29.7 Goal, STATE progress hand-set (wave 2)
+- [x] 29.7-06-PLAN.md — GSD-SDK-DEFECTS.md ledger and PROJECT.md pointer (wave 2)
+- [x] 29.7-07-PLAN.md — v3.0 audit CLOSED (Phase 29.7) annotations and final readback (wave 3)
 
 ## Progress
 
@@ -513,7 +513,7 @@ Phases execute in numeric order: 1 → 2 → ... → 29 → 29.1 → ... → 29.
 | 29.4. Fix trivy-image cross-branch dedup: replace scan-target github.sha tag (v1 consumer impact check) | v3.0 | 10/10 | Complete | 2026-10-04 |
 | 29.5. Fix WR-03: TRIAGE.md Under Review query hides verified=true Trivy findings | v3.0 | 12/12 | Complete | 2026-10-05 |
 | 29.6. Close 27 UAT item 3 (closed-PR reopen race) and refresh stale 27-HUMAN-UAT.md | v3.0 | 15/15 | Complete | 2026-10-08 |
-| 29.7. Bookkeeping: ROADMAP checkboxes, requirements-completed frontmatter, CLAUDE.md ADR range, gsd-sdk tooling ledger | v3.0 | 4/7 | In Progress |  |
+| 29.7. Bookkeeping: ROADMAP checkboxes, requirements-completed frontmatter, CLAUDE.md ADR range, gsd-sdk tooling ledger | v3.0 | 7/7 | Complete    | 2026-10-10 |
 
 ## Next Milestone
 
