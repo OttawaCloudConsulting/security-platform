@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.7-01-PLAN.md
-last_updated: "2026-10-10T00:06:28.000Z"
-last_activity: 2026-10-09 -- Plan 29.7-01 complete (requirements-completed backfill, xcheck 10/10)
+stopped_at: Completed 29.7-02-PLAN.md
+last_updated: "2026-10-10T00:11:41.000Z"
+last_activity: 2026-10-09 -- Plan 29.7-02 complete (range-free ADR pointers, true CLAUDE.md Project Structure)
 progress:
   total_phases: 7
   completed_phases: 7
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.7 (bookkeeping) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Executing Phase 29.7
-Last activity: 2026-10-09 -- Plan 29.7-01 complete (requirements-completed backfill, xcheck 10/10)
+Last activity: 2026-10-09 -- Plan 29.7-02 complete (range-free ADR pointers, true CLAUDE.md Project Structure)
 
 ## Performance Metrics
 
@@ -406,6 +406,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.6]: 29.6-13: ADR-019 NOT-verified item 2 recorded as NARROWED, not closed (a2/a3 server-side refusals were on gh's GraphQL mergePullRequest; REST merge endpoint never run)
 - [Phase 29.6]: 29.6-13: race client-side refusals not described as 'gh read BLOCKED' (script pre-merge read was UNKNOWN in all six attempts); BLOCKED inferred from gh's message only
 - [Phase 29.7-01]: requirements-completed backfilled in 25-07/26-07/28-09/29-19 in the R-02 form (comment line above the key); proven by 29.7-xcheck.sh RED 5/10 -> GREEN 10/10; D-06 sweep 0 extra hits; gsd-sdk state/roadmap mutators not run per D-02/D-12 (STATE.md edited by hand, ROADMAP.md left to plan 05)
+- [Phase 29.7-02]: CLAUDE.md and docs/ARCHITECTURE_AND_DESIGN.md ADR mentions made range-free (ADR-NNN, docs/adr/README.md is the authoritative index; 33 ADRs measured); CLAUDE.md Project Structure corrected (docs/ primary doc path, ~2,450 lines, red-team/ and drafts/ removed, kubernetes/defectdojo/ named per security-platform origin/main 6c0d531); Editing Guidelines untouched; no gate script (D-08)
 
 ### Pending Todos
 
@@ -615,11 +616,12 @@ Carried forward from v1.1 close:
 | Phase 29.6 P12 | 5min | 2 tasks | 3 files |
 | Phase 29.6 P13 | 25min | 2 tasks | 3 files |
 | Phase 29.7 P01 | ~10min | 2 tasks | 9 files |
+| Phase 29.7 P02 | ~6min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-10-10T00:06:28.000Z
-Stopped at: Completed 29.7-01-PLAN.md
+Last session: 2026-10-10T00:11:41.000Z
+Stopped at: Completed 29.7-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
