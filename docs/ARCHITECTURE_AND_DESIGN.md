@@ -86,7 +86,7 @@ Each record in `ADR.md` uses the following format:
 **Consequences:** [Improvements gained; tradeoffs accepted]
 ```
 
-ADRs cover the 12 decisions listed in Feature 14 of the PRD, numbered ADR-001 through ADR-012.
+ADRs are numbered ADR-NNN; `docs/adr/README.md` is the authoritative index of every decision record.
 
 ---
 

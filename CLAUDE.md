@@ -2,16 +2,14 @@
 
 ## What This Repository Is
 
-A **reference documentation project** (not buildable software). The primary artifact is `development-security-stack-option-1.md` — a complete blueprint for a zero-cost, open-source security and supply chain scanning stack for a single-developer AWS cloud practice. The canonical, live-validated GitHub Actions workflows that implement Phase 2 of that blueprint, together with the K8s packages that implement its Kubernetes infrastructure layer (`kubernetes/<service>/` Helm charts, starting with `kubernetes/nexus/`), live in `OttawaCloudConsulting/security-platform`, not in this repository — this repository documents them, it does not ship them.
+A **reference documentation project** (not buildable software). The primary artifact is `docs/development-security-stack-option-1.md` — a complete blueprint for a zero-cost, open-source security and supply chain scanning stack for a single-developer AWS cloud practice. The canonical, live-validated GitHub Actions workflows that implement Phase 2 of that blueprint, together with the K8s packages that implement its Kubernetes infrastructure layer (`kubernetes/<service>/` Helm charts, currently `kubernetes/nexus/` and `kubernetes/defectdojo/`), live in `OttawaCloudConsulting/security-platform`, not in this repository — this repository documents them, it does not ship them.
 
 ## Project Structure
 
-- `development-security-stack-option-1.md` — primary document (~2,300 lines), contains copy-pasteable configs and ASCII architecture diagrams
-- `docs/adr/` — individual architectural decision records (ADR-001 through ADR-018); see `docs/adr/README.md` for index
+- `docs/development-security-stack-option-1.md` — primary document (~2,450 lines), contains copy-pasteable configs and ASCII architecture diagrams
+- `docs/adr/` — individual architectural decision records, numbered ADR-NNN; `docs/adr/README.md` is the authoritative index
 - `docs/adoption-guide.md` — the adoption procedure for both consumption modes (copy-paste and reusable `workflow_call`) of the canonical `security-platform` pipeline
 - `scripts/` — standing documentation gates, including `bash scripts/check-adoption-guide.sh`
-- `red-team/` — three-agent red-team analysis and consolidated findings
-- `drafts/` — in-progress section rewrites
 - `docs/ARCHITECTURE_AND_DESIGN.md` — extracted architecture reference
 - `prd.md` — (when present) product requirements document
 - `progress.txt` — (when present) implementation tracking

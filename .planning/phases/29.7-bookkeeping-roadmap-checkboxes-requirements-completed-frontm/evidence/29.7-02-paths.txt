@@ -1,0 +1,105 @@
+# 29.7-02 evidence: CLAUDE.md Project Structure and ADR-pointer readbacks (D-08, D-09, D-10)
+# Captured: 2026-10-10T00:11Z, repo HEAD 9688ad3
+
+## (a) Pre-edit readbacks (captured before any CLAUDE.md edit)
+
+$ ls -d development-security-stack-option-1.md docs/development-security-stack-option-1.md red-team drafts docs/adr docs/adoption-guide.md scripts docs/ARCHITECTURE_AND_DESIGN.md kubernetes 2>&1
+ls: development-security-stack-option-1.md: No such file or directory
+ls: drafts: No such file or directory
+ls: kubernetes: No such file or directory
+ls: red-team: No such file or directory
+docs/adoption-guide.md
+docs/adr
+docs/ARCHITECTURE_AND_DESIGN.md
+docs/development-security-stack-option-1.md
+scripts
+
+$ wc -l docs/development-security-stack-option-1.md
+    2445 docs/development-security-stack-option-1.md
+
+Note: kubernetes/ is absent here by design; the charts live in OttawaCloudConsulting/security-platform (see b).
+
+## (b) security-platform kubernetes/ listing (DefectDojo chart evidence)
+
+$ git -C repos/security-platform rev-parse --short origin/main
+6c0d531
+$ git -C repos/security-platform ls-tree --name-only origin/main kubernetes/
+kubernetes/defectdojo
+kubernetes/nexus
+
+Corroboration (live remote, read-only):
+$ gh api repos/OttawaCloudConsulting/security-platform/contents/kubernetes --jq '.[].path'
+kubernetes/defectdojo
+kubernetes/nexus
+$ gh api repos/OttawaCloudConsulting/security-platform/commits/main --jq '.sha[0:7]'
+6c0d531
+
+## (c) Post-edit: ls -d for each backticked path in CLAUDE.md ## Project Structure
+
+$ sed -n "/^## Project Structure/,/^## Editing Guidelines/p" CLAUDE.md
+## Project Structure
+
+- `docs/development-security-stack-option-1.md` — primary document (~2,450 lines), contains copy-pasteable configs and ASCII architecture diagrams
+- `docs/adr/` — individual architectural decision records, numbered ADR-NNN; `docs/adr/README.md` is the authoritative index
+- `docs/adoption-guide.md` — the adoption procedure for both consumption modes (copy-paste and reusable `workflow_call`) of the canonical `security-platform` pipeline
+- `scripts/` — standing documentation gates, including `bash scripts/check-adoption-guide.sh`
+- `docs/ARCHITECTURE_AND_DESIGN.md` — extracted architecture reference
+- `prd.md` — (when present) product requirements document
+- `progress.txt` — (when present) implementation tracking
+
+## Editing Guidelines
+
+$ ls -d docs/development-security-stack-option-1.md
+docs/development-security-stack-option-1.md
+$ ls -d docs/adr/
+docs/adr/
+$ ls -d docs/adr/README.md
+docs/adr/README.md
+$ ls -d docs/adoption-guide.md
+docs/adoption-guide.md
+$ ls -d scripts/
+scripts/
+$ ls -d scripts/check-adoption-guide.sh
+scripts/check-adoption-guide.sh
+$ ls -d docs/ARCHITECTURE_AND_DESIGN.md
+docs/ARCHITECTURE_AND_DESIGN.md
+$ ls -d prd.md   # (when present) entry: hedged, accurate
+ls: prd.md: No such file or directory
+$ ls -d progress.txt   # (when present) entry: hedged, accurate
+ls: progress.txt: No such file or directory
+
+Non-path backticked tokens in the list (not checked with ls): `workflow_call` (a GitHub Actions trigger), `security-platform` (the remote repository name; see b). `bash scripts/check-adoption-guide.sh` is a command; its path portion is checked above.
+
+$ wc -l docs/development-security-stack-option-1.md   # CLAUDE.md states ~2,450 (2445 rounded to nearest 50)
+    2445 docs/development-security-stack-option-1.md
+
+## (d) ADR range and pointer greps
+
+$ grep -nE 'ADR-0[0-9]+ through ADR-0[0-9]+' CLAUDE.md docs/ARCHITECTURE_AND_DESIGN.md   # expected: no output
+(exit=1)
+$ grep -c '12 decisions' docs/ARCHITECTURE_AND_DESIGN.md
+0
+$ grep -n 'docs/adr/README.md' CLAUDE.md docs/ARCHITECTURE_AND_DESIGN.md
+docs/ARCHITECTURE_AND_DESIGN.md:89:ADRs are numbered ADR-NNN; `docs/adr/README.md` is the authoritative index of every decision record.
+CLAUDE.md:10:- `docs/adr/` — individual architectural decision records, numbered ADR-NNN; `docs/adr/README.md` is the authoritative index
+
+## (e) ADR count (for plan 07 audit annotation)
+
+$ ls docs/adr | grep -c '^adr'
+33
+$ grep -oE '^\| \[ADR-[0-9]+\]' docs/adr/README.md | tail -1
+| [ADR-033]
+$ grep -cE '^\| \[ADR-[0-9]+\]' docs/adr/README.md
+33
+
+## (f) Diff stat
+
+$ git diff --stat CLAUDE.md docs/ARCHITECTURE_AND_DESIGN.md
+ CLAUDE.md                       | 8 +++-----
+ docs/ARCHITECTURE_AND_DESIGN.md | 2 +-
+ 2 files changed, 4 insertions(+), 6 deletions(-)
+$ git diff --numstat CLAUDE.md docs/ARCHITECTURE_AND_DESIGN.md
+3	5	CLAUDE.md
+1	1	docs/ARCHITECTURE_AND_DESIGN.md
+$ git diff -U0 CLAUDE.md | grep -E '^[-+]' | grep -vE '^(\+\+\+|---)' | grep -ciE 'preserve|append-only'   # Editing Guidelines untouched: expected 0
+0
