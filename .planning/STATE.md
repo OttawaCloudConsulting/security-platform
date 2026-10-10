@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
 status: executing
-stopped_at: Completed 29.7-03-PLAN.md
-last_updated: "2026-10-10T00:27:00.000Z"
-last_activity: 2026-10-09 -- Plan 29.7-03 complete (gsd-sdk ledger re-test L-01..L-16 on v1.42.3, scratch-only mutators)
+stopped_at: Completed 29.7-04-PLAN.md
+last_updated: "2026-10-10T00:47:00.000Z"
+last_activity: 2026-10-09 -- Plan 29.7-04 complete (.planning stragglers resolved per operator ruling, audit deferred item 5)
 progress:
   total_phases: 7
   completed_phases: 7
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 ## Current Position
 
 Phase: 29.7 (bookkeeping) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Executing Phase 29.7
-Last activity: 2026-10-09 -- Plan 29.7-03 complete (gsd-sdk ledger re-test L-01..L-16 on v1.42.3, scratch-only mutators)
+Last activity: 2026-10-09 -- Plan 29.7-04 complete (.planning stragglers resolved per operator ruling, audit deferred item 5)
 
 ## Performance Metrics
 
@@ -408,6 +408,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.7-01]: requirements-completed backfilled in 25-07/26-07/28-09/29-19 in the R-02 form (comment line above the key); proven by 29.7-xcheck.sh RED 5/10 -> GREEN 10/10; D-06 sweep 0 extra hits; gsd-sdk state/roadmap mutators not run per D-02/D-12 (STATE.md edited by hand, ROADMAP.md left to plan 05)
 - [Phase 29.7-02]: CLAUDE.md and docs/ARCHITECTURE_AND_DESIGN.md ADR mentions made range-free (ADR-NNN, docs/adr/README.md is the authoritative index; 33 ADRs measured); CLAUDE.md Project Structure corrected (docs/ primary doc path, ~2,450 lines, red-team/ and drafts/ removed, kubernetes/defectdojo/ named per security-platform origin/main 6c0d531); Editing Guidelines untouched; no gate script (D-08)
 - [Phase 29.7-03]: gsd-sdk defects L-01..L-16 re-tested on v1.42.3 with 29.7-ledger-retest.sh: 13 REPRODUCES, 3 NEW (L-14, L-15, L-16), 0 FIXED, 0 CHANGED (evidence/29.7-03-status.md). Every mutator ran only in a mktemp copy named .planning (fixture dbeabd7, env -u GSD_WORKSTREAM, --project-dir); 11/11 scratch runs REAL-UNCHANGED. Every successful STATE mutator rewrites frontmatter status/completed_plans without reporting it, and every error result exits 0
+- [Phase 29.7-04]: .planning stragglers resolved per the operator's grouped ruling "config.json: commit; v2.0 audit: commit deletion; gitkeep: delete all (all 7)" (fd3cd62, evidence/29.7-04-stragglers.txt). config.json commit keeps workflow.use_worktrees false in history, so the remaining 29.7 plans run sequentially on the main tree; the root v2.0 audit deletion loses nothing (archived copy shasum MATCH d90e4a03); the 7 never-tracked .gitkeep files were removed with plain rm, so .planning/phases still tracks no .gitkeep. Audit deferred item 5 closed
 
 ### Pending Todos
 
@@ -619,11 +620,12 @@ Carried forward from v1.1 close:
 | Phase 29.7 P01 | ~10min | 2 tasks | 9 files |
 | Phase 29.7 P02 | ~6min | 2 tasks | 3 files |
 | Phase 29.7 P03 | ~15min | 2 tasks | 19 files |
+| Phase 29.7 P04 | ~15min | 3 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-10-10T00:27:00.000Z
-Stopped at: Completed 29.7-03-PLAN.md
+Last session: 2026-10-10T00:47:00.000Z
+Stopped at: Completed 29.7-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
