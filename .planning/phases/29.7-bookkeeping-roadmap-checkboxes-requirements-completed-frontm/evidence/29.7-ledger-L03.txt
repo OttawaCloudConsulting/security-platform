@@ -1,0 +1,30 @@
+# L03: verify.key-links reports 'Source file not found' for branch-to-branch links
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: R/O (real repo)
+
+Command: gsd-sdk query verify.key-links .planning/phases/23-nexus-generic-chart/23-08-PLAN.md
+Cwd: /Users/christian/git-repos/OCC-github/development_environment/security_solution
+Exit: 0
+Actual:
+{
+  "all_verified": false,
+  "verified": 0,
+  "total": 1,
+  "links": [
+    {
+      "from": "feature/phase-23-nexus-generic-chart",
+      "to": "OttawaCloudConsulting/security-platform main",
+      "via": "pull request merged after explicit operator approval",
+      "verified": false,
+      "detail": "Source file not found"
+    }
+  ]
+}
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query verify.key-links .planning/phases/23-nexus-generic-chart/23-08-PLAN.md
+Expected: 0/1, "Source file not found" for the branch source feature/phase-23-nexus-generic-chart
+Actual:   { "all_verified": false, "verified": 0, "total": 1, "links": [ { "from": "feature/phase-23-nexus-generic-chart", "to": "OttawaCloudConsulting/security-platform main", "via": "pull request merged after explicit operator approval", "verified": false, "detail": "Source file not found" } ] }

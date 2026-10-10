@@ -1,0 +1,29 @@
+# L05: verify.artifacts errors instead of reporting 0/0 when a plan has no artifacts
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: R/O (real repo)
+
+Command: gsd-sdk query verify.artifacts .planning/phases/23-nexus-generic-chart/23-06-PLAN.md
+Cwd: /Users/christian/git-repos/OCC-github/development_environment/security_solution
+Exit: 0
+Actual:
+{
+  "error": "No must_haves.artifacts found in frontmatter",
+  "path": ".planning/phases/23-nexus-generic-chart/23-06-PLAN.md"
+}
+
+Command: gsd-sdk query verify.artifacts .planning/phases/23-nexus-generic-chart/23-08-PLAN.md
+Cwd: /Users/christian/git-repos/OCC-github/development_environment/security_solution
+Exit: 0
+Actual:
+{
+  "error": "No must_haves.artifacts found in frontmatter",
+  "path": ".planning/phases/23-nexus-generic-chart/23-08-PLAN.md"
+}
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query verify.artifacts .planning/phases/23-nexus-generic-chart/23-06-PLAN.md
+Expected: {"error":"No must_haves.artifacts found in frontmatter",...} for both 23-06 and 23-08
+Actual:   { "error": "No must_haves.artifacts found in frontmatter", "path": ".planning/phases/23-nexus-generic-chart/23-06-PLAN.md" }

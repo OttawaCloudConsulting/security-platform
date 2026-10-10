@@ -1,0 +1,76 @@
+# L01: frontmatter.get --field reads '--field' as the field name; positional form nests
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: R/O (real repo)
+
+Command: gsd-sdk query frontmatter.get .planning/phases/23-nexus-generic-chart/23-01-PLAN.md --field must_haves
+Cwd: /Users/christian/git-repos/OCC-github/development_environment/security_solution
+Exit: 0
+Actual:
+{
+  "error": "Field not found",
+  "field": "--field"
+}
+
+Command: gsd-sdk query frontmatter.get .planning/phases/23-nexus-generic-chart/23-01-PLAN.md must_haves
+Cwd: /Users/christian/git-repos/OCC-github/development_environment/security_solution
+Exit: 0
+Actual:
+{
+  "must_haves": {
+    "truths": [
+      "A commit touching a Helm Go template under kubernetes/*/templates/ passes pre-commit instead of failing yamllint",
+      "`helm dependency build` output (charts/*.tgz) is never committed to git",
+      "One command decides PASS/FAIL for every offline chart invariant in this phase",
+      "That command passes at every intermediate commit of the phase, and never reports a missing tool as a chart defect"
+    ],
+    "artifacts": [
+      {
+        "path": "repos/security-platform/scripts/check-nexus-chart.sh",
+        "provides": "Standing offline gate for the Nexus chart",
+        "contains": "render()",
+        "min_lines": "150"
+      },
+      {
+        "path": "repos/security-platform/.pre-commit-config.yaml",
+        "provides": "yamllint exclusion for Helm templates",
+        "contains": "^kubernetes/.*/templates/"
+      },
+      {
+        "path": "repos/security-platform/.gitignore",
+        "provides": "Vendored subchart tarball exclusion",
+        "contains": "kubernetes/*/charts/*.tgz"
+      }
+    ],
+    "key_links": [
+      {
+        "from": "repos/security-platform/scripts/check-nexus-chart.sh",
+        "to": "kubernetes/nexus",
+        "via": "helm lint / helm template through render()",
+        "pattern": "helm (lint|template).*kubernetes/nexus"
+      }
+    ]
+  }
+}
+
+Readback: positional output: top-level keys
+$ jq -c 'keys' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297work.BVAR54/last.out'
+["must_haves"]
+(exit 0)
+
+Readback: positional output: .truths length (naive read)
+$ jq '.truths | length' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297work.BVAR54/last.out'
+0
+(exit 0)
+
+Readback: positional output: .must_haves.truths length
+$ jq '.must_haves.truths | length' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297work.BVAR54/last.out'
+4
+(exit 0)
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query frontmatter.get .planning/phases/23-nexus-generic-chart/23-01-PLAN.md --field must_haves
+Expected: {"error":"Field not found","field":"--field"}; the positional form nests the value under must_haves (.truths length 0, .must_haves.truths length 4)
+Actual:   { "error": "Field not found", "field": "--field" }

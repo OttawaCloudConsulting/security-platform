@@ -1,0 +1,48 @@
+# L04: verify.artifacts min_lines counts physical lines (+1)
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: R/O (real repo)
+
+Command: gsd-sdk query verify.artifacts .planning/phases/23-nexus-generic-chart/23-07-PLAN.md
+Cwd: /Users/christian/git-repos/OCC-github/development_environment/security_solution
+Exit: 0
+Actual:
+{
+  "all_passed": false,
+  "passed": 2,
+  "total": 3,
+  "artifacts": [
+    {
+      "path": "docs/adr/adr020-nexus-chart-base-and-eula-opt-in.md",
+      "exists": true,
+      "issues": [
+        "Only 49 lines, need 60"
+      ],
+      "passed": false
+    },
+    {
+      "path": "docs/adr/README.md",
+      "exists": true,
+      "issues": [],
+      "passed": true
+    },
+    {
+      "path": "CLAUDE.md",
+      "exists": true,
+      "issues": [],
+      "passed": true
+    }
+  ]
+}
+
+Readback: wc -l of the ADR-020 artifact
+$ ( cd '/Users/christian/git-repos/OCC-github/development_environment/security_solution' && wc -l docs/adr/adr020-nexus-chart-base-and-eula-opt-in.md )
+      48 docs/adr/adr020-nexus-chart-base-and-eula-opt-in.md
+(exit 0)
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query verify.artifacts .planning/phases/23-nexus-generic-chart/23-07-PLAN.md
+Expected: 2/3, "Only 49 lines, need 60" on ADR-020 while wc -l reports 48
+Actual:   { "all_passed": false, "passed": 2, "total": 3, "artifacts": [ { "path": "docs/adr/adr020-nexus-chart-base-and-eula-opt-in.md", "exists": true, "issues": [ "Only 49 lines, need 60" ], "passed": false }, { "path": "docs/adr/README.md", "exists": true, "issues": [], "passed": true }, { "path": "CLAUDE.md", "exists": true, "issues": [], "passed": true } ] }

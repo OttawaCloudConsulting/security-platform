@@ -1,0 +1,67 @@
+# L13: roadmap.update-plan-progress does not tick the milestone checklist line (layout A)
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: scratch (run shared with L14)
+
+Readback: BEFORE: checklist line 'Phase 26:' (scratch, fixture layout A)
+$ grep -nF 'Phase 26:' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.M3X4bv/.planning/ROADMAP.md'
+18:- [ ] **Phase 26: DefectDojo Generic Chart** - Public Helm chart deploys DefectDojo with external ingress and cert-manager TLS
+75:### Phase 26: DefectDojo Generic Chart
+(exit 0)
+
+Command: ( cd "/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.M3X4bv" && env -u GSD_WORKSTREAM gsd-sdk query roadmap.update-plan-progress 26 --project-dir /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.M3X4bv )
+Cwd: /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.M3X4bv (scratch copy named .planning; outside any git repo)
+Fixture: dbeabd7 (layout A)
+Exit: 0
+Actual:
+{
+  "updated": true,
+  "phase": "26",
+  "plan_count": 7,
+  "summary_count": 7,
+  "status": "Complete",
+  "complete": true
+}
+
+(The same run is recorded in 29.7-ledger-L14.txt.)
+
+Readback: AFTER: checklist line 'Phase 26:'
+$ grep -nF 'Phase 26:' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.M3X4bv/.planning/ROADMAP.md'
+18:- [ ] **Phase 26: DefectDojo Generic Chart** - Public Helm chart deploys DefectDojo with external ingress and cert-manager TLS
+75:### Phase 26: DefectDojo Generic Chart
+(exit 0)
+
+Readback: AFTER: checklist line -- is the milestone checklist entry ticked?
+$ grep -nE '^- \[[ x]\] \*\*Phase 26:' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.M3X4bv/.planning/ROADMAP.md'
+18:- [ ] **Phase 26: DefectDojo Generic Chart** - Public Helm chart deploys DefectDojo with external ingress and cert-manager TLS
+(exit 0)
+
+STATE.md frontmatter (lines 1-15) diff, fixture vs scratch:
+(end frontmatter diff)
+
+Full diff, fixture vs scratch: ROADMAP.md
+--- fixture/ROADMAP.md
++++ scratch/ROADMAP.md
+@@ -365,7 +365,7 @@
+ | 23. Nexus Generic Chart | v3.0 | 8/8 | Complete   | 2026-09-19 |
+ | 24. Nexus Anonymous Access and Workstation Script | v3.0 | 10/10 | Complete   | 2026-09-20 |
+ | 25. Nexus Live Validation | v3.0 | 7/7 | Complete    | 2026-09-24 |
+-| 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
++| 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete   | 2026-10-10 |
+ | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
+ | 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
+ | 29. DefectDojo Live Validation | v3.0 | 20/20 | Complete    | 2026-09-29 |
+(end diff ROADMAP.md)
+
+Full diff, fixture vs scratch: STATE.md
+(end diff STATE.md)
+
+Full diff, fixture vs scratch: REQUIREMENTS.md
+(end diff REQUIREMENTS.md)
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query roadmap.update-plan-progress 26 --project-dir <scratch-root>
+Expected: the milestone checklist line "- [ ] **Phase 26:" stays unticked (layout A)
+Actual:   { "updated": true, "phase": "26", "plan_count": 7, "summary_count": 7, "status": "Complete", "complete": true }

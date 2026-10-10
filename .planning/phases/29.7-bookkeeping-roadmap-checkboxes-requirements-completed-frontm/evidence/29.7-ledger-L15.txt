@@ -1,0 +1,159 @@
+# L15: phase.complete **Plans:** regex prefix-matches decimal phases
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: scratch
+
+Readback: BEFORE: 29.1 block (scratch, fixture layout A)
+$ grep -n -A4 -F '### Phase 29.1:' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.urTiDE/.planning/ROADMAP.md'
+377:### Phase 29.1: Close gap: NEXUS-01/NEXUS-03 — retroactive VERIFICATION.md for Phase 23 (INSERTED)
+378-
+379-**Goal:** Phase 23 (Nexus Generic Chart) receives an independent, retroactive, read-only verification — `23-VERIFICATION.md` — that re-proves NEXUS-01 and NEXUS-03 against the chart on `security-platform` `origin/main`, the Phase 23 merge commit, and the live homelab deployment, so the v3.0 milestone audit's orphaned-requirement gap closes without any chart or cluster change.
+380-**Requirements**: NEXUS-01, NEXUS-03
+381-**Depends on:** Phase 29
+(exit 0)
+
+Command: ( cd "/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.urTiDE" && env -u GSD_WORKSTREAM gsd-sdk query phase.complete 29 --project-dir /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.urTiDE )
+Cwd: /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.urTiDE (scratch copy named .planning; outside any git repo)
+Fixture: dbeabd7 (layout A)
+Exit: 0
+Actual:
+{
+  "completed_phase": "29",
+  "phase_name": "defectdojo-live-validation",
+  "plans_executed": "20/20",
+  "next_phase": null,
+  "next_phase_name": null,
+  "is_last_phase": true,
+  "date": "2026-10-10",
+  "roadmap_updated": true,
+  "state_updated": true,
+  "requirements_updated": true,
+  "warnings": [],
+  "has_warnings": false
+}
+
+Readback: AFTER: 29.1 block
+$ grep -n -A4 -F '### Phase 29.1:' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.urTiDE/.planning/ROADMAP.md'
+377:### Phase 29.1: Close gap: NEXUS-01/NEXUS-03 — retroactive VERIFICATION.md for Phase 23 (INSERTED)
+378-
+379-**Goal:** Phase 23 (Nexus Generic Chart) receives an independent, retroactive, read-only verification — `23-VERIFICATION.md` — that re-proves NEXUS-01 and NEXUS-03 against the chart on `security-platform` `origin/main`, the Phase 23 merge commit, and the live homelab deployment, so the v3.0 milestone audit's orphaned-requirement gap closes without any chart or cluster change.
+380-**Requirements**: NEXUS-01, NEXUS-03
+381-**Depends on:** Phase 29
+(exit 0)
+
+Readback: AFTER: Phase 29 block Plans line
+$ grep -n -A4 -E '^### Phase 29:' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.urTiDE/.planning/ROADMAP.md'
+218:### Phase 29: DefectDojo Live Validation
+219-
+220-**Goal:** The DefectDojo generic chart (Phase 26) is deployed to the operator's homelab cluster via a private ArgoCD overlay, and CI import (Phase 27) with dedup/triage (Phase 28) is proven live end-to-end against that deployment.
+221-**Requirements**: DDOJO-05
+222-**Plans:** 20 plans in 14 waves
+(exit 0)
+
+STATE.md frontmatter (lines 1-15) diff, fixture vs scratch:
+--- fixture/STATE.md:1-15
++++ scratch/STATE.md:1-15
+@@ -2,14 +2,14 @@
+ gsd_state_version: 1.0
+ milestone: v3.0
+ milestone_name: K8s Infra & Dashboards
+-status: ready_to_plan
+-stopped_at: Phase 29.7 context gathered
+-last_updated: "2026-10-08T22:56:00.165Z"
++status: milestone_complete
++stopped_at: Milestone complete (Phase 29 was final phase)
++last_updated: 2026-10-10T00:24:43.209Z
+ last_activity: 2026-10-08
+ progress:
+   total_phases: 7
+   completed_phases: 7
+   total_plans: 75
+-  completed_plans: 133
++  completed_plans: 135
+   percent: 100
+ ---
+(end frontmatter diff)
+
+Full diff, fixture vs scratch: ROADMAP.md
+--- fixture/ROADMAP.md
++++ scratch/ROADMAP.md
+@@ -368,7 +368,7 @@
+ | 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
+ | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
+ | 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
+-| 29. DefectDojo Live Validation | v3.0 | 20/20 | Complete    | 2026-09-29 |
++| 29. DefectDojo Live Validation | v3.0 | 20/20 | Complete    | 2026-10-10 |
+
+ ## Next Milestone
+
+@@ -379,7 +379,7 @@
+ **Goal:** Phase 23 (Nexus Generic Chart) receives an independent, retroactive, read-only verification — `23-VERIFICATION.md` — that re-proves NEXUS-01 and NEXUS-03 against the chart on `security-platform` `origin/main`, the Phase 23 merge commit, and the live homelab deployment, so the v3.0 milestone audit's orphaned-requirement gap closes without any chart or cluster change.
+ **Requirements**: NEXUS-01, NEXUS-03
+ **Depends on:** Phase 29
+-**Plans:** 2/2 plans complete
++**Plans:** 20/20 plans complete
+
+ **Success Criteria** (what must be TRUE):
+   1. `.planning/phases/23-nexus-generic-chart/23-VERIFICATION.md` exists with `status: passed` (or an explicit `failed` with gaps), scoring the union of Phase 23's plan must-haves on command-plus-output evidence, not SUMMARY prose.
+(end diff ROADMAP.md)
+
+Full diff, fixture vs scratch: STATE.md
+--- fixture/STATE.md
++++ scratch/STATE.md
+@@ -2,15 +2,15 @@
+ gsd_state_version: 1.0
+ milestone: v3.0
+ milestone_name: K8s Infra & Dashboards
+-status: ready_to_plan
+-stopped_at: Phase 29.7 context gathered
+-last_updated: "2026-10-08T22:56:00.165Z"
++status: milestone_complete
++stopped_at: Milestone complete (Phase 29 was final phase)
++last_updated: 2026-10-10T00:24:43.209Z
+ last_activity: 2026-10-08
+ progress:
+   total_phases: 7
+   completed_phases: 7
+   total_plans: 75
+-  completed_plans: 133
++  completed_plans: 135
+   percent: 100
+ ---
+
+@@ -21,20 +21,20 @@
+ See: .planning/PROJECT.md (updated 2026-09-10)
+
+ **Core value:** Every code change is automatically scanned for security issues, secrets, and supply chain vulnerabilities before it can reach production -- with zero ongoing cost and zero vendor lock-in.
+-**Current focus:** Phase 29.7 — bookkeeping roadmap checkboxes requirements completed frontm
++**Current focus:** Milestone complete
+
+ ## Current Position
+
+-Phase: 29.7
++Phase: 29
+ Plan: Not started
+-Status: Ready to plan
+-Last activity: 2026-10-08
++Status: Milestone complete
++Last activity: 2026-10-10
+
+ ## Performance Metrics
+
+ **Velocity:**
+
+-- Total plans completed: 140 (v1.0 + v1.1)
++- Total plans completed: 160 (v1.0 + v1.1)
+ - Total execution time: ~2h 40min
+
+ **Recent Trend:**
+(end diff STATE.md)
+
+Full diff, fixture vs scratch: REQUIREMENTS.md
+(end diff REQUIREMENTS.md)
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query phase.complete 29 --project-dir <scratch-root>
+Expected: the 29.1 block "**Plans:** 2/2 plans complete" becomes "**Plans:** 20/20 plans complete"
+Actual:   { "completed_phase": "29", "phase_name": "defectdojo-live-validation", "plans_executed": "20/20", "next_phase": null, "next_phase_name": null, "is_last_phase": true, "date": "2026-10-10", "roadmap_updated": true, "state_updated": true, "requirements_updated": true, "warnings": [], "has_warnings": false }

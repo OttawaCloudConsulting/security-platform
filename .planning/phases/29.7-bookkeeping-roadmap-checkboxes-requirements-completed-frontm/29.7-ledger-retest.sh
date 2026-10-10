@@ -30,8 +30,16 @@
 #       the scratch dir of the failing test is kept and its path printed)
 #   2 = preflight failure (missing tool, wrong gsd-sdk version, missing fixture)
 #   Any exit 1 WITHOUT a "GUARD FAIL" line in the guard file is a harness bug, not a guard result.
+#
+# Output normalization
+#   Trailing whitespace is stripped from every recorded line, because the repo pre-commit hook
+#   (git diff-index --check) rejects it. gsd-sdk JSON output carries none; the only lines affected
+#   are blank context lines of diff -u (a lone space) and source lines quoted by readbacks.
+#   The recorded output is otherwise verbatim.
 
 set -u
+
+strip() { sed -e 's/[[:space:]]*$//'; }
 
 # ---------------------------------------------------------------- preflight
 for tool in gsd-sdk git jq shasum diff mktemp awk; do
@@ -86,7 +94,7 @@ mkdir -p "$EV"
   echo "## git status --porcelain .planning (before run, informational)"
   git -C "$REAL" status --porcelain .planning
   echo
-} > "$GUARD"
+} | strip > "$GUARD"
 
 # ---------------------------------------------------------------- helpers
 EVF=""          # current evidence file
@@ -94,7 +102,7 @@ P_CMD=""        # paste-block command (primary command of the current test)
 P_OUT=""        # file holding the primary command output
 P_SET=0
 
-flatten() { tr '\n' ' ' < "$1" | tr -s ' ' | cut -c1-400; }
+flatten() { tr '\n' ' ' < "$1" | tr -s ' ' | sed -e 's/^ //' -e 's/ $//' | cut -c1-400 | strip; }
 
 ev_open() {     # ev_open <LNN> <title> <mode>
   EVF="$EV/29.7-ledger-$1.txt"
@@ -106,7 +114,7 @@ ev_open() {     # ev_open <LNN> <title> <mode>
     echo "HEAD: $HEAD_SHA"
     echo "Mode: $3"
     echo
-  } > "$EVF"
+  } | strip > "$EVF"
 }
 
 set_primary() { # set_primary <literal command string> <output file>
@@ -128,7 +136,7 @@ run_ro() {      # run_ro <args...>  -- read-only gsd-sdk call from the real repo
     echo "Actual:"
     cat "$out"
     echo
-  } >> "$EVF"
+  } | strip >> "$EVF"
   set_primary "$lit" "$out"
   cp "$out" "$WORK/last.out"
 }
@@ -140,7 +148,7 @@ readback() {    # readback <label> <shell command string, evaluated>
     eval "$2" 2>&1
     echo "(exit ${PIPESTATUS[0]:-?})"
     echo
-  } >> "$EVF"
+  } | strip >> "$EVF"
 }
 
 paste_block() { # paste_block <expected>
@@ -150,7 +158,7 @@ paste_block() { # paste_block <expected>
     echo "Command:  $P_CMD"
     echo "Expected: $1"
     echo "Actual:   $(flatten "$P_OUT")"
-  } >> "$EVF"
+  } | strip >> "$EVF"
 }
 
 # --- scratch lifecycle
@@ -187,7 +195,7 @@ scratch_exec() { # scratch_exec <evidence-file> <args...> -- mutator call inside
     echo "Actual:"
     cat "$out"
     echo
-  } >> "$evf"
+  } | strip >> "$evf"
   cp "$out" "$WORK/last.out"
   SC_LIT=$(printf '%q ' gsd-sdk query "$@"); SC_LIT="${SC_LIT% } --project-dir <scratch-root>"
 }
@@ -206,7 +214,7 @@ scratch_diffs() { # scratch_diffs <evidence-file>
       echo "(end diff $f)"
       echo
     done
-  } >> "$evf"
+  } | strip >> "$evf"
 }
 
 guard() {        # guard <test id>
@@ -241,7 +249,7 @@ guard() {        # guard <test id>
     for f in ROADMAP.md STATE.md REQUIREMENTS.md; do
       if [ "$(echo "$PRE_SHA" | grep -F ".planning/$f")" != "$(echo "$post_sha" | grep -F ".planning/$f")" ]; then
         echo "GUARD NOTE (shasum changed) $id .planning/$f" | tee -a "$GUARD"
-        git -C "$REAL" diff -U0 -- ".planning/$f" >> "$GUARD"
+        git -C "$REAL" diff -U0 -- ".planning/$f" | strip >> "$GUARD"
       fi
     done
   else
@@ -409,14 +417,14 @@ cp "$WORK/last.out" "$WORK/p.L13"
 {
   echo "(The same run is recorded in 29.7-ledger-L14.txt.)"
   echo
-} >> "$EVF13"
+} | strip >> "$EVF13"
 {
   echo "Command: (shared run, see 29.7-ledger-L13.txt) $SC_LIT"
   echo "Exit: see L13 (same run)"
   echo "Actual:"
   cat "$WORK/p.L13"
   echo
-} >> "$EVF14"
+} | strip >> "$EVF14"
 readback "AFTER: checklist line 'Phase 26:'" "grep -nF 'Phase 26:' '$S/.planning/ROADMAP.md'"
 readback "AFTER: checklist line -- is the milestone checklist entry ticked?" "grep -nE '^- \\[[ x]\\] \\*\\*Phase 26:' '$S/.planning/ROADMAP.md'"
 scratch_diffs "$EVF13"
@@ -448,7 +456,7 @@ paste_block 'the 29.1 block "**Plans:** 2/2 plans complete" becomes "**Plans:** 
   git -C "$REAL" status --porcelain .planning
   echo
   echo "All scratch runs guarded; harness exit 0."
-} >> "$GUARD"
+} | strip >> "$GUARD"
 rm -rf "$WORK"
 echo "29.7-ledger-retest: all tests ran, every guard passed (marker $MARKER)"
 exit 0

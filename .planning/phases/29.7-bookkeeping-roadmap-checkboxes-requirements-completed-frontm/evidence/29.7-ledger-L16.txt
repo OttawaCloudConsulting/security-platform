@@ -1,0 +1,33 @@
+# L16: frontmatter parser keeps YAML trailing comments inside the value
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: R/O (real repo)
+
+Command: gsd-sdk query frontmatter.get .planning/phases/24-nexus-anonymous-access-and-workstation-script/24-10-SUMMARY.md requirements-completed
+Cwd: /Users/christian/git-repos/OCC-github/development_environment/security_solution
+Exit: 0
+Actual:
+{
+  "requirements-completed": "[NEXUS-02, NEXUS-04]  # Marked only after git ls-tree origin/main evidence — see Task 3."
+}
+
+Command: gsd-sdk query summary-extract .planning/phases/24-nexus-anonymous-access-and-workstation-script/24-10-SUMMARY.md --fields requirements_completed --pick requirements_completed
+Cwd: /Users/christian/git-repos/OCC-github/development_environment/security_solution
+Exit: 0
+Actual:
+[
+  "[NEXUS-02, NEXUS-04]  # Marked only after git ls-tree origin/main evidence — see Task 3."
+]
+
+Readback: raw line in the file
+$ grep -nF 'requirements-completed' '/Users/christian/git-repos/OCC-github/development_environment/security_solution/.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-10-SUMMARY.md'
+53:requirements-completed: [NEXUS-02, NEXUS-04]  # Marked only after git ls-tree origin/main evidence — see Task 3.
+167:Threat `T-24-49` names "requirement marked before the deliverable is public" as a Repudiation threat with disposition `mitigate`, and the mitigation is: marks gated on `git ls-tree origin/main` output quoted in the SUMMARY. The 17-01 precedent already in `STATE.md` is a mark that had to be **reverted** because the deliverable shipped in a later plan. Plans 24-01 through 24-09 each carry `requirements-completed: []` with an explicit note that 24-10 marks them *after* the work reaches `origin/main`. NEXUS-01's Phase 23 precedent set the standard in one line: *a chart on an unpushed branch or in an open PR is not public.*
+(exit 0)
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query frontmatter.get .planning/phases/24-nexus-anonymous-access-and-workstation-script/24-10-SUMMARY.md requirements-completed
+Expected: the trailing "# Marked only after ..." comment is kept inside the value (frontmatter.get) and summary-extract returns it as a single string element
+Actual:   { "requirements-completed": "[NEXUS-02, NEXUS-04] # Marked only after git ls-tree origin/main evidence — see Task 3." }

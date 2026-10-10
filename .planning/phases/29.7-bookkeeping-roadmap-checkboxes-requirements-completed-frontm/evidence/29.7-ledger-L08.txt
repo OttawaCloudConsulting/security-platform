@@ -1,0 +1,37 @@
+# L08: state.add-decision rejects the positional form
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: scratch
+
+Marker: SCRATCH-29.7-99315-32555
+Command: ( cd "/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.4No08h" && env -u GSD_WORKSTREAM gsd-sdk query state.add-decision SCRATCH-29.7-99315-32555\ positional\ decision --project-dir /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.4No08h )
+Cwd: /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.4No08h (scratch copy named .planning; outside any git repo)
+Fixture: dbeabd7 (layout A)
+Exit: 0
+Actual:
+{
+  "error": "summary required"
+}
+
+Readback: marker lines in scratch STATE.md (expect none)
+$ grep -nF 'SCRATCH-29.7-99315-32555' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.4No08h/.planning/STATE.md'
+(exit 1)
+
+STATE.md frontmatter (lines 1-15) diff, fixture vs scratch:
+(end frontmatter diff)
+
+Full diff, fixture vs scratch: ROADMAP.md
+(end diff ROADMAP.md)
+
+Full diff, fixture vs scratch: STATE.md
+(end diff STATE.md)
+
+Full diff, fixture vs scratch: REQUIREMENTS.md
+(end diff REQUIREMENTS.md)
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query state.add-decision SCRATCH-29.7-99315-32555\ positional\ decision --project-dir <scratch-root>
+Expected: {"error":"summary required"}
+Actual:   { "error": "summary required" }

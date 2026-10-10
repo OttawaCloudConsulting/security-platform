@@ -1,0 +1,164 @@
+# L09: state.add-decision writes [Phase ?] without --phase
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: scratch (2 runs, fresh copy each)
+
+Marker: SCRATCH-29.7-99315-32555
+Command: ( cd "/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.wm58GF" && env -u GSD_WORKSTREAM gsd-sdk query state.add-decision --summary SCRATCH-29.7-99315-32555\ flag\ decision --project-dir /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.wm58GF )
+Cwd: /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.wm58GF (scratch copy named .planning; outside any git repo)
+Fixture: dbeabd7 (layout A)
+Exit: 0
+Actual:
+{
+  "added": true,
+  "decision": "- [Phase ?]: SCRATCH-29.7-99315-32555 flag decision"
+}
+
+Readback: decision line written (no --phase)
+$ grep -nF 'SCRATCH-29.7-99315-32555' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.wm58GF/.planning/STATE.md'
+408:- [Phase ?]: SCRATCH-29.7-99315-32555 flag decision
+(exit 0)
+
+STATE.md frontmatter (lines 1-15) diff, fixture vs scratch:
+--- fixture/STATE.md:1-15
++++ scratch/STATE.md:1-15
+@@ -2,14 +2,14 @@
+ gsd_state_version: 1.0
+ milestone: v3.0
+ milestone_name: K8s Infra & Dashboards
+-status: ready_to_plan
++status: planning
+ stopped_at: Phase 29.7 context gathered
+-last_updated: "2026-10-08T22:56:00.165Z"
++last_updated: "2026-10-10T00:24:31.134Z"
+ last_activity: 2026-10-08
+ progress:
+   total_phases: 7
+   completed_phases: 7
+   total_plans: 75
+-  completed_plans: 133
++  completed_plans: 75
+   percent: 100
+ ---
+(end frontmatter diff)
+
+Full diff, fixture vs scratch: ROADMAP.md
+(end diff ROADMAP.md)
+
+Full diff, fixture vs scratch: STATE.md
+--- fixture/STATE.md
++++ scratch/STATE.md
+@@ -2,15 +2,15 @@
+ gsd_state_version: 1.0
+ milestone: v3.0
+ milestone_name: K8s Infra & Dashboards
+-status: ready_to_plan
++status: planning
+ stopped_at: Phase 29.7 context gathered
+-last_updated: "2026-10-08T22:56:00.165Z"
++last_updated: "2026-10-10T00:24:31.134Z"
+ last_activity: 2026-10-08
+ progress:
+   total_phases: 7
+   completed_phases: 7
+   total_plans: 75
+-  completed_plans: 133
++  completed_plans: 75
+   percent: 100
+ ---
+
+@@ -405,6 +405,7 @@
+ - [Phase 29.6]: 29.6-13: ADR-033 written (PASS path) and indexed; resolves ADR-024 NOT-verified item 2 by reference with the variant (b) client-side caveat; ADR-024/ADR-019 unchanged
+ - [Phase 29.6]: 29.6-13: ADR-019 NOT-verified item 2 recorded as NARROWED, not closed (a2/a3 server-side refusals were on gh's GraphQL mergePullRequest; REST merge endpoint never run)
+ - [Phase 29.6]: 29.6-13: race client-side refusals not described as 'gh read BLOCKED' (script pre-merge read was UNKNOWN in all six attempts); BLOCKED inferred from gh's message only
++- [Phase ?]: SCRATCH-29.7-99315-32555 flag decision
+
+ ### Pending Todos
+
+(end diff STATE.md)
+
+Full diff, fixture vs scratch: REQUIREMENTS.md
+(end diff REQUIREMENTS.md)
+
+Command: ( cd "/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.Lb2nhE" && env -u GSD_WORKSTREAM gsd-sdk query state.add-decision --phase 29.7 --summary SCRATCH-29.7-99315-32555\ flag\ decision\ with\ phase --project-dir /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.Lb2nhE )
+Cwd: /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.Lb2nhE (scratch copy named .planning; outside any git repo)
+Fixture: dbeabd7 (layout A)
+Exit: 0
+Actual:
+{
+  "added": true,
+  "decision": "- [Phase 29.7]: SCRATCH-29.7-99315-32555 flag decision with phase"
+}
+
+Readback: decision line written (--phase 29.7)
+$ grep -nF 'SCRATCH-29.7-99315-32555' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.Lb2nhE/.planning/STATE.md'
+408:- [Phase 29.7]: SCRATCH-29.7-99315-32555 flag decision with phase
+(exit 0)
+
+STATE.md frontmatter (lines 1-15) diff, fixture vs scratch:
+--- fixture/STATE.md:1-15
++++ scratch/STATE.md:1-15
+@@ -2,14 +2,14 @@
+ gsd_state_version: 1.0
+ milestone: v3.0
+ milestone_name: K8s Infra & Dashboards
+-status: ready_to_plan
++status: planning
+ stopped_at: Phase 29.7 context gathered
+-last_updated: "2026-10-08T22:56:00.165Z"
++last_updated: "2026-10-10T00:24:32.878Z"
+ last_activity: 2026-10-08
+ progress:
+   total_phases: 7
+   completed_phases: 7
+   total_plans: 75
+-  completed_plans: 133
++  completed_plans: 75
+   percent: 100
+ ---
+(end frontmatter diff)
+
+Full diff, fixture vs scratch: ROADMAP.md
+(end diff ROADMAP.md)
+
+Full diff, fixture vs scratch: STATE.md
+--- fixture/STATE.md
++++ scratch/STATE.md
+@@ -2,15 +2,15 @@
+ gsd_state_version: 1.0
+ milestone: v3.0
+ milestone_name: K8s Infra & Dashboards
+-status: ready_to_plan
++status: planning
+ stopped_at: Phase 29.7 context gathered
+-last_updated: "2026-10-08T22:56:00.165Z"
++last_updated: "2026-10-10T00:24:32.878Z"
+ last_activity: 2026-10-08
+ progress:
+   total_phases: 7
+   completed_phases: 7
+   total_plans: 75
+-  completed_plans: 133
++  completed_plans: 75
+   percent: 100
+ ---
+
+@@ -405,6 +405,7 @@
+ - [Phase 29.6]: 29.6-13: ADR-033 written (PASS path) and indexed; resolves ADR-024 NOT-verified item 2 by reference with the variant (b) client-side caveat; ADR-024/ADR-019 unchanged
+ - [Phase 29.6]: 29.6-13: ADR-019 NOT-verified item 2 recorded as NARROWED, not closed (a2/a3 server-side refusals were on gh's GraphQL mergePullRequest; REST merge endpoint never run)
+ - [Phase 29.6]: 29.6-13: race client-side refusals not described as 'gh read BLOCKED' (script pre-merge read was UNKNOWN in all six attempts); BLOCKED inferred from gh's message only
++- [Phase 29.7]: SCRATCH-29.7-99315-32555 flag decision with phase
+
+ ### Pending Todos
+
+(end diff STATE.md)
+
+Full diff, fixture vs scratch: REQUIREMENTS.md
+(end diff REQUIREMENTS.md)
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query state.add-decision --summary SCRATCH-29.7-99315-32555\ flag\ decision --project-dir <scratch-root>
+Expected: without --phase: "- [Phase ?]: <text>"; with --phase 29.7: "- [Phase 29.7]: <text>"
+Actual:   { "added": true, "decision": "- [Phase ?]: SCRATCH-29.7-99315-32555 flag decision" }

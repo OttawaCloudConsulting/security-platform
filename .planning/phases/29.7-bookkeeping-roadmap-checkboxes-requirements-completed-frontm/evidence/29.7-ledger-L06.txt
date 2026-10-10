@@ -1,0 +1,106 @@
+# L06: state.record-metric rejects the positional form
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: scratch (2 runs, fresh copy each)
+
+Marker: SCRATCH-29.7-99315-32555
+Command: ( cd "/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.mbeZuA" && env -u GSD_WORKSTREAM gsd-sdk query state.record-metric 29.7 01 5min 2 1 --project-dir /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.mbeZuA )
+Cwd: /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.mbeZuA (scratch copy named .planning; outside any git repo)
+Fixture: dbeabd7 (layout A)
+Exit: 0
+Actual:
+{
+  "error": "phase, plan, and duration required"
+}
+
+STATE.md frontmatter (lines 1-15) diff, fixture vs scratch:
+(end frontmatter diff)
+
+Full diff, fixture vs scratch: ROADMAP.md
+(end diff ROADMAP.md)
+
+Full diff, fixture vs scratch: STATE.md
+(end diff STATE.md)
+
+Full diff, fixture vs scratch: REQUIREMENTS.md
+(end diff REQUIREMENTS.md)
+
+Command: ( cd "/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.xjeq3N" && env -u GSD_WORKSTREAM gsd-sdk query state.record-metric --phase 29.7 --plan 01 --duration 5min --tasks 2 --files 1 --project-dir /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.xjeq3N )
+Cwd: /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.xjeq3N (scratch copy named .planning; outside any git repo)
+Fixture: dbeabd7 (layout A)
+Exit: 0
+Actual:
+{
+  "recorded": true,
+  "phase": "29.7",
+  "plan": "01",
+  "duration": "5min"
+}
+
+STATE.md frontmatter (lines 1-15) diff, fixture vs scratch:
+--- fixture/STATE.md:1-15
++++ scratch/STATE.md:1-15
+@@ -2,14 +2,14 @@
+ gsd_state_version: 1.0
+ milestone: v3.0
+ milestone_name: K8s Infra & Dashboards
+-status: ready_to_plan
++status: planning
+ stopped_at: Phase 29.7 context gathered
+-last_updated: "2026-10-08T22:56:00.165Z"
++last_updated: "2026-10-10T00:24:25.450Z"
+ last_activity: 2026-10-08
+ progress:
+   total_phases: 7
+   completed_phases: 7
+   total_plans: 75
+-  completed_plans: 133
++  completed_plans: 75
+   percent: 100
+ ---
+(end frontmatter diff)
+
+Full diff, fixture vs scratch: ROADMAP.md
+(end diff ROADMAP.md)
+
+Full diff, fixture vs scratch: STATE.md
+--- fixture/STATE.md
++++ scratch/STATE.md
+@@ -2,15 +2,15 @@
+ gsd_state_version: 1.0
+ milestone: v3.0
+ milestone_name: K8s Infra & Dashboards
+-status: ready_to_plan
++status: planning
+ stopped_at: Phase 29.7 context gathered
+-last_updated: "2026-10-08T22:56:00.165Z"
++last_updated: "2026-10-10T00:24:25.450Z"
+ last_activity: 2026-10-08
+ progress:
+   total_phases: 7
+   completed_phases: 7
+   total_plans: 75
+-  completed_plans: 133
++  completed_plans: 75
+   percent: 100
+ ---
+
+@@ -613,6 +613,7 @@
+ | Phase 29.6 P11 | ~6min | 3 tasks | 25 files |
+ | Phase 29.6 P12 | 5min | 2 tasks | 3 files |
+ | Phase 29.6 P13 | 25min | 2 tasks | 3 files |
++| Phase 29.7 P01 | 5min | 2 tasks | 1 files |
+
+ ## Session Continuity
+
+(end diff STATE.md)
+
+Full diff, fixture vs scratch: REQUIREMENTS.md
+(end diff REQUIREMENTS.md)
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query state.record-metric 29.7 01 5min 2 1 --project-dir <scratch-root>
+Expected: positional: {"error":"phase, plan, and duration required"}; flag form: recorded:true
+Actual:   { "error": "phase, plan, and duration required" }

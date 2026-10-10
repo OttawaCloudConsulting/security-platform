@@ -1,0 +1,135 @@
+# 29.7-03 guard log (D-12, T-29.7-01)
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Fixture: dbeabd7 (layout A)
+Marker: SCRATCH-29.7-99315-32555
+Real repo: /Users/christian/git-repos/OCC-github/development_environment/security_solution
+
+## git status --porcelain .planning (before run, informational)
+ M .planning/config.json
+ M .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/29.7-ledger-retest.sh
+ D .planning/v2.0-MILESTONE-AUDIT.md
+?? .planning/phases/29.1-close-gap-nexus-01-nexus-03-retroactive-verification-md-for-/.gitkeep
+?? .planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/.gitkeep
+?? .planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/.gitkeep
+?? .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/.gitkeep
+?? .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/.gitkeep
+?? .planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/.gitkeep
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/.gitkeep
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-03-guard.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-03-status.md
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L01.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L02.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L03.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L04.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L05.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L06.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L07.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L08.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L09.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L10.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L11.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L12.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L13.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L14.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L15.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L16.txt
+
+## L06-positional
+marker absent from real .planning (excluding 29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm)
+signatures checked: no 'Phase 29.7 P01 .*5min' row; completed_plans 75 -> 75; 26 row has 2026-09-25; 29.1 block has 2/2
+shasums unchanged: ROADMAP.md STATE.md REQUIREMENTS.md
+REAL-UNCHANGED L06-positional
+
+## L06-flag
+marker absent from real .planning (excluding 29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm)
+signatures checked: no 'Phase 29.7 P01 .*5min' row; completed_plans 75 -> 75; 26 row has 2026-09-25; 29.1 block has 2/2
+shasums unchanged: ROADMAP.md STATE.md REQUIREMENTS.md
+REAL-UNCHANGED L06-flag
+
+## L07
+marker absent from real .planning (excluding 29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm)
+signatures checked: no 'Phase 29.7 P01 .*5min' row; completed_plans 75 -> 75; 26 row has 2026-09-25; 29.1 block has 2/2
+shasums unchanged: ROADMAP.md STATE.md REQUIREMENTS.md
+REAL-UNCHANGED L07
+
+## L08
+marker absent from real .planning (excluding 29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm)
+signatures checked: no 'Phase 29.7 P01 .*5min' row; completed_plans 75 -> 75; 26 row has 2026-09-25; 29.1 block has 2/2
+shasums unchanged: ROADMAP.md STATE.md REQUIREMENTS.md
+REAL-UNCHANGED L08
+
+## L09-no-phase
+marker absent from real .planning (excluding 29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm)
+signatures checked: no 'Phase 29.7 P01 .*5min' row; completed_plans 75 -> 75; 26 row has 2026-09-25; 29.1 block has 2/2
+shasums unchanged: ROADMAP.md STATE.md REQUIREMENTS.md
+REAL-UNCHANGED L09-no-phase
+
+## L09-with-phase
+marker absent from real .planning (excluding 29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm)
+signatures checked: no 'Phase 29.7 P01 .*5min' row; completed_plans 75 -> 75; 26 row has 2026-09-25; 29.1 block has 2/2
+shasums unchanged: ROADMAP.md STATE.md REQUIREMENTS.md
+REAL-UNCHANGED L09-with-phase
+
+## L10
+marker absent from real .planning (excluding 29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm)
+signatures checked: no 'Phase 29.7 P01 .*5min' row; completed_plans 75 -> 75; 26 row has 2026-09-25; 29.1 block has 2/2
+shasums unchanged: ROADMAP.md STATE.md REQUIREMENTS.md
+REAL-UNCHANGED L10
+
+## L11
+marker absent from real .planning (excluding 29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm)
+signatures checked: no 'Phase 29.7 P01 .*5min' row; completed_plans 75 -> 75; 26 row has 2026-09-25; 29.1 block has 2/2
+shasums unchanged: ROADMAP.md STATE.md REQUIREMENTS.md
+REAL-UNCHANGED L11
+
+## L12
+marker absent from real .planning (excluding 29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm)
+signatures checked: no 'Phase 29.7 P01 .*5min' row; completed_plans 75 -> 75; 26 row has 2026-09-25; 29.1 block has 2/2
+shasums unchanged: ROADMAP.md STATE.md REQUIREMENTS.md
+REAL-UNCHANGED L12
+
+## L13/L14
+marker absent from real .planning (excluding 29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm)
+signatures checked: no 'Phase 29.7 P01 .*5min' row; completed_plans 75 -> 75; 26 row has 2026-09-25; 29.1 block has 2/2
+shasums unchanged: ROADMAP.md STATE.md REQUIREMENTS.md
+REAL-UNCHANGED L13/L14
+
+## L15
+marker absent from real .planning (excluding 29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm)
+signatures checked: no 'Phase 29.7 P01 .*5min' row; completed_plans 75 -> 75; 26 row has 2026-09-25; 29.1 block has 2/2
+shasums unchanged: ROADMAP.md STATE.md REQUIREMENTS.md
+REAL-UNCHANGED L15
+
+## git status --porcelain .planning (after run, informational)
+ M .planning/config.json
+ M .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/29.7-ledger-retest.sh
+ D .planning/v2.0-MILESTONE-AUDIT.md
+?? .planning/phases/29.1-close-gap-nexus-01-nexus-03-retroactive-verification-md-for-/.gitkeep
+?? .planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/.gitkeep
+?? .planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/.gitkeep
+?? .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/.gitkeep
+?? .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/.gitkeep
+?? .planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/.gitkeep
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/.gitkeep
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-03-guard.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-03-status.md
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L01.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L02.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L03.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L04.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L05.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L06.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L07.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L08.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L09.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L10.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L11.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L12.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L13.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L14.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L15.txt
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-ledger-L16.txt
+
+All scratch runs guarded; harness exit 0.

@@ -1,0 +1,53 @@
+# L14: update-plan-progress re-stamps the completion date of an already-complete row
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: scratch (run shared with L13)
+
+Readback: BEFORE: '| 26. ' progress row (scratch, fixture layout A)
+$ grep -nF '| 26. ' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.M3X4bv/.planning/ROADMAP.md'
+368:| 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
+(exit 0)
+
+Command: (shared run, see 29.7-ledger-L13.txt) gsd-sdk query roadmap.update-plan-progress 26 --project-dir <scratch-root>
+Exit: see L13 (same run)
+Actual:
+{
+  "updated": true,
+  "phase": "26",
+  "plan_count": 7,
+  "summary_count": 7,
+  "status": "Complete",
+  "complete": true
+}
+
+Readback: AFTER: '| 26. ' progress row
+$ grep -nF '| 26. ' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.M3X4bv/.planning/ROADMAP.md'
+368:| 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete   | 2026-10-10 |
+(exit 0)
+
+Readback: run date (UTC)
+$ date -u +%Y-%m-%d
+2026-10-10
+(exit 0)
+
+Readback: ROADMAP diff fixture vs scratch
+$ diff -u --label fixture/ROADMAP.md --label scratch/ROADMAP.md '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.M3X4bv/fixture/ROADMAP.md' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.M3X4bv/.planning/ROADMAP.md'
+--- fixture/ROADMAP.md
++++ scratch/ROADMAP.md
+@@ -365,7 +365,7 @@
+ | 23. Nexus Generic Chart | v3.0 | 8/8 | Complete   | 2026-09-19 |
+ | 24. Nexus Anonymous Access and Workstation Script | v3.0 | 10/10 | Complete   | 2026-09-20 |
+ | 25. Nexus Live Validation | v3.0 | 7/7 | Complete    | 2026-09-24 |
+-| 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete    | 2026-09-25 |
++| 26. DefectDojo Generic Chart | v3.0 | 7/7 | Complete   | 2026-10-10 |
+ | 27. DefectDojo CI Auto-Import | v3.0 | 14/14 | Complete    | 2026-09-26 |
+ | 28. DefectDojo Dedup and Triage | v3.0 | 9/9 | Complete    | 2026-09-26 |
+ | 29. DefectDojo Live Validation | v3.0 | 20/20 | Complete    | 2026-09-29 |
+(exit 1)
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query roadmap.update-plan-progress 26 --project-dir <scratch-root>
+Expected: the "| 26. DefectDojo Generic Chart |" row date changes from 2026-09-25 to the run date
+Actual:   { "updated": true, "phase": "26", "plan_count": 7, "summary_count": 7, "status": "Complete", "complete": true }

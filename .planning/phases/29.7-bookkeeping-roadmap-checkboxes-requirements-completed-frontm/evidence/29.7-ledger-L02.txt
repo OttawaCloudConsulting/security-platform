@@ -1,0 +1,82 @@
+# L02: verify.key-links false negatives on double-escaped patterns
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: R/O (real repo)
+
+Command: gsd-sdk query verify.key-links .planning/phases/23-nexus-generic-chart/23-02-PLAN.md
+Cwd: /Users/christian/git-repos/OCC-github/development_environment/security_solution
+Exit: 0
+Actual:
+{
+  "all_verified": false,
+  "verified": 1,
+  "total": 2,
+  "links": [
+    {
+      "from": "repos/security-platform/scripts/nexus-live-smoke.sh",
+      "to": "kubernetes/nexus/files/provision.sh",
+      "via": "invokes the script the Job runs, not a copy of it",
+      "verified": false,
+      "detail": "Pattern \"kubernetes/nexus/files/provision\\\\.sh\" not found in source or target"
+    },
+    {
+      "from": "repos/security-platform/scripts/nexus-live-smoke.sh",
+      "to": "kubernetes/nexus (rendered ConfigMap)",
+      "via": "helm template | yq extracts repo bodies to a temp dir",
+      "verified": true,
+      "detail": "Pattern found in source"
+    }
+  ]
+}
+
+Command: gsd-sdk query verify.key-links .planning/phases/23-nexus-generic-chart/23-03-PLAN.md
+Cwd: /Users/christian/git-repos/OCC-github/development_environment/security_solution
+Exit: 0
+Actual:
+{
+  "all_verified": false,
+  "verified": 1,
+  "total": 2,
+  "links": [
+    {
+      "from": "repos/security-platform/kubernetes/nexus/Chart.yaml",
+      "to": "stevehipwell/nexus3 5.26.0",
+      "via": "dependencies entry resolved by helm dependency build",
+      "verified": false,
+      "detail": "Pattern \"version:\\\\s*5\\\\.26\\\\.0\" not found in source or target"
+    },
+    {
+      "from": "repos/security-platform/kubernetes/nexus/values.yaml",
+      "to": "subchart volumeClaimTemplates",
+      "via": "nexus3.persistence passthrough with storageClass omitted",
+      "verified": true,
+      "detail": "Pattern found in source"
+    }
+  ]
+}
+
+Command: gsd-sdk query verify.key-links .planning/phases/23-nexus-generic-chart/23-07-PLAN.md
+Cwd: /Users/christian/git-repos/OCC-github/development_environment/security_solution
+Exit: 0
+Actual:
+{
+  "all_verified": false,
+  "verified": 0,
+  "total": 1,
+  "links": [
+    {
+      "from": "docs/adr/README.md",
+      "to": "docs/adr/adr020-nexus-chart-base-and-eula-opt-in.md",
+      "via": "index table row link",
+      "verified": false,
+      "detail": "Pattern \"adr020-nexus-chart-base-and-eula-opt-in\\\\.md\" not found in source or target"
+    }
+  ]
+}
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query verify.key-links .planning/phases/23-nexus-generic-chart/23-02-PLAN.md
+Expected: 23-02 1/2, 23-03 1/2, 23-07 0/1, each failing link "Pattern ... not found in source or target" on a double-escaped pattern (e.g. provision\\.sh)
+Actual:   { "all_verified": false, "verified": 1, "total": 2, "links": [ { "from": "repos/security-platform/scripts/nexus-live-smoke.sh", "to": "kubernetes/nexus/files/provision.sh", "via": "invokes the script the Job runs, not a copy of it", "verified": false, "detail": "Pattern \"kubernetes/nexus/files/provision\\\\.sh\" not found in source or target" }, { "from": "repos/security-platform/scripts/nexus-li

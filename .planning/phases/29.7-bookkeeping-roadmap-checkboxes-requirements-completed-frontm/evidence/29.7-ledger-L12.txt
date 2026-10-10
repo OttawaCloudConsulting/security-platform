@@ -1,0 +1,74 @@
+# L12: state.update-progress no-ops yet still rewrites the frontmatter
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: scratch
+
+Command: ( cd "/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.YR6E9c" && env -u GSD_WORKSTREAM gsd-sdk query state.update-progress --project-dir /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.YR6E9c )
+Cwd: /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.YR6E9c (scratch copy named .planning; outside any git repo)
+Fixture: dbeabd7 (layout A)
+Exit: 0
+Actual:
+{
+  "updated": false,
+  "reason": "Progress field not found in STATE.md"
+}
+
+STATE.md frontmatter (lines 1-15) diff, fixture vs scratch:
+--- fixture/STATE.md:1-15
++++ scratch/STATE.md:1-15
+@@ -2,14 +2,14 @@
+ gsd_state_version: 1.0
+ milestone: v3.0
+ milestone_name: K8s Infra & Dashboards
+-status: ready_to_plan
++status: planning
+ stopped_at: Phase 29.7 context gathered
+-last_updated: "2026-10-08T22:56:00.165Z"
++last_updated: "2026-10-10T00:24:38.974Z"
+ last_activity: 2026-10-08
+ progress:
+   total_phases: 7
+   completed_phases: 7
+   total_plans: 75
+-  completed_plans: 133
++  completed_plans: 75
+   percent: 100
+ ---
+(end frontmatter diff)
+
+Full diff, fixture vs scratch: ROADMAP.md
+(end diff ROADMAP.md)
+
+Full diff, fixture vs scratch: STATE.md
+--- fixture/STATE.md
++++ scratch/STATE.md
+@@ -2,15 +2,15 @@
+ gsd_state_version: 1.0
+ milestone: v3.0
+ milestone_name: K8s Infra & Dashboards
+-status: ready_to_plan
++status: planning
+ stopped_at: Phase 29.7 context gathered
+-last_updated: "2026-10-08T22:56:00.165Z"
++last_updated: "2026-10-10T00:24:38.974Z"
+ last_activity: 2026-10-08
+ progress:
+   total_phases: 7
+   completed_phases: 7
+   total_plans: 75
+-  completed_plans: 133
++  completed_plans: 75
+   percent: 100
+ ---
+
+(end diff STATE.md)
+
+Full diff, fixture vs scratch: REQUIREMENTS.md
+(end diff REQUIREMENTS.md)
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query state.update-progress --project-dir <scratch-root>
+Expected: {"updated":false,"reason":"Progress field not found in STATE.md"} and still a frontmatter rewrite
+Actual:   { "updated": false, "reason": "Progress field not found in STATE.md" }

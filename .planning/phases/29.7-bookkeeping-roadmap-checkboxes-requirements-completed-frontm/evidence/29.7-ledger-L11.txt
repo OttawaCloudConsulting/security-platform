@@ -1,0 +1,101 @@
+# L11: STATE mutators rewrite frontmatter status/progress without reporting it (incl. flag-form record-session, 2026-10-08)
+gsd-sdk version: gsd-sdk v1.42.3
+Date (UTC): 2026-10-10T00:24:15Z
+HEAD: 4dd3cb5
+Mode: scratch
+
+Marker: SCRATCH-29.7-99315-32555
+Cross-reference: the STATE.md lines 1-15 diff is also captured in L06 (flag run), L07, L08, L09 (both runs), L10 and L12.
+
+Command: ( cd "/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.Y0Er30" && env -u GSD_WORKSTREAM gsd-sdk query state.record-session --stopped-at SCRATCH-29.7-99315-32555 --resume-file None --project-dir /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.Y0Er30 )
+Cwd: /var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.Y0Er30 (scratch copy named .planning; outside any git repo)
+Fixture: dbeabd7 (layout A)
+Exit: 0
+Actual:
+{
+  "recorded": true,
+  "updated": [
+    "Last session",
+    "Stopped At",
+    "Resume File"
+  ]
+}
+
+Readback: scratch 'Stopped at' body line
+$ grep -nF 'Stopped at:' '/var/folders/_z/7l91gh_10q79ttsbj81jm_d40000gn/T//gsd297.Y0Er30/.planning/STATE.md'
+620:Stopped at: SCRATCH-29.7-99315-32555
+(exit 0)
+
+STATE.md frontmatter (lines 1-15) diff, fixture vs scratch:
+--- fixture/STATE.md:1-15
++++ scratch/STATE.md:1-15
+@@ -2,14 +2,14 @@
+ gsd_state_version: 1.0
+ milestone: v3.0
+ milestone_name: K8s Infra & Dashboards
+-status: ready_to_plan
+-stopped_at: Phase 29.7 context gathered
+-last_updated: "2026-10-08T22:56:00.165Z"
++status: planning
++stopped_at: SCRATCH-29.7-99315-32555
++last_updated: "2026-10-10T00:24:37.247Z"
+ last_activity: 2026-10-08
+ progress:
+   total_phases: 7
+   completed_phases: 7
+   total_plans: 75
+-  completed_plans: 133
++  completed_plans: 75
+   percent: 100
+ ---
+(end frontmatter diff)
+
+Full diff, fixture vs scratch: ROADMAP.md
+(end diff ROADMAP.md)
+
+Full diff, fixture vs scratch: STATE.md
+--- fixture/STATE.md
++++ scratch/STATE.md
+@@ -2,15 +2,15 @@
+ gsd_state_version: 1.0
+ milestone: v3.0
+ milestone_name: K8s Infra & Dashboards
+-status: ready_to_plan
+-stopped_at: Phase 29.7 context gathered
+-last_updated: "2026-10-08T22:56:00.165Z"
++status: planning
++stopped_at: SCRATCH-29.7-99315-32555
++last_updated: "2026-10-10T00:24:37.247Z"
+ last_activity: 2026-10-08
+ progress:
+   total_phases: 7
+   completed_phases: 7
+   total_plans: 75
+-  completed_plans: 133
++  completed_plans: 75
+   percent: 100
+ ---
+
+@@ -616,9 +616,9 @@
+
+ ## Session Continuity
+
+-Last session: 2026-10-08T22:56:00.147Z
+-Stopped at: Phase 29.7 context gathered
+-Resume file: .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/29.7-CONTEXT.md
++Last session: 2026-10-10T00:24:37.217Z
++Stopped at: SCRATCH-29.7-99315-32555
++Resume file: None
+
+ ## Operator Next Steps
+
+(end diff STATE.md)
+
+Full diff, fixture vs scratch: REQUIREMENTS.md
+(end diff REQUIREMENTS.md)
+
+---- paste-ready repro (D-13) ----
+gsd-sdk version: gsd-sdk v1.42.3
+Command:  gsd-sdk query state.record-session --stopped-at SCRATCH-29.7-99315-32555 --resume-file None --project-dir <scratch-root>
+Expected: updated:["Last session","Stopped At","Resume File"] AND an unreported frontmatter rewrite (status: ready_to_plan -> planning, completed_plans: 133 -> 75)
+Actual:   { "recorded": true, "updated": [ "Last session", "Stopped At", "Resume File" ] }
