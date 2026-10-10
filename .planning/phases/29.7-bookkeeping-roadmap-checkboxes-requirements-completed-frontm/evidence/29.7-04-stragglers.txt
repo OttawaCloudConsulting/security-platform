@@ -1,0 +1,210 @@
+# 29.7-04 working-tree stragglers (D-15) -- closes audit deferred item 5
+# Measured 2026-10-09 on branch feature/phase-12-repo-setup-script, HEAD f74de9f.
+# Read-only: nothing was staged, restored or deleted during measurement.
+# Out of scope: every .claude/ working-tree change (CONTEXT "Not in this phase").
+
+## PRE-STATE
+
+### 1. Straggler set
+
+$ git status --short .planning/
+ M .planning/config.json
+ D .planning/v2.0-MILESTONE-AUDIT.md
+?? .planning/phases/29.1-close-gap-nexus-01-nexus-03-retroactive-verification-md-for-/.gitkeep
+?? .planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/.gitkeep
+?? .planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/.gitkeep
+?? .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/.gitkeep
+?? .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/.gitkeep
+?? .planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/.gitkeep
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/.gitkeep
+
+Set vs PLAN interfaces block: IDENTICAL (1 M, 1 D, 7 ??). No straggler gone, no new
+.planning/ M/D/?? path. (This evidence file itself is untracked once written; it is
+created by this plan and is not a straggler.)
+
+### 2. .planning/config.json (M)
+
+$ git diff .planning/config.json
+diff --git a/.planning/config.json b/.planning/config.json
+index 7de257b..571c2fe 100644
+--- a/.planning/config.json
++++ b/.planning/config.json
+@@ -9,6 +9,7 @@
+     "plan_check": true,
+     "verifier": true,
+     "nyquist_validation": true,
+-    "_auto_chain_active": false
++    "_auto_chain_active": false,
++    "use_worktrees": false
+   }
+-}
+\ No newline at end of file
++}
+
+$ git diff --stat .planning/config.json
+ .planning/config.json | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+$ git log --oneline -3 -- .planning/config.json
+4e58396 phases 1 through 5
+d2b3fcf chore: add project config
+
+$ git show HEAD:.planning/config.json | grep -c use_worktrees
+0
+
+$ gsd-sdk query config-get workflow.use_worktrees
+false
+
+Second-order effect (measured, read-only):
+- .claude/get-shit-done/references/planning-config.md:37 documents workflow.use_worktrees
+  with DEFAULT true ("Whether executor agents run in isolated git worktrees. Set to
+  false to disable worktrees -- agents execute sequentially on the main working tree").
+- execute-phase.md:84 and quick.md:152 read it as
+  `gsd-sdk query config-get workflow.use_worktrees 2>/dev/null || echo "true"`.
+- The live value is false only because of this uncommitted line. A restore removes the
+  key, so the next execute-phase/quick run falls back to the default true (worktree
+  isolation). Plans 29.7-05..07 are still to run in this phase.
+
+### 3. .planning/v2.0-MILESTONE-AUDIT.md (D)
+
+$ git show HEAD:.planning/v2.0-MILESTONE-AUDIT.md | shasum
+d90e4a0358f6a3e6d4dd74971a2b67160a7ddbfe  -
+
+$ shasum .planning/milestones/v2.0-MILESTONE-AUDIT.md
+d90e4a0358f6a3e6d4dd74971a2b67160a7ddbfe  .planning/milestones/v2.0-MILESTONE-AUDIT.md
+
+RESULT: MATCH -- the archived copy is byte-identical to the HEAD root copy.
+
+$ git diff --stat HEAD -- .planning/v2.0-MILESTONE-AUDIT.md
+ .planning/v2.0-MILESTONE-AUDIT.md | 83 ---------------------------------------
+ 1 file changed, 83 deletions(-)
+
+$ git log --oneline -1 -- .planning/v2.0-MILESTONE-AUDIT.md
+c6ccf48 docs(v2.0): close phase 21 with retroactive verification, audit milestone
+
+$ git log --oneline --diff-filter=A -- .planning/milestones/v2.0-MILESTONE-AUDIT.md
+506d9fc chore: archive v2.0 milestone files
+
+### 4. The 7 untracked .gitkeep files
+
+$ for d in .planning/phases/29.[1-7]-*/; do ls -la "$d.gitkeep"; done
+-rw-r--r--@ 1 christian  staff  0 Sep 29 19:33 .planning/phases/29.1-close-gap-nexus-01-nexus-03-retroactive-verification-md-for-/.gitkeep
+-rw-r--r--@ 1 christian  staff  0 Sep 29 22:43 .planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/.gitkeep
+-rw-r--r--@ 1 christian  staff  0 Sep 29 22:43 .planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/.gitkeep
+-rw-r--r--@ 1 christian  staff  0 Sep 29 22:43 .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/.gitkeep
+-rw-r--r--@ 1 christian  staff  0 Sep 29 22:43 .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/.gitkeep
+-rw-r--r--@ 1 christian  staff  0 Sep 29 22:43 .planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/.gitkeep
+-rw-r--r--@ 1 christian  staff  0 Sep 29 22:43 .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/.gitkeep
+
+All 7 are 0 bytes.
+
+$ git ls-files .planning/phases | grep -c gitkeep
+0          (grep exit 1: no .gitkeep tracked under .planning/phases)
+
+CORRECTION to PLAN/RESEARCH wording "no .gitkeep is tracked anywhere":
+$ git ls-files | grep gitkeep
+.planning/milestones/v2.0-phases/20.1-close-gap-retroactive-verification-md-for-phases-14-17-18-ci/.gitkeep
+.planning/milestones/v2.0-phases/22-branch-protection-apply-live-exercise-needs-explicit-target-/.gitkeep
+
+$ git log --oneline --follow -- <each of the two paths above>
+506d9fc chore: archive v2.0 milestone files
+089efb2 docs(22): close three blocking gaps in the Phase 22 research
+(identical history for both)
+
+So two inserted-phase .gitkeep files WERE committed once (089efb2, carried into the
+archive by 506d9fc). The statement holds for .planning/phases only; it does not hold
+for the repository as a whole. Committing the 7 would not be the first tracked
+.gitkeep, but it would be the first under the live .planning/phases tree.
+
+### 5. Each 29.x directory already holds real files
+
+$ for d in .planning/phases/29.[1-7]-*/; do printf '%s %s\n' "$(ls "$d" | wc -l | tr -d ' ')" "${d:17:4}"; done
+9 29.1
+34 29.2
+22 29.3
+32 29.4
+35 29.5
+46 29.6
+18 29.7
+(plain ls hides .gitkeep, so these are counts of real, non-hidden entries)
+
+Contents (from the full `ls "$d"` listing run in the same session):
+- 29.1: 29.1-01/02 PLAN+SUMMARY, PATTERNS, RESEARCH, VALIDATION, VERIFICATION, deferred-items.md
+- 29.2: 29.2-01..12 PLAN+SUMMARY, CONTEXT, DISCUSSION-LOG, HUMAN-UAT, PATTERNS, RESEARCH, REVIEW, VALIDATION, VERIFICATION, deferred-items.md, evidence/
+- 29.3: 29.3-01..07 PLAN+SUMMARY, CONTEXT, DISCUSSION-LOG, PATTERNS, RESEARCH, REVIEW, VALIDATION, VERIFICATION, evidence/
+- 29.4: 29.4-01..10 PLAN+SUMMARY, ci-main-image-diff.sh, CONTEXT, DISCUSSION-LOG, HUMAN-UAT, PATTERNS, replay-d09.sh, RESEARCH, REVIEW, surface-diff.py, VALIDATION, VERIFICATION, evidence/
+- 29.5: 29.5-01..12 PLAN+SUMMARY, ci-main-verified-diff.sh, CONTEXT, DISCUSSION-LOG, HUMAN-UAT, PATTERNS, RESEARCH, reset-recipe.md, REVIEW, VALIDATION, VERIFICATION, evidence/
+- 29.6: 29.6-01..15 PLAN+SUMMARY, bootstrap.sh, CONTEXT, DISCUSSION-LOG, fixtures, PATTERNS, pr.sh, race.sh, RESEARCH, REVIEW, seed, selftest.sh, snap.sh, VALIDATION, verdict.sh, VERIFICATION, evidence/
+- 29.7: 29.7-01..03 PLAN+SUMMARY, 29.7-04..07 PLAN, CONTEXT, DISCUSSION-LOG, ledger-retest.sh, PATTERNS, RESEARCH, VALIDATION, xcheck.sh, evidence/
+
+No directory depends on its .gitkeep to exist in git.
+
+### 6. Unchanged-by-measurement check
+
+$ git status --short .planning/config.json .planning/v2.0-MILESTONE-AUDIT.md   (before Task 1)
+ M .planning/config.json
+ D .planning/v2.0-MILESTONE-AUDIT.md
+
+$ git status --short .planning/config.json .planning/v2.0-MILESTONE-AUDIT.md | diff - <before-snapshot> && echo UNCHANGED   (after Task 1)
+UNCHANGED
+
+$ git diff --cached --name-only | wc -l   (after Task 1)
+0          (index empty; nothing staged)
+
+Task 1 committed nothing (the plan commits the evidence file in Task 3, after the ruling).
+
+## OPERATOR REPLY
+
+Grouped ruling (Task 2 option "grouped"), given via AskUserQuestion, verbatim:
+
+config.json: commit; v2.0 audit: commit deletion; gitkeep: delete all (all 7)
+
+Every item has a ruling in {commit, restore, delete}; nothing was guessed.
+Resume re-measure 2026-10-09 (before any Task 3 command): `git status --short .planning/`
+was identical to PRE-STATE section 1 plus only this evidence file (?? , created by this
+plan); `git diff --cached --name-only | wc -l` = 0.
+
+## RULINGS
+
+One literal command per path; no git add -A, no git add ., no directory path, no glob.
+
+RULING .planning/config.json: commit -> git add .planning/config.json
+RULING .planning/v2.0-MILESTONE-AUDIT.md: commit -> git add .planning/v2.0-MILESTONE-AUDIT.md
+RULING .planning/phases/29.1-close-gap-nexus-01-nexus-03-retroactive-verification-md-for-/.gitkeep: delete -> rm .planning/phases/29.1-close-gap-nexus-01-nexus-03-retroactive-verification-md-for-/.gitkeep
+RULING .planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/.gitkeep: delete -> rm .planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/.gitkeep
+RULING .planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/.gitkeep: delete -> rm .planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/.gitkeep
+RULING .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/.gitkeep: delete -> rm .planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/.gitkeep
+RULING .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/.gitkeep: delete -> rm .planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/.gitkeep
+RULING .planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/.gitkeep: delete -> rm .planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/.gitkeep
+RULING .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/.gitkeep: delete -> rm .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/.gitkeep
+
+The v2.0 audit "commit" ruling stages the deletion (git add on a D path); its content is
+preserved byte-identically at .planning/milestones/v2.0-MILESTONE-AUDIT.md (PRE-STATE
+section 3, MATCH). The 7 .gitkeep files were never tracked, so plain rm (not git rm).
+
+## POST-STATE
+
+Measured after the ruling commands and BEFORE the Task 3 commit (this file cannot record
+its own commit). The two staged entries (M , D  in column 1) are the committed rulings in
+flight, not unresolved stragglers; the ?? entry is this evidence file, staged next.
+
+$ git diff --cached --name-status
+M	.planning/config.json
+D	.planning/v2.0-MILESTONE-AUDIT.md
+
+$ git status --short .planning/
+M  .planning/config.json
+D  .planning/v2.0-MILESTONE-AUDIT.md
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-04-stragglers.txt
+
+$ for d in .planning/phases/29.[1-7]-*/; do [ -e "$d.gitkeep" ] && echo "EXISTS $d.gitkeep" || echo "ABSENT ${d:17:4}"; done
+ABSENT 29.1
+ABSENT 29.2
+ABSENT 29.3
+ABSENT 29.4
+ABSENT 29.5
+ABSENT 29.6
+ABSENT 29.7
+
+Expected after the commit: `git status --short .planning/` prints nothing for these
+paths; the post-commit readback is recorded in 29.7-04-SUMMARY.md.
