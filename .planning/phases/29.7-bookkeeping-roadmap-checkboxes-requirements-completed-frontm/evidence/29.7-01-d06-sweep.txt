@@ -1,0 +1,215 @@
+Phase 29.7 plan 01 - D-06 read-only sweep of every v3.0 SUMMARY (phases 23 to 29.6)
+Captured: 2026-10-10T00:02:43Z, before any SUMMARY edit; yq v4.54.1
+Scope: .planning/phases/2[3-9]*/*-SUMMARY.md (133 files). Nothing was written to any SUMMARY.
+
+== (a) requirements-completed per SUMMARY (yq --front-matter=extract; yq errors recorded as YQ-ERROR) ==
+Command (from the repo root):
+for f in .planning/phases/2[3-9]*/*-SUMMARY.md; do
+  out=$(yq --front-matter=extract '.requirements-completed // "ABSENT" | tojson' "$f" 2>&1) || out="YQ-ERROR: $out"
+  printf '%s\t%s\n' "$f" "$(printf '%s' "$out" | tr '\n' ' ')"
+done
+
+Output:
+.planning/phases/23-nexus-generic-chart/23-01-SUMMARY.md	[]
+.planning/phases/23-nexus-generic-chart/23-02-SUMMARY.md	[]
+.planning/phases/23-nexus-generic-chart/23-03-SUMMARY.md	[]
+.planning/phases/23-nexus-generic-chart/23-04-SUMMARY.md	[]
+.planning/phases/23-nexus-generic-chart/23-05-SUMMARY.md	[]
+.planning/phases/23-nexus-generic-chart/23-06-SUMMARY.md	[]
+.planning/phases/23-nexus-generic-chart/23-07-SUMMARY.md	[]
+.planning/phases/23-nexus-generic-chart/23-08-SUMMARY.md	[   "NEXUS-01",   "NEXUS-03" ]
+.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-01-SUMMARY.md	[]
+.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-02-SUMMARY.md	[]
+.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-03-SUMMARY.md	[]
+.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-04-SUMMARY.md	[]
+.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-05-SUMMARY.md	[]
+.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-06-SUMMARY.md	[]
+.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-07-SUMMARY.md	[]
+.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-08-SUMMARY.md	[]
+.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-09-SUMMARY.md	[]
+.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-10-SUMMARY.md	[   "NEXUS-02",   "NEXUS-04" ]
+.planning/phases/25-nexus-live-validation/25-01-SUMMARY.md	"ABSENT"
+.planning/phases/25-nexus-live-validation/25-02-SUMMARY.md	"ABSENT"
+.planning/phases/25-nexus-live-validation/25-03-SUMMARY.md	"ABSENT"
+.planning/phases/25-nexus-live-validation/25-04-SUMMARY.md	"ABSENT"
+.planning/phases/25-nexus-live-validation/25-05-SUMMARY.md	"ABSENT"
+.planning/phases/25-nexus-live-validation/25-06-SUMMARY.md	"ABSENT"
+.planning/phases/25-nexus-live-validation/25-07-SUMMARY.md	"ABSENT"
+.planning/phases/26-defectdojo-generic-chart/26-01-SUMMARY.md	"ABSENT"
+.planning/phases/26-defectdojo-generic-chart/26-02-SUMMARY.md	"ABSENT"
+.planning/phases/26-defectdojo-generic-chart/26-03-SUMMARY.md	"ABSENT"
+.planning/phases/26-defectdojo-generic-chart/26-04-SUMMARY.md	"ABSENT"
+.planning/phases/26-defectdojo-generic-chart/26-05-SUMMARY.md	"ABSENT"
+.planning/phases/26-defectdojo-generic-chart/26-06-SUMMARY.md	"ABSENT"
+.planning/phases/26-defectdojo-generic-chart/26-07-SUMMARY.md	"ABSENT"
+.planning/phases/27-defectdojo-ci-auto-import/27-01-SUMMARY.md	[]
+.planning/phases/27-defectdojo-ci-auto-import/27-02-SUMMARY.md	[]
+.planning/phases/27-defectdojo-ci-auto-import/27-03-SUMMARY.md	[]
+.planning/phases/27-defectdojo-ci-auto-import/27-04-SUMMARY.md	[]
+.planning/phases/27-defectdojo-ci-auto-import/27-05-SUMMARY.md	[]
+.planning/phases/27-defectdojo-ci-auto-import/27-06-SUMMARY.md	[]
+.planning/phases/27-defectdojo-ci-auto-import/27-07-SUMMARY.md	[]
+.planning/phases/27-defectdojo-ci-auto-import/27-08-SUMMARY.md	[]
+.planning/phases/27-defectdojo-ci-auto-import/27-09-SUMMARY.md	[]
+.planning/phases/27-defectdojo-ci-auto-import/27-10-SUMMARY.md	[   "DDOJO-02" ]
+.planning/phases/27-defectdojo-ci-auto-import/27-11-SUMMARY.md	"ABSENT"
+.planning/phases/27-defectdojo-ci-auto-import/27-12-SUMMARY.md	"ABSENT"
+.planning/phases/27-defectdojo-ci-auto-import/27-13-SUMMARY.md	"ABSENT"
+.planning/phases/27-defectdojo-ci-auto-import/27-14-SUMMARY.md	"ABSENT"
+.planning/phases/28-defectdojo-dedup-and-triage/28-01-SUMMARY.md	"ABSENT"
+.planning/phases/28-defectdojo-dedup-and-triage/28-02-SUMMARY.md	"ABSENT"
+.planning/phases/28-defectdojo-dedup-and-triage/28-03-SUMMARY.md	"ABSENT"
+.planning/phases/28-defectdojo-dedup-and-triage/28-04-SUMMARY.md	"ABSENT"
+.planning/phases/28-defectdojo-dedup-and-triage/28-05-SUMMARY.md	"ABSENT"
+.planning/phases/28-defectdojo-dedup-and-triage/28-06-SUMMARY.md	"ABSENT"
+.planning/phases/28-defectdojo-dedup-and-triage/28-07-SUMMARY.md	"ABSENT"
+.planning/phases/28-defectdojo-dedup-and-triage/28-08-SUMMARY.md	"ABSENT"
+.planning/phases/28-defectdojo-dedup-and-triage/28-09-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-01-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-02-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-03-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-04-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-05-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-06-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-07-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-08-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-08a-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-09-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-10-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-11-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-12-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-13-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-14-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-15-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-16-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-17-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-18-SUMMARY.md	"ABSENT"
+.planning/phases/29-defectdojo-live-validation/29-19-SUMMARY.md	"ABSENT"
+.planning/phases/29.1-close-gap-nexus-01-nexus-03-retroactive-verification-md-for-/29.1-01-SUMMARY.md	[   "NEXUS-01",   "NEXUS-03" ]
+.planning/phases/29.1-close-gap-nexus-01-nexus-03-retroactive-verification-md-for-/29.1-02-SUMMARY.md	[   "NEXUS-01",   "NEXUS-03" ]
+.planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-01-SUMMARY.md	"ABSENT"
+.planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-02-SUMMARY.md	"ABSENT"
+.planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-03-SUMMARY.md	"ABSENT"
+.planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-04-SUMMARY.md	"ABSENT"
+.planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-05-SUMMARY.md	"ABSENT"
+.planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-06-SUMMARY.md	"ABSENT"
+.planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-07-SUMMARY.md	"ABSENT"
+.planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-08-SUMMARY.md	"ABSENT"
+.planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-09-SUMMARY.md	"ABSENT"
+.planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-10-SUMMARY.md	"ABSENT"
+.planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-11-SUMMARY.md	"ABSENT"
+.planning/phases/29.2-fix-cr-01-defectdojo-configure-sh-honours-curlrc-insecure-di/29.2-12-SUMMARY.md	"ABSENT"
+.planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/29.3-01-SUMMARY.md	"ABSENT"
+.planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/29.3-02-SUMMARY.md	"ABSENT"
+.planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/29.3-03-SUMMARY.md	"ABSENT"
+.planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/29.3-04-SUMMARY.md	"ABSENT"
+.planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/29.3-05-SUMMARY.md	YQ-ERROR: Error: bad file '.planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/29.3-05-SUMMARY.md': go-yaml load error in parser (while parsing a flow sequence) at L14.C10-L15.C1: did not find expected ',' or ']'
+.planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/29.3-06-SUMMARY.md	"ABSENT"
+.planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/29.3-07-SUMMARY.md	"ABSENT"
+.planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/29.4-01-SUMMARY.md	"ABSENT"
+.planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/29.4-02-SUMMARY.md	"ABSENT"
+.planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/29.4-03-SUMMARY.md	"ABSENT"
+.planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/29.4-04-SUMMARY.md	"ABSENT"
+.planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/29.4-05-SUMMARY.md	"ABSENT"
+.planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/29.4-06-SUMMARY.md	"ABSENT"
+.planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/29.4-07-SUMMARY.md	"ABSENT"
+.planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/29.4-08-SUMMARY.md	"ABSENT"
+.planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/29.4-09-SUMMARY.md	"ABSENT"
+.planning/phases/29.4-fix-trivy-image-cross-branch-dedup-replace-scan-target-githu/29.4-10-SUMMARY.md	"ABSENT"
+.planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-01-SUMMARY.md	"ABSENT"
+.planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-02-SUMMARY.md	"ABSENT"
+.planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-03-SUMMARY.md	"ABSENT"
+.planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-04-SUMMARY.md	"ABSENT"
+.planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-05-SUMMARY.md	"ABSENT"
+.planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-06-SUMMARY.md	"ABSENT"
+.planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-07-SUMMARY.md	"ABSENT"
+.planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-08-SUMMARY.md	"ABSENT"
+.planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-09-SUMMARY.md	"ABSENT"
+.planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-10-SUMMARY.md	"ABSENT"
+.planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-11-SUMMARY.md	"ABSENT"
+.planning/phases/29.5-fix-wr-03-triage-md-under-review-query-hides-verified-true-t/29.5-12-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-01-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-02-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-03-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-04-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-05-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-06-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-07-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-08-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-09-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-10-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-11-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-12-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-13-SUMMARY.md	"ABSENT"
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-14-SUMMARY.md	YQ-ERROR: Error: bad file '.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-14-SUMMARY.md': go-yaml load error in scanner at L9.C87: mapping values are not allowed in this context
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-15-SUMMARY.md	YQ-ERROR: Error: bad file '.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-15-SUMMARY.md': go-yaml load error in scanner at L6.C82: mapping values are not allowed in this context
+
+== (b) provides: block lines matching (NEXUS|DDOJO)-0[1-5], per SUMMARY (awk scan of the frontmatter) ==
+Command (from the repo root):
+for f in .planning/phases/2[3-9]*/*-SUMMARY.md; do
+  awk -v F="$f" '
+    /^---$/ { n++; next }
+    n != 1 { next }
+    # inline provides value (any indent), e.g. "    provides: text"
+    /^[[:space:]]*-?[[:space:]]*provides:[[:space:]]*[^[:space:]]/ { if ($0 ~ /(NEXUS|DDOJO)-0[1-5]/) print F ":" NR ": " $0 }
+    # block provides: enter on "provides:" with no inline value; record its indent
+    /^[[:space:]]*provides:[[:space:]]*$/ { inb = 1; match($0, /^[[:space:]]*/); ind = RLENGTH; next }
+    inb {
+      if ($0 ~ /^[[:space:]]*$/) next
+      match($0, /^[[:space:]]*/); li = RLENGTH
+      # leave the block on a line at or left of the provides: indent that is not a "- " list item
+      if (li < ind || (li == ind && $0 !~ /^[[:space:]]*- /)) { inb = 0; next }
+      if ($0 ~ /(NEXUS|DDOJO)-0[1-5]/) print F ":" NR ": " $0
+    }
+  ' "$f"
+done
+
+Output (file:line-in-file: text):
+.planning/phases/23-nexus-generic-chart/23-03-SUMMARY.md:19:   - "MEASURED NEXUS-03 evidence: the default render emits a volumeClaimTemplate with no storageClassName at all"
+.planning/phases/23-nexus-generic-chart/23-04-SUMMARY.md:20:   - "The two ConfigMaps and the post-install/post-upgrade hook Job that make NEXUS-01 real"
+.planning/phases/23-nexus-generic-chart/23-05-SUMMARY.md:16:   - "kubernetes/nexus/README.md — the consumer-facing install guide: four pre-install hazard sections, a values table covering every key in values.yaml, and the NEXUS-01..05 requirement table"
+.planning/phases/23-nexus-generic-chart/23-07-SUMMARY.md:14:     provides: "the provisioning hook Job and the four 201/204 proxy upserts the ADR records as the NEXUS-01 evidence"
+.planning/phases/23-nexus-generic-chart/23-08-SUMMARY.md:18:   - "kubernetes/nexus/ is on origin/main at ea2770f — NEXUS-01's 'public Helm chart' is literally true, verified by git ls-tree/git show against the remote and never from the local tree, with zero paths under kubernetes/nexus/charts/. The feature branch feature/phase-23-nexus-generic-chart no longer exists on origin (git ls-remote --heads returns empty)"
+.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-10-SUMMARY.md:21:   - "NEXUS-02 and NEXUS-04 marked Complete, closing the nine-plan withholding chain"
+.planning/phases/25-nexus-live-validation/25-07-SUMMARY.md:12:   - "NEXUS-05 Complete in REQUIREMENTS.md (checklist and traceability table)"
+.planning/phases/26-defectdojo-generic-chart/26-03-SUMMARY.md:10:   - "kubernetes/defectdojo/: values-only wrapper around the official defectdojo 1.9.53 chart (DDOJO-01 artifact)"
+.planning/phases/26-defectdojo-generic-chart/26-07-SUMMARY.md:14:   - "DDOJO-01 Complete in REQUIREMENTS.md"
+.planning/phases/27-defectdojo-ci-auto-import/27-10-SUMMARY.md:13:   - "DDOJO-02 Complete in REQUIREMENTS.md (checklist and traceability)"
+.planning/phases/28-defectdojo-dedup-and-triage/28-09-SUMMARY.md:17:   - DDOJO-03 and DDOJO-04 marked Complete; 28-VALIDATION.md signed off (nyquist_compliant true)
+.planning/phases/29-defectdojo-live-validation/29-18-SUMMARY.md:11:   - "security-platform chart README: DDOJO-05 Complete (Phase 29), measured resync result with the staticName + Sync-hook recommendation, CSRF Origin mechanism"
+.planning/phases/29-defectdojo-live-validation/29-19-SUMMARY.md:13:   - "DDOJO-05 Complete in both REQUIREMENTS.md sites"
+.planning/phases/29.1-close-gap-nexus-01-nexus-03-retroactive-verification-md-for-/29.1-01-SUMMARY.md:9:     provides: "kubernetes/nexus chart merged via PR #14 (ea2770f), requirements-completed NEXUS-01/NEXUS-03"
+.planning/phases/29.1-close-gap-nexus-01-nexus-03-retroactive-verification-md-for-/29.1-02-SUMMARY.md:13:   - "Recorded coverage self-check proving the v3.0 audit's 3-source cross-reference for NEXUS-01/NEXUS-03"
+
+== (c) Reconciliation (written by the 29.7-01 executor from (a) and (b)) ==
+(a) shows 133 SUMMARYs. Five carry a non-empty requirements-completed key:
+23-08 [NEXUS-01, NEXUS-03], 24-10 [NEXUS-02, NEXUS-04], 27-10 [DDOJO-02],
+29.1-01 and 29.1-02 [NEXUS-01, NEXUS-03]. 125 have [] (25) or ABSENT (100). Three
+are YQ-ERROR (29.3-05, 29.6-14, 29.6-15). Those three are pre-existing, out
+of scope, and not edited. A grep of each for (NEXUS|DDOJO)-0[1-5] returns
+nothing, so they carry no requirement ID.
+
+(b) lists 15 provides lines that name a requirement ID. Classification:
+- Closes a requirement under provides: with no requirements-completed key
+  (the backfill targets):
+    25-07  NEXUS-05            "NEXUS-05 Complete in REQUIREMENTS.md (checklist and traceability table)"
+    26-07  DDOJO-01            "DDOJO-01 Complete in REQUIREMENTS.md"
+    28-09  DDOJO-03, DDOJO-04  "DDOJO-03 and DDOJO-04 marked Complete; ..."
+    29-19  DDOJO-05            "DDOJO-05 Complete in both REQUIREMENTS.md sites"
+- Not a closure: 29-18 provides "security-platform chart README: DDOJO-05
+  Complete (Phase 29)". That line is the chart README status row. 29-19 is
+  the REQUIREMENTS.md closer for DDOJO-05, so 29-18 is not backfilled.
+- Closes a requirement and already has the key: 24-10 (NEXUS-02, NEXUS-04)
+  and 27-10 (DDOJO-02).
+- Artifact or evidence mentions, not closures: 23-03, 23-04, 23-05, 23-08,
+  26-03, 29.1-02.
+- Two scan lines are not in the 29.7-RESEARCH list: 23-07 L14 and 29.1-01 L9.
+  Both are inline provides: values inside a requires: dependency entry. They
+  describe what an upstream plan provided. They are not this SUMMARY's own
+  provides, so neither is a closure. 29.1-01 also already carries
+  requirements-completed [NEXUS-01, NEXUS-03].
+
+Reconciliation: the audit's "5 SUMMARYs" means 4 files carrying 5 IDs
+(25-07 NEXUS-05, 26-07 DDOJO-01, 28-09 DDOJO-03 + DDOJO-04, 29-19 DDOJO-05).
+This matches CONTEXT and RESEARCH. Phases 29.2 to 29.6 carry no requirement IDs.
+Extra hits (closers outside these 4 files that lack requirements-completed): 0

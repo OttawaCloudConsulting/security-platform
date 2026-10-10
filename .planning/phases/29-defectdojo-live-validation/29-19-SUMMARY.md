@@ -38,6 +38,8 @@ metrics:
   completed: 2026-09-29
   tasks: 3
   files: 7
+# backfilled Phase 29.7 (v3.0 audit item 7); closure first recorded under provides
+requirements-completed: [DDOJO-05]
 ---
 
 # Phase 29 Plan 19: ADR-027, ADR-028 and DDOJO-05 closure Summary

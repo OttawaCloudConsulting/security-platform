@@ -36,6 +36,8 @@ metrics:
   completed: 2026-09-26
   tasks: 3
   files: 6
+# backfilled Phase 29.7 (v3.0 audit item 7); closure first recorded under provides
+requirements-completed: [DDOJO-03, DDOJO-04]
 ---
 
 # Phase 28 Plan 09: ADR-026, runbook link and requirement sign-off Summary

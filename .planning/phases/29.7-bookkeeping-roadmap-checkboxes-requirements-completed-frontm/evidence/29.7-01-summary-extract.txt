@@ -1,0 +1,45 @@
+Phase 29.7 plan 01 - R-02 readback of the backfilled requirements-completed key
+Captured: 2026-10-10T00:03:24Z; gsd-sdk v1.42.3; yq v4.54.1
+
+== gsd-sdk summary-extract (the tool view /gsd:audit-milestone uses) ==
+$ gsd-sdk query summary-extract .planning/phases/25-nexus-live-validation/25-07-SUMMARY.md --fields requirements_completed --pick requirements_completed
+[
+  "NEXUS-05"
+]
+(exit=0)
+
+$ gsd-sdk query summary-extract .planning/phases/26-defectdojo-generic-chart/26-07-SUMMARY.md --fields requirements_completed --pick requirements_completed
+[
+  "DDOJO-01"
+]
+(exit=0)
+
+$ gsd-sdk query summary-extract .planning/phases/28-defectdojo-dedup-and-triage/28-09-SUMMARY.md --fields requirements_completed --pick requirements_completed
+[
+  "DDOJO-03",
+  "DDOJO-04"
+]
+(exit=0)
+
+$ gsd-sdk query summary-extract .planning/phases/29-defectdojo-live-validation/29-19-SUMMARY.md --fields requirements_completed --pick requirements_completed
+[
+  "DDOJO-05"
+]
+(exit=0)
+
+== yq --front-matter=extract '.requirements-completed' ==
+$ yq --front-matter=extract '.requirements-completed' .planning/phases/25-nexus-live-validation/25-07-SUMMARY.md
+[NEXUS-05]
+(exit=0)
+
+$ yq --front-matter=extract '.requirements-completed' .planning/phases/26-defectdojo-generic-chart/26-07-SUMMARY.md
+[DDOJO-01]
+(exit=0)
+
+$ yq --front-matter=extract '.requirements-completed' .planning/phases/28-defectdojo-dedup-and-triage/28-09-SUMMARY.md
+[DDOJO-03, DDOJO-04]
+(exit=0)
+
+$ yq --front-matter=extract '.requirements-completed' .planning/phases/29-defectdojo-live-validation/29-19-SUMMARY.md
+[DDOJO-05]
+(exit=0)
