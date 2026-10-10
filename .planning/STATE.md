@@ -626,7 +626,7 @@ Carried forward from v1.1 close:
 | Phase 29.7 P04 | ~15min | 3 tasks | 3 files |
 | Phase 29.7 P05 | ~7min | 2 tasks | 5 files |
 | Phase 29.7 P06 | ~12min | 2 tasks | 2 files |
-| Phase 29.7 P07 | ~22min | 2 tasks | 2 files |
+| Phase 29.7 P07 | ~12min | 2 tasks | 2 files |
 
 ## Session Continuity
 
