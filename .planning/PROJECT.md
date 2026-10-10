@@ -32,6 +32,8 @@ Every code change is automatically scanned for security issues, secrets, and sup
 - [x] VAL-02: Required-check enforcement exercised live on external repo (`terraform-pipelines`) — GitHub observably refused a merge with a red required check, then window closed and ruleset restored byte-identical — v2.0
 - [x] NEXUS-01: Public generic Nexus Helm chart (`kubernetes/nexus/`) renders npm/PyPI/Docker proxy repos by default and a Helm proxy when `repos.helm.remoteUrl` is set (D-05); live homelab Nexus lists all four proxies. Retroactively re-verified in `23-VERIFICATION.md` (passed, 30/30) against merge ea2770f and origin/main fdabac9. Validated in Phase 29.1: retroactive Phase 23 verification
 - [x] NEXUS-03: Nexus chart omits `storageClassName` by default so the cluster default applies (live PVC bound to `default`), and a consumer `--set`/values override reaches the PVC template verbatim; a mutation test proves the gate discriminates. Validated in Phase 29.1: retroactive Phase 23 verification
+- [x] NEXUS-02: Nexus proxy repos allow anonymous pull, opt-in via `anonymous.enabled` (default off; homelab overlay opts in); npm/PyPI/Docker/Helm pulls measured open and anonymous write refused (ADR-021, ADR-022) — v3.0
+- [x] NEXUS-04: `workstation/nexus-setup.sh` routes a repo's npm, pip and Helm clients through a given Nexus and `--verify` pulls a real component; Docker via opt-in `--docker-daemon` (off by default) (ADR-021) — v3.0
 - [x] NEXUS-05: Nexus chart validated live via private ArgoCD overlay on the homelab cluster — anonymous npm/PyPI/Docker/Helm pulls and anonymous write refusal measured, second sync idempotent (ADR-022). Validated in Phase 25: Nexus Live Validation
 - [x] DDOJO-01: Public DefectDojo Helm chart (`kubernetes/defectdojo/`, wraps upstream `defectdojo` 1.9.53 / app 3.3.200) with ingress and cert-manager TLS, generic for any cluster: host, issuer and Secrets are consumer-supplied; offline gate 20/20 and live kind smoke (verified TLS, admin login, Celery ping) pass (ADR-023, PRs #19/#20). Validated in Phase 26: DefectDojo Generic Chart
 - [x] DDOJO-02: `security-platform` scan jobs import their SARIF/JSON findings into a consumer's DefectDojo after each run (opt-in via `DEFECTDOJO_URL`/`DEFECTDOJO_API_TOKEN`, reimport per branch, ADR-024); `DEFECTDOJO_URL` must be https:// and curl is pinned to https (CR-01 fix, ADR-025, released as `v1.1.1`, `v1` moved). Live proof 88 assertions on kind. Validated in Phase 27: DefectDojo CI Auto-Import
@@ -39,21 +41,9 @@ Every code change is automatically scanned for security issues, secrets, and sup
 - [x] DDOJO-04: Triage runbook `kubernetes/defectdojo/TRIAGE.md`: dispositions (False Positive, Out of Scope, Risk Accepted) set on the default-branch engagement survive reimport and suppress PR duplicates; PR-engagement delete re-parents rather than deletes (proof 127 assertions, GitHub run 36261602015, PR #23 merged c8027e6, ADR-026). Validated in Phase 28: DefectDojo Dedup and Triage
 - [x] DDOJO-05: DefectDojo chart validated live via a private ArgoCD overlay on the homelab cluster (ghostunnel native sidecar, verified-system TLS). security-platform CI imports into it through a repo-scoped ARC runner (`DEFECTDOJO_RUNS_ON`), and the D-11 PR lifecycle (dedup, dispositions surviving reimport, cleanup) and second-sync idempotency are proven live. One measured limit: trivy-image findings do not dedupe across branches, because the scan-target tag carries `github.sha`. This narrows DDOJO-03's cross-branch claim for that scanner, and the step-2 scope was amended with operator approval. Shipped in security-platform PR #26 / `v1.2.0` (fdabac9), recorded in ADR-027 and ADR-028. Validated in Phase 29: DefectDojo Live Validation
 
-## Current Milestone: v3.0 K8s Infra & Dashboards
-
-**Goal:** Ship generic, publicly-consumable Helm packages for Nexus Repository (npm/PyPI/Docker/Helm proxy) and DefectDojo (unified security dashboard with automated CI import and dedup/triage), deployable to any Kubernetes cluster. Validated live against an existing on-prem homelab cluster via a private ArgoCD overlay.
-
-**Target features:**
-- Nexus Repository proxy: npm, PyPI, Docker, Helm — packaged as a generic Helm chart in the public repo
-- Per-repo Nexus registry configuration + workstation install script to apply it
-- DefectDojo deployment (unified security dashboard) — packaged as a generic Helm chart in the public repo
-- CI-to-DefectDojo automated import pipeline (SARIF/JSON artifacts from `security-platform` scan jobs)
-- Deduplication and triage workflow configuration in DefectDojo
-- Environment-specific values (hostnames, StorageClass, ClusterIssuer, IPs) live only in a private ArgoCD overlay repo — never in the public package
-
 ### Active
 
-(Requirements TBD — defined in REQUIREMENTS.md)
+(None — define in next milestone via `/gsd:new-milestone`)
 
 ### Validated (v1.1)
 
@@ -64,13 +54,8 @@ Every code change is automatically scanned for security issues, secrets, and sup
 - [x] Setup script is idempotent and bash 3.2 compatible (macOS stock bash)
 - [x] Version check and update capability (`check`, `update`, `doctor` subcommands) — v1.1
 
-### Future (M3+)
+### Future
 
-- [ ] Nexus Repository proxy deployment on Kubernetes (npm, PyPI, Docker, Helm)
-- [ ] Workstation package managers routed through Nexus
-- [ ] DefectDojo unified security dashboard on Kubernetes
-- [ ] CI-to-DefectDojo automated import pipeline
-- [ ] Deduplication and triage workflow configuration
 - [ ] Checkov baseline for existing repos (only new findings flagged)
 - [ ] NetworkPolicy namespace isolation for all security services
 - [ ] TLS via cert-manager for all internal service communication
@@ -93,7 +78,11 @@ Every code change is automatically scanned for security issues, secrets, and sup
 
 ## Current State
 
-**v3.0 K8s Infra & Dashboards: all phases complete, milestone ready for audit.** Phase 29 completed on 2026-09-29, with 20 plans and verification passed. The DefectDojo chart runs live on the homelab cluster through the private ArgoCD overlay, and security-platform CI imports into it on a repo-scoped ARC runner. Dedup, triage dispositions, PR cleanup and second-sync idempotency are proven live (DDOJO-05, ADR-027, ADR-028). security-platform `v1.2.0` was cut, and `v1` moved to fdabac9. Open follow-ups are in `29-deferred-items` (`.planning/phases/29-defectdojo-live-validation/deferred-items.md`): a fixed scan-image tag so trivy-image dedupes across branches, the unmeasured risk that trivy-image dispositions on ci/main are lost when main's commit changes (WR-04), and the helper-script hardening warnings WR-01 to WR-08 from `29-REVIEW.md`. Phase 29.1 (inserted gap closure, 2026-09-29) wrote the missing retroactive `23-VERIFICATION.md` (passed, 30/30), which closes the audit's orphaned NEXUS-01/NEXUS-03 gap without any chart or cluster change. Phase 29.2 (inserted, 2026-09-30) fixed Phase 28 CR-01: every DefectDojo API client in security-platform now ignores ambient curl configuration, and all clients share one token-file rule (ADR-029). It was merged to security-platform main untagged (PR #27 at 47319b2, then gap fix PR #28 at 72cb174), with the release batched into Phase 29.4. Phase 29.3 (inserted, 2026-10-01) fixed Phase 26 WR-05: both offline chart gates now fail closed when a chart directory or guard template is missing, and a new `chart-gates.yml` workflow runs them in CI in report-only mode by default (`CHART_GATE_MODE` unset), with standing negative cases (ADR-030). It was merged to security-platform main untagged (PR #29 at 30afdb9). Code review follow-ups WR-01 to WR-03 are in `29.3-REVIEW.md`. Phase 29.4 (inserted, 2026-10-04) fixed trivy-image cross-branch dedup: `security.yml` now scans the image as the fixed tag `scan-target:ci` instead of the commit SHA (PR #32 at 2dccff5, docs PR #34 at aa48081). PR trivy-image findings dedupe against `ci/main` live (D-08, 60/60), and `ci/main` image finding ids persist across main commits (D-11, closes WR-04 for ids; disposition persistence is still an open human UAT item). security-platform `v1.3.0` was cut at aa48081 (carrying the Phase 29.2 TLS hardening), and `v1` moved to it after a consumer impact check (ADR-031). Verification tooling follow-ups CR-01, WR-01 and WR-02 are in `29.4-REVIEW.md`. Phase 29.5 (inserted, 2026-10-05) fixed Phase 28 WR-03: the `security.yml` dd-import now sends `verified=false` on every reimport, so Trivy findings enter the TRIAGE.md Under Review query and Verified means a triager confirmed the finding (PR #35 at a53f6fb, docs PR #36 at 6c0d531). It was proven in kind (189 assertions) and by a live `ci/main` readback; the 65 pre-upgrade Trivy findings that stayed `verified=true` were reset by the one-time recipe now in TRIAGE.md (65 reset, 0 left). security-platform `v1.4.0` was cut at 6c0d531 and `v1` moved to it (ADR-032). Two human UAT items stay open in `29.5-HUMAN-UAT.md` (live new-Trivy-finding path; `@v1` callers outside the org), and reset-recipe and static-gate hardening warnings WR-01 to WR-05 are in `29.5-REVIEW.md`. Phase 29.6 (inserted, 2026-10-08) closed all three 27-HUMAN-UAT items: items 1 and 2 pass on a live re-read, and item 3 (closed-PR reopen race) passes on a measured race on a throwaway private Mode B repository, now deleted. Its ruleset was first proven to enforce (UNSTABLE, then BLOCKED, then CLEAN), and all six close-reopen-merge attempts on red heads were refused, 4 client-side and 2 server-side (ADR-033). Code review CR-01 found that the close run's `skipped` result can stay newest on a red required context, and closed red PRs read CLEAN. A head red on only one required context is therefore untested, and is a pending follow-up (`.planning/todos/pending/2026-10-08-race-single-red-context-head.md`). Next: Phase 29.7.
+**Shipped: v3.0 K8s Infra & Dashboards** (2026-10-10) — Phases 23-29.7 (14 phases incl. 7 inserted gap-closure phases), 140 plans, 10/10 requirements (audit `tech_debt`, 0 gaps).
+
+`OttawaCloudConsulting/security-platform` now ships two public, generic Helm charts: `kubernetes/nexus/` (npm/PyPI/Docker proxy, Helm proxy when configured, opt-in anonymous pull) and `kubernetes/defectdojo/` (ingress + cert-manager TLS, dedup guards). Both run live on the homelab cluster through a private ArgoCD overlay holding only environment values. `workstation/nexus-setup.sh` routes a repo's package managers through Nexus. `security.yml` imports scan findings into a consumer's DefectDojo (`v1.4.0`, `v1` moved), with dedup, dispositions surviving reimport, and a triage runbook (`kubernetes/defectdojo/TRIAGE.md`). Standing offline chart gates fail closed and run in CI (`chart-gates.yml`). Decisions in ADR-020 through ADR-033. Full detail: `.planning/milestones/v3.0-ROADMAP.md`.
+
+**Known v3.0 debt (deferred at close, see STATE.md Deferred Items and `.planning/milestones/v3.0-MILESTONE-AUDIT.md`):** 29.4/29.5 HUMAN-UAT partial (disposition persistence on `ci/main` across main-SHA reimport inferred not measured; no live new-Trivy-finding observed landing `verified=false`; out-of-org `@v1` callers unconfirmed); 24/29.2/29.4/29.5 VERIFICATION `human_needed`; pending todo: closed-PR reopen race on a head red on exactly one required context (`.planning/todos/pending/2026-10-08-race-single-red-context-head.md`); `scripts/check-nexus-setup.sh` has no CI caller; subchart pin freshness has no automation; overlay `targetRevision` pins trail `origin/main` (docs-only diff).
 
 **Shipped: v2.0 CI/CD Security Pipeline** (2026-09-17) — Phases 14-22 (10 phases incl. inserted 20.1), 63 plans, 15/15 requirements.
 
@@ -110,7 +99,7 @@ Cross-platform install + setup + maintenance tooling now replaces the Homebrew-o
 
 ## Next Milestone Goals
 
-Awaiting `/gsd:new-milestone`. Candidate scope from ROADMAP.md Backlog and PROJECT.md Future (M3+): Nexus Repository proxy + DefectDojo dashboard on Kubernetes, CI-to-DefectDojo import pipeline (the artifact retention this milestone built for), Checkov baseline for existing repos, and the still-open tech debt from v2.0 (DIST-08 §13 cross-reference gap, blueprint Grype/Trivy naming drift, stale M1 USER_GUIDE.md claim, orphaned Phase 20.1/21 verification gaps — see `.planning/milestones/v2.0-ROADMAP.md` and STATE.md Deferred Items).
+Awaiting `/gsd:new-milestone`. Candidate scope: Checkov baseline for existing repos; hardening bucket deferred from v3.0 (NetworkPolicy isolation, backup automation for DefectDojo PostgreSQL and Nexus PVC, monitoring/alerting); closing v3.0 deferred UAT/verification items; v2.0 tech debt still open (see `.planning/milestones/v2.0-ROADMAP.md`).
 
 ## Context
 
@@ -121,7 +110,7 @@ Awaiting `/gsd:new-milestone`. Candidate scope from ROADMAP.md Backlog and PROJE
 - **Canonical pipeline host:** `OttawaCloudConsulting/security-platform` — the callable `security.yml` workflow lives there, not in this repo. This repo documents it (see `docs/adoption-guide.md`).
 - **Reference document:** `docs/development-security-stack-option-1.md` (~2,300 lines) contains all tool configs, architecture diagrams, and copy-pasteable configurations; its CI/CD section is now illustrative-only with a pointer to the canonical workflow
 - **Milestone plans:** `docs/milestone-plan/` contains 7 detailed milestone documents with 28 features, done criteria, and verification checks
-- **ADRs:** `docs/adr/` contains 19 architectural decision records (ADR-001 through ADR-019)
+- **ADRs:** `docs/adr/` contains 33 architectural decision records (ADR-001 through ADR-033)
 - **Languages covered:** Terraform, CDK, CloudFormation, Python, TypeScript/JavaScript, Bash, Kubernetes/YAML, Docker
 - **GSD approach:** One GSD milestone at a time
 - **Known issues (deferred, carried forward):**
@@ -151,7 +140,7 @@ Awaiting `/gsd:new-milestone`. Candidate scope from ROADMAP.md Backlog and PROJE
 | Replace `dist/install.sh` with `workstation/setup.sh` bootstrapper | Standalone installer too narrow; repos need config generation + hook activation too, not just tool install | Validated (Phase 12, commit 828f048) |
 | INST-05 scope: only pre-commit installs via pipx; Semgrep/Checkov deferred to CI-only | Avoid duplicating CI-only tools on the workstation; requirement text left unnarrowed by deliberate choice | Validated (Phase 10, reconfirmed at v1.1 close) |
 | `trap ... RETURN` in installer helpers must self-clear (`trap - RETURN` inside the handler) | Bash RETURN traps aren't function-scoped — they re-fire on the caller's return, crashing on an out-of-scope local under `set -u`. Found live-testing `setup.sh install` at v1.1 close | Validated (security-platform commit 2a70c97) |
-| v3.0 K8s packages: generic-first, not private-then-strip | Generic Helm chart in public repo is source of truth from day one; private ArgoCD repo holds only a thin overlay (env values + Application manifest). Avoids manual de-identification as a recurring leak point; the private deploy becomes the package's integration test | — Pending |
+| v3.0 K8s packages: generic-first, not private-then-strip | Generic Helm chart in public repo is source of truth from day one; private ArgoCD repo holds only a thin overlay (env values + Application manifest). Avoids manual de-identification as a recurring leak point; the private deploy becomes the package's integration test | Validated (v3.0: Nexus and DefectDojo charts public, homelab overlay holds env values only; ADR-020, ADR-023) |
 | npm-audit / ESLint gaps found in aws-zabbix at v1.1 close are target-repo issues, not tooling bugs | Milestone scope is the distribution tooling, not remediating individual repos | Accepted as deferred — ⚠️ Revisit if aws-zabbix work resumes |
 | `OttawaCloudConsulting/security-platform` is the canonical pipeline host, not this repo | This repo is documentation-only per CLAUDE.md; the org identifier originally named in DIST-07 (`OCC-github`) was never a real GitHub org | Validated (Phase 20, ADR-018 D-01 amendment) |
 | Fail-closed gate design: `continue-on-error` resolves from `env.GATE_MODE`, defaulting to report-only | Report-only default lets adoption happen without immediately blocking merges; blocking is opt-in per repo via a variable flip, no YAML edit | Validated (Phase 18) |
@@ -177,4 +166,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-08 after Phase 29.6 (27-UAT item 3 closed by measured reopen race; ADR-033)*
+*Last updated: 2026-10-10 after v3.0 milestone*

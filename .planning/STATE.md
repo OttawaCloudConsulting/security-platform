@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: K8s Infra & Dashboards
-status: milestone_complete
-stopped_at: Milestone complete (Phase 29.7 was final phase)
-last_updated: 2026-10-10T01:17:41.861Z
-last_activity: 2026-10-09 -- Plan 29.7-07 complete (v3.0 audit annotated CLOSED (Phase 29.7) with evidence; final phase-wide readback 22/22)
+status: Awaiting next milestone
+stopped_at: Completed 29.7-07-PLAN.md
+last_updated: "2026-10-10T03:36:52.877Z"
+last_activity: 2026-10-10 — Milestone v3.0 completed and archived
 progress:
   total_phases: 14
-  completed_phases: 13
+  completed_phases: 14
   total_plans: 140
   completed_plans: 140
-  percent: 93
+  percent: 100
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-09-10)
 
 ## Current Position
 
-Phase: 29.7
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-10-10
+Phase: Milestone v3.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-10 — Milestone v3.0 completed and archived
 
 ## Performance Metrics
 
@@ -636,5 +636,18 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Phase 23 is complete and the chart is public on `OttawaCloudConsulting/security-platform` `main` (`ea2770f`). Run `/gsd:verify-phase 23` if you want the phase verification pass, then `/gsd:plan-phase 24` for Nexus anonymous access (NEXUS-02) and the workstation routing script (NEXUS-04).
-- Phase 24 inherits three open items from Phase 23: the 24 latent Checkov kubernetes-framework findings on the rendered chart (5 wrapper, 19 subchart), the inert `provision.readiness.*` knobs, and the fact that CI's Checkov never renders this chart, so a green `Checkov` check is not evidence that `kubernetes/nexus/` is clean.
+- Start the next milestone with /gsd-new-milestone
+
+## Deferred Items
+
+Items acknowledged and deferred at milestone close on 2026-10-09:
+
+| Category | Item | Status |
+|----------|------|--------|
+| uat_gap | 29.4-HUMAN-UAT.md (1 open scenario) | partial |
+| uat_gap | 29.5-HUMAN-UAT.md (2 open scenarios) | partial |
+| verification_gap | 24-VERIFICATION.md | human_needed |
+| verification_gap | 29.2-VERIFICATION.md | human_needed |
+| verification_gap | 29.4-VERIFICATION.md | human_needed |
+| verification_gap | 29.5-VERIFICATION.md | human_needed |
+| todo | 2026-10-08-race-single-red-context-head.md | pending (high, ci-enforcement) |

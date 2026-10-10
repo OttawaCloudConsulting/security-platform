@@ -1,5 +1,24 @@
 # Milestones
 
+## v3.0 K8s Infra & Dashboards (Shipped: 2026-10-10)
+
+**Phases completed:** 14 phases (23-29, 29.1-29.7), 140 plans, 115 tasks
+**Requirements:** 10/10 satisfied (audit status `tech_debt`, 0 gaps)
+**Timeline:** 2026-09-17 to 2026-10-10
+
+**Key accomplishments:**
+
+- Public `kubernetes/nexus` Helm chart in `security-platform`: wraps the pinned community `nexus3` subchart, self-provisions npm/PyPI/Docker proxy repos (Helm proxy consumer-configured), default StorageClass unless overridden. Standing offline (16 checks) and live kind gates.
+- Nexus anonymous pull (opt-in `anonymous.enabled`) measured across npm/PyPI/Docker, plus `workstation/nexus-setup.sh` routing a repo's npm, pip and Helm clients through Nexus with `--verify` pulling a real component. Docker `registry-mirrors` URL behaviour measured and recorded.
+- Nexus deployed to homelab via private ArgoCD overlay; proxy pulls proven live.
+- Public `kubernetes/defectdojo` Helm chart with external ingress and cert-manager TLS; environment values consumer-supplied. CI auto-import of SARIF/JSON findings from `security.yml`, with dedup and triage workflow (TRIAGE.md, ADR-026).
+- DefectDojo deployed to homelab and CI import, dedup and triage proven live end to end (Phase 29).
+- Gap-closure phases 29.1-29.7: retroactive Phase 23 verification, CR-01 curlrc TLS hardening, fail-closed chart gates in CI (`chart-gates.yml`), trivy-image cross-branch dedup fix (`v1.3.0`, ADR-031), Under Review `verified=false` fix (`v1.4.0`, ADR-032), closed-PR reopen race refused 6/6 (ADR-033), bookkeeping reconciled.
+
+**Known deferred items at close:** 7 (see STATE.md Deferred Items): 29.4/29.5 HUMAN-UAT partial, 24/29.2/29.4/29.5 VERIFICATION human_needed, 1 pending todo (single-red-context reopen race). Further tech debt enumerated in `.planning/milestones/v3.0-MILESTONE-AUDIT.md`.
+
+---
+
 ## v2.0 CI/CD Security Pipeline (Shipped: 2026-09-17)
 
 **Phases completed:** 10 phases, 63 plans, 118 tasks

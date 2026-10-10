@@ -41,6 +41,46 @@
 
 ---
 
+## Milestone: v3.0 — K8s Infra & Dashboards
+
+**Shipped:** 2026-10-10
+**Phases:** 14 (23-29 plus inserted 29.1-29.7) | **Plans:** 140 | **Timeline:** 2026-09-17 → 2026-10-10 (~23 days)
+
+### What Was Built
+- Public generic `kubernetes/nexus` chart (npm/PyPI/Docker proxy, Helm proxy when configured, opt-in anonymous pull) with offline and live kind gates
+- `workstation/nexus-setup.sh` routing a repo's npm, pip and Helm clients through Nexus, `--verify` pulling a real component
+- Public generic `kubernetes/defectdojo` chart (ingress + cert-manager TLS, dedup guards) and `security.yml` CI auto-import (`v1.4.0`)
+- Dedup and triage runbook (`TRIAGE.md`), dispositions proven to survive reimport
+- Both charts validated live on the homelab through a private ArgoCD overlay holding only environment values
+- Seven inserted gap-closure phases (29.1-29.7) closing audit, review and UAT findings, ADR-020 through ADR-033
+
+### What Worked
+- Generic-first packaging: public chart is the source of truth, private overlay is thin; no de-identification step
+- Standing gates written before the thing they gate, proven green, red and discriminating
+- Measuring instead of asserting: several research assumptions were falsified by live measurement (Docker mirror URL shape, pypi body, cross-tool SCA dedup)
+- Audit-driven gap closure kept the milestone at 0 requirement gaps
+
+### What Was Inefficient
+- 7 of 14 phases were inserted after the planned scope shipped; review findings (CR-01, WR-03, WR-05) surfaced late and needed full phase cycles
+- Auto-extracted accomplishments from SUMMARY.md picked up deviation and task headings; MILESTONES.md entry needed manual curation
+- Several human_needed verifications and partial UATs carried to close as deferred items
+
+### Patterns Established
+- Append-only ADRs with errata rather than edits (ADR-020..033)
+- Release batching: untagged merges (29.2, 29.3) folded into a later tagged release (`v1.3.0`) after a consumer impact check
+- Bookkeeping phase (29.7) to reconcile records before close
+
+### Key Lessons
+1. Run code review before declaring a chart or client phase done; three late phases came from review findings that could have been caught in-phase
+2. Distinguish id persistence from disposition persistence when claiming dedup behaviour; only the first was measured
+3. A single-context-red race (head red on exactly one required check) remains untested; test the minimal-failure case, not only the all-red case
+
+### Cost Observations
+- Sessions: not tracked per-session in this project's STATE.md
+- Notable: 140 plans in ~23 days; majority of plans in Phase 29 (20) and gap-closure phases 29.2-29.6 (56)
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -50,6 +90,7 @@
 | v1.0 | 9 | Workstation tooling foundation; CLI-only, no CI |
 | v1.1 | 4 | Cross-platform distribution packaging replacing Homebrew-only install |
 | v2.0 | 10 | First CI/CD milestone; introduced live-exercise phases, retroactive VERIFICATION.md backfill, and audit-driven gap-closure phases inserted after the "planned" roadmap shipped |
+| v3.0 | 14 | First Kubernetes milestone; generic public Helm charts plus private overlay, live homelab validation, 7 inserted gap-closure phases |
 
 ### Top Lessons (Verified Across Milestones)
 
