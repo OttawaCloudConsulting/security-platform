@@ -1,0 +1,368 @@
+# 29.7-07 final phase-wide readback (D-03, D-07 sampling)
+Captured (UTC): 2026-10-10T01:12:09Z
+HEAD: 0dd129c; phase start commit: dbeabd7
+gsd-sdk: gsd-sdk v1.42.3; yq: yq (https://github.com/mikefarah/yq/) version v4.54.1
+Read-only: no gsd-sdk mutator is run; roadmap.analyze and summary-extract only.
+Every Automated Command in 29.7-VALIDATION.md Per-Task Verification Map (21 rows) plus a
+cited-evidence ls check. Diff rows compare against dbeabd7 because plans 01-06 are committed.
+Trailing whitespace is stripped from captured output after the run (repo pre-commit hook); no other change.
+
+== ROW 1 | D-01/R-01 checklist ==
+Pass condition: 9 lines [x] (26-28, 29.1-29.6), 1 line [ ] (29.7)
+$ grep -nE '^- \[(x| )\] \*\*Phase (2[6-8]|29\.[1-7]):' .planning/ROADMAP.md
+62:- [x] **Phase 26: DefectDojo Generic Chart** - Public Helm chart deploys DefectDojo with external ingress and cert-manager TLS (completed 2026-09-25)
+63:- [x] **Phase 27: DefectDojo CI Auto-Import** - security-platform scan jobs push SARIF/JSON findings into DefectDojo automatically (completed 2026-09-26)
+64:- [x] **Phase 28: DefectDojo Dedup and Triage** - Dedup rules collapse repeated findings; triage workflow documented and configured (completed 2026-09-26)
+66:- [x] **Phase 29.1: Close gap: NEXUS-01/NEXUS-03 — retroactive VERIFICATION.md for Phase 23** (INSERTED) - Retroactive read-only 23-VERIFICATION.md re-proved NEXUS-01 and NEXUS-03 (completed 2026-09-29)
+67:- [x] **Phase 29.2: Fix CR-01: defectdojo-configure.sh honours ~/.curlrc (insecure disables TLS)** (INSERTED) - Ambient curlrc can no longer send a DefectDojo API token over unverified TLS; merged untagged (completed 2026-09-30)
+68:- [x] **Phase 29.3: Fix WR-05: chart gates fail closed on missing validate-tls.yaml and run in CI** (INSERTED) - Both offline chart gates fail closed and run in chart-gates.yml; merged untagged (completed 2026-10-01)
+69:- [x] **Phase 29.4: Fix trivy-image cross-branch dedup: replace scan-target github.sha tag (v1 consumer impact check)** (INSERTED) - Scanned image tagged scan-target:ci so trivy-image findings dedupe across branches; released v1.3.0, ADR-031 (completed 2026-10-04)
+70:- [x] **Phase 29.5: Fix WR-03: TRIAGE.md Under Review query hides verified=true Trivy findings** (INSERTED) - dd-import sends verified=false on every reimport; released v1.4.0, ADR-032 (completed 2026-10-05)
+71:- [x] **Phase 29.6: Close 27 UAT item 3 (closed-PR reopen race) and refresh stale 27-HUMAN-UAT.md** (INSERTED) - Close-reopen-merge race refused in 6/6 attempts against an enforcing ruleset; 27-HUMAN-UAT.md refreshed, ADR-033 (completed 2026-10-08)
+72:- [ ] **Phase 29.7: Bookkeeping: ROADMAP checkboxes, requirements-completed frontmatter, CLAUDE.md ADR range, gsd-sdk tooling ledger** (INSERTED) - Records reconciled with the repository; gsd-sdk defects consolidated in one ledger
+(exit=0)
+ticked(26-28,29.1-29.6)=9 unticked(29.7)=1 total=10
+RESULT: PASS
+
+== ROW 2 | D-01/R-01 29.x progress rows ==
+Pass condition: 7 rows; counts/dates match RESEARCH Measured (29.1 2/2 2026-09-29, 29.2 12/12 2026-09-30, 29.3 7/7 2026-10-01, 29.4 10/10 2026-10-04, 29.5 12/12 2026-10-05, 29.6 15/15 2026-10-08, 29.7 not complete)
+$ grep -nE '^\| 29\.[1-7]\. ' .planning/ROADMAP.md
+510:| 29.1. Close gap: NEXUS-01/NEXUS-03 — retroactive VERIFICATION.md for Phase 23 | v3.0 | 2/2 | Complete | 2026-09-29 |
+511:| 29.2. Fix CR-01: defectdojo-configure.sh honours ~/.curlrc (insecure disables TLS) | v3.0 | 12/12 | Complete | 2026-09-30 |
+512:| 29.3. Fix WR-05: chart gates fail closed on missing validate-tls.yaml and run in CI | v3.0 | 7/7 | Complete | 2026-10-01 |
+513:| 29.4. Fix trivy-image cross-branch dedup: replace scan-target github.sha tag (v1 consumer impact check) | v3.0 | 10/10 | Complete | 2026-10-04 |
+514:| 29.5. Fix WR-03: TRIAGE.md Under Review query hides verified=true Trivy findings | v3.0 | 12/12 | Complete | 2026-10-05 |
+515:| 29.6. Close 27 UAT item 3 (closed-PR reopen race) and refresh stale 27-HUMAN-UAT.md | v3.0 | 15/15 | Complete | 2026-10-08 |
+516:| 29.7. Bookkeeping: ROADMAP checkboxes, requirements-completed frontmatter, CLAUDE.md ADR range, gsd-sdk tooling ledger | v3.0 | 4/7 | In Progress |  |
+(exit=0)
+RESULT: PASS
+
+== ROW 3 | D-01/R-01 Layout C parsed as active v3.0 ==
+Pass condition: jq oracle exit 0 (baseline exit 1)
+$ gsd-sdk query roadmap.analyze | jq -e '.phase_count == 14 and .missing_phase_details == null and ([.phases[] | select(.number|IN("26","27","28","29.1","29.2","29.3","29.4","29.5","29.6")) | .roadmap_complete] | all) and ([.phases[] | select(.number=="29.7") | .roadmap_complete] == [false])'
+true
+(exit=0)
+summary: {"phase_count":14,"completed_phases":13,"total_plans":140,"total_summaries":139,"missing_phase_details":null,"current_phase":"29.7","next_phase":null}
+RESULT: PASS
+
+== ROW 4 | D-01 milestone wording ==
+Pass condition: no stale 'Phases 23-29' without the inserted phases
+$ grep -n 'Phases 23-29' .planning/ROADMAP.md
+8:- 🔄 **v3.0 K8s Infra & Dashboards** — Phases 23-29.7 (in progress)
+520:Not yet defined. v3.0 (Phases 23-29.7) is in progress. Run `/gsd:new-milestone` after v3.0 ships. Candidate scope: Checkov baseline for existing repos, and the hardening bucket deferred from v3.0 (NetworkPolicy isolation, backup automation, monitoring/alerting).
+(exit=0)
+$ grep -cE 'Phases 23-29([^.]|$)' .planning/ROADMAP.md
+0
+(exit=1)
+RESULT: PASS
+
+== ROW 5 | D-02 no mutator touched real records ==
+Pass condition: only intended hunks: plan 05 Layout C re-lay, planner plan-list edit, orchestrator plan-line ticks in ROADMAP; hand-edited session/progress fields in STATE
+$ git diff --stat dbeabd7 -- .planning/ROADMAP.md .planning/STATE.md
+ .planning/ROADMAP.md | 215 +++++++++++++++++++++++++++------------------------
+ .planning/STATE.md   |  46 +++++++----
+ 2 files changed, 145 insertions(+), 116 deletions(-)
+(exit=0)
+$ git log --format='%h %s' dbeabd7..HEAD -- .planning/ROADMAP.md .planning/STATE.md
+0dd129c docs(29.7-06): complete gsd-sdk defect ledger plan
+568883c docs(29.7-05): hand-set STATE session fields and completed_plans 138 (D-02)
+2812a1e docs(29.7-05): reconcile ROADMAP to Layout C (R-01) and hand-set STATE progress (D-02)
+b16bc9f docs(29.7-04): complete .planning stragglers plan
+f74de9f docs(29.7-03): complete gsd-sdk ledger re-test plan
+8e5e416 docs(29.7-02): complete range-free ADR pointers and Project Structure plan
+9688ad3 docs(29.7-01): complete requirements-completed backfill plan
+cf767c5 docs(29.7): create phase plan
+(exit=0)
+$ git diff --stat -- .planning/ROADMAP.md .planning/STATE.md
+(exit=0)
+RESULT: PASS
+
+== ROW 6 | D-03 parse before/after ==
+Pass condition: after: phase_count 14, missing_phase_details null
+$ jq -c '{phase_count, missing_phase_details}' .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-roadmap-analyze-before.json .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-roadmap-analyze-after.json
+{"phase_count":7,"missing_phase_details":null}
+{"phase_count":14,"missing_phase_details":null}
+(exit=0)
+RESULT: PASS
+
+== ROW 7 | D-04 29.7 Goal/Requirements filled ==
+Pass condition: no [Urgent work, no TBD
+$ sed -n '/### Phase 29.7/,/^Plans:/p' .planning/ROADMAP.md | grep -E 'Goal|Requirements'
+**Goal:** ROADMAP.md, the v3.0 SUMMARY requirements-completed frontmatter, CLAUDE.md and the architecture doc match the repository's measured state; every known gsd-sdk tooling defect is re-tested on v1.42.3 and consolidated in .planning/GSD-SDK-DEFECTS.md; the .planning working-tree stragglers are resolved under operator ruling; and the v3.0 audit's Tech Debt item 7 and deferred item 5 are annotated CLOSED (Phase 29.7), with no change to security-platform, the charts, the cluster or CI.
+**Requirements**: none (tech-debt closure)
+(exit=0)
+$ sed -n '/### Phase 29.7/,/^Plans:/p' .planning/ROADMAP.md | grep -cE '\[Urgent work|TBD'
+0
+(exit=1)
+RESULT: PASS
+
+== ROW 8 | D-05/R-02 numstat on the 4 SUMMARYs ==
+Pass condition: each '2 0'
+$ git diff --numstat dbeabd7 -- .planning/phases/25-nexus-live-validation/25-07-SUMMARY.md .planning/phases/26-defectdojo-generic-chart/26-07-SUMMARY.md .planning/phases/28-defectdojo-dedup-and-triage/28-09-SUMMARY.md .planning/phases/29-defectdojo-live-validation/29-19-SUMMARY.md
+2	0	.planning/phases/25-nexus-live-validation/25-07-SUMMARY.md
+2	0	.planning/phases/26-defectdojo-generic-chart/26-07-SUMMARY.md
+2	0	.planning/phases/28-defectdojo-dedup-and-triage/28-09-SUMMARY.md
+2	0	.planning/phases/29-defectdojo-live-validation/29-19-SUMMARY.md
+(exit=0)
+RESULT: PASS
+
+== ROW 9 | D-05/R-02 summary-extract ==
+Pass condition: exact arrays [NEXUS-05] [DDOJO-01] [DDOJO-03,DDOJO-04] [DDOJO-05]; no '#' in any element
+$ gsd-sdk query summary-extract .planning/phases/25-nexus-live-validation/25-07-SUMMARY.md --fields requirements_completed --pick requirements_completed
+["NEXUS-05"]
+$ gsd-sdk query summary-extract .planning/phases/26-defectdojo-generic-chart/26-07-SUMMARY.md --fields requirements_completed --pick requirements_completed
+["DDOJO-01"]
+$ gsd-sdk query summary-extract .planning/phases/28-defectdojo-dedup-and-triage/28-09-SUMMARY.md --fields requirements_completed --pick requirements_completed
+["DDOJO-03","DDOJO-04"]
+$ gsd-sdk query summary-extract .planning/phases/29-defectdojo-live-validation/29-19-SUMMARY.md --fields requirements_completed --pick requirements_completed
+["DDOJO-05"]
+RESULT: PASS
+
+== ROW 10 | D-06 sweep ==
+Pass condition: no closer outside 25-07, 26-07, 28-09, 29-19 lacks requirements-completed; the 4 now carry their IDs
+$ for f in .planning/phases/2[3-9]*/*-SUMMARY.md; do yq --front-matter=extract '.requirements-completed // "ABSENT" | tojson' ...; done | grep -v -e '"ABSENT"' -e '\[\]'
+.planning/phases/23-nexus-generic-chart/23-08-SUMMARY.md	["NEXUS-01","NEXUS-03"]
+.planning/phases/24-nexus-anonymous-access-and-workstation-script/24-10-SUMMARY.md	["NEXUS-02","NEXUS-04"]
+.planning/phases/25-nexus-live-validation/25-07-SUMMARY.md	["NEXUS-05"]
+.planning/phases/26-defectdojo-generic-chart/26-07-SUMMARY.md	["DDOJO-01"]
+.planning/phases/27-defectdojo-ci-auto-import/27-10-SUMMARY.md	["DDOJO-02"]
+.planning/phases/28-defectdojo-dedup-and-triage/28-09-SUMMARY.md	["DDOJO-03","DDOJO-04"]
+.planning/phases/29-defectdojo-live-validation/29-19-SUMMARY.md	["DDOJO-05"]
+.planning/phases/29.1-close-gap-nexus-01-nexus-03-retroactive-verification-md-for-/29.1-01-SUMMARY.md	["NEXUS-01","NEXUS-03"]
+.planning/phases/29.1-close-gap-nexus-01-nexus-03-retroactive-verification-md-for-/29.1-02-SUMMARY.md	["NEXUS-01","NEXUS-03"]
+.planning/phases/29.3-fix-wr-05-chart-gates-fail-closed-on-missing-validate-tls-ya/29.3-05-SUMMARY.md	YQ-ERROR
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-14-SUMMARY.md	YQ-ERROR
+.planning/phases/29.6-close-27-uat-item-3-closed-pr-reopen-race-and-refresh-stale-/29.6-15-SUMMARY.md	YQ-ERROR
+.planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/29.7-04-SUMMARY.md	YQ-ERROR
+files scanned: 139
+closers checked: 24-10 25-07 26-07 27-10 28-09 29-19
+YQ-ERROR files: 29.3-05, 29.6-14, 29.6-15 are pre-existing (29.7-01-d06-sweep.txt (c)). 29.7-04-SUMMARY.md is NEW since the
+plan 01 sweep: key-files.modified L26 holds ': ' plus a backtick inside a plain scalar (yq: L25.C66 found character that
+cannot start any token). It carries no NEXUS/DDOJO ID and gsd-sdk summary-extract reads its requirements_completed as [],
+so the D-06 condition holds. Out of plan-07 scope; carried forward in 29.7-07-SUMMARY.md.
+RESULT: PASS
+
+== ROW 11 | D-07 xcheck ==
+Pass condition: XCHECK: 10/10, exit 0
+$ bash .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/29.7-xcheck.sh | tail -3
+| DDOJO-04 | 28 | 28-VERIFICATION.md:passed |  28-09 | checklist=1 table=Complete | PASS |
+| DDOJO-05 | 29 | 29-VERIFICATION.md:passed |  29-19 | checklist=1 table=Complete | PASS |
+XCHECK: 10/10 rows with all three sources
+(exit=0)
+RESULT: PASS
+
+== ROW 12 | D-08 CLAUDE.md range-free ==
+Pass condition: no match; docs/adr/README.md referenced
+$ grep -nE 'ADR-0[0-9]+ through ADR-0[0-9]+' CLAUDE.md
+(exit=1)
+$ grep -n 'docs/adr/README.md' CLAUDE.md
+10:- `docs/adr/` — individual architectural decision records, numbered ADR-NNN; `docs/adr/README.md` is the authoritative index
+(exit=0)
+RESULT: PASS
+
+== ROW 13 | D-09 ARCHITECTURE doc range-free ==
+Pass condition: no match; points at the index
+$ grep -nE 'ADR-0[0-9]+ through ADR-0[0-9]+' docs/ARCHITECTURE_AND_DESIGN.md
+(exit=1)
+$ grep -n 'docs/adr/README.md' docs/ARCHITECTURE_AND_DESIGN.md
+89:ADRs are numbered ADR-NNN; `docs/adr/README.md` is the authoritative index of every decision record.
+(exit=0)
+RESULT: PASS
+
+== ROW 14 | D-10 Project Structure paths true ==
+Pass condition: all paths exist; no red-team/ or drafts/; DefectDojo named
+$ sed -n '/^## Project Structure/,/^## Editing/p' CLAUDE.md
+## Project Structure
+
+- `docs/development-security-stack-option-1.md` — primary document (~2,450 lines), contains copy-pasteable configs and ASCII architecture diagrams
+- `docs/adr/` — individual architectural decision records, numbered ADR-NNN; `docs/adr/README.md` is the authoritative index
+- `docs/adoption-guide.md` — the adoption procedure for both consumption modes (copy-paste and reusable `workflow_call`) of the canonical `security-platform` pipeline
+- `scripts/` — standing documentation gates, including `bash scripts/check-adoption-guide.sh`
+- `docs/ARCHITECTURE_AND_DESIGN.md` — extracted architecture reference
+- `prd.md` — (when present) product requirements document
+- `progress.txt` — (when present) implementation tracking
+
+## Editing Guidelines
+(exit=0)
+$ ls -d docs/development-security-stack-option-1.md docs/adr/ docs/adr/README.md docs/adoption-guide.md scripts/ scripts/check-adoption-guide.sh docs/ARCHITECTURE_AND_DESIGN.md
+docs/adoption-guide.md
+docs/adr/
+docs/adr/README.md
+docs/ARCHITECTURE_AND_DESIGN.md
+docs/development-security-stack-option-1.md
+scripts/
+scripts/check-adoption-guide.sh
+(exit=0)
+$ wc -l docs/development-security-stack-option-1.md
+    2445 docs/development-security-stack-option-1.md
+(exit=0)
+$ grep -cE 'red-team/|drafts/' CLAUDE.md
+0
+(exit=1)
+$ grep -n 'kubernetes/defectdojo/' CLAUDE.md | cut -c1-40
+5:A **reference documentation project**
+(exit=0)
+Note: 'DefectDojo named' = the kubernetes/defectdojo/ chart path (29.7-02-PLAN L64, 29.7-02-SUMMARY L34). A first run of this
+readback grepped case-sensitive 'DefectDojo' (count 0) and recorded FAIL; that was a check-construction error, corrected here.
+RESULT: PASS
+
+== ROW 15 | D-10 Editing Guidelines untouched ==
+Pass condition: no hunk in ## Editing Guidelines
+$ git diff dbeabd7 -- CLAUDE.md
+diff --git a/CLAUDE.md b/CLAUDE.md
+index f955674..d591996 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -2,16 +2,14 @@
+
+ ## What This Repository Is
+
+-A **reference documentation project** (not buildable software). The primary artifact is `development-security-stack-option-1.md` — a complete blueprint for a zero-cost, open-source security and supply chain scanning stack for a single-developer AWS cloud practice. The canonical, live-validated GitHub Actions workflows that implement Phase 2 of that blueprint, together with the K8s packages that implement its Kubernetes infrastructure layer (`kubernetes/<service>/` Helm charts, starting with `kubernetes/nexus/`), live in `OttawaCloudConsulting/security-platform`, not in this repository — this repository documents them, it does not ship them.
++A **reference documentation project** (not buildable software). The primary artifact is `docs/development-security-stack-option-1.md` — a complete blueprint for a zero-cost, open-source security and supply chain scanning stack for a single-developer AWS cloud practice. The canonical, live-validated GitHub Actions workflows that implement Phase 2 of that blueprint, together with the K8s packages that implement its Kubernetes infrastructure layer (`kubernetes/<service>/` Helm charts, currently `kubernetes/nexus/` and `kubernetes/defectdojo/`), live in `OttawaCloudConsulting/security-platform`, not in this repository — this repository documents them, it does not ship them.
+
+ ## Project Structure
+
+-- `development-security-stack-option-1.md` — primary document (~2,300 lines), contains copy-pasteable configs and ASCII architecture diagrams
+-- `docs/adr/` — individual architectural decision records (ADR-001 through ADR-018); see `docs/adr/README.md` for index
++- `docs/development-security-stack-option-1.md` — primary document (~2,450 lines), contains copy-pasteable configs and ASCII architecture diagrams
++- `docs/adr/` — individual architectural decision records, numbered ADR-NNN; `docs/adr/README.md` is the authoritative index
+ - `docs/adoption-guide.md` — the adoption procedure for both consumption modes (copy-paste and reusable `workflow_call`) of the canonical `security-platform` pipeline
+ - `scripts/` — standing documentation gates, including `bash scripts/check-adoption-guide.sh`
+-- `red-team/` — three-agent red-team analysis and consolidated findings
+-- `drafts/` — in-progress section rewrites
+ - `docs/ARCHITECTURE_AND_DESIGN.md` — extracted architecture reference
+ - `prd.md` — (when present) product requirements document
+ - `progress.txt` — (when present) implementation tracking
+(exit=0)
+$ git diff dbeabd7 -- CLAUDE.md | sed -n '/^## Editing Guidelines/,$p' | grep -cE '^[-+]'
+0
+(exit=1)
+Editing Guidelines section diff dbeabd7 vs working tree exit=0 (0 = identical)
+RESULT: PASS
+
+== ROW 16 | D-11 ledger shape ==
+Pass condition: >= 13 entries plus L-14..L-16; each entry has Source, Status, Command, Actual
+$ grep -c '^## GSD-SDK-' .planning/GSD-SDK-DEFECTS.md
+16
+(exit=0)
+$ grep -c '^\*\*Source:\*\*' .planning/GSD-SDK-DEFECTS.md
+16
+(exit=0)
+$ grep -c '^\*\*Status:\*\*' .planning/GSD-SDK-DEFECTS.md
+16
+(exit=0)
+$ grep -c '^\*\*Command:\*\*' .planning/GSD-SDK-DEFECTS.md
+16
+(exit=0)
+$ grep -c '^\*\*Actual' .planning/GSD-SDK-DEFECTS.md
+16
+(exit=0)
+RESULT: PASS
+
+== ROW 17 | D-12 version header; scratch-only mutators ==
+Pass condition: v1.42.3 present; guard REAL-UNCHANGED per batch and shasums unchanged
+$ grep -n 'v1.42.3' .planning/GSD-SDK-DEFECTS.md | head -5
+5:**Version under test:** gsd-sdk v1.42.3 (get-shit-done-cc 1.42.3)
+20:**Common observation (all entries):** on v1.42.3 every error result exits 0. The error is visible only in the JSON body, so a caller cannot detect failure from the exit code alone.
+45:Totals (v1.42.3, 2026-10-10): 13 REPRODUCES, 3 NEW, 0 FIXED, 0 CHANGED.
+57:**Actual (v1.42.3, 2026-10-10):** `{"error": "Field not found", "field": "--field"}` (exit 0). Positional form: top-level keys `["must_haves"]`, `.truths | length` = `0`, `.must_haves.truths | length` = `4`.
+64:gsd-sdk version: gsd-sdk v1.42.3
+(exit=0)
+$ grep -c 'v1.42.3' .planning/GSD-SDK-DEFECTS.md
+36
+(exit=0)
+$ grep -c '^REAL-UNCHANGED' .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-03-guard.txt
+11
+(exit=0)
+$ grep -c '^shasums unchanged: ROADMAP.md STATE.md REQUIREMENTS.md' .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-03-guard.txt
+11
+(exit=0)
+$ grep -ciE 'REAL-CHANGED|shasum.*(FAILED|mismatch)' .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-03-guard.txt
+0
+(exit=1)
+RESULT: PASS
+
+== ROW 18 | D-14 pointers in live docs ==
+Pass condition: PROJECT and audit lines hit
+$ grep -n 'GSD-SDK-DEFECTS.md' .planning/PROJECT.md .planning/v3.0-MILESTONE-AUDIT.md | cut -c1-160
+.planning/PROJECT.md:130:  - v2.0 tech debt (see `.planning/milestones/v2.0-ROADMAP.md` for full list): DIST-08 partial (ADR-019 missing from adoption-guide.md
+.planning/v3.0-MILESTONE-AUDIT.md:25:      - "Deferred items 6-8 CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md; defects not fixed. gsd-sdk t
+.planning/v3.0-MILESTONE-AUDIT.md:71:      - "CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md as GSD-SDK-001 (REPRODUCES); defect not fixed. D
+.planning/v3.0-MILESTONE-AUDIT.md:72:      - "CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md as GSD-SDK-002 (REPRODUCES); defect not fixed. D
+.planning/v3.0-MILESTONE-AUDIT.md:73:      - "CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md as GSD-SDK-003 (REPRODUCES); defect not fixed. D
+.planning/v3.0-MILESTONE-AUDIT.md:74:      - "CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md as GSD-SDK-004 (REPRODUCES); defect not fixed. D
+.planning/v3.0-MILESTONE-AUDIT.md:75:      - "CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md as GSD-SDK-005 (REPRODUCES); defect not fixed. D
+.planning/v3.0-MILESTONE-AUDIT.md:85:      - "CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md; defects not fixed. gsd-sdk tooling defects carr
+.planning/v3.0-MILESTONE-AUDIT.md:194:7. **Bookkeeping:** ROADMAP checkboxes for 26–28 and the missing 29.1 checklist line; 5 SUMMARYs lack `requirements-comple
+(exit=0)
+RESULT: PASS
+
+== ROW 19 | D-14 source files untouched ==
+Pass condition: empty diff since phase start and in the working tree
+$ git diff --stat dbeabd7 -- .planning/milestones/ '.planning/phases/*/deferred-items.md'
+(exit=0)
+$ git diff --stat -- .planning/milestones/ '.planning/phases/*/deferred-items.md'
+(exit=0)
+RESULT: PASS
+
+== ROW 20 | D-15 operator rulings executed ==
+Pass condition: no straggler left; only plan-07 files in flight (the audit edit and this readback file)
+$ git status --short .planning/
+ M .planning/v3.0-MILESTONE-AUDIT.md
+?? .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-07-final-readback.txt
+(exit=0)
+Classification: ' M' audit = plan 07 Task 1 edit; '??' readback = this file. Both are committed by plan 07, not stragglers (29.7-04 POST-STATE precedent).
+RESULT: PASS
+
+== ROW 21 | D-16 audit annotated ==
+Pass condition: all target items annotated with evidence paths (12 frontmatter items + Tech Debt Summary item 7)
+$ grep -n 'CLOSED (Phase 29.7' .planning/v3.0-MILESTONE-AUDIT.md | cut -c1-120
+24:      - "Deferred item 5 CLOSED (Phase 29.7): pre-existing working-tree changes to .planning/config.json (M) and .pla
+25:      - "Deferred items 6-8 CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md; defects not fixed. gsd
+71:      - "CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md as GSD-SDK-001 (REPRODUCES); defect not fi
+72:      - "CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md as GSD-SDK-002 (REPRODUCES); defect not fi
+73:      - "CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md as GSD-SDK-003 (REPRODUCES); defect not fi
+74:      - "CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md as GSD-SDK-004 (REPRODUCES); defect not fi
+75:      - "CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md as GSD-SDK-005 (REPRODUCES); defect not fi
+77:      - "CLOSED (Phase 29.7): Untracked .gitkeep in the 29.1 phase directory. Ruled with the other six (29.2-29.7), e
+80:      - "SUMMARY rc CLOSED (Phase 29.7): SUMMARY requirements-completed frontmatter missing for NEXUS-05 (25-07), DDO
+81:      - "ROADMAP checklist CLOSED (Phase 29.7): ROADMAP.md milestone checklist: Phases 26, 27, 28 still '[ ]' while t
+82:      - "ADR range CLOSED (Phase 29.7): CLAUDE.md says 'ADR-001 through ADR-018'; the index runs to ADR-028 (Phase 23
+85:      - "CLOSED (Phase 29.7): consolidated in .planning/GSD-SDK-DEFECTS.md; defects not fixed. gsd-sdk tooling defect
+(exit=0)
+$ grep -c 'CLOSED (Phase 29.7' .planning/v3.0-MILESTONE-AUDIT.md
+12
+(exit=0)
+$ grep -n '\*\*Closed by Phase 29.7:\*\*' .planning/v3.0-MILESTONE-AUDIT.md | cut -c1-40
+194:7. **Bookkeeping:** ROADMAP checkbox
+(exit=0)
+$ yq --front-matter=extract '.tech_debt | length' .planning/v3.0-MILESTONE-AUDIT.md
+10
+(exit=0)
+$ git diff -U0 .planning/v3.0-MILESTONE-AUDIT.md | grep -E '^[-+]' | grep -E '^[-+](status|  requirements|  phases|  integration|  flows):'
+(exit=1)
+$ grep -n 'fixed' .planning/v3.0-MILESTONE-AUDIT.md | grep -v 'not fixed' | cut -c1-100
+82:      - "ADR range CLOSED (Phase 29.7): CLAUDE.md says 'ADR-001 through ADR-018'; the index runs
+191:4. **29 follow-up (b) / WR-04:** the `scan-target:${{ github.sha }}` tag defeats trivy-image ded
+(exit=0)
+Judgement on the 'fixed' grep: line 82 'paths fixed' is CLAUDE.md Project Structure (not a gsd-sdk defect); line 191 is the pre-existing Phase 29.4 item. No gsd-sdk annotation uses 'fixed' outside 'not fixed'.
+RESULT: PASS
+
+== ROW 22 | Cited evidence basenames exist (T-29.7-14) ==
+Pass condition: every 29.7-* basename cited in the audit exists under .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/
+$ grep -oE '29\.7-[A-Za-z0-9.-]+\.(txt|md|json)' .planning/v3.0-MILESTONE-AUDIT.md | sort -u | while read b; do ls .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/$b; done
+.planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-01-d06-sweep.txt
+.planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-01-summary-extract.txt
+.planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-02-paths.txt
+.planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-03-status.md
+.planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-04-stragglers.txt
+.planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-05-readback.txt
+.planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-roadmap-analyze-after.json
+.planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-roadmap-analyze-before.json
+.planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm/evidence/29.7-xcheck.md
+$ ls .planning/GSD-SDK-DEFECTS.md
+.planning/GSD-SDK-DEFECTS.md
+(exit=0)
+RESULT: PASS
+
+FINAL: 22/22
