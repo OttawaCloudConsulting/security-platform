@@ -1,0 +1,102 @@
+{
+  "milestones": [
+    {
+      "heading": "🔄 v3.0 K8s Infra & Dashboards",
+      "version": "v3.0"
+    }
+  ],
+  "phases": [
+    {
+      "number": "23",
+      "name": "Nexus Generic Chart",
+      "goal": "Public Helm chart wraps the community `stevehipwell/nexus3` subchart (runs the official Sonatype Nexus image; no Sonatype-published chart named `nexus3` exists) and deploys Nexus Repository with npm, PyPI, and Docker proxy repos configured by default (Helm proxy is consumer-configured, no universal default exists post-Helm-Hub), using the cluster's default StorageClass unless overridden.",
+      "depends_on": null,
+      "plan_count": 8,
+      "summary_count": 8,
+      "has_context": true,
+      "has_research": true,
+      "disk_status": "complete",
+      "roadmap_complete": true
+    },
+    {
+      "number": "24",
+      "name": "Nexus Anonymous Access and Workstation Script",
+      "goal": "Nexus proxy repos allow anonymous pull (no auth required for read/proxy access), and a workstation install script configures a target repo's package-manager files (`.npmrc`, `pip.conf`, Docker/Helm registry config) to route through a given Nexus instance.",
+      "depends_on": null,
+      "plan_count": 10,
+      "summary_count": 10,
+      "has_context": true,
+      "has_research": true,
+      "disk_status": "complete",
+      "roadmap_complete": true
+    },
+    {
+      "number": "25",
+      "name": "Nexus Live Validation",
+      "goal": "The Nexus generic chart (Phase 23) with anonymous pull (Phase 24) is deployed to the operator's homelab cluster via a private ArgoCD overlay, and proxy pulls (npm/PyPI/Docker/Helm) are proven live against that deployment.",
+      "depends_on": null,
+      "plan_count": 7,
+      "summary_count": 7,
+      "has_context": true,
+      "has_research": true,
+      "disk_status": "complete",
+      "roadmap_complete": true
+    },
+    {
+      "number": "26",
+      "name": "DefectDojo Generic Chart",
+      "goal": "Public Helm chart deploys DefectDojo with external ingress and cert-manager-issued TLS, generic for any Kubernetes cluster: environment-specific values (hostnames, StorageClass overrides, ClusterIssuer names) are consumer-supplied, never baked into the public package.",
+      "depends_on": null,
+      "plan_count": 7,
+      "summary_count": 7,
+      "has_context": true,
+      "has_research": true,
+      "disk_status": "complete",
+      "roadmap_complete": false
+    },
+    {
+      "number": "27",
+      "name": "DefectDojo CI Auto-Import",
+      "goal": "`security-platform` scan jobs automatically import their SARIF/JSON findings into a DefectDojo instance after each run.",
+      "depends_on": null,
+      "plan_count": 14,
+      "summary_count": 14,
+      "has_context": true,
+      "has_research": true,
+      "disk_status": "complete",
+      "roadmap_complete": false
+    },
+    {
+      "number": "28",
+      "name": "DefectDojo Dedup and Triage",
+      "goal": "Deduplication rules collapse repeated findings across scans and tools, and a triage workflow for reviewing and dispositioning findings is documented and configured.",
+      "depends_on": null,
+      "plan_count": 9,
+      "summary_count": 9,
+      "has_context": true,
+      "has_research": true,
+      "disk_status": "complete",
+      "roadmap_complete": false
+    },
+    {
+      "number": "29",
+      "name": "DefectDojo Live Validation",
+      "goal": "The DefectDojo generic chart (Phase 26) is deployed to the operator's homelab cluster via a private ArgoCD overlay, and CI import (Phase 27) with dedup/triage (Phase 28) is proven live end-to-end against that deployment.",
+      "depends_on": null,
+      "plan_count": 20,
+      "summary_count": 20,
+      "has_context": true,
+      "has_research": true,
+      "disk_status": "complete",
+      "roadmap_complete": true
+    }
+  ],
+  "phase_count": 7,
+  "completed_phases": 7,
+  "total_plans": 75,
+  "total_summaries": 75,
+  "progress_percent": 100,
+  "current_phase": null,
+  "next_phase": null,
+  "missing_phase_details": null
+}

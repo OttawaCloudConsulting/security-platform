@@ -7,11 +7,11 @@ stopped_at: Completed 29.7-04-PLAN.md
 last_updated: "2026-10-10T00:47:00.000Z"
 last_activity: 2026-10-09 -- Plan 29.7-04 complete (.planning stragglers resolved per operator ruling, audit deferred item 5)
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 75
-  completed_plans: 75
-  percent: 100
+  total_phases: 14
+  completed_phases: 13
+  total_plans: 140
+  completed_plans: 137
+  percent: 93
 ---
 
 # Project State
@@ -409,6 +409,7 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 29.7-02]: CLAUDE.md and docs/ARCHITECTURE_AND_DESIGN.md ADR mentions made range-free (ADR-NNN, docs/adr/README.md is the authoritative index; 33 ADRs measured); CLAUDE.md Project Structure corrected (docs/ primary doc path, ~2,450 lines, red-team/ and drafts/ removed, kubernetes/defectdojo/ named per security-platform origin/main 6c0d531); Editing Guidelines untouched; no gate script (D-08)
 - [Phase 29.7-03]: gsd-sdk defects L-01..L-16 re-tested on v1.42.3 with 29.7-ledger-retest.sh: 13 REPRODUCES, 3 NEW (L-14, L-15, L-16), 0 FIXED, 0 CHANGED (evidence/29.7-03-status.md). Every mutator ran only in a mktemp copy named .planning (fixture dbeabd7, env -u GSD_WORKSTREAM, --project-dir); 11/11 scratch runs REAL-UNCHANGED. Every successful STATE mutator rewrites frontmatter status/completed_plans without reporting it, and every error result exits 0
 - [Phase 29.7-04]: .planning stragglers resolved per the operator's grouped ruling "config.json: commit; v2.0 audit: commit deletion; gitkeep: delete all (all 7)" (fd3cd62, evidence/29.7-04-stragglers.txt). config.json commit keeps workflow.use_worktrees false in history, so the remaining 29.7 plans run sequentially on the main tree; the root v2.0 audit deletion loses nothing (archived copy shasum MATCH d90e4a03); the 7 never-tracked .gitkeep files were removed with plain rm, so .planning/phases still tracks no .gitkeep. Audit deferred item 5 closed
+- [Phase 29.7-05]: ROADMAP.md re-laid to template Layout C (R-01) and the STATE.md progress block hand-set from roadmap.analyze by inspection (D-02), never by invoking mutating gsd-sdk state or roadmap handlers; every state mutator rewrites this block unreported (ledger L-11), so diff STATE.md lines 1-15 after any orchestrator state call
 
 ### Pending Todos
 

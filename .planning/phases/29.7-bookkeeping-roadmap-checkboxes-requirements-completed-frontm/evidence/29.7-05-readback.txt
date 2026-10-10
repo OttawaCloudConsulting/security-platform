@@ -1,0 +1,148 @@
+29.7-05 readback (ROADMAP Layout C reconcile, STATE progress hand-set)
+Executed 2026-10-10T00:48Z on gsd-sdk v1.42.3. Only read-only roadmap.analyze was run; no gsd-sdk mutator (state/roadmap/phase) was invoked.
+PD = .planning/phases/29.7-bookkeeping-roadmap-checkboxes-requirements-completed-frontm
+
+== Step 1: before-parse (D-03) ==
+$ gsd-sdk query roadmap.analyze > PD/evidence/29.7-roadmap-analyze-before.json
+$ jq -e '.phase_count == 14 and .missing_phase_details == null and ([.phases[] | select(.number|IN("26","27","28","29.1","29.2","29.3","29.4","29.5","29.6")) | .roadmap_complete] | all) and ([.phases[] | select(.number=="29.7") | .roadmap_complete] == [false])' PD/evidence/29.7-roadmap-analyze-before.json
+false
+oracle-before exit=1
+summary: {"phase_count":7,"completed_phases":7,"total_plans":75,"total_summaries":75,"progress_percent":100,"current_phase":null,"next_phase":null,"missing_phase_details":null}
+shasum ROADMAP.md / STATE.md before and after the analyze call: OK / OK (read-only confirmed)
+pre-edit ROADMAP copied to session scratchpad roadmap.before.md (509 lines, 155 blank lines, 14 '### Phase' headings)
+
+== Pre-edit checks ==
+$ grep -nE 'Phases 23-29([^.]|$)' .planning/ROADMAP.md
+8   (Milestones line; wording edit)
+13  (v3.0 <summary>; dropped in Layout C)
+375 (Next Milestone paragraph; wording edit)
+-> exactly the 3 named anchors; no other occurrence.
+$ git diff --stat .planning/STATE.md
+(empty: STATE.md clean against HEAD b16bc9f before this plan)
+
+== Re-measured PLAN/SUMMARY counts (ls, at Task 1 time) ==
+29.1 plans=2 summaries=2    (matches RESEARCH)
+29.2 plans=12 summaries=12  (matches)
+29.3 plans=7 summaries=7    (matches)
+29.4 plans=10 summaries=10  (matches)
+29.5 plans=12 summaries=12  (matches)
+29.6 plans=15 summaries=15  (matches)
+29.7 plans=7 summaries=4    -> row written as 4/7 In Progress. S was measured before this plan's own
+                              SUMMARY existed; the row is correct at Task 1 time and is not hand-ticked later (D-04).
+
+== Step 2: re-layout method (D-02, hand edit) ==
+Structural move: scratchpad relayout.sh sliced roadmap.before.md by anchor regexes (each asserted unique) with sed -n
+ranges, so every carried line is byte-identical. Resolved anchors:
+PHASES=10 DOPEN=12 CK=15-21 P23=23 P29END=286 V3CLOSE=288 SHIP=290-333 PROG=335 ROW29=371 NEXT=373-375 P291=377 TOTAL=509
+Structural-only sorted diff (before content edits): -1 blank, -</details>, -<details open>, -v3.0 <summary>, +v3.0 heading. Nothing else.
+Content edits then applied with Edit-tool string replacements (3 wording, 3 ticks, 7 checklist lines, 29.7 Goal/Requirements, 7 rows).
+
+== Task 1 verify block ==
+$ R=.planning/ROADMAP.md && test $(grep -c '<details open>' $R) -eq 0 && test $(grep -cE '^- \[x\] \*\*Phase (2[6-8]|29\.[1-6]):' $R) -eq 9 && test $(grep -cE '^- \[ \] \*\*Phase 29\.7:' $R) -eq 1 && test $(grep -cE '^\| 29\.[1-7]\. ' $R) -eq 7 && test $(grep -cE 'Phases 23-29([^.]|$)' $R) -eq 0 && gsd-sdk query roadmap.analyze | jq -e '<oracle>' >/dev/null && echo OK
+VERIFY-OK
+$ grep -c '^### 🔄 v3.0 K8s Infra & Dashboards (In Progress)$' .planning/ROADMAP.md
+1
+Order (line numbers): last </details> 55 < ### 🔄 v3.0 57 < ### Phase 23: 74 < ### Phase 29.1: 339 < ## Progress 473 < ## Next Milestone 518  -> ORDER-OK
+$ awk '/^## Next Milestone/{f=1} f && /^### Phase/' .planning/ROADMAP.md
+(no output)
+$ grep -c '^### Phase' .planning/ROADMAP.md
+14   (pre-edit 14; unchanged)
+
+== Task 2 readbacks ==
+(a) $ gsd-sdk query roadmap.analyze > PD/evidence/29.7-roadmap-analyze-after.json
+$ jq -e '<oracle as in Step 1>' PD/evidence/29.7-roadmap-analyze-after.json
+true
+oracle-after exit=0
+summary: {"phase_count":14,"completed_phases":13,"total_plans":140,"total_summaries":137,"progress_percent":98,"current_phase":"29.7","next_phase":null,"missing_phase_details":null}
+per phase: 23..29 and 29.1..29.6 roadmap_complete=true disk=complete; 29.7 roadmap_complete=false plans=7 summaries=4 disk=partial
+shasum ROADMAP.md / STATE.md before and after the analyze call: OK / OK (read-only confirmed)
+
+(b) $ grep -nE '^- \[(x| )\] \*\*Phase (2[6-8]|29\.[1-7]):' .planning/ROADMAP.md
+62:- [x] **Phase 26   63:- [x] **Phase 27   64:- [x] **Phase 28
+66:- [x] **Phase 29.1 67:- [x] **Phase 29.2 68:- [x] **Phase 29.3 69:- [x] **Phase 29.4 70:- [x] **Phase 29.5 71:- [x] **Phase 29.6
+72:- [ ] **Phase 29.7
+-> 9 [x], 1 [ ] (29.7). $ grep -E '^- \[ \] \*\*Phase 29\.7:' ROADMAP.md | grep -c '(completed'  -> 0
+$ grep -cE '^\| 29\.[1-7]\. ' .planning/ROADMAP.md -> 7
+$ grep -E '^\| 29\.7\. ' .planning/ROADMAP.md
+| 29.7. Bookkeeping: ROADMAP checkboxes, requirements-completed frontmatter, CLAUDE.md ADR range, gsd-sdk tooling ledger | v3.0 | 4/7 | In Progress |  |   (not Complete)
+$ sed -n '/^### Phase 29.7:/,/^Plans:/p' .planning/ROADMAP.md | grep -cE '\[Urgent work|TBD'  -> 0
+$ sed -n '/^### Phase 29.7:/,/^Plans:/p' .planning/ROADMAP.md | grep -c '\*\*Requirements\*\*: none (tech-debt closure)'  -> 1
+$ grep -cE 'Phases 23-29([^.]|$)' .planning/ROADMAP.md -> 0
+
+(c) Content preservation
+$ diff <(sort roadmap.before.md) <(sort .planning/ROADMAP.md)
+blank lines: before 155, after 154
+155d154  < (blank)                                     REASON: blank-line delta; the blank after the dropped <summary> no longer exists (155 -> 154)
+163,166c162,163
+  < - 🔄 **v3.0 ...** — Phases 23-29 (in progress)  REASON: old wording line 1 (Milestones line)
+  < - [ ] **Phase 26: ...                           REASON: unticked 26 line (now ticked, below)
+  < - [ ] **Phase 27: ...                           REASON: unticked 27 line (now ticked, below)
+  < - [ ] **Phase 28: ...                           REASON: unticked 28 line (now ticked, below)
+  > - 🔄 **v3.0 ...** — Phases 23-29.7 (in progress) REASON: new wording line 1
+  > - [ ] **Phase 29.7: ...** (INSERTED) - ...      REASON: new checklist line 7 of 7 (29.7, unticked, no date)
+192a190,192
+  > - [x] **Phase 26: ... (completed 2026-09-25)    REASON: ticked line 1 of 3
+  > - [x] **Phase 27: ... (completed 2026-09-26)    REASON: ticked line 2 of 3
+  > - [x] **Phase 28: ... (completed 2026-09-26)    REASON: ticked line 3 of 3
+193a194,199
+  > - [x] **Phase 29.1: ... (completed 2026-09-29) REASON: new checklist line 1 of 7
+  > - [x] **Phase 29.2: ... (completed 2026-09-30) REASON: new checklist line 2 of 7
+  > - [x] **Phase 29.3: ... (completed 2026-10-01) REASON: new checklist line 3 of 7
+  > - [x] **Phase 29.4: ... (completed 2026-10-04) REASON: new checklist line 4 of 7
+  > - [x] **Phase 29.5: ... (completed 2026-10-05) REASON: new checklist line 5 of 7
+  > - [x] **Phase 29.6: ... (completed 2026-10-08) REASON: new checklist line 6 of 7
+342d347  < **Goal:** [Urgent work - to be planned]     REASON: old 29.7 Goal
+350a356  > **Goal:** ROADMAP.md, the v3.0 SUMMARY ...  REASON: new 29.7 Goal (exact plan text)
+381a388  > **Requirements**: none (tech-debt closure)  REASON: new 29.7 Requirements
+383d389  < **Requirements**: TBD                       REASON: old 29.7 Requirements
+433a440  > ### 🔄 v3.0 K8s Infra & Dashboards (In Progress)  REASON: new Layout C heading
+451,452d457
+  < </details>                                     REASON: dropped v3.0 closing </details> (one of four; the 3 shipped ones remain)
+  < <details open>                                 REASON: dropped <details open>
+459d463  < <summary>🔄 v3.0 ... (Phases 23-29) — IN PROGRESS</summary>  REASON: dropped v3.0 <summary> (also old wording occurrence 2)
+482a487,493
+  > | 29.1. ... | v3.0 | 2/2 | Complete | 2026-09-29 |     REASON: new row 1 of 7
+  > | 29.2. ... | v3.0 | 12/12 | Complete | 2026-09-30 |   REASON: new row 2 of 7
+  > | 29.3. ... | v3.0 | 7/7 | Complete | 2026-10-01 |     REASON: new row 3 of 7
+  > | 29.4. ... | v3.0 | 10/10 | Complete | 2026-10-04 |   REASON: new row 4 of 7
+  > | 29.5. ... | v3.0 | 12/12 | Complete | 2026-10-05 |   REASON: new row 5 of 7
+  > | 29.6. ... | v3.0 | 15/15 | Complete | 2026-10-08 |   REASON: new row 6 of 7
+  > | 29.7. ... | v3.0 | 4/7 | In Progress |  |          REASON: new row 7 of 7
+492,493c503,504
+  < Not yet defined. v3.0 (Phases 23-29) is in progress. ...   REASON: old wording line 3 (Next Milestone paragraph)
+  < Phases execute in numeric order: 1 → 2 → ... → 29 (...)   REASON: old wording line 2 (execution order)
+  > Not yet defined. v3.0 (Phases 23-29.7) is in progress. ... REASON: new wording line 3 (rest of paragraph unchanged)
+  > Phases execute in numeric order: 1 → 2 → ... → 29 → 29.1 → ... → 29.7 (...)  REASON: new wording line 2
+Result: every < and > line explained; no unexplained line.
+(Full verbatim diff lines are reproduced in abbreviated form above; the full text of each new line is the exact plan text.)
+
+(d) STATE.md (hand edit with the Edit tool, D-02)
+progress values from PD/evidence/29.7-roadmap-analyze-after.json:
+  total_phases = .phase_count = 14
+  completed_phases = .completed_phases = 13
+  total_plans = .total_plans = 140
+  completed_plans = .total_summaries = 137
+  percent = round(100 * 13 / 14) = 93   (the state-mutator formula per RESEARCH Pitfall 2; analyze's own
+            progress_percent 98 is plan-based (137/140) and is deliberately not used)
+No other frontmatter key changed.
+$ git diff -U0 .planning/STATE.md   (against HEAD b16bc9f; STATE.md was clean before this plan)
+@@ -10,5 +10,5 @@ progress:
+-  total_phases: 7
+-  completed_phases: 7
+-  total_plans: 75
+-  completed_plans: 75
+-  percent: 100
++  total_phases: 14
++  completed_phases: 13
++  total_plans: 140
++  completed_plans: 137
++  percent: 93
+   -> HUNK 1 label: 29.7-05 (D-02)  (progress keys only, hand-set from the after-JSON)
+@@ -411,0 +412 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
++- [Phase 29.7-05]: ROADMAP.md re-laid to template Layout C (R-01) and the STATE.md progress block hand-set from roadmap.analyze by inspection (D-02), never by invoking mutating gsd-sdk state or roadmap handlers; every state mutator rewrites this block unreported (ledger L-11), so diff STATE.md lines 1-15 after any orchestrator state call
+   -> HUNK 2 label: 29.7-05 (D-02)  (the one decision line, immediately before ### Pending Todos)
+ORCHESTRATOR (L-11) hunks: 0 (orchestrator wrote nothing uncommitted since HEAD).
+Unattributed hunks: 0.
+
+== Mutator audit ==
+gsd-sdk commands run in this plan: `gsd-sdk query roadmap.analyze` (x3: before, Task 1 verify, after). No state.*, roadmap.* or phase.* mutator was invoked.
