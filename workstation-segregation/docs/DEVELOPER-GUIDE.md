@@ -16,6 +16,7 @@ For people changing the scripts. Operators should read [USER-GUIDE.md](USER-GUID
 ```
 deploy.sh                 entry: arg parsing, prereqs, orchestration, summary
 bin/watch.sh              cron entry: finds new client dirs, scaffolds them
+bin/codex-client.sh       validates client context and scrubs API/auth overrides before exec
 lib/common.sh             logging, run(), config loading, block/backup/file helpers, template render, TCC check
 lib/tools.sh              tool installers, checksum verification, versions.lock
 lib/global.sh             ~/.bashrc, ~/.bash_profile, ~/.gitconfig, ~/.claude/settings.json handling
@@ -75,8 +76,36 @@ Dry-run rule: any new code path that writes must go through `run`, a block/write
 - Validates the name, sets `R_CLIENT`, `R_CLIENT_UC`, `R_DIR`, `R_GH` (absolute `gh` path), `R_AGENT_PREFIX` (`""` or `"# "` per `ENABLE_AGENT_CLI_ISOLATION`).
 - Creates `.workstation/*`, `.aws`, `.kube` directories (mode 700 only when newly created).
 - `_install_tpl <template> <dest> <mode>` renders `templates/client/<template>` to `<client>/<dest>` **only if the destination does not exist** (returns 1 if it existed). Only a freshly created `.envrc` triggers `direnv allow`; a pre-existing `.envrc` is never trusted automatically.
-- `adopt` mode skips `ssh-fragment.sh` because that file is *sourced* by the user's shell and redefines `ssh`/`scp`/`sftp`; adopting must not change behaviour.
+- `adopt` mode skips SSH and Codex shell fragments because they are sourced by the user's shell; adopting must not change behaviour. New clients get the Codex fragment only when agent isolation is enabled. Codex and OpenAI config files are inert on adoption and always created if missing.
 - Writes the marker `.workstation/.segregation-managed` last.
+
+### Codex and GPT API environment handling
+
+The new `.envrc` template clears all exported `OPENAI_*` names using Bash 3.2's
+`compgen -e`, clears `CODEX_API_KEY` and `CODEX_ACCESS_TOKEN`, watches
+`.workstation/openai/env`, and loads it with `dotenv` when present. This API
+handling also applies when agent isolation is disabled. `CODEX_HOME` export and
+`CODEX_SQLITE_HOME` clearing follow `ENABLE_AGENT_CLI_ISOLATION` via
+`{{AGENT_PREFIX}}`; the Codex shell fragment is omitted when isolation is disabled.
+
+The Codex config and API env templates are installed with mode 600. Newly created
+Codex/OpenAI directories use mode 700; existing permissions and contents remain
+unchanged. Codex defaults enforce file credential storage and ChatGPT login,
+while leaving model, permissions, MCP servers and plugins to client customization.
+
+`bin/codex-client.sh` validates the client label, directory, expected `CODEX_HOME`
+and current working directory. It removes exported `OPENAI_*`, authentication
+overrides and `CODEX_SQLITE_HOME` in its own process, resolves the installed
+binary with `type -P codex`, and uses `exec` to preserve arguments and exit status.
+The parent shell keeps its API settings. Commands inside Codex reload API settings
+explicitly with `direnv exec "$WORKSTATION_CLIENT_DIR" <command>`; no Codex
+session hook or installer was added.
+
+The 2026-10-13 migration updated this workstation's three existing client `.envrc`
+files and installed their Codex fragments, with `.envrc.bak.<timestamp>` backups.
+This was a manual migration, not a change to adoption behavior. The local
+`../temp-update-configs.sh` (relative to the kit root) only runs the remaining
+direnv approvals. See the [workstation migration status](USER-GUIDE.md#this-workstation-migration-applied-on-2026-10-13).
 
 `regen_gitconfig_clients` writes `$KIT_CONFIG_DIR/gitconfig-clients`: one `includeIf "gitdir:<dir>/"` per top-level dir that has `.workstation/git/config`. It uses `gitdir/i:` on macOS (case-insensitive FS) and also emits the physical (`cd -P`) path when `CLIENT_ROOT` is reached through a symlink, because Git matches the real path.
 
@@ -123,6 +152,24 @@ Per-tool notes: terraform's version comes from the HashiCorp releases index (fir
 `scheduler/install.sh` dispatches on `uname` to `darwin.sh` or `linux.sh` (`install|remove`). Both source `cron-common.sh`, which builds one crontab line tagged `# workstation-segregation watcher` and edits the user crontab by filtering that tag, so other entries survive. The line runs a small `bash -c` wrapper that first tries to open `watch.sh` and prints a Full Disk Access hint to `cron.log` if macOS denies it (cron cannot read scripts under `~/Documents` without FDA). `darwin.sh` prints the FDA steps; `linux.sh` warns if no cron daemon is running.
 
 ## 9. Testing
+
+Run `/bin/bash tests/codex-isolation.sh` for temporary-client tests with real
+direnv and a stub Codex binary. It covers API environment transitions, explicit
+API access, launcher checks/scrubbing, argument and exit-status preservation,
+private permissions, adoption, disabled isolation, dry-run and fragment removal.
+No login, credentials or paid API calls are needed.
+Run `/bin/bash tests/codex-deploy.sh` to verify full dry-run and repeat deploys
+in a disposable home with a stub crontab, including adoption preservation.
+
+Both suites passed on macOS Bash 3.2 during implementation, along with syntax
+checks for the kit's shell files. ShellCheck passed for the new launcher and
+Codex fragment. The isolation suite also checks watched API-file reloads,
+explicit API access from the scrubbed Codex subprocess, and wrapper removal
+when switching clients or leaving them. Normalize macOS temporary fixture paths
+with `cd -P` to avoid direnv approvals differing between `/var` and `/private/var`.
+Live client checks after migration verified `CODEX_HOME`, authentication-override
+clearing and fragment loading using a temporary direnv approval store. No real
+login smoke test or paid API call was performed.
 
 The real deploy edits dotfiles, crontab and `~/.claude`; test in a fake HOME with a stub `crontab`:
 
@@ -172,8 +219,20 @@ The sandbox used during development blocks some hosts; tool tests need `github.c
 ## 11. Known gaps and ideas
 
 - Linux and awscli installers untested; direnv, age and awscli (Linux) have no upstream checksums.
-- Adopted clients do not receive `core.sshCommand`, the ssh wrapper or agent-CLI isolation.
+- Adoption does not automatically enable `core.sshCommand`, SSH wrappers or agent-CLI isolation; manually migrated behavior is preserved.
 - `gh auth setup-git` run after deploy re-adds global helpers after the include; re-run deploy to repair. A watcher check could do this automatically.
 - No `add-client` / `status` CLI, desktop notification, or zsh support (all deliberately out of scope).
 - Not segregated: Docker daemon, browsers, Slack, 1Password, `~/.terraform.d`, AWS token caches.
 - Tool updates are manual (`--update-tools`), not scheduled.
+
+## Gated AGY integration
+
+`bin/agy-client.sh` and `templates/client/agy-fragment.sh` use the existing
+fragment lifecycle. `lib/scaffold.sh` creates private HOME/TMPDIR and a private
+Git global configuration if both isolation flags are 1. Adoption prepares only
+inert files; existing environments and shell behavior remain intact.
+`lib/common.sh` defaults AGY isolation to 0. The live config is unchanged.
+
+See [AGY evidence and operator acceptance](AGY-LOGIN-ISOLATION.md) for limits,
+manual rollout and offline test commands. The original no-authentication probe
+remains unchanged. No real account evidence is implied by stub tests.

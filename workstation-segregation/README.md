@@ -4,7 +4,11 @@ Portable client segregation for a macOS or Ubuntu/Debian workstation. Each clien
 directory under one root; entering it (via direnv) switches cloud, cluster, Git, registry, SSH,
 agent-CLI and shell-history state to that client's. Generalised from `../workstation/`.
 
-Full documentation: [docs/USER-GUIDE.md](docs/USER-GUIDE.md) (operating it) and [docs/DEVELOPER-GUIDE.md](docs/DEVELOPER-GUIDE.md) (changing it).
+Full documentation: [docs/USER-GUIDE.md](docs/USER-GUIDE.md) (operating it) and [docs/DEVELOPER-GUIDE.md](docs/DEVELOPER-GUIDE.md) (changing it). Open problems: [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md).
+
+AGY integration is implemented but disabled pending a real two-account acceptance
+test. Run `./tests/agy-account-isolation.sh --state-dir /absolute/new/path` for
+the operator-run one-account persistence check. See [probe instructions and findings](docs/AGY-LOGIN-ISOLATION.md).
 
 ## Quick start
 
@@ -32,7 +36,7 @@ Open a new terminal afterwards. Options: `--config FILE`, `--dry-run`, `--skip-t
 ## New clients
 
 `mkdir $CLIENT_ROOT/acme` – within about `WATCH_INTERVAL_MIN + MIN_AGE_MIN` minutes the watcher creates
-`.envrc`, `.workstation/{git,gh,docker,helm,terraform,npm,python,age,ssh,bash,claude,codex}`,
+`.envrc`, `.workstation/{git,gh,docker,helm,terraform,npm,python,age,ssh,bash,claude,codex,openai}`,
 `.aws/config`, `.kube/config`, runs `direnv allow`, and refreshes the generated git includes.
 Log: `~/.local/state/workstation-segregation/watch.log`.
 
@@ -54,8 +58,15 @@ Scaffolded values are dummies (`REPLACE_ME`, `000000000000`, `*.example.invalid`
 | `.workstation/ssh/` | drop the client key at `id_ed25519`; add hosts to `config` |
 | `.workstation/{npm/npmrc,terraform/terraformrc,python/pip.conf,age/keys.txt}` | registry tokens / `age-keygen -o` |
 | `.workstation/claude`, `.workstation/codex` | log in once per client |
+| `.workstation/openai/env` | client's private GPT API key, project and optional organization/base URL |
 
 After editing `.envrc` run `direnv allow` (the kit only auto-approves files it generated).
+
+Codex uses a client ChatGPT login with file credentials; the client shell wrapper
+removes GPT API settings from Codex's environment. API scripts load only the
+client's private settings. Commands inside Codex can opt in with
+`direnv exec "$WORKSTATION_CLIENT_DIR" <command>`. See the
+[Codex/API operating and manual migration instructions](docs/USER-GUIDE.md#codex-cli-and-gpt-api-access).
 
 ## Assumptions and limitations
 
@@ -63,7 +74,7 @@ After editing `.envrc` run `direnv allow` (the kit only auto-approves files it g
 - **Bash only**, scripts run on stock macOS bash 3.2. Interactive integration needs the login shell to be bash (`chsh -s /bin/bash`; deploy warns). macOS bash 3.2 is enough; no bash 5 is installed.
 - **Paths must not contain whitespace** (`CLIENT_ROOT`, `BIN_DIR`, kit location).
 - **AWS SSO/CLI token caches** (`~/.aws/sso/cache`, `~/.aws/cli/cache`) are not relocatable by env var and stay shared; sso-session names are client-prefixed to keep them distinguishable.
-- **Agent CLIs:** with `ENABLE_AGENT_CLI_ISOLATION=1` new clients set `CLAUDE_CONFIG_DIR=<client>/.workstation/claude` and `CODEX_HOME=…/codex` – separate login, settings, plugins and MCP servers per client. Adopted clients keep their existing `.envrc` (shared config) unless you uncomment those lines.
+- **Agent CLIs:** with `ENABLE_AGENT_CLI_ISOLATION=1` new clients set `CLAUDE_CONFIG_DIR=<client>/.workstation/claude` and `CODEX_HOME=…/codex` for separate login, local settings and state. Common user/admin skills remain discoverable. Adopted clients keep their environment and shell behavior until manually migrated.
 - Docker daemon/images, browsers, Slack and 1Password vaults are **not** segregated.
 - Docker `config.json` deliberately has no `credsStore` (a shared keychain store would leak registry logins).
 - `gh auth setup-git` run later re-adds global helpers *after* the kit include; re-run `./deploy.sh` to repair ordering. Don't run it.

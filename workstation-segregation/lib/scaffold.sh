@@ -39,8 +39,22 @@ _mkdir_private() { # _mkdir_private <path>: mode 700, only when newly created
   run chmod 700 "$1"
 }
 
+# Private global Git defaults, followed by exactly this client's config.
+_install_agy_gitconfig() {
+  local dest="$R_DIR/.workstation/agy/gitconfig" key value
+  [ ! -e "$dest" ] && [ ! -L "$dest" ] || return 0
+  if [ "$DRY_RUN" = 1 ]; then log "DRY-RUN: create $dest"; return 0; fi
+  (umask 077; : > "$dest")
+  while IFS='=' read -r key value; do
+    case "$key" in ''|'#'*) continue ;; esac
+    git config --file "$dest" "$key" "$value"
+  done < "$KIT_ROOT/templates/git-global.conf"
+  git config --file "$dest" include.path "$R_DIR/.workstation/git/config"
+  chmod 600 "$dest"
+}
+
 # adopt: dir is already segregated; add only inert config files (no sourced shell
-# fragments that would change ssh/scp/sftp behaviour).
+# fragments that would change SSH or Codex behaviour).
 scaffold_client() { # scaffold_client <abs dir> [adopt]
   local dir="$1" mode="${2:-new}" name sub envrc_created=0
   name="$(basename "$dir")"
@@ -60,9 +74,14 @@ scaffold_client() { # scaffold_client <abs dir> [adopt]
   for sub in git bash; do
     [ -d "$dir/.workstation/$sub" ] || run mkdir -p "$dir/.workstation/$sub"
   done
-  for sub in gh docker helm helm/config helm/cache terraform npm python age ssh claude codex; do
+  for sub in gh docker helm helm/config helm/cache terraform npm python age ssh claude codex openai; do
     _mkdir_private "$dir/.workstation/$sub"
   done
+  # Inert private state may be prepared on adoption; never add a sourced wrapper.
+  if [ "$ENABLE_AGENT_CLI_ISOLATION" = 1 ] && [ "${ENABLE_AGY_CLI_ISOLATION:-0}" = 1 ]; then
+    for sub in agy agy/home agy/tmp; do _mkdir_private "$dir/.workstation/$sub"; done
+    _install_agy_gitconfig
+  fi
   _mkdir_private "$dir/.aws"
   _mkdir_private "$dir/.kube"
 
@@ -71,6 +90,12 @@ scaffold_client() { # scaffold_client <abs dir> [adopt]
   _install_tpl ssh-config              .workstation/ssh/config              600 || true
   if [ "$mode" != adopt ]; then
     _install_tpl ssh-fragment.sh       .workstation/bash/ssh.sh             644 || true
+    if [ "$ENABLE_AGENT_CLI_ISOLATION" = 1 ]; then
+      _install_tpl codex-fragment.sh   .workstation/bash/codex.sh           644 || true
+      if [ "${ENABLE_AGY_CLI_ISOLATION:-0}" = 1 ]; then
+        _install_tpl agy-fragment.sh   .workstation/bash/agy.sh             644 || true
+      fi
+    fi
   fi
   _install_tpl docker-config.json      .workstation/docker/config.json      600 || true
   _install_tpl terraformrc             .workstation/terraform/terraformrc   600 || true
@@ -79,6 +104,8 @@ scaffold_client() { # scaffold_client <abs dir> [adopt]
   _install_tpl uv.toml                 .workstation/python/uv.toml          600 || true
   _install_tpl age-keys.txt            .workstation/age/keys.txt            600 || true
   _install_tpl claude-settings.json    .workstation/claude/settings.json    600 || true
+  _install_tpl codex-config.toml       .workstation/codex/config.toml       600 || true
+  _install_tpl openai-env              .workstation/openai/env              600 || true
   _install_tpl aws-config              .aws/config                          600 || true
   _install_tpl kube-config             .kube/config                         600 || true
 

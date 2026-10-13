@@ -1,0 +1,6 @@
+# Client ChatGPT login; credentials stay in this CODEX_HOME/auth.json.
+cli_auth_credentials_store = "file"
+forced_login_method = "chatgpt"
+
+# Model, permissions, MCP servers and plugins use Codex defaults.
+# Customize this client here; do not copy global credentials or session history.

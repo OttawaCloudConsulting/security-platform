@@ -26,11 +26,23 @@ export NPM_CONFIG_USERCONFIG="$(expand_path .workstation/npm/npmrc)"
 export PIP_CONFIG_FILE="$(expand_path .workstation/python/pip.conf)"
 export SOPS_AGE_KEY_FILE="$(expand_path .workstation/age/keys.txt)"
 
-# Agent CLIs with a separate client account (fresh login per client; no shared
-# settings, plugins, MCP servers, or memory). Controlled by
+# Agent CLIs with a separate client account and local settings/state.
+# Common user/admin skills remain discoverable. Controlled by
 # ENABLE_AGENT_CLI_ISOLATION in workstation-segregation.conf at scaffold time.
 {{AGENT_PREFIX}}export CLAUDE_CONFIG_DIR="$(expand_path .workstation/claude)"
 {{AGENT_PREFIX}}export CODEX_HOME="$(expand_path .workstation/codex)"
+{{AGENT_PREFIX}}unset CODEX_SQLITE_HOME
+
+# GPT API scripts use only this client's private API settings. Clear every
+# inherited exported OPENAI_* name, including future SDK options.
+for _openai_var in $(compgen -e); do
+  case "$_openai_var" in OPENAI_*) unset "$_openai_var" ;; esac
+done
+unset _openai_var CODEX_API_KEY CODEX_ACCESS_TOKEN
+watch_file .workstation/openai/env
+if [ -f .workstation/openai/env ]; then
+  dotenv .workstation/openai/env
+fi
 
 # Optional. Enable only when this client needs it.
 # uv: UV_CONFIG_FILE replaces ALL discovered uv config, including a repo's

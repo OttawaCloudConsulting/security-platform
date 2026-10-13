@@ -21,6 +21,9 @@ MIN_AGE_MIN=2
 # client); 0 = scaffolded but commented out.
 ENABLE_AGENT_CLI_ISOLATION=1
 
+# Pending real two-account acceptance; requires agent isolation too.
+ENABLE_AGY_CLI_ISOLATION=0
+
 # Tools installed as release binaries into BIN_DIR. Remove names to skip them.
 INSTALL_TOOLS="jq yq direnv gh kubectl helm starship sops age terraform awscli"
 BIN_DIR=~/.local/bin

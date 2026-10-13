@@ -1,0 +1,6 @@
+# Private GPT API settings for this client (dotenv syntax, no shell commands).
+# Uncomment and fill only the settings this client's scripts need.
+# OPENAI_API_KEY=REPLACE_ME
+# OPENAI_PROJECT_ID=REPLACE_ME
+# OPENAI_ORG_ID=REPLACE_ME
+# OPENAI_BASE_URL=https://api.openai.com/v1

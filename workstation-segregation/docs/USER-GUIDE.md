@@ -59,6 +59,7 @@ File: `workstation-segregation.conf` in the project directory (shell syntax, `KE
 | `ADOPT_DIRS` | empty | Pre-existing, not-yet-segregated directories to treat as clients. |
 | `WATCH_INTERVAL_MIN` | `5` | How often cron runs the watcher. Re-run deploy after changing it. |
 | `MIN_AGE_MIN` | `2` | A new directory must be unmodified this long before scaffolding (avoids half-copied dirs). `0` disables. |
+| `ENABLE_AGY_CLI_ISOLATION` | `0` | AGY wrapper for new clients only when both isolation flags are 1; enable only after two-account acceptance. |
 | `ENABLE_AGENT_CLI_ISOLATION` | `1` | New clients get their own `CLAUDE_CONFIG_DIR` / `CODEX_HOME`. `0` writes them commented out. |
 | `INSTALL_TOOLS` | jq yq direnv gh kubectl helm starship sops age terraform awscli | Tools to install. Remove names to skip. |
 | `BIN_DIR` | `~/.local/bin` | Where tool binaries go. Put first on `PATH` by the shell integration. |
@@ -90,6 +91,7 @@ All paths are relative to the client directory. Dummy values are `REPLACE_ME`, `
 | `.workstation/npm/npmrc`, `terraform/terraformrc`, `python/pip.conf` | Registry URLs and tokens, if the client needs them. |
 | `.workstation/age/keys.txt` | Replace the placeholder with a real key: `age-keygen -o keys.txt`. |
 | `.workstation/claude`, `.workstation/codex` | Log in to Claude Code / Codex once per client. |
+| `.workstation/openai/env` | Uncomment the client's GPT API key, project and organization settings as needed. Keep this private local file out of repositories. |
 | `.envrc` | Optional extras are listed as comments (uv index, 1Password account, k9s). |
 
 After editing `.envrc`, run `direnv allow`. Only the `.envrc` the tool generated is auto-approved; later edits and any pre-existing `.envrc` need your approval.
@@ -107,13 +109,145 @@ Git identity and credentials only apply inside a Git repository under the client
 
 ## 5. Existing clients
 
-Directories that already carry segregation (an `.envrc` mentioning `WORKSTATION_CLIENT`, or a `.workstation/` folder) are **adopted** at deploy: missing files are added, nothing is overwritten, and your `.envrc` is left alone. Adopted clients do not get `core.sshCommand`, the `ssh` wrapper, or Claude/Codex isolation. Add them by hand, copying the lines from `templates/client/envrc` and `templates/client/git-config`.
+Directories that already carry segregation (an `.envrc` mentioning `WORKSTATION_CLIENT`, or a `.workstation/` folder) are **adopted** at deploy: missing files are added, nothing is overwritten, and your `.envrc` is left alone. Adoption does not enable `core.sshCommand`, SSH wrappers or Claude/Codex isolation automatically. Existing manual configuration is preserved. Add any missing behavior by hand, copying the lines from `templates/client/envrc` and `templates/client/git-config`.
 
 Other directories that existed at first deploy are ignored (they are not clients). Add a name to `ADOPT_DIRS` and re-run deploy to include one.
 
+To preview additions to existing clients, run from the client root:
+
+```bash
+bash workstation-segregation/deploy.sh --dry-run --skip-tools
+```
+
+For adopted clients, `DRY-RUN: create` lists missing files that would be added;
+existing files are skipped. The preview does not show file contents or apply
+manual migration to existing `.envrc` files or shell fragments. Global shell,
+Git, Claude-hook and cron lines describe normal deploy actions; they do not
+necessarily mean the current configuration differs. No changes are made.
+
+### Codex CLI and GPT API access
+
+New clients with agent isolation enabled receive `.workstation/codex/config.toml`
+with `cli_auth_credentials_store = "file"` and `forced_login_method = "chatgpt"`.
+Codex settings, file credentials and local state use the client's `CODEX_HOME`;
+inherited `CODEX_SQLITE_HOME` is cleared. Model, permissions, MCP servers and
+plugins retain Codex defaults and can be customized per client. See the official
+[authentication documentation](https://learn.chatgpt.com/docs/auth) and
+[environment documentation](https://learn.chatgpt.com/docs/config-file/environment-variables).
+
+GPT API scripts use `.workstation/openai/env` (dotenv syntax). The directory is
+created with mode 700 and this file and the Codex config with mode 600. Existing
+files and permissions are preserved. Uncomment `OPENAI_API_KEY`,
+`OPENAI_PROJECT_ID` and `OPENAI_ORG_ID` as needed; `OPENAI_BASE_URL` is optional.
+Use a separate API key and project for each client. SDKs differ in which settings
+they consume; pass the project/organization explicitly in scripts when necessary.
+The `.envrc` clears inherited exported `OPENAI_*`, `CODEX_API_KEY` and
+`CODEX_ACCESS_TOKEN` before loading the private file, and watches it for changes.
+An unconfigured client receives no inherited API settings. Leaving the client
+restores the outer shell environment.
+
+The client's `codex` shell function calls `bin/codex-client.sh`. The launcher
+checks the active client, current directory and expected `CODEX_HOME`, then
+removes `OPENAI_*` and Codex authentication/state overrides from its subprocess
+environment. It preserves cloud/tool variables, arguments and exit status.
+It uses the installed Codex binary on PATH; the kit adds no installer or model pin.
+Calling the binary directly or `command codex` bypasses the shell wrapper.
+
+Start Codex from the intended client directory and run a fresh `codex login`,
+then `codex login status`. Choose that client's ChatGPT account in the browser.
+Do not copy global authentication, settings or session history into the client.
+Stop the old Codex process and start a new one after switching clients; a running
+process retains the environment and login it started with.
+
+When a command run by Codex needs GPT API access, explicitly reload the client's
+API environment for that command:
+
+```bash
+direnv exec "$WORKSTATION_CLIENT_DIR" python path/to/gpt_script.py
+```
+
+No automatic API-key forwarding or Codex session hook is installed. Common
+user/admin skills remain available through Codex's normal discovery. This
+separates local configuration and credentials; it does not restrict filesystem
+access, global skill discovery, desktop/browser sessions or remote account data.
+
+### Manual migration for mlse, occ and zonal
+
+Adoption adds missing Codex/API configuration files but preserves each existing
+`.envrc` and shell fragments. For **each** of `~/Documents/mlse`,
+`~/Documents/occ` and `~/Documents/zonal`:
+
+1. Back up `.envrc`. Enable its existing
+   `export CODEX_HOME="$(expand_path .workstation/codex)"` line and add
+   `unset CODEX_SQLITE_HOME` immediately below it.
+2. Copy the GPT API clearing/loading block from `templates/client/envrc`
+   (the `for _openai_var` loop through the `dotenv` conditional) into `.envrc`.
+3. Ensure the missing private files have been scaffolded. If doing this manually,
+   create `.workstation/{codex,openai}` with mode 700 and copy
+   `templates/client/codex-config.toml` and `templates/client/openai-env` to
+   `.workstation/codex/config.toml` and `.workstation/openai/env` with mode 600,
+   preserving any existing files. Fill the API file privately.
+4. Add `.workstation/bash/codex.sh` with the following function (back up any
+   existing fragment before editing):
+
+   ```bash
+   codex() { /bin/bash "$HOME/Documents/workstation-segregation/bin/codex-client.sh" "$@"; }
+   ```
+
+   Adjust the kit path if installed elsewhere. Open a new terminal to load the
+   fragment; the fragment hook only reloads on client-directory changes.
+5. Enter that client, run `direnv allow`, and let the shell prompt reload its
+   environment. Confirm `CODEX_HOME` points to that client's directory, then
+   run `codex login` and `codex login status` with the intended ChatGPT account.
+
+These steps are manual; re-running deploy never migrates existing environment or
+shell behavior automatically.
+
+### This workstation: migration applied on 2026-10-13
+
+The existing `mlse`, `occ` and `zonal` clients have now been updated:
+
+- Each `.envrc` was backed up as `.envrc.bak.<timestamp>`, its existing
+  `CODEX_HOME` export enabled, and `CODEX_SQLITE_HOME` clearing added.
+- Each `.envrc` now clears inherited exported `OPENAI_*` and Codex authentication
+  overrides before watching and loading `.workstation/openai/env`.
+- Each client has `.workstation/bash/codex.sh`, calling the kit launcher.
+- The private Codex/API files created by deploy were preserved; their permissions
+  and Codex authentication defaults were checked.
+
+Bash 3.2 syntax and real direnv environment checks passed for all three clients.
+The checks used a temporary approval store because the agent sandbox could not
+write to this user's normal direnv approval store. Approval in that store and
+client logins were not confirmed during this update.
+
+The local [temp-update-configs.sh](../../temp-update-configs.sh) helper lives in
+`~/Documents`, alongside the client directories. Run it as your normal user:
+
+```bash
+cd ~/Documents
+./temp-update-configs.sh
+```
+
+It verifies that direnv and all three `.envrc` files exist, then runs `direnv allow`
+for each client. It only approves the already-updated environments; it does not
+edit configuration or perform logins. It is a temporary local helper outside
+the portable kit. The equivalent commands are:
+
+```bash
+for client in mlse occ zonal; do
+  direnv allow "$HOME/Documents/$client"
+done
+```
+
+After approval, open a new terminal so the client shell fragments load. Enter
+each client directory, run `codex login` with its ChatGPT account, and check
+`codex login status`. Fill each private `.workstation/openai/env` with that
+client's GPT API settings when needed. API keys and login credentials were not
+populated or copied as part of the migration.
+
 ## 6. What is and is not segregated
 
-Segregated per client: AWS config and credentials file, kubeconfig, GitHub CLI login and Git credentials, Git identity, SSH keys and config, Docker registry logins, Helm config/cache, Terraform CLI config, npm/pip config, SOPS age key, shell history, Claude and Codex config (when enabled).
+Segregated per client: AWS config and credentials file, kubeconfig, GitHub CLI login and Git credentials, Git identity, SSH keys and config, Docker registry logins, Helm config/cache, Terraform CLI config, npm/pip config, SOPS age key, shell history, Claude and Codex config (when enabled), and GPT API settings loaded by the new environment template.
 
 Not segregated: AWS SSO and CLI token caches (`~/.aws/sso/cache`, `~/.aws/cli/cache`), Docker daemon and images, `~/.terraform.d`, browsers, Slack, 1Password vaults, other agent CLIs. SSH inside client directories uses only the client key (`IdentitiesOnly yes`), so agent-held keys are not offered there unless you edit `.workstation/ssh/config`.
 
@@ -165,3 +299,9 @@ Deploy leaves the old setup alone and warns about it. Running both duplicates ho
 | Each client directory | Created-if-missing files only. |
 
 Every changed file is backed up as `<file>.bak.<timestamp>` when its content changes.
+
+## AGY CLI (disabled pending acceptance)
+
+See [persistent account testing, rollout and rollback](AGY-LOGIN-ISOLATION.md).
+Private HOME changes apply only to the AGY child; existing clients are not
+automatically migrated. One-account testing cannot authorize activation.
