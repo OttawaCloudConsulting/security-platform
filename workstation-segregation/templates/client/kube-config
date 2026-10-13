@@ -1,0 +1,9 @@
+# kubeconfig for {{CLIENT}} (KUBECONFIG). Populate with, for example:
+#   aws eks update-kubeconfig --name REPLACE_ME --region REPLACE_ME
+apiVersion: v1
+kind: Config
+preferences: {}
+clusters: []
+contexts: []
+users: []
+current-context: ""

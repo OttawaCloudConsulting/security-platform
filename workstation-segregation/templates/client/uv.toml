@@ -1,0 +1,5 @@
+# uv config for {{CLIENT}}. Not active by default: see UV_CONFIG_FILE note in .envrc.
+#
+# [[index]]
+# name = "private"
+# url = "https://REPLACE_ME.example.invalid/simple"

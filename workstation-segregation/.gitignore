@@ -1,0 +1,6 @@
+workstation-segregation.conf
+versions.lock
+versions.conf
+*.bak.*
+.DS_Store
+.claude/

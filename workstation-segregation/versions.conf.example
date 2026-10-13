@@ -1,0 +1,6 @@
+# Optional pins, sourced after the main config. Unpinned tools install the latest
+# release. After a deploy, versions.lock lists what was installed; to reproduce
+# it on another workstation: cp versions.lock versions.conf with each line
+# prefixed TOOL_VERSION_ and upper-cased, e.g. jq=1.8.1 -> TOOL_VERSION_JQ=1.8.1
+# TOOL_VERSION_JQ=1.8.1
+# TOOL_VERSION_KUBECTL=1.34.1

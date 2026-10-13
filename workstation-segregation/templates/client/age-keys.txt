@@ -1,0 +1,3 @@
+# age identities for {{CLIENT}} (SOPS_AGE_KEY_FILE). Placeholder: no key generated.
+# Create one with:  age-keygen -o {{DIR}}/.workstation/age/keys.txt
+# (move this placeholder aside first; age-keygen refuses to overwrite).

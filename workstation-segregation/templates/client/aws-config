@@ -1,0 +1,16 @@
+# AWS config for {{CLIENT}} (AWS_CONFIG_FILE). Credentials: .aws/credentials (AWS_SHARED_CREDENTIALS_FILE).
+# NOTE: the AWS CLI SSO token cache (~/.aws/sso/cache) and CLI credential cache
+# (~/.aws/cli/cache) are NOT relocated by AWS_CONFIG_FILE and stay shared. Keep
+# sso-session names client-prefixed ({{CLIENT}}-sso) so tokens remain distinguishable.
+#
+# [sso-session {{CLIENT}}-sso]
+# sso_start_url = https://REPLACE_ME.awsapps.com/start
+# sso_region = REPLACE_ME
+# sso_registration_scopes = sso:account:access
+#
+# [profile {{CLIENT}}-REPLACE_ME]
+# sso_session = {{CLIENT}}-sso
+# sso_account_id = 000000000000
+# sso_role_name = REPLACE_ME
+# region = REPLACE_ME
+# output = json

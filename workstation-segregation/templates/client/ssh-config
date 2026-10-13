@@ -1,0 +1,12 @@
+# SSH config for {{CLIENT}}. Used via `ssh -F` (shell fragment .workstation/bash/ssh.sh and
+# git core.sshCommand); ~/.ssh is not used. Put the client key at the IdentityFile path.
+#
+# Add client hosts above the defaults, for example:
+# Host {{CLIENT}}-bastion
+#   HostName REPLACE_ME.example.invalid
+#   User REPLACE_ME
+
+Host *
+  IdentityFile {{DIR}}/.workstation/ssh/id_ed25519
+  IdentitiesOnly yes
+  UserKnownHostsFile {{DIR}}/.workstation/ssh/known_hosts

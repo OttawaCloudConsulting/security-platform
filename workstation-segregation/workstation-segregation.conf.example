@@ -1,0 +1,32 @@
+# workstation-segregation configuration (sourced as shell: KEY=value, bash 3.2-safe).
+# Copy to workstation-segregation.conf (deploy.sh does this on first run) and review.
+
+# Directory whose immediate subdirectories are client project roots.
+# Must be absolute (or start with ~/) and contain no whitespace.
+CLIENT_ROOT=~/Documents
+
+# Top-level names under CLIENT_ROOT that are never clients (dot-dirs are always skipped).
+EXCLUDE_DIRS="workstation workstation-segregation tools Codex Zoom"
+
+# Directories that already existed at first deploy are NOT treated as clients
+# unless already segregated (.envrc/.workstation present) or listed here.
+ADOPT_DIRS=""
+
+# Watcher cadence (cron, minutes) and how long a new dir must sit unmodified
+# before it is scaffolded (avoids acting on half-created dirs; 0 disables).
+WATCH_INTERVAL_MIN=5
+MIN_AGE_MIN=2
+
+# 1 = new clients get CLAUDE_CONFIG_DIR / CODEX_HOME in .envrc (separate login per
+# client); 0 = scaffolded but commented out.
+ENABLE_AGENT_CLI_ISOLATION=1
+
+# Tools installed as release binaries into BIN_DIR. Remove names to skip them.
+INSTALL_TOOLS="jq yq direnv gh kubectl helm starship sops age terraform awscli"
+BIN_DIR=~/.local/bin
+
+# 1 = abort a tool install when upstream publishes no checksum (default: warn).
+REQUIRE_CHECKSUMS=0
+
+# Optional version pins (default: latest). Can also live in versions.conf.
+# TOOL_VERSION_KUBECTL=1.34.1

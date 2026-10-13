@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "/bin/bash {{KIT}}/hooks/direnv-session-env.sh" }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+# npm user config for {{CLIENT}} (NPM_CONFIG_USERCONFIG).
+#
+# @REPLACE_ME:registry=https://npm.pkg.github.com
+# //npm.pkg.github.com/:_authToken=REPLACE_ME

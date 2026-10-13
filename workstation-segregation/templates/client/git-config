@@ -1,0 +1,16 @@
+# Git identity and credentials for client {{CLIENT}} (workstation-segregation).
+# Included from ~/.gitconfig only for repositories under {{DIR}}/.
+#
+# REPLACE_ME: uncomment and set the client identity below. Until user.name and
+# user.email are set, git refuses to commit (user.useConfigOnly=true globally).
+# Or: git config --file {{DIR}}/.workstation/git/config user.email "you@client.example"
+[user]
+#	name = REPLACE_ME Full Name
+#	email = REPLACE_ME@client.example
+
+[core]
+	sshCommand = ssh -F {{DIR}}/.workstation/ssh/config
+
+[credential "https://github.com"]
+	helper =
+	helper = !GH_CONFIG_DIR={{DIR}}/.workstation/gh {{GH}} auth git-credential
