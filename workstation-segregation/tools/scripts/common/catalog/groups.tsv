@@ -1,0 +1,14 @@
+# group	depends
+base	-
+aws	containers
+kubernetes	containers
+containers	-
+terraform	-
+terragrunt	terraform
+github	-
+argocd	kubernetes
+ansible	-
+go	-
+database-postgres	-
+database-mysql	-
+database-redis	-

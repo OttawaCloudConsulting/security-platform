@@ -1,0 +1,64 @@
+# id	display	groups	depends	relation	removal	checksum
+ca-certificates	CA certificates	base	-	-	never	n/a
+curl	curl	base	-	-	never	n/a
+wget	wget	base	-	-	base	n/a
+zip	zip	base	-	-	base	n/a
+unzip	unzip	base	-	-	never	n/a
+tar	tar	base	-	-	never	n/a
+gzip	gzip	base	-	-	never	n/a
+git	Git	base	-	-	never	n/a
+openssh-client	OpenSSH client	base,ansible	-	-	base	n/a
+build-tools	make and native compiler toolchain	base	-	-	base	n/a
+direnv	direnv	base	-	-	never	no
+starship	starship	base	-	-	never	yes
+tree	tree	base	-	-	base	n/a
+ripgrep	ripgrep	base	-	-	base	n/a
+fzf	fzf	base	-	-	base	n/a
+tmux	tmux	base	-	-	base	n/a
+rsync	rsync	base,ansible	-	-	base	n/a
+dnsutils	dnsutils	-	-	-	base	n/a
+dig	dig	base	dnsutils	bundled	base	n/a
+nslookup	nslookup	base	dnsutils	bundled	base	n/a
+nc	nc	base	-	-	base	n/a
+jq	jq	base,aws,kubernetes,terraform	-	-	never	yes
+yq	yq	base,kubernetes	-	-	never	yes
+python3	Python 3	base,aws,ansible	-	-	base	n/a
+pip3	pip3	base	python3	bundled	base	n/a
+uv	uv	base	-	-	base	yes
+uvx	uvx (provided by uv)	base	uv	bundled	base	n/a
+codex	Codex	base	-	-	base	no
+claude-code	Claude Code	base	-	-	base	no
+gemini-cli	Google Gemini CLI	base	-	-	base	no
+antigravity	Antigravity (AGY) CLI	base	-	-	base	yes
+gemini-notebook-mcp-cli	[gemini-notebook-mcp-cli](https://github.com/jacob-bd/gemini-notebook-mcp-cli)	base	uv	runtime	base	no
+awscli	AWS CLI v2	aws	-	-	normal	yes
+session-manager-plugin	AWS Session Manager plugin	aws	awscli	plugin	normal	yes
+aws-cdk	AWS CDK CLI	aws	-	-	normal	n/a
+aws-sam	AWS SAM CLI	aws	python3,docker	runtime	normal	yes
+docker	Docker	aws,kubernetes	docker-cli	runtime	normal	n/a
+eksctl	eksctl	kubernetes	-	-	normal	yes
+kubectl	kubectl	kubernetes,argocd	-	-	normal	yes
+kubectx	kubectx	kubernetes	-	-	normal	yes
+kubens	kubens	kubernetes	kubectx	bundled	normal	n/a
+kubecolor	kubecolor	kubernetes	kubectl	runtime	normal	yes
+helm	Helm	kubernetes	-	-	normal	yes
+k9s	k9s	kubernetes	-	-	normal	yes
+stern	stern	kubernetes	-	-	normal	yes
+kustomize-embedded	Kustomize embedded in kubectl	kubernetes	kubectl	bundled	normal	n/a
+kustomize	Standalone Kustomize	kubernetes	-	-	normal	yes
+kind	kind	kubernetes	docker	runtime	normal	yes
+helmfile	Helmfile	kubernetes	helm	runtime	normal	yes
+docker-cli	Docker CLI	containers	-	-	normal	n/a
+docker-engine	Docker Engine (Ubuntu) or Colima (macOS)	containers	-	-	normal	n/a
+docker-compose	Docker Compose plugin	containers	docker-cli	plugin	normal	n/a
+docker-buildx	Docker Buildx plugin	containers	docker-cli	plugin	normal	n/a
+terraform	Terraform	terraform,terragrunt	tfenv	provider	normal	n/a
+tfenv	tfenv	terraform,terragrunt	-	-	normal	n/a
+terragrunt	Terragrunt	terragrunt	terraform	runtime	normal	yes
+gh	GitHub CLI	github	-	-	normal	yes
+argocd-cli	Argo CD CLI	argocd	-	-	normal	yes
+ansible	Ansible	ansible	python3	runtime	normal	n/a
+go	Go	go	-	-	normal	yes
+psql	PostgreSQL client (`psql`)	database-postgres	-	-	normal	n/a
+mysql-client	MySQL client	database-mysql	-	-	normal	n/a
+redis-cli	Redis client (`redis-cli`)	database-redis	-	-	normal	n/a
