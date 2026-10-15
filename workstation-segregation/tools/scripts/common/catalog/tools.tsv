@@ -31,11 +31,11 @@ claude-code	Claude Code	base	-	-	base	no
 gemini-cli	Google Gemini CLI	base	-	-	base	no
 antigravity	Antigravity (AGY) CLI	base	-	-	base	yes
 gemini-notebook-mcp-cli	[gemini-notebook-mcp-cli](https://github.com/jacob-bd/gemini-notebook-mcp-cli)	base	uv	runtime	base	no
-awscli	AWS CLI v2	aws	-	-	normal	yes
-session-manager-plugin	AWS Session Manager plugin	aws	awscli	plugin	normal	yes
+awscli	AWS CLI v2	aws	-	-	normal	no
+session-manager-plugin	AWS Session Manager plugin	aws	awscli	plugin	normal	no
 aws-cdk	AWS CDK CLI	aws	-	-	normal	n/a
-aws-sam	AWS SAM CLI	aws	python3,docker	runtime	normal	yes
-docker	Docker	aws,kubernetes	docker-cli	runtime	normal	n/a
+aws-sam	AWS SAM CLI	aws	python3,docker	runtime	normal	no
+docker	Docker	aws,kubernetes	docker-cli	bundled	normal	n/a
 eksctl	eksctl	kubernetes	-	-	normal	yes
 kubectl	kubectl	kubernetes,argocd	-	-	normal	yes
 kubectx	kubectx	kubernetes	-	-	normal	yes

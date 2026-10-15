@@ -172,6 +172,7 @@ Tool-level dependencies used to reject removals that would break a remaining sel
 | Kustomize embedded in kubectl | kubectl | bundled command |
 | kubens | kubectx | bundled command |
 | Docker Compose plugin, Docker Buildx plugin | Docker CLI | CLI plugin |
+| Docker | Docker CLI | bundled command |
 | Terraform | tfenv | provider-managed |
 | pip3 | Python 3 | bundled command |
 | gemini-notebook-mcp-cli | uv | runtime |

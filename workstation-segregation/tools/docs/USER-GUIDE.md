@@ -2,7 +2,7 @@
 
 `setup-workstation.sh` installs and upgrades developer tools on Ubuntu and macOS from group selections, records what it did in two JSON dotfiles, and removes tools you flag for removal. Developers: see [DEVELOPER-GUIDE.md](DEVELOPER-GUIDE.md). Normative requirements: [../REQUIREMENTS.md](../REQUIREMENTS.md). Tool lists: [../TOOL-GROUPS-CONSOLIDATED.md](../TOOL-GROUPS-CONSOLIDATED.md).
 
-> **Phase 1 status:** only the `base` group is implemented. Selecting any other group stops with "no installer script for group". The real macOS run has not been verified yet; the Ubuntu 24.04 container run has.
+> **Status:** implemented groups: `base`, `containers`, `aws`, `kubernetes`, `argocd`, `terraform`, `terragrunt`, `github`, `ansible`, `go`, `database-postgres`, `database-mysql`, `database-redis`. The real macOS run has not been verified yet; the Ubuntu 24.04 container run has. Pending Ubuntu field validation: the `mysql-client` package name per release, a real tfenv/Terraform install, tool `--version` parsing, and GitHub API rate limits (kustomize).
 
 ## Quick start
 
@@ -19,7 +19,8 @@ On a first run that installs or upgrades Bash, or changes your login shell, the 
 - `.env` in the current directory, read as data (never sourced): `TOOL_GROUPS=base,github`
 - `--env-file PATH` for another file. An unreadable explicit file is an error.
 - `--groups LIST` replaces the `.env` selection.
-- `base` is always included. Dependencies are added automatically. Deselecting a group never removes tools.
+- `base` is always included. Dependencies are added automatically: `aws` and `kubernetes` pull in `containers`, `argocd` pulls in `kubernetes`, `terragrunt` pulls in `terraform`.
+- `database-postgres`, `database-mysql` and `database-redis` install clients only (`psql`, `mysql`, `redis-cli`). Deselecting a group never removes tools.
 
 ## Options
 
@@ -74,9 +75,17 @@ Set the tool to `remove` and run with `--yes` (or answer the prompt).
 - Only installs made by this installer are removed. Anything else gets: *remove `<path>` manually, then rerun*.
 - User data (`~/.aws`, caches, nvm Node versions) is never touched. The flag stays in the file; reruns make no changes.
 
+## Where tools go
+
+- `kubernetes`, `argocd`, `terragrunt`, `github`: release binaries in `~/.local/bin` (kubectl from `dl.k8s.io`, helm from `get.helm.sh`, the rest from GitHub releases). `kubectx` installs `kubens` too.
+- `terraform`: `tfenv` is cloned to `~/.local/share/tfenv` with `tfenv` and `terraform` symlinks in `~/.local/bin`; Terraform versions live under the tfenv directory.
+- `go`: the official tarball is unpacked to `~/.local/share/go`, with `go` and `gofmt` linked into `~/.local/bin`.
+- `ansible`: `uv tool install` with the executables of `ansible-core`.
+- `database-*`: apt packages (`postgresql-client`, `mysql-client`, `redis-tools`) on Ubuntu; on macOS Homebrew `libpq` and `mysql-client` (keg-only, linked into `~/.local/bin`) and `redis`.
+
 ## Integrity
 
-Release downloads are verified against upstream SHA-256 (or SHA-512 for Antigravity) before use; a mismatch deletes the file and fails the tool. If a published checksum cannot be fetched, the tool fails rather than installing unverified. Tools with no published checksum (direnv, Homebrew and nvm installers) are reported as `unverified`. OS packages rely on apt/Homebrew signatures; npm packages on registry integrity.
+Release downloads are verified against upstream SHA-256 (or SHA-512 for Antigravity) before use; a mismatch deletes the file and fails the tool. If a published checksum cannot be fetched, the tool fails rather than installing unverified. Tools with no published checksum (direnv, Homebrew and nvm installers) are reported as `unverified`. GitHub-release tools, kubectl, helm, terragrunt, gh and Go (checksum from `go.dev/dl`) are `verified`. `tfenv` has no upstream checksum and Terraform is verified by tfenv itself, so both report `provider`. `ansible` reports `package-manager`. OS packages rely on apt/Homebrew signatures; npm packages on registry integrity.
 
 ## Common situations
 
@@ -94,4 +103,9 @@ Release downloads are verified against upstream SHA-256 (or SHA-512 for Antigrav
 - Ubuntu `pip3` is the OS package only (PEP 668); `latest` means the newest repository version.
 - Antigravity pins must equal `latest` (its manifest lists only the current build).
 - `deploy.sh --uninstall` can delete `~/.local/bin` binaries this installer upgraded (jq, yq, direnv, starship).
+- Phase 3 decisions: no kubectl/cluster version skew check, no krew, no helm plugins.
+- Removing `terraform` or `tfenv` deletes every Terraform version tfenv installed, and `go` removal deletes `~/.local/share/go`.
+- kustomize `latest` is read from the unauthenticated GitHub API and can fail when rate limited; pin a version meanwhile.
+- Ubuntu `mysql-client` is the apt package for each release and may not exist on every release.
+- On macOS the `redis-cli` tool installs the full `redis` formula (including the server).
 - Installations are workstation-wide, requests per project: the last run wins.
