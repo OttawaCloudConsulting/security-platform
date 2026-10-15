@@ -30,6 +30,10 @@ req_load() {
   local id val
   REQ=(); REQ_ERRORS=()
   [ -f "$REQUESTED_FILE" ] || return 0
+  if [ ! -r "$REQUESTED_FILE" ]; then
+    REQ_ERRORS+=("$REQUESTED_FILE: cannot read requested file; check ownership and permissions")
+    return 1
+  fi
   if ! "$WST_JQ" -e '.schema_version == 1 and (.tools | type == "object") and ([.tools[] | type == "string"] | all)' \
         "$REQUESTED_FILE" >/dev/null 2>&1; then
     REQ_ERRORS+=("$REQUESTED_FILE: invalid format (need schema_version 1 and a tools object of strings)")

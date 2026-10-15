@@ -17,6 +17,6 @@ tool_aws_sam_install() {
   dl_fetch "$url" "$dest" || die "download failed: $url"
   dl_verify "$dest" "${url##*/}" no   # only a GPG signature is published: reported unverified
   rel_extract "$dest" "$x"
-  "$x/sam-installation/install" -i "$HOME/.local/share/aws-sam-cli" -b "$(bin_dir)" --update >/dev/null
+  "$x/install" -i "$HOME/.local/share/aws-sam-cli" -b "$(bin_dir)" --update >/dev/null
   result_set "$res" integrity "$DL_STATUS"
 }

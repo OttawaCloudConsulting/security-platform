@@ -167,7 +167,7 @@ main() {
   nvm_step
   bootstrap_jq
   prereq_report
-  export WST_JQ BASH5
+  export WST_JQ BASH5 SUDO
   shopt -s execfail
   exec "$BASH5" "$WST_ROOT/scripts/common/main.sh" "$@" || die "could not exec $BASH5"
 }

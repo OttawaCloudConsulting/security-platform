@@ -6,6 +6,8 @@ T="$(mktemp -d "${TMPDIR:-/tmp}/wst-tf.XXXXXX")"; trap 'rm -rf "$T"' EXIT
 mkdir -p "$T/bin" "$T/home" "$T/srv"
 
 printf 'terraform_1.10.0-rc1<\nterraform_1.9.8<\nterraform_1.9.7<\n' > "$T/tf-index"
+# Larger than a pipe buffer, so early-closing consumers reproduce SIGPIPE.
+for ((i=0; i<10000; i++)); do printf 'terraform_0.1.0<\n'; done >> "$T/tf-index"
 printf 'binary-bytes' > "$T/srv/terragrunt_linux_amd64"
 good="$(sha256_of() { shasum -a 256 "$1" | cut -d' ' -f1; }; sha256_of "$T/srv/terragrunt_linux_amd64")"
 printf '%s  terragrunt_linux_amd64\n' "$good" > "$T/srv/SHA256SUMS"
@@ -28,7 +30,7 @@ STUB
 chmod +x "$T/bin/curl"
 
 cat > "$T/driver.sh" <<'DRV'
-set -u
+set -uo pipefail
 export WST_ROOT="$1" WST_OS="$2" WST_ARCH="$3" HOME="$4" PATH="$5:$PATH"
 export WST_JQ=true WST_CATALOG_DIR="$WST_ROOT/scripts/common/catalog"
 . "$WST_ROOT/scripts/common/common.sh"

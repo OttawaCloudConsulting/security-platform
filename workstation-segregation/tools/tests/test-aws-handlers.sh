@@ -51,6 +51,18 @@ echo "awscli_latest $(tool_awscli_latest)"
 echo "ssm_latest $(tool_session_manager_plugin_latest)"
 if [ "$WST_OS" = ubuntu ]; then
   echo "sam_url $(sam_url 1.169.0)"
+  # The archive's installer is directly inside the extraction directory.
+  TOOL_TMP="$(mktemp -d "$HOME/sam-test.XXXXXX")"
+  dl_fetch() { : > "$2"; }
+  dl_verify() { DL_STATUS=unverified; }
+  rel_extract() {
+    mkdir -p "$2"
+    printf '#!/bin/bash\nprintf "%%s\\n" "$*" > "$(dirname "$0")/args"\n' > "$2/install"
+    chmod +x "$2/install"
+  }
+  ( set -e; tool_aws_sam_install 1.169.0 "$TOOL_TMP/result" ) && echo "sam_install ok"
+  echo "sam_args $(cat "$TOOL_TMP/x/args")"
+  echo "sam_integrity $(cat "$TOOL_TMP/result")"
   echo "docker_latest $(tool_docker_cli_latest)"
   echo "docker_resolve $(docker_resolve docker-ce-cli 27.3.1)"
   docker_resolve docker-ce-cli 99.0 >/dev/null && echo "BAD resolve" || echo "unknown pin rejected"
@@ -76,6 +88,9 @@ assert_contains "$M" "ssm_url https://s3.amazonaws.com/session-manager-downloads
 assert_contains "$U" "awscli_latest 2.38.0" "awscli latest from changelog"
 assert_contains "$U" "ssm_latest 1.2.896.0" "ssm latest from VERSION"
 assert_contains "$U" "sam_url https://github.com/aws/aws-sam-cli/releases/download/v1.169.0/aws-sam-cli-linux-x86_64.zip" "sam url"
+assert_contains "$U" "sam_install ok" "SAM invokes extracted installer"
+assert_contains "$U" "sam_args -i $T/home/.local/share/aws-sam-cli -b $T/home/.local/bin --update" "SAM install paths"
+assert_contains "$U" "sam_integrity integrity=unverified" "SAM integrity recorded"
 if command -v dpkg >/dev/null 2>&1; then   # dpkg --compare-versions exists on Ubuntu only
   assert_contains "$U" "docker_latest 5:27.10.0-1~ubuntu.24.04~noble" "docker latest is the max, not the first"
 fi

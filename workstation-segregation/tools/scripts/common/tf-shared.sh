@@ -39,10 +39,13 @@ tool_tfenv_install() {
 # ---- Terraform (versions managed by tfenv, which verifies SHA256SUMS itself) ---------------
 tool_terraform_source() { echo release; }
 tool_terraform_latest() {
-  local v
-  v="$(_curl https://releases.hashicorp.com/terraform/ | grep -oE 'terraform_[0-9]+\.[0-9]+\.[0-9]+<' | head -n1)" || return 1
+  local index v
+  index="$(_curl https://releases.hashicorp.com/terraform/)" || return 1
+  # Consume all matches: head can cause SIGPIPE under pipefail on a large index.
+  v="$(printf '%s\n' "$index" | grep -oE 'terraform_[0-9]+\.[0-9]+\.[0-9]+<' | awk 'NR == 1 { print }')" || return 1
   v="${v#terraform_}"; v="${v%<}"
-  [ -n "$v" ] && printf '%s\n' "$v"
+  [ -n "$v" ] || { warn "no stable Terraform version found in the release index"; return 1; }
+  printf '%s\n' "$v"
 }
 tool_terraform_pin_ok() { _curl -o /dev/null "https://releases.hashicorp.com/terraform/$1/"; }
 tool_terraform_probe() {
