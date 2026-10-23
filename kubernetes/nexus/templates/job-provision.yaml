@@ -93,6 +93,9 @@ spec:
         # every upgrade.
         checksum/config: {{ include (print $.Template.BasePath "/configmap-repos.yaml") . | sha256sum }}
         checksum/scripts: {{ include (print $.Template.BasePath "/configmap-provision-script.yaml") . | sha256sum }}
+        {{- if .Values.ldap.enabled }}
+        checksum/ldap: {{ include (print $.Template.BasePath "/configmap-ldap.yaml") . | sha256sum }}
+        {{- end }}
     spec:
       restartPolicy: Never
       # This pod talks to the Nexus REST API and nothing else — it makes no
@@ -113,7 +116,15 @@ spec:
       containers:
         - name: provision
           image: {{ if $img.digest }}{{ printf "%s@%s" $img.repository $img.digest }}{{ else }}{{ printf "%s:%s" $img.repository (toString $img.tag) }}{{ end }}
+          {{- if .Values.ldap.enabled }}
+          # LDAP is a second step, run only when the first succeeded. `bash -c`
+          # rather than a wrapper script so the default render keeps the plain
+          # `args: ["/scripts/provision.sh"]` form unchanged. No `-x`: the
+          # LDAP step holds the bind password in its environment.
+          args: ["/bin/bash", "-c", "/scripts/provision.sh && /scripts/provision-ldap.sh"]
+          {{- else }}
           args: ["/scripts/provision.sh"]
+          {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -165,11 +176,25 @@ spec:
               value: {{ .Values.provision.readiness.attempts | quote }}
             - name: READY_INTERVAL
               value: {{ .Values.provision.readiness.intervalSeconds | quote }}
+            {{- if .Values.ldap.enabled }}
+            # The bind password, by reference only. Never a literal, never in
+            # values, never in a ConfigMap. `required` here as well as in
+            # configmap-ldap.yaml so this block cannot render alone.
+            - name: LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "ldap.bindSecret.name is required when ldap.enabled is true: name the Secret that holds the bind password" .Values.ldap.bindSecret.name }}
+                  key: {{ required "ldap.bindSecret.key is required when ldap.enabled is true: name the key of that Secret that holds the bind password" .Values.ldap.bindSecret.key }}
+            {{- end }}
           volumeMounts:
             - mountPath: /scripts
               name: scripts
             - mountPath: /config
               name: config
+            {{- if .Values.ldap.enabled }}
+            - mountPath: /ldap-config
+              name: ldap-config
+            {{- end }}
             # The EULA step writes the mutated agreement object here, and the
             # container runs with a read-only root filesystem.
             - mountPath: /tmp
@@ -187,4 +212,10 @@ spec:
             defaultMode: 0444
         - name: temp
           emptyDir: {}
+        {{- if .Values.ldap.enabled }}
+        - name: ldap-config
+          configMap:
+            name: {{ include "nexus.fullname" . }}-ldap
+            defaultMode: 0444
+        {{- end }}
 {{- end }}

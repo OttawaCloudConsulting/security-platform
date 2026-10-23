@@ -14,9 +14,11 @@ kubernetes/nexus/
 ├── Chart.lock         # the pin of record for the Nexus version
 ├── values.yaml        # the consumer value surface
 ├── files/
-│   └── provision.sh   # REST provisioning script, run by the hook Job
+│   ├── provision.sh       # REST provisioning script, run by the hook Job
+│   └── provision-ldap.sh  # LDAP step, mounted and run only when ldap.enabled
 └── templates/
     ├── _helpers.tpl
+    ├── configmap-ldap.yaml            # rendered only when ldap.enabled
     ├── configmap-provision-script.yaml
     ├── configmap-repos.yaml
     └── job-provision.yaml
@@ -135,6 +137,48 @@ docker pull localhost:8081/docker-proxy/library/alpine:3.21
 ```
 
 That reference is the one that routes. The full anonymous client handshake behind it was measured end to end — `GET /v2/` → `401` with a `Bearer` challenge, a token minted with no credential, the manifest index returned `200` **with** `Authorization: Bearer`, and the `linux/amd64` layer blob streamed at 3,626,020 bytes.
+
+## LDAP Authentication (opt-in)
+
+`ldap.enabled` ships `false`. When it is `true`, the provisioning Job runs one more step after the proxy repositories exist (`files/provision-ldap.sh`), and Nexus signs users in against a directory such as an Authentik LDAP outpost. Community Edition has no SAML or OIDC; LDAP is its one external-identity path.
+
+What the step does, in order:
+
+1. Checks the connection and the bind with Nexus's `verify-connection` call, then upserts one LDAP server definition named `ldap.name`: `GET`, then `PUT` (with the id Nexus returned) if it exists or `POST` if it does not. Nexus does not test a definition when it saves it, so the explicit check is what makes a wrong host, DN, base or password fail the Job with Nexus's own message, before anything is stored.
+2. Creates each role in `ldap.roles` that does not exist yet. Nexus maps the CN of a directory group to the role with the same id. A role that already exists, `nx-admin` included, is never modified.
+3. Appends `LdapRealm` to the active realms, directly after `NexusAuthenticatingRealm`. Every realm that was active stays active, `DockerToken` included.
+
+What it never does: remove the local realm, touch the admin user, edit an existing role, or undo itself. Setting `ldap.enabled` back to `false` skips these steps and nothing else. The local `admin` stays as the break-glass login, and rolling back an applied configuration is a manual procedure.
+
+The bind password reaches the Job only through a `secretKeyRef` environment variable (`ldap.bindSecret.name` and `.key`, no default). It is not in values, not in any rendered `ConfigMap` and not in the log.
+
+```yaml
+ldap:
+  enabled: true
+  host: ldap.example.org
+  searchBase: dc=ldap,dc=example,dc=org
+  bindDn: cn=svc-nexus-ldap,ou=users,dc=ldap,dc=example,dc=org
+  bindSecret:
+    name: nexus-ldap-bind
+    key: password
+  roles:
+    - id: nx-readonly
+      name: nx-readonly
+      description: Read-only access
+      privileges:
+        - nx-repository-view-*-*-read
+        - nx-repository-view-*-*-browse
+        - nx-search-read
+```
+
+Things to know before you turn it on:
+
+- **Logins are password-only.** Nexus binds to the directory with the user's password, so any MFA configured in the identity provider is bypassed for Nexus.
+- **The directory becomes a dependency for human logins and for upgrades.** The local `admin` still works if it is down, but the connection check runs on every run of the Job, so a sync while the directory is unreachable fails the hook Job. Anonymous read (`anonymous.enabled`) is independent of this setting.
+- **Defaults fit Authentik.** `userIdAttribute: cn` because `uid` is a hash there, and `userBaseDn: ou=users` with `userObjectClass: user` keeps the per-user entry that Authentik also emits under `ou=virtual-groups` out of the lookup. Another directory needs its own values.
+- **Use `ldaps`.** `ldap.protocol: ldap` sends the user's password in clear text.
+- **Roles are created once.** Changing `privileges` in `ldap.roles` later does not update a role that already exists; edit it in Nexus or delete it first.
+- **The LDAP step is a separate script on purpose.** A default render is byte-identical to a chart without LDAP support, and `scripts/check-nexus-chart.sh` asserts that no LDAP text appears in it.
 
 ## Install
 

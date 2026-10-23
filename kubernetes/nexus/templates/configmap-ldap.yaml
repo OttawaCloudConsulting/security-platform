@@ -1,0 +1,67 @@
+{{/*
+LDAP request bodies for the provisioning Job: server.json (the LDAP server
+definition) and roles.json (the roles to create when absent). Rendered ONLY
+when ldap.enabled is true, so a default render is byte-identical to a chart
+that has no LDAP support at all.
+
+THE BIND PASSWORD IS NEVER HERE. server.json carries no authPassword field.
+files/provision-ldap.sh adds it at request time from the LDAP_BIND_PASSWORD
+environment variable, which the Job fills from a secretKeyRef. `bindDn` is an
+identifier and is rendered.
+
+Every body is built as a dict and rendered with toJson, never by string
+concatenation (T-23-04): host, searchBase and the role fields are
+consumer-supplied values crossing into a REST request body.
+
+The guards below fail the render with a message that names the value to set.
+check-nexus-chart.sh asserts that for ldap.bindSecret.name.
+*/}}
+{{- if .Values.ldap.enabled }}
+{{- $l := .Values.ldap }}
+{{- $_ := required "ldap.host is required when ldap.enabled is true" $l.host -}}
+{{- $_ := required "ldap.searchBase is required when ldap.enabled is true" $l.searchBase -}}
+{{- $_ := required "ldap.bindDn is required when ldap.enabled is true" $l.bindDn -}}
+{{- $_ := required "ldap.bindSecret.name is required when ldap.enabled is true: name the Secret that holds the bind password" $l.bindSecret.name -}}
+{{- $_ := required "ldap.bindSecret.key is required when ldap.enabled is true: name the key of that Secret that holds the bind password" $l.bindSecret.key -}}
+{{- range $l.roles }}
+{{- $_ := required "every ldap.roles item needs an id" .id -}}
+{{- $_ := required (printf "ldap.roles item '%s' needs a name" .id) .name -}}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nexus.fullname" . }}-ldap
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nexus.labels" . | nindent 4 }}
+data:
+  server.json: |
+    {{- dict
+      "name" $l.name
+      "protocol" $l.protocol
+      "useTrustStore" $l.useTrustStore
+      "host" $l.host
+      "port" ($l.port | int)
+      "searchBase" $l.searchBase
+      "authScheme" $l.authScheme
+      "authUsername" $l.bindDn
+      "connectionTimeoutSeconds" ($l.connectionTimeoutSeconds | int)
+      "connectionRetryDelaySeconds" ($l.connectionRetryDelaySeconds | int)
+      "maxIncidentsCount" ($l.maxIncidentsCount | int)
+      "userBaseDn" $l.userBaseDn
+      "userSubtree" $l.userSubtree
+      "userObjectClass" $l.userObjectClass
+      "userIdAttribute" $l.userIdAttribute
+      "userRealNameAttribute" $l.userRealNameAttribute
+      "userEmailAddressAttribute" $l.userEmailAddressAttribute
+      "ldapGroupsAsRoles" $l.ldapGroupsAsRoles
+      "groupType" $l.groupType
+      "userMemberOfAttribute" $l.userMemberOfAttribute
+      | toJson | nindent 4 }}
+  roles.json: |
+    {{- $roles := list }}
+    {{- range $l.roles }}
+    {{- $roles = append $roles (dict "id" .id "name" .name "description" (default "" .description) "privileges" (default (list) .privileges) "roles" (list)) }}
+    {{- end }}
+    {{- $roles | toJson | nindent 4 }}
+{{- end }}

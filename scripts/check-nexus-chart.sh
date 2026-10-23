@@ -14,7 +14,7 @@ set -euo pipefail
 # It reports EVERY failure rather than stopping at the first, so one run tells
 # you the whole story.
 #
-# It asserts 18 offline invariants. That count is a literal in three places
+# It asserts 22 offline invariants. That count is a literal in three places
 # which must move together in one commit: this line, the `check-nexus-chart:
 # asserting ...` echo below, and CHECK_COUNT at the foot of the file.
 #
@@ -92,7 +92,7 @@ if ! compgen -G "${CHART_DIR}/charts/*.tgz" >/dev/null; then
   exit 2
 fi
 
-echo "check-nexus-chart: asserting 18 offline invariants against ${CHART_DIR}"
+echo "check-nexus-chart: asserting 22 offline invariants against ${CHART_DIR}"
 
 # The admin credential is a Kubernetes Secret NAME wired through
 # nexus3.rootPassword.secret; templates/job-provision.yaml wraps it in Helm's
@@ -401,8 +401,147 @@ elif [ "$(unquote "$anon_default")" != "false" ]; then
   fail "ANONYMOUS-DEFAULT" "expected .anonymous.enabled == false in ${VALUES} (the locked opt-in default, 24-CONTEXT.md), got '${anon_default}'"
 fi
 
+# ── 19. LDAP-DEFAULT-OFF ─────────────────────────────────────────────────────
+# LDAP ships OFF, and "off" must mean ABSENT, not merely inert. Three facts:
+# the shipped value is false; an explicit `ldap.enabled=false` renders the same
+# bytes as the default; and the default render contains no mention of LDAP at
+# all (no ConfigMap, no env var, no script). The last one is what makes the
+# byte-identical claim checkable from source: provision-ldap.sh is embedded in
+# the scripts ConfigMap only when enabled, so any LDAP text in a default render
+# means the logic leaked into the always-on path. That is also why the LDAP step
+# is a separate file and not an edit to provision.sh. The pre-LDAP render was
+# compared byte for byte against origin/main when this block was added.
+if ! ldap_default=$(yq '.ldap.enabled' "$VALUES"); then
+  fail "LDAP-DEFAULT-OFF" "yq failed reading .ldap.enabled from ${VALUES}"
+elif [ "$(unquote "$ldap_default")" != "false" ]; then
+  fail "LDAP-DEFAULT-OFF" "expected .ldap.enabled == false in ${VALUES}, got '${ldap_default}'"
+fi
+if ! r_default=$(render) || ! r_off=$(render --set ldap.enabled=false); then
+  fail "LDAP-DEFAULT-OFF" "render failed on the default or the ldap.enabled=false render"
+else
+  if [ "$r_default" != "$r_off" ]; then
+    fail "LDAP-DEFAULT-OFF" "render with ldap.enabled=false differs from the default render"
+  fi
+  if printf '%s\n' "$r_default" | grep -qi 'ldap'; then
+    fail "LDAP-DEFAULT-OFF" "the default render mentions LDAP — the LDAP logic must not be rendered unless ldap.enabled is true"
+  fi
+fi
+
+# ── 20. LDAP-REQUIRES-BINDSECRET ─────────────────────────────────────────────
+# With ldap.enabled=true and no bind Secret the render must FAIL and name the
+# value to set — the same contract as NO-DEFAULT-PASSWORD (check 15). The other
+# required values (host, searchBase, bindDn) are given, so the failure can only
+# be the Secret. Checked for both keys.
+ldap_base=(--set ldap.enabled=true --set ldap.host=ldap.example.test
+  --set "ldap.searchBase=dc=example\\,dc=test" --set "ldap.bindDn=cn=svc\\,dc=example\\,dc=test")
+if ldap_err=$(render "${ldap_base[@]}" 2>&1 >/dev/null); then
+  fail "LDAP-REQUIRES-BINDSECRET" "ldap.enabled=true with no bindSecret rendered successfully"
+else
+  case "$ldap_err" in
+    *ldap.bindSecret.name*) ;;
+    *) fail "LDAP-REQUIRES-BINDSECRET" "render failed, but the message never mentions ldap.bindSecret.name: $(printf '%s' "$ldap_err" | tr '\n' ' ')" ;;
+  esac
+fi
+if ldap_err=$(render "${ldap_base[@]}" --set ldap.bindSecret.name=s 2>&1 >/dev/null); then
+  fail "LDAP-REQUIRES-BINDSECRET" "ldap.enabled=true with bindSecret.name but no bindSecret.key rendered successfully"
+else
+  case "$ldap_err" in
+    *ldap.bindSecret.key*) ;;
+    *) fail "LDAP-REQUIRES-BINDSECRET" "render failed, but the message never mentions ldap.bindSecret.key: $(printf '%s' "$ldap_err" | tr '\n' ' ')" ;;
+  esac
+fi
+
+# ── 21. LDAP-ENV-WIRING ──────────────────────────────────────────────────────
+# T-LDAP-R4: the bind password must reach the Job by secretKeyRef and by no
+# other route. Toggling the value must change the render (the same "not inert"
+# proof as check 8): the env entry, the /ldap-config mount, the ConfigMap and
+# the script chain all appear when enabled. And the password-bearing field,
+# authPassword, must not be a key in any rendered ConfigMap body.
+ldap_render=""
+if ! ldap_render=$(render "${ldap_base[@]}" --set ldap.bindSecret.name=bind-secret --set ldap.bindSecret.key=pw); then
+  fail "LDAP-ENV-WIRING" "render failed with a complete ldap block"
+else
+  ref_name=$(printf '%s\n' "$ldap_render" | yq 'select(.kind=="Job") | .spec.template.spec.containers[].env[] | select(.name=="LDAP_BIND_PASSWORD") | .valueFrom.secretKeyRef.name') || ref_name=""
+  ref_key=$(printf '%s\n' "$ldap_render" | yq 'select(.kind=="Job") | .spec.template.spec.containers[].env[] | select(.name=="LDAP_BIND_PASSWORD") | .valueFrom.secretKeyRef.key') || ref_key=""
+  if [ "$(unquote "$ref_name")" != "bind-secret" ] || [ "$(unquote "$ref_key")" != "pw" ]; then
+    fail "LDAP-ENV-WIRING" "expected LDAP_BIND_PASSWORD to be a secretKeyRef to bind-secret/pw, got name='${ref_name}' key='${ref_key}'"
+  fi
+  if ! printf '%s\n' "$ldap_render" | yq 'select(.kind=="Job") | .spec.template.spec.containers[].env[] | select(.name=="LDAP_BIND_PASSWORD") | has("value")' | grep -qx false; then
+    fail "LDAP-ENV-WIRING" "LDAP_BIND_PASSWORD carries a literal value — it must be a secretKeyRef only"
+  fi
+  if ! printf '%s\n' "$ldap_render" | yq 'select(.kind=="Job") | .spec.template.spec.containers[].volumeMounts[] | select(.mountPath=="/ldap-config") | .name' | grep -qx ldap-config; then
+    fail "LDAP-ENV-WIRING" "the Job does not mount the LDAP ConfigMap at /ldap-config"
+  fi
+  if ! printf '%s\n' "$ldap_render" | yq 'select(.kind=="Job") | .spec.template.spec.containers[].args | join(" ")' | grep -q 'provision-ldap.sh'; then
+    fail "LDAP-ENV-WIRING" "the Job does not run provision-ldap.sh when ldap.enabled is true"
+  fi
+  if ! printf '%s\n' "$ldap_render" | yq 'select(.kind=="ConfigMap" and (.metadata.name | test("-provision-script$"))) | .data | has("provision-ldap.sh")' | grep -qx true; then
+    fail "LDAP-ENV-WIRING" "the scripts ConfigMap does not carry provision-ldap.sh when ldap.enabled is true"
+  fi
+  if ! printf '%s\n' "$ldap_render" | yq 'select(.kind=="ConfigMap" and (.metadata.name | test("-ldap$"))) | .data."server.json"' | jq -e 'has("authPassword") | not' >/dev/null; then
+    fail "LDAP-ENV-WIRING" "server.json is missing or carries an authPassword field — the password must never be rendered into a ConfigMap"
+  fi
+  # The password must not travel on ANY argv. `jq --arg pw "${LDAP_BIND_PASSWORD}"`
+  # puts it on jq's, where ps and /proc/<pid>/cmdline show it; jq must read it
+  # from its environment (`env.LDAP_BIND_PASSWORD`) instead (Copilot, PR 44).
+  if printf '%s\n' "$ldap_render" | grep -Eq -e '--arg(json)?[[:space:]]+[A-Za-z_]+[[:space:]]+"?\$\{?LDAP_BIND_PASSWORD'; then
+    fail "LDAP-ENV-WIRING" "the LDAP script passes LDAP_BIND_PASSWORD to jq as an argument — it must read env.LDAP_BIND_PASSWORD"
+  elif ! printf '%s\n' "$ldap_render" | grep -q 'env\.LDAP_BIND_PASSWORD'; then
+    fail "LDAP-ENV-WIRING" "the LDAP script never reads env.LDAP_BIND_PASSWORD — the bind password has no route into the request body"
+  fi
+  if printf '%s\n' "$ldap_render" | grep -Eq '^[[:space:]]*(set -[A-Za-z]*x|set -o xtrace)|bash -[A-Za-z]*x'; then
+    fail "LDAP-ENV-WIRING" "shell tracing appears in the LDAP render — it would log the bind password"
+  fi
+fi
+
+# ── 22. LDAP-OVERLAY ─────────────────────────────────────────────────────────
+# Renders the chart with the values the private ArgoCD overlay passes (host,
+# bindDn, bindSecret and one role, as a values FILE like valuesObject) and
+# asserts the end-to-end shape: the Job env refers to nexus-ldap-bind/password,
+# the one role arrives in roles.json with its three privileges, and the server
+# body carries the Authentik defaults (cn as the login, ou=users scoped by the
+# user object class, ldaps on 636, dynamic groups from memberOf).
+overlay_values="$(mktemp)"
+trap 'rm -f "$overlay_values"' EXIT
+cat >"$overlay_values" <<'OVERLAY'
+ldap:
+  enabled: true
+  host: ldap.infra.ottawacloudconsulting.com
+  searchBase: dc=ldap,dc=ottawacloudconsulting,dc=com
+  bindDn: cn=svc-nexus-ldap,ou=users,dc=ldap,dc=ottawacloudconsulting,dc=com
+  bindSecret:
+    name: nexus-ldap-bind
+    key: password
+  roles:
+    - id: nx-readonly
+      name: nx-readonly
+      description: Read-only access mapped from the Authentik nx-readonly group
+      privileges:
+        - nx-repository-view-*-*-read
+        - nx-repository-view-*-*-browse
+        - nx-search-read
+OVERLAY
+if ! ov_render=$(render -f "$overlay_values"); then
+  fail "LDAP-OVERLAY" "render failed with the overlay values"
+else
+  ov_name=$(printf '%s\n' "$ov_render" | yq 'select(.kind=="Job") | .spec.template.spec.containers[].env[] | select(.name=="LDAP_BIND_PASSWORD") | .valueFrom.secretKeyRef.name') || ov_name=""
+  ov_key=$(printf '%s\n' "$ov_render" | yq 'select(.kind=="Job") | .spec.template.spec.containers[].env[] | select(.name=="LDAP_BIND_PASSWORD") | .valueFrom.secretKeyRef.key') || ov_key=""
+  if [ "$(unquote "$ov_name")" != "nexus-ldap-bind" ] || [ "$(unquote "$ov_key")" != "password" ]; then
+    fail "LDAP-OVERLAY" "expected the Job env LDAP_BIND_PASSWORD secretKeyRef to be nexus-ldap-bind/password, got name='${ov_name}' key='${ov_key}'"
+  fi
+  ov_roles=$(printf '%s\n' "$ov_render" | yq 'select(.kind=="ConfigMap" and (.metadata.name | test("-ldap$"))) | .data."roles.json"') || ov_roles=""
+  if ! printf '%s\n' "$ov_roles" | jq -e 'length == 1 and .[0].id == "nx-readonly" and (.[0].privileges | sort) == ["nx-repository-view-*-*-browse","nx-repository-view-*-*-read","nx-search-read"]' >/dev/null 2>&1; then
+    fail "LDAP-OVERLAY" "roles.json must hold exactly nx-readonly with its three privileges, got: ${ov_roles}"
+  fi
+  ov_server=$(printf '%s\n' "$ov_render" | yq 'select(.kind=="ConfigMap" and (.metadata.name | test("-ldap$"))) | .data."server.json"') || ov_server=""
+  if ! printf '%s\n' "$ov_server" | jq -e '.protocol == "ldaps" and .port == 636 and .host == "ldap.infra.ottawacloudconsulting.com" and .userIdAttribute == "cn" and .userBaseDn == "ou=users" and .userObjectClass == "user" and .groupType == "dynamic" and .userMemberOfAttribute == "memberOf" and .ldapGroupsAsRoles == true and .authUsername == "cn=svc-nexus-ldap,ou=users,dc=ldap,dc=ottawacloudconsulting,dc=com"' >/dev/null 2>&1; then
+    fail "LDAP-OVERLAY" "server.json does not carry the expected Authentik settings, got: ${ov_server}"
+  fi
+fi
+rm -f "$overlay_values"
+
 # ── Terminal summary ─────────────────────────────────────────────────────────
-CHECK_COUNT=18
+CHECK_COUNT=22
 
 if [ "${#FAILURES[@]}" -gt 0 ]; then
   for line in "${FAILURES[@]}"; do

@@ -218,3 +218,89 @@ repos:
     # Explicit `null` rather than a bare key, for the same read-back reason as
     # `nexus3.rootPassword.secret` above.
     remoteUrl: null
+
+ldap:
+  # -- Enable LDAP authentication through an existing directory (Authentik's
+  # LDAP outpost in this stack). Ships `false`: a public chart must not point a
+  # Nexus at a directory nobody named. Nexus Community Edition has no SAML or
+  # OIDC (both are Pro-only), so LDAP is the one external-identity path CE
+  # offers.
+  #
+  # WHAT `true` DOES, and ONLY that. After the proxy repositories exist, a
+  # second step (files/provision-ldap.sh, run by the same hook Job) upserts one
+  # LDAP server definition, creates any role listed in `roles` that does not
+  # exist yet, and appends `LdapRealm` to the active realms. It never removes
+  # the local `NexusAuthenticatingRealm`, never touches the admin user, and has
+  # no teardown path: `false` skips these steps, it does not undo them. The
+  # local admin therefore stays as the break-glass login. Rolling back an
+  # applied LDAP configuration is a manual procedure, deliberately.
+  #
+  # WHY A SEPARATE SCRIPT. With `enabled: false` the render is byte-identical
+  # to a chart that never had this block; the LDAP logic is not even mounted.
+  # That would not hold if the logic lived inside files/provision.sh, whose
+  # text is embedded in the scripts ConfigMap.
+  #
+  # LOGINS HERE ARE PASSWORD-ONLY. Nexus binds to the directory with the
+  # user's password, so any MFA configured in the identity provider is
+  # bypassed for Nexus. See the ADR that introduced this block.
+  enabled: false
+  # -- Name of the LDAP server definition inside Nexus.
+  name: authentik
+  # -- Directory host. NO DEFAULT: the render fails when `ldap.enabled` is true
+  # and this is unset.
+  host: null
+  # -- Directory port.
+  port: 636
+  # -- `ldaps` or `ldap`. Anything but `ldaps` sends the user's password in
+  # clear text; do not do that outside a throwaway test.
+  protocol: ldaps
+  # -- Trust Nexus's own truststore instead of the JVM default. `false` is
+  # right for a certificate from a public CA (e.g. Let's Encrypt).
+  useTrustStore: false
+  # -- Base DN of the directory, e.g. dc=ldap,dc=example,dc=com. NO DEFAULT.
+  searchBase: null
+  # -- `SIMPLE` is a DN-and-password bind.
+  authScheme: SIMPLE
+  # -- DN of the service account Nexus binds as to search for users. NO
+  # DEFAULT. This is an identifier, not a secret.
+  bindDn: null
+  # -- Secret holding the bind password. NO DEFAULT for either key: the render
+  # fails when `ldap.enabled` is true and either is unset. The password reaches
+  # the Job only through a `secretKeyRef` environment variable. It is never in
+  # values, never in a rendered ConfigMap and never logged.
+  bindSecret:
+    name: null
+    key: null
+  # -- Seconds Nexus waits for a connection to the directory.
+  connectionTimeoutSeconds: 30
+  # -- Seconds Nexus waits before retrying a failed connection.
+  connectionRetryDelaySeconds: 300
+  # -- Connection failures Nexus tolerates before it stops trying.
+  maxIncidentsCount: 3
+  # -- Where users live, RELATIVE to `searchBase`.
+  userBaseDn: ou=users
+  # -- Object class of a user entry. Scopes the lookup so that other entries
+  # with the same `cn` (Authentik emits one per user under ou=virtual-groups)
+  # are not matched.
+  userObjectClass: user
+  # -- Attribute that holds the login name. `cn`, not `uid`: in Authentik `uid`
+  # is a hash.
+  userIdAttribute: cn
+  # -- Attribute that holds the display name.
+  userRealNameAttribute: displayName
+  # -- Attribute that holds the e-mail address.
+  userEmailAddressAttribute: mail
+  # -- Search the whole subtree below `userBaseDn`.
+  userSubtree: false
+  # -- Map directory groups to Nexus roles by name.
+  ldapGroupsAsRoles: true
+  # -- `dynamic` reads group membership from the user entry; `static` searches
+  # group entries. Authentik exposes `memberOf`, so `dynamic`.
+  groupType: dynamic
+  # -- Attribute on the user entry that lists the groups it belongs to.
+  userMemberOfAttribute: memberOf
+  # -- Nexus roles to create when absent. Nexus maps the CN of an LDAP group to
+  # the role with the same id, so each `id` must equal a directory group name.
+  # A role that already exists, built-in ones such as `nx-admin` included, is
+  # never modified. Each item: `id`, `name`, `description`, `privileges[]`.
+  roles: []
