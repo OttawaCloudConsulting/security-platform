@@ -2,8 +2,17 @@
 
 **Status:** Accepted
 **Date:** 2026-10-22
+**Implemented in:** `OttawaCloudConsulting/security-platform` PR #44, squash-merged to `main` as
+`c589e61c0b9eb9357d06f4c35eddbac9eb8eebeb` (2026-10-22)
 **Addresses:** a requirements request from the app-team session (security-platform PR #44), ADR-022 decision 4 and
 ADR-021 "What was NOT verified" item 4 (read for context, not amended)
+
+**Amended before acceptance (Copilot review of PR #44), 2026-10-22.** Copilot raised three comments on the pull request.
+Two were confirmed and fixed (commit `f5a98a6` on the PR branch, squashed into the merge commit above) and one was declined with evidence. The changes to this
+record: Decision 6 now says the password reaches `jq` through its environment, because `--arg` had put it on `jq`'s
+argv; Decision 10 is new (verify before storing); the Consequences line about a bad definition is corrected, because
+the original sentence said Nexus tests a definition when it is saved and that was not true; and "What was NOT verified"
+is rewritten around what a real run measured. The original text is in the git history.
 
 This record lives in this documentation repository. The code it describes is in
 `OttawaCloudConsulting/security-platform`, `kubernetes/nexus/`. No homelab address or kube context name appears here
@@ -45,9 +54,12 @@ beyond the directory hostname the request itself named.
    realm. Rollback is a documented manual procedure on the operator side. An automatic teardown is the one piece of
    this feature that could lock an instance out, so it does not exist.
 6. **The bind password is a `secretKeyRef` and nothing else.** It reaches the Job as `LDAP_BIND_PASSWORD`. It is not
-   in values, not in a rendered ConfigMap (`server.json` has no `authPassword` field) and not in a log; the script
-   adds it with `jq --arg` and hands the body to `curl` on a `/dev/fd` path, so it is on no argv and in no file.
-   Tracing (`set -x`) is not enabled anywhere on that path, and the gate asserts it.
+   in values, not in a rendered ConfigMap (`server.json` has no `authPassword` field) and not in a log. The script
+   reads it with `jq '.authPassword = env.LDAP_BIND_PASSWORD'` and hands the body to `curl` on a `/dev/fd` path, so it
+   is on no `curl` argv, on no `jq` argv and in no file. (The first version used `jq --arg`, which puts the value on
+   `jq`'s argv; Copilot caught that and `LDAP-ENV-WIRING` now fails on it.) What does hold the value for the whole run
+   is the process environment, which is the `secretKeyRef` contract and cannot be hidden. Tracing (`set -x`) is not
+   enabled anywhere on that path, and the gate asserts it.
 7. **The LDAP step is a separate script, not an edit to `provision.sh`.** `provision.sh` is embedded in the scripts
    ConfigMap, so any change to it changes every default render. A second file, `files/provision-ldap.sh`, is embedded
    and run only when `ldap.enabled` is true (`bash -c "/scripts/provision.sh && /scripts/provision-ldap.sh"`). With
@@ -62,6 +74,13 @@ beyond the directory hostname the request itself named.
    and names the missing value), `LDAP-ENV-WIRING` (a `secretKeyRef`, the mount, the script chain, no password field,
    no tracing) and `LDAP-OVERLAY` (the values the private overlay passes produce the expected Job and bodies).
 
+10. **Verify the bind before storing the definition.** Measured on Nexus 3.96.0: saving an LDAP definition does not
+    test it. A `POST` naming an unresolvable host returned 201 and stored it. `POST /v1/security/ldap/verify-connection`
+    does test it: 204 on success, 400 with Nexus's own message otherwise (for example `LDAP error code 49 - Invalid
+    Credentials`). The script calls it first and fails the Job on anything but 204. On update it reads the existing
+    definition's `id` and merges it into the `PUT` body, because a `PUT` without `id` returns 400 `PARAMETER id must
+    not be empty`; `GET` and `PUT` take the definition name in the path, and a `GET` by the generated id returns 404.
+
 ## Consequences
 
 - **Human logins depend on Authentik.** If the directory is unreachable, directory users cannot sign in. The local
@@ -74,29 +93,50 @@ beyond the directory hostname the request itself named.
   decided here.
 - **The password crosses the network to the directory under TLS only.** `ldap.protocol: ldap` is allowed by the
   chart and sends the password in clear text; the README says so. The overlay uses `ldaps`.
-- **A bad definition fails the Job, loudly.** Nexus tests the connection and the bind when it saves the definition,
-  so a wrong host, DN or password returns HTTP 400, and under `backoffLimit: 0` the hook Job fails. That is the
-  intent. The ordering means the proxy repositories already exist by then.
+- **A bad definition fails the Job, loudly, and an upgrade needs the directory.** The connection check runs on every
+  run of the hook Job. A wrong host, DN, base or password fails it before anything is stored, and under
+  `backoffLimit: 0` the Job fails. So does a sync while the directory is unreachable. The proxy repositories already
+  exist by then, because the LDAP step runs after `provision.sh`.
 - **Defaults fit Authentik and nothing else.** `userIdAttribute: cn`, `userBaseDn: ou=users` and
   `userObjectClass: user` are tuned to its layout. Another directory needs its own values.
 
-## What was NOT verified
+## What was verified, and what was not
 
-1. **Nothing was run against a real Nexus 3.96.0 or the real Authentik outpost by the author of this change.** The
-   gate (22 checks, 0 failures) and a run of `provision-ldap.sh` against a mock Nexus API are the evidence. The mock
-   showed: first run creates the server, the role and the realm (`["NexusAuthenticatingRealm","LdapRealm","DockerToken"]`);
-   a second run makes no realm request and leaves the role unchanged; a realm list without `NexusAuthenticatingRealm`
-   exits 1 before any realm write; and the bind password does not appear in the output. The mock was written by the
-   same hand as the script, so it shares the author's reading of the Nexus API.
-2. **The HTTP status codes are from documentation and the mock, not measured.** In particular, 200 (accepted: 201
-   too) on role creation, 201 on LDAP server creation and 204 on update. A live run on the homelab is the first
-   measurement.
-3. **A real group-to-role login was not performed.** That an Authentik user in `nx-readonly` signs in and gets the
-   three privileges, and that a member of `nx-admin` gets `nx-admin`, is untested. So is a user in no mapped group.
-4. **Behaviour with the directory down was not measured**, including how long Nexus takes to fall back to the local
-   realm for a local user.
-5. **Whether `PUT` on an existing definition re-tests the bind** was not measured. The script sends the password on
-   every run, so the question only affects how a rotated password shows up (as an HTTP 400 at the next upgrade).
-6. **`nexus-live-smoke.sh` (kind) does not exercise the LDAP step**, and `check-nexus-setup.sh`, the workstation
-   routing gate, is unchanged and unrelated.
-7. **The Copilot review of PR #44 and its triage are recorded in the PR**, not here.
+Measured on 2026-10-22 against Sonatype Nexus Repository Community Edition 3.96.0 (`sonatype/nexus3:3.96.0-ubi`, the
+version the chart resolves to) with an OpenLDAP container (`osixia/openldap:1.5.0`, plain `ldap` on a private Docker
+network, a user with a password, and a bind account), running `provision-ldap.sh` inside the chart's pinned
+`alpine/k8s` digest with a read-only root filesystem and `--user 65534`:
+
+- Run 1: connection verified (204), server created (201), role created (200), `LdapRealm` already active.
+  Run 2: connection verified, server updated (204), the role left unchanged, one server remains. The bind password
+  appears nowhere in the output of either run.
+- A wrong bind password stops the run at the check with `LDAP error code 49 - Invalid Credentials`, exit 1.
+- A directory user logs in with the right password (HTTP 403 on an admin-only call, meaning authenticated but not
+  privileged), is refused with a wrong one (401), and the local `admin` still works (200).
+- Creating the first LDAP server already adds `LdapRealm` to the active realms, at the end of the list, and deleting
+  the server removes it. The realm step therefore usually writes nothing on a first run; it stays because it makes
+  the outcome independent of that behaviour.
+- `GET /v1/security/ldap/{name}` is 200 and `GET .../{id}` is 404. A `PUT` without `id` in the body is 400.
+
+Not verified:
+
+1. **The real Authentik outpost.** The test directory is OpenLDAP with `inetOrgPerson` entries, `userObjectClass`
+   set to match, and a bind account that can read the base. The Authentik-specific defaults (`cn` as the login,
+   `objectClass: user`, `memberOf` as full group DNs, the per-user entry under `ou=virtual-groups`) rest on the
+   `ldapsearch` result app-team reported, not on a Nexus login against Authentik. `ldaps` on 636 with a Let's Encrypt
+   certificate and the JVM default truststore was not exercised either: the test used plain `ldap`.
+2. **Group-to-role mapping.** Whether an Authentik user in `nx-readonly` receives the three privileges, and a member
+   of `nx-admin` receives `nx-admin`, was not tested. The test directory has no `memberOf`. Neither was a user in no
+   mapped group.
+3. **The full hook Job in a cluster.** The script ran in the pinned image, not as the Job. `bash -c
+   "/scripts/provision.sh && /scripts/provision-ldap.sh"` relies on the ConfigMap's `defaultMode: 0555`, the same
+   mechanism `provision.sh` already uses, but the chained form was not run in Kubernetes. `nexus-live-smoke.sh` (kind)
+   does not exercise the LDAP step.
+4. **Behaviour with the directory down** after the definition exists, including how long Nexus takes to fall back to
+   the local realm for a local user.
+5. **Rotating the bind password.** The script sends the password on every run, so a new value reaches Nexus at the
+   next sync; that was not measured with a rotated Secret.
+6. **The Copilot review of PR #44 and its triage are recorded in the PR.** Declined: the comment that the image's
+   Bash entrypoint would make `args` run as `/bin/bash /bin/bash -c ...`. The pinned digest
+   `sha256:d489e3c7a6221af7394bc54a1498b641ada49ca51c344630966a62411b91a3df` reports `entrypoint=null` and
+   `cmd=["/bin/sh"]` (`docker image inspect`), so `args` is the command.
