@@ -21,7 +21,10 @@ kubernetes/nexus/
     ├── configmap-ldap.yaml            # rendered only when ldap.enabled
     ├── configmap-provision-script.yaml
     ├── configmap-repos.yaml
-    └── job-provision.yaml
+    ├── configmap-expose.yaml          # rendered only when expose.enabled
+    ├── deployment-expose.yaml         # rendered only when expose.enabled
+    ├── job-provision.yaml
+    └── service-expose.yaml            # rendered only when expose.enabled
 ```
 
 The pinned `nexus3` subchart renders the Nexus `StatefulSet`, its `Service` and its `PersistentVolumeClaim`. This wrapper renders two `ConfigMaps` — the provisioning script and one JSON body per proxy repository — and a `Job` annotated `helm.sh/hook: post-install,post-upgrade` (and `argocd.argoproj.io/hook: Sync` for ArgoCD). After the install the Job polls `/service/rest/v1/status/writable`, accepts the EULA if you opted in, and then upserts each repository with a `GET` followed by a `PUT` or a `POST`, so re-running it on every upgrade is safe.
@@ -179,6 +182,45 @@ Things to know before you turn it on:
 - **Use `ldaps`.** `ldap.protocol: ldap` sends the user's password in clear text.
 - **Roles are created once.** Changing `privileges` in `ldap.roles` later does not update a role that already exists; edit it in Nexus or delete it first.
 - **The LDAP step is a separate script on purpose.** A default render is byte-identical to a chart without LDAP support, and `scripts/check-nexus-chart.sh` asserts that no LDAP text appears in it.
+
+## TLS Exposure (opt-in)
+
+`expose.enabled` ships `false`. When it is `true`, the chart adds a TLS-terminating proxy and a `LoadBalancer` Service so the Nexus UI, REST API and package clients are reachable over TLS without `kubectl port-forward`. It is **in addition to** the existing access: the Nexus pod, its `ClusterIP` Service and port-forward are untouched whatever this is set to, and with `expose.enabled: false` the render is byte-identical to a chart without this block.
+
+How it works. A separate `nginx` Deployment sits in front of the Nexus `ClusterIP` Service, and the `LoadBalancer` Service points at it. Every port on the `LoadBalancer` is TLS and every listener in the proxy is `ssl`; there is no plain-HTTP port. The proxy forwards to Nexus in plaintext **inside the cluster**, the same hop the provisioning Job already uses. Nexus sees the proxy as the client, not the original caller.
+
+Why an HTTP proxy and not a TLS tunnel. Behind a layer-4 terminator Nexus cannot tell the client used https, and the Docker token challenge it sends advertises an `http://` realm, so Docker clients cannot authenticate on a TLS-only endpoint. The proxy sets `X-Forwarded-Proto: https` and passes the `Host` header through, and Nexus (whose `http.forwarded` capability is on by default; do not disable it) then builds `https://` URLs. Measured with the pinned proxy image in front of a real Nexus 3.96.0: the `/v2/` challenge returns an `https://` realm, and a token exchange followed by a manifest pull returns HTTP 200, on the main port and on an extra port.
+
+What you supply. Everything environment-specific comes from values, and anything you leave unset is left unset on the Service:
+
+```yaml
+expose:
+  enabled: true
+  tls:
+    secretName: nexus-tls          # an existing kubernetes.io/tls Secret, required
+  port: 443
+  service:
+    annotations: {}                # passed through unchanged
+    labels: {}                     # passed through unchanged
+    loadBalancerClass: null
+    loadBalancerIP: null           # or select the address by annotation
+    externalTrafficPolicy: null
+  extraPorts: []                   # e.g. a Docker connector, see below
+```
+
+What you must own, because the chart will not do it: issuing and renewing the certificate (no `Certificate`, `Issuer` or self-signed generation here), DNS, address allocation, load-balancer announcement and any `NetworkPolicy`.
+
+Renewing the certificate needs no manual step. The Secret is mounted as a directory, kubelet refreshes it in place when it changes (typically within a minute), and the proxy reads the certificate and key from disk on every new TLS handshake, so there is no timer, signal or restart. Measured with the pinned image, a Linux volume and an atomic symlink swap like kubelet's: on the very next request the old certificate stopped verifying and the new one verified, with the container up and not restarted. Connections that are already open keep the certificate they started with until they close.
+
+`expose.extraPorts` serves more Nexus connector ports through the same proxy (each item: `name`, `port` on the `LoadBalancer`, `nexusPort` on the Nexus Service). `name` is 1 to 9 characters of lower-case letters, digits and `-`, because it becomes the Service port name `https-<name>`; an invalid or duplicate name fails the render rather than being truncated. The list does not create the connector: add it to Nexus and to the Nexus Service yourself, for example with `nexus3.service.additionalPorts`.
+
+Before you turn it on:
+
+- **Anonymous read.** With `anonymous.enabled: true`, every repository becomes readable by anyone who can reach the address, with no credential. `anonymous.enabled` is the switch; this block does not change it. Decide it first.
+- **The local `admin`** (the break-glass login) becomes reachable from the same network. With LDAP on, human logins also cross the network, which is why TLS matters here.
+- **Larger attack surface.** A network listener now exists where there was none.
+- **The in-cluster hop is plaintext.** Add a `NetworkPolicy` in your own repository if that matters to you.
+- **Keep Nexus's `http.forwarded` capability enabled.** The `https://` URLs depend on it.
 
 ## Install
 

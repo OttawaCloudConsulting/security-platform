@@ -14,7 +14,7 @@ set -euo pipefail
 # It reports EVERY failure rather than stopping at the first, so one run tells
 # you the whole story.
 #
-# It asserts 22 offline invariants. That count is a literal in three places
+# It asserts 29 offline invariants. That count is a literal in three places
 # which must move together in one commit: this line, the `check-nexus-chart:
 # asserting ...` echo below, and CHECK_COUNT at the foot of the file.
 #
@@ -92,7 +92,7 @@ if ! compgen -G "${CHART_DIR}/charts/*.tgz" >/dev/null; then
   exit 2
 fi
 
-echo "check-nexus-chart: asserting 22 offline invariants against ${CHART_DIR}"
+echo "check-nexus-chart: asserting 29 offline invariants against ${CHART_DIR}"
 
 # The admin credential is a Kubernetes Secret NAME wired through
 # nexus3.rootPassword.secret; templates/job-provision.yaml wraps it in Helm's
@@ -540,8 +540,221 @@ else
 fi
 rm -f "$overlay_values"
 
+# ── 23. EXPOSE-DEFAULT-OFF ───────────────────────────────────────────────────
+# TLS exposure ships OFF, and "off" must mean ABSENT: the shipped value is
+# false, an explicit `expose.enabled=false` renders the same bytes as the
+# default, and the default render has no proxy and no LoadBalancer Service. The
+# pre-change render was compared byte for byte against origin/main when this
+# block was added; this check keeps the source-level half of that claim.
+if ! expose_default=$(yq '.expose.enabled' "$VALUES"); then
+  fail "EXPOSE-DEFAULT-OFF" "yq failed reading .expose.enabled from ${VALUES}"
+elif [ "$(unquote "$expose_default")" != "false" ]; then
+  fail "EXPOSE-DEFAULT-OFF" "expected .expose.enabled == false in ${VALUES}, got '${expose_default}'"
+fi
+if ! x_default=$(render) || ! x_off=$(render --set expose.enabled=false); then
+  fail "EXPOSE-DEFAULT-OFF" "render failed on the default or the expose.enabled=false render"
+else
+  if [ "$x_default" != "$x_off" ]; then
+    fail "EXPOSE-DEFAULT-OFF" "render with expose.enabled=false differs from the default render"
+  fi
+  if printf '%s\n' "$x_default" | grep -Eqi 'expose-tls|type: LoadBalancer|X-Forwarded-Proto'; then
+    fail "EXPOSE-DEFAULT-OFF" "the default render contains a TLS proxy, its configuration or a LoadBalancer Service — exposure must render nothing unless expose.enabled is true"
+  fi
+fi
+
+# ── 24. EXPOSE-REQUIRES-TLS-SECRET ───────────────────────────────────────────
+# With expose.enabled=true and no certificate Secret name the render must FAIL
+# and name the value to set. The chart never creates or manages the
+# certificate, so an unset name can never be papered over with a generated one.
+if expose_err=$(render --set expose.enabled=true 2>&1 >/dev/null); then
+  fail "EXPOSE-REQUIRES-TLS-SECRET" "expose.enabled=true with no expose.tls.secretName rendered successfully"
+else
+  case "$expose_err" in
+    *expose.tls.secretName*) ;;
+    *) fail "EXPOSE-REQUIRES-TLS-SECRET" "render failed, but the message never mentions expose.tls.secretName: $(printf '%s' "$expose_err" | tr '\n' ' ')" ;;
+  esac
+fi
+
+# ── 25. EXPOSE-LB-PASSTHROUGH ────────────────────────────────────────────────
+# The consumer supplies every environment-specific value and the chart renders
+# it unchanged: annotations, labels, loadBalancerClass, loadBalancerIP,
+# externalTrafficPolicy and the ports. The values here are invented
+# placeholders (example.test, 192.0.2.0/24 documentation range), not a real
+# environment. The converse matters as much: with none of them set, none of the
+# optional fields may appear, so the chart cannot be inventing a default.
+expose_values="$(mktemp)"
+trap 'rm -f "${overlay_values:-}" "${expose_values:-}"' EXIT
+cat >"$expose_values" <<'EXPOSEVALUES'
+expose:
+  enabled: true
+  tls:
+    secretName: nexus-tls
+  port: 8443
+  service:
+    annotations:
+      example.test/address-pool: pool-a
+      example.test/addresses: "192.0.2.10"
+    labels:
+      tier: edge
+    loadBalancerClass: example.test/lb
+    loadBalancerIP: 192.0.2.10
+    externalTrafficPolicy: Local
+  extraPorts:
+    - name: docker
+      port: 5000
+      nexusPort: 8082
+EXPOSEVALUES
+lb_path='select(.kind=="Service" and .spec.type=="LoadBalancer")'
+if ! x_render=$(render -f "$expose_values"); then
+  fail "EXPOSE-LB-PASSTHROUGH" "render failed with the exposure values"
+else
+  x_lb=$(printf '%s\n' "$x_render" | yq -o=json "$lb_path") || x_lb=""
+  if [ -z "$x_lb" ]; then
+    fail "EXPOSE-LB-PASSTHROUGH" "no LoadBalancer Service in the enabled render"
+  elif ! printf '%s\n' "$x_lb" | jq -e '
+      .metadata.annotations == {"example.test/address-pool":"pool-a","example.test/addresses":"192.0.2.10"}
+      and .metadata.labels.tier == "edge"
+      and .spec.loadBalancerClass == "example.test/lb"
+      and .spec.loadBalancerIP == "192.0.2.10"
+      and .spec.externalTrafficPolicy == "Local"
+      and (.spec.ports | map({name,port}) | sort_by(.port)) == [{"name":"https-docker","port":5000},{"name":"https","port":8443}]' >/dev/null 2>&1; then
+    fail "EXPOSE-LB-PASSTHROUGH" "the LoadBalancer Service does not carry the consumer values unchanged, got: $(printf '%s' "$x_lb" | tr -d '\n ')"
+  fi
+fi
+if ! x_bare=$(render --set expose.enabled=true --set expose.tls.secretName=nexus-tls | yq -o=json "$lb_path"); then
+  fail "EXPOSE-LB-PASSTHROUGH" "render failed with only expose.tls.secretName set"
+elif ! printf '%s\n' "$x_bare" | jq -e '(.metadata | has("annotations") | not) and (.spec | has("loadBalancerClass") or has("loadBalancerIP") or has("externalTrafficPolicy") | not)' >/dev/null 2>&1; then
+  fail "EXPOSE-LB-PASSTHROUGH" "with no consumer values the LoadBalancer Service still carries an annotation or a class, address or policy field — the chart must not invent defaults"
+fi
+
+# Port names are validated, not truncated. Two distinct connector names sharing a
+# long prefix used to collapse into one Service port name (Copilot, PR 46); now
+# an overlong or duplicate name fails the render and names expose.extraPorts, and
+# valid names stay distinct on both the Service and the pod.
+if long_err=$(render --set expose.enabled=true --set expose.tls.secretName=nexus-tls \
+    --set 'expose.extraPorts[0].name=docker-hosted-dev' --set 'expose.extraPorts[0].port=5000' --set 'expose.extraPorts[0].nexusPort=8082' \
+    --set 'expose.extraPorts[1].name=docker-hosted-prod' --set 'expose.extraPorts[1].port=5001' --set 'expose.extraPorts[1].nexusPort=8083' 2>&1 >/dev/null); then
+  fail "EXPOSE-LB-PASSTHROUGH" "two expose.extraPorts names longer than 9 characters rendered successfully — they would collide as Service port names"
+else
+  case "$long_err" in
+    *expose.extraPorts*) ;;
+    *) fail "EXPOSE-LB-PASSTHROUGH" "overlong extraPorts names failed the render, but the message never mentions expose.extraPorts: $(printf '%s' "$long_err" | tr '\n' ' ')" ;;
+  esac
+fi
+if render --set expose.enabled=true --set expose.tls.secretName=nexus-tls \
+    --set 'expose.extraPorts[0].name=docker' --set 'expose.extraPorts[0].port=5000' --set 'expose.extraPorts[0].nexusPort=8082' \
+    --set 'expose.extraPorts[1].name=docker' --set 'expose.extraPorts[1].port=5001' --set 'expose.extraPorts[1].nexusPort=8083' >/dev/null 2>&1; then
+  fail "EXPOSE-LB-PASSTHROUGH" "a duplicate expose.extraPorts name rendered successfully"
+fi
+if ! two_render=$(render --set expose.enabled=true --set expose.tls.secretName=nexus-tls \
+    --set 'expose.extraPorts[0].name=host-dev' --set 'expose.extraPorts[0].port=5000' --set 'expose.extraPorts[0].nexusPort=8082' \
+    --set 'expose.extraPorts[1].name=host-prd' --set 'expose.extraPorts[1].port=5001' --set 'expose.extraPorts[1].nexusPort=8083'); then
+  fail "EXPOSE-LB-PASSTHROUGH" "two valid expose.extraPorts names failed to render"
+else
+  svc_names=$(printf '%s\n' "$two_render" | yq -o=json "$lb_path" | jq -r '[.spec.ports[].name] | sort | join(",")') || svc_names=""
+  pod_names=$(printf '%s\n' "$two_render" | yq -o=json 'select(.kind=="Deployment" and .metadata.name == "t-nexus-expose") | .spec.template.spec.containers' | jq -r '[.[].ports[].name] | sort | join(",")') || pod_names=""
+  if [ "$svc_names" != "https,https-host-dev,https-host-prd" ] || [ "$pod_names" != "tls-8443,tls-8444,tls-8445" ]; then
+    fail "EXPOSE-LB-PASSTHROUGH" "expected distinct port names on the Service (https,https-host-dev,https-host-prd) and the pod (tls-8443,tls-8444,tls-8445), got '${svc_names}' and '${pod_names}'"
+  fi
+fi
+
+# ── 26. EXPOSE-NO-PLAINTEXT ──────────────────────────────────────────────────
+# E3: TLS only on the LoadBalancer path. Every port on the LoadBalancer Service
+# is named https*, targets a proxy port, and every `listen` directive in the
+# proxy configuration carries `ssl`, with a certificate and key. There is no
+# http port, no listener without ssl, and the Service selects only the proxy
+# pods (never Nexus). The number of listen directives must equal the number of
+# Service ports, so a listener cannot be added without the check seeing it.
+if ! x_render=$(render -f "$expose_values"); then
+  fail "EXPOSE-NO-PLAINTEXT" "render failed with the exposure values"
+else
+  if ! printf '%s\n' "$x_render" | yq -o=json "$lb_path" | jq -e '(.spec.ports | length > 0) and (.spec.ports | all(.name | startswith("https"))) and (.spec.ports | all(.targetPort >= 8443)) and (.spec.selector["app.kubernetes.io/component"] == "expose-tls")' >/dev/null 2>&1; then
+    fail "EXPOSE-NO-PLAINTEXT" "a LoadBalancer port is not an https* port to a proxy port, or the selector does not pin component expose-tls"
+  fi
+  x_conf=$(printf '%s\n' "$x_render" | yq 'select(.kind=="ConfigMap" and .metadata.name == "t-nexus-expose-config") | .data."nginx.conf"') || x_conf=""
+  x_ports=$(printf '%s\n' "$x_render" | yq -o=json "$lb_path" | jq -r '.spec.ports | length') || x_ports=""
+  x_listen=$(printf '%s\n' "$x_conf" | grep -Ec '^[[:space:]]*listen[[:space:]]') || x_listen=0
+  x_listen_ssl=$(printf '%s\n' "$x_conf" | grep -Ec '^[[:space:]]*listen[[:space:]]+[0-9]+[[:space:]]+ssl;') || x_listen_ssl=0
+  x_cert=$(printf '%s\n' "$x_conf" | grep -Ec '^[[:space:]]*ssl_certificate[[:space:]]') || x_cert=0
+  x_key=$(printf '%s\n' "$x_conf" | grep -Ec '^[[:space:]]*ssl_certificate_key[[:space:]]') || x_key=0
+  if [ -z "$x_conf" ] || [ "$x_listen" = "0" ] || [ "$x_listen" != "$x_listen_ssl" ] || [ "$x_listen" != "$x_ports" ] || [ "$x_cert" != "$x_listen" ] || [ "$x_key" != "$x_listen" ]; then
+    fail "EXPOSE-NO-PLAINTEXT" "the proxy configuration must have one TLS server block per LoadBalancer port, each 'listen <port> ssl' with a certificate and key; found listen=${x_listen} ssl=${x_listen_ssl} cert=${x_cert} key=${x_key} ports=${x_ports}"
+  fi
+  if ! printf '%s\n' "$x_render" | yq -o=json 'select(.kind=="Deployment" and .metadata.name == "t-nexus-expose") | .spec.template.spec.containers' | jq -e 'length == 1 and .[0].command[0] == "nginx" and (.[0].ports | all(.containerPort >= 8443))' >/dev/null 2>&1; then
+    fail "EXPOSE-NO-PLAINTEXT" "the proxy Deployment must run one nginx container with every port at 8443 or above"
+  fi
+fi
+
+# ── 27. EXPOSE-CLUSTERIP-UNCHANGED ───────────────────────────────────────────
+# E1: the existing in-cluster access stays exactly as it is. Drop the two
+# objects the exposure adds (the proxy Deployment and the LoadBalancer Service,
+# both named <release>-nexus-expose, and the proxy ConfigMap, <release>-nexus-expose-config)
+# from the enabled render, and what is left
+# must equal the default render: the Nexus StatefulSet, both ClusterIP
+# Services, the Job and the ConfigMaps. Stricter than comparing the Services
+# alone, and it fails if exposure ever starts editing the Nexus pod.
+x_rest=$(render -f "$expose_values" | yq 'select(.metadata.name != "t-nexus-expose" and .metadata.name != "t-nexus-expose-config")') || x_rest=""
+x_base=$(render | yq 'select(.metadata.name != "t-nexus-expose" and .metadata.name != "t-nexus-expose-config")') || x_base=""
+if [ -z "$x_base" ] || [ "$x_rest" != "$x_base" ]; then
+  fail "EXPOSE-CLUSTERIP-UNCHANGED" "enabling exposure changed an object other than the proxy Deployment, its ConfigMap and the LoadBalancer Service"
+fi
+if ! render -f "$expose_values" | yq -o=json 'select(.kind=="Service" and .spec.type=="ClusterIP" and .metadata.name == "t-nexus3") | .spec.ports' | jq -e 'length == 1 and .[0].port == 8081' >/dev/null 2>&1; then
+  fail "EXPOSE-CLUSTERIP-UNCHANGED" "the Nexus ClusterIP Service is missing or no longer exposes only port 8081 in the enabled render"
+fi
+
+# ── 28. EXPOSE-RELOAD ────────────────────────────────────────────────────────
+# E3: a renewed certificate is picked up with no manual step. nginx reads a
+# certificate file once at start-up when the path is a literal, so this needs
+# three things together: the Secret mounted as a DIRECTORY (a subPath mount
+# never receives updates), the named Secret behind the volume, and certificate
+# paths given as VARIABLES in the proxy configuration, which makes nginx open the
+# files on every new TLS handshake. A literal `ssl_certificate /etc/...` would
+# turn a renewal into a manual restart, so it is what the check refuses.
+if ! x_render=$(render -f "$expose_values"); then
+  fail "EXPOSE-RELOAD" "render failed with the exposure values"
+else
+  x_dep=$(printf '%s\n' "$x_render" | yq -o=json 'select(.kind=="Deployment" and .metadata.name == "t-nexus-expose") | .spec.template.spec') || x_dep=""
+  if ! printf '%s\n' "$x_dep" | jq -e '
+      (.volumes | map(select(.name=="tls")) | .[0].secret.secretName) == "nexus-tls"
+      and (.containers[0].volumeMounts | map(select(.name=="tls")) | length == 1 and (.[0] | has("subPath") | not) and .[0].mountPath == "/etc/nginx/tls")' >/dev/null 2>&1; then
+    fail "EXPOSE-RELOAD" "the certificate Secret is not mounted as a directory (no subPath) behind the named Secret"
+  fi
+  x_conf=$(printf '%s\n' "$x_render" | yq 'select(.kind=="ConfigMap" and .metadata.name == "t-nexus-expose-config") | .data."nginx.conf"') || x_conf=""
+  if printf '%s\n' "$x_conf" | grep -Eq '^[[:space:]]*ssl_certificate(_key)?[[:space:]]+/'; then
+    fail "EXPOSE-RELOAD" "ssl_certificate or ssl_certificate_key is a literal path — nginx would read it once at start-up and a renewal would need a restart; use the map variables"
+  fi
+  # shellcheck disable=SC2016  # the $ is a literal nginx variable, not a shell expansion
+  if ! printf '%s\n' "$x_conf" | grep -Eq '^[[:space:]]*ssl_certificate[[:space:]]+\$tls_crt;' || ! printf '%s\n' "$x_conf" | grep -Eq '^[[:space:]]*ssl_certificate_key[[:space:]]+\$tls_key;' || ! printf '%s\n' "$x_conf" | grep -q '/etc/nginx/tls/tls.crt'; then
+    fail "EXPOSE-RELOAD" "the proxy configuration does not read the certificate through the \$tls_crt and \$tls_key variables from the mounted Secret"
+  fi
+fi
+
+# ── 29. EXPOSE-FORWARDED-PROTO ───────────────────────────────────────────────
+# Behind a proxy that does not say the client used TLS, Nexus advertises an
+# http:// Docker token realm and http:// repository URLs, and Docker clients
+# cannot authenticate on a TLS-only endpoint. Measured on Nexus 3.96.0: through
+# a layer-4 TLS tunnel `Www-Authenticate: Bearer realm="http://..."`; with
+# `X-Forwarded-Proto: https` and the Host header passed through, an https://
+# realm and a full token exchange. The status endpoint cannot show this, because
+# it returns no absolute URL, which is why this is its own check. EVERY server
+# block must set the header and pass Host through, and nothing may set the
+# protocol to http.
+x_conf=$(render -f "$expose_values" | yq 'select(.kind=="ConfigMap" and .metadata.name == "t-nexus-expose-config") | .data."nginx.conf"') || x_conf=""
+x_servers=$(printf '%s\n' "$x_conf" | grep -Ec '^[[:space:]]*server[[:space:]]*\{') || x_servers=0
+x_proto=$(printf '%s\n' "$x_conf" | grep -Ec '^[[:space:]]*proxy_set_header[[:space:]]+X-Forwarded-Proto[[:space:]]+https;') || x_proto=0
+# shellcheck disable=SC2016  # the $ is a literal nginx variable, not a shell expansion
+x_host=$(printf '%s\n' "$x_conf" | grep -Ec '^[[:space:]]*proxy_set_header[[:space:]]+Host[[:space:]]+\$http_host;') || x_host=0
+if [ "$x_servers" = "0" ] || [ "$x_proto" != "$x_servers" ] || [ "$x_host" != "$x_servers" ]; then
+  fail "EXPOSE-FORWARDED-PROTO" "every proxy server block must set 'X-Forwarded-Proto https' and pass Host through (\$http_host); found servers=${x_servers} proto=${x_proto} host=${x_host}"
+fi
+# shellcheck disable=SC2016  # the $ is a literal nginx variable, not a shell expansion
+if printf '%s\n' "$x_conf" | grep -Eiq 'X-Forwarded-Proto[[:space:]]+http;|X-Forwarded-Proto[[:space:]]+\$scheme'; then
+  fail "EXPOSE-FORWARDED-PROTO" "a proxy server block sets X-Forwarded-Proto to http or to \$scheme; it must be the literal https"
+fi
+rm -f "$expose_values"
+
 # ── Terminal summary ─────────────────────────────────────────────────────────
-CHECK_COUNT=22
+CHECK_COUNT=29
 
 if [ "${#FAILURES[@]}" -gt 0 ]; then
   for line in "${FAILURES[@]}"; do

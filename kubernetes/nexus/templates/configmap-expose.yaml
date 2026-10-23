@@ -1,0 +1,94 @@
+{{/*
+nginx configuration for the optional TLS exposure. Rendered ONLY when
+expose.enabled is true.
+
+ONE SERVER BLOCK PER PORT, every one `listen ... ssl`. There is no plain-HTTP
+listener: the EXPOSE-NO-PLAINTEXT check counts the listen directives and
+requires every one to carry `ssl`. Listen ports are 8443 for the main one and
+8444, 8445, ... for expose.extraPorts, in list order; the LoadBalancer Service
+maps its own ports onto them.
+
+X-FORWARDED-PROTO. Behind a layer-4 TLS terminator Nexus advertises an http://
+Docker token realm and http:// repository URLs, because it cannot tell the
+client used TLS. Measured on Nexus 3.96.0 through a TLS tunnel: `Www-Authenticate:
+Bearer realm="http://..."`. With `X-Forwarded-Proto: https` and the Host header
+passed through, the same request returns an https:// realm, and a full token
+exchange and manifest pull succeed. Nexus's http.forwarded capability (on by
+default) is what reads the header. The EXPOSE-FORWARDED-PROTO check requires it
+on every server block.
+
+CERTIFICATE RELOAD WITHOUT A SIGNAL. ssl_certificate and ssl_certificate_key
+take a VARIABLE, here a map result, so nginx opens the files on every new TLS
+handshake instead of once at start-up. The Secret is mounted as a directory and
+kubelet refreshes it in place, so a renewed certificate is served on the next
+new connection, with no restart, no reload and no timer. A literal path would be
+read once and need a reload. Measured: after an atomic swap of the Secret
+volume's `..data` symlink, the old certificate stopped verifying and the new one
+verified on the next request, with the container up and not restarted.
+
+TEMP PATHS are under /tmp because the root filesystem is read-only; the Deployment
+mounts an emptyDir there. client_max_body_size 0 and no request or response
+buffering keep large uploads and Docker layer transfers from being capped or
+spooled to disk.
+*/}}
+{{- if .Values.expose.enabled }}
+{{- $e := .Values.expose }}
+{{- $_ := required "expose.tls.secretName is required when expose.enabled is true: name an existing kubernetes.io/tls Secret that holds the certificate and key" $e.tls.secretName -}}
+{{- $nexusHost := printf "%s.%s.svc.cluster.local" (include "nexus.nexus3Fullname" .) .Release.Namespace }}
+{{- $nexusPort := toString (default 8081 .Values.nexus3.service.port) }}
+{{- $listeners := list (dict "listen" 8443 "nexusPort" $nexusPort) }}
+{{- range $i, $p := $e.extraPorts }}
+{{- $listeners = append $listeners (dict "listen" (add 8444 $i) "nexusPort" (toString $p.nexusPort)) }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nexus.exposeName" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nexus.labels" . | nindent 4 }}
+    app.kubernetes.io/component: expose-tls
+data:
+  nginx.conf: |
+    worker_processes 1;
+    pid /tmp/nginx.pid;
+    error_log /dev/stderr warn;
+    events {
+      worker_connections 1024;
+    }
+    http {
+      access_log /dev/stdout;
+      server_tokens off;
+      client_body_temp_path /tmp/client_temp;
+      proxy_temp_path /tmp/proxy_temp;
+      fastcgi_temp_path /tmp/fastcgi_temp;
+      uwsgi_temp_path /tmp/uwsgi_temp;
+      scgi_temp_path /tmp/scgi_temp;
+      map $ssl_server_name $tls_crt {
+        default /etc/nginx/tls/tls.crt;
+      }
+      map $ssl_server_name $tls_key {
+        default /etc/nginx/tls/tls.key;
+      }
+      {{- range $listeners }}
+      server {
+        listen {{ .listen }} ssl;
+        ssl_certificate $tls_crt;
+        ssl_certificate_key $tls_key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        client_max_body_size 0;
+        location / {
+          proxy_pass http://{{ $nexusHost }}:{{ .nexusPort }};
+          proxy_http_version 1.1;
+          proxy_set_header Host $http_host;
+          proxy_set_header X-Forwarded-Proto https;
+          proxy_set_header X-Forwarded-For $remote_addr;
+          proxy_request_buffering off;
+          proxy_buffering off;
+          proxy_read_timeout 900s;
+          proxy_send_timeout 900s;
+        }
+      }
+      {{- end }}
+    }
+{{- end }}

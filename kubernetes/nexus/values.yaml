@@ -304,3 +304,101 @@ ldap:
   # A role that already exists, built-in ones such as `nx-admin` included, is
   # never modified. Each item: `id`, `name`, `description`, `privileges[]`.
   roles: []
+
+expose:
+  # -- Expose Nexus over TLS on a LoadBalancer Service, IN ADDITION to the
+  # in-cluster ClusterIP Service and `kubectl port-forward`, which stay exactly
+  # as they are whatever this is set to. Ships `false` and renders nothing at
+  # all when `false`: the render is byte-identical to a chart without this
+  # block.
+  #
+  # HOW. A separate nginx Deployment terminates TLS in front of the Nexus
+  # ClusterIP Service, and the LoadBalancer Service points at it. The Nexus pod
+  # and its Service are not touched, so nothing here can change how the
+  # cluster-internal path behaves. The proxy forwards to Nexus in plaintext
+  # INSIDE the cluster, the same hop the provisioning Job already uses. The
+  # LoadBalancer path has no plain-HTTP port.
+  #
+  # WHY AN HTTP PROXY AND NOT A TLS TUNNEL. Behind a layer-4 TLS terminator,
+  # Nexus cannot tell the client used https, and the Docker token challenge it
+  # sends advertises an `http://` realm: Docker clients cannot complete
+  # authentication on a TLS-only endpoint (measured). The proxy therefore sets
+  # `X-Forwarded-Proto: https` and passes the Host header through; Nexus's
+  # `http.forwarded` capability, which is on by default, then builds `https://`
+  # URLs. Do not disable that capability.
+  #
+  # WHAT THIS DOES NOT DO. It does not issue, create or renew a certificate
+  # (the consumer owns that), and it creates no DNS record, address allocation,
+  # load-balancer announcement or NetworkPolicy. Those belong to the consumer's
+  # own repository.
+  #
+  # ANONYMOUS READ AND THE LOCAL ADMIN. Exposure widens who can reach them.
+  # With `anonymous.enabled: true`, every repository on this instance becomes
+  # readable by anyone who can reach the LoadBalancer address, with no
+  # credential. The local `admin` account (the break-glass login) becomes
+  # reachable from the same network. This block forces neither choice; decide
+  # `anonymous.enabled` for the instance before turning exposure on.
+  enabled: false
+  tls:
+    # -- Name of an EXISTING Secret of type kubernetes.io/tls (keys `tls.crt`
+    # and `tls.key`) in the release namespace. NO DEFAULT: the render fails
+    # when `expose.enabled` is true and this is unset. The chart never creates
+    # or manages it. A renewed Secret needs no manual step: the Secret is
+    # mounted as a directory, kubelet refreshes it in place (typically within a
+    # minute), and the proxy reads the certificate and key from disk on every
+    # new TLS handshake, so no timer, signal or restart is involved. Existing
+    # connections keep the certificate they started with until they close.
+    secretName: null
+  # -- Port the LoadBalancer Service listens on for the Nexus UI, REST API and
+  # package clients (TLS).
+  port: 443
+  # -- Additional Nexus connector ports to serve through the same TLS proxy,
+  # for example a Docker connector. Empty by default. Each item:
+  # `name` (1 to 9 characters of lower-case letters, digits and `-`; it becomes
+  # the Service port name `https-<name>`, which Kubernetes limits to 15
+  # characters; an invalid or duplicate name fails the render), `port` (the
+  # LoadBalancer port) and `nexusPort` (the port on the Nexus ClusterIP
+  # Service to forward to). The Nexus side has to exist already: add the
+  # connector to Nexus and to the Nexus Service yourself, for example with
+  # `nexus3.service.additionalPorts`. This list does not create it.
+  extraPorts: []
+  #  - name: docker
+  #    port: 5000
+  #    nexusPort: 8082
+  service:
+    # -- Annotations on the LoadBalancer Service, passed through unchanged.
+    # Use them for whatever your load balancer reads (address pools, static
+    # address selection, class-specific settings).
+    annotations: {}
+    # -- Labels on the LoadBalancer Service, passed through unchanged.
+    labels: {}
+    # -- `spec.loadBalancerClass`. Left unset (no field rendered) when null.
+    loadBalancerClass: null
+    # -- `spec.loadBalancerIP`. Left unset when null. Kubernetes has deprecated
+    # this field; if your load balancer selects an address by annotation, use
+    # `service.annotations` instead.
+    loadBalancerIP: null
+    # -- `spec.externalTrafficPolicy`, `Cluster` or `Local`. Left unset when
+    # null.
+    externalTrafficPolicy: null
+  # -- Number of proxy replicas.
+  replicas: 1
+  image:
+    # -- Image repository for the TLS proxy (an unprivileged nginx build).
+    repository: docker.io/nginxinc/nginx-unprivileged
+    # -- Image tag for the TLS proxy.
+    tag: 1.30.6-alpine
+    # -- Image digest for the TLS proxy. A tag is mutable; only a digest names
+    # one immutable image (ADR-004). Digest measured for
+    # `docker.io/nginxinc/nginx-unprivileged:stable-alpine` (nginx 1.30.6).
+    digest: sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
+  # -- Resources for the proxy container. All four of requests/limits x
+  # cpu/memory are set on purpose, for the same reason as `provision.resources`:
+  # the Checkov gate runs with `soft_fail: false`.
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
