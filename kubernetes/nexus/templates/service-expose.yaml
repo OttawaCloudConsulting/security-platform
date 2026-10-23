@@ -9,7 +9,7 @@ cluster's own behaviour rather than a value this chart invented. Nothing here
 names an address, a network, a class or a policy.
 
 EVERY PORT IS TLS. The ports are the main listener and the expose.extraPorts
-items, each targeting a ghostunnel container that has a certificate. There is
+items, each targeting a proxy listener that is `ssl` with a certificate. There is
 no http port. The selector matches only the proxy pods (component: expose-tls),
 never the Nexus pods.
 
@@ -53,7 +53,7 @@ spec:
       targetPort: 8443
       protocol: TCP
     {{- range $i, $p := $e.extraPorts }}
-    - name: {{ printf "https-%s" $p.name | trunc 15 | trimSuffix "-" }}
+    - name: {{ printf "https-%s" $p.name }}
       port: {{ $p.port }}
       targetPort: {{ add 8444 $i }}
       protocol: TCP
