@@ -41,3 +41,4 @@ For the full findings that prompted ADR-001 through ADR-012, see [`red-team/00-c
 | [ADR-031](adr031-fixed-scan-image-tag-makes-trivy-image-findings-dedupe-across-branches.md) | A Fixed Scan Image Tag Makes trivy-image Findings Dedupe Across Branches and Main Commits | 2026-10-04 | Accepted |
 | [ADR-032](adr032-defectdojo-import-sends-verified-false-so-trivy-findings-enter-under-review.md) | The DefectDojo Import Sends verified=false So Trivy Findings Enter Under Review | 2026-10-05 | Accepted |
 | [ADR-033](adr033-closed-pr-reopen-race-does-not-merge-on-skipped-checks.md) | A Closed-Then-Reopened Red Pull Request Was Refused in Six Race Attempts (ADR-033 resolves ADR-024 "What was NOT verified" item 2) | 2026-10-08 | Accepted |
+| [ADR-034](adr034-nexus-authentication-via-authentik-ldap.md) | Nexus Authentication via Authentik LDAP | 2026-10-22 | Accepted |
