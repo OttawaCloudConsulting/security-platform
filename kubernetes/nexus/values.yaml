@@ -304,3 +304,94 @@ ldap:
   # A role that already exists, built-in ones such as `nx-admin` included, is
   # never modified. Each item: `id`, `name`, `description`, `privileges[]`.
   roles: []
+
+expose:
+  # -- Expose Nexus over TLS on a LoadBalancer Service, IN ADDITION to the
+  # in-cluster ClusterIP Service and `kubectl port-forward`, which stay exactly
+  # as they are whatever this is set to. Ships `false` and renders nothing at
+  # all when `false`: the render is byte-identical to a chart without this
+  # block.
+  #
+  # HOW. A separate TLS-terminating proxy Deployment (ghostunnel) sits in front
+  # of the Nexus ClusterIP Service, and the LoadBalancer Service points at that
+  # proxy. The Nexus pod and its Service are not touched, so nothing here can
+  # change how the cluster-internal path behaves. The proxy forwards to Nexus
+  # in plaintext INSIDE the cluster, the same hop the provisioning Job already
+  # uses. The LoadBalancer path has no plain-HTTP port.
+  #
+  # WHAT THIS DOES NOT DO. It does not issue, create or renew a certificate
+  # (the consumer owns that), and it creates no DNS record, address allocation,
+  # load-balancer announcement or NetworkPolicy. Those belong to the consumer's
+  # own repository.
+  #
+  # ANONYMOUS READ AND THE LOCAL ADMIN. Exposure widens who can reach them.
+  # With `anonymous.enabled: true`, every repository on this instance becomes
+  # readable by anyone who can reach the LoadBalancer address, with no
+  # credential. The local `admin` account (the break-glass login) becomes
+  # reachable from the same network. This block forces neither choice; decide
+  # `anonymous.enabled` for the instance before turning exposure on.
+  enabled: false
+  tls:
+    # -- Name of an EXISTING Secret of type kubernetes.io/tls (keys `tls.crt`
+    # and `tls.key`) in the release namespace. NO DEFAULT: the render fails
+    # when `expose.enabled` is true and this is unset. The chart never creates
+    # or manages it.
+    secretName: null
+    # -- How often the proxy re-reads the certificate and key, as a Go
+    # duration. A renewed Secret is picked up with no restart and no manual
+    # step: kubelet refreshes the mounted Secret volume (typically within a
+    # minute), then the proxy reloads within this interval. Worst case a
+    # renewed certificate is served about this long plus a minute after the
+    # Secret changes.
+    reloadInterval: 300s
+  # -- Port the LoadBalancer Service listens on for the Nexus UI, REST API and
+  # package clients (TLS).
+  port: 443
+  # -- Additional Nexus connector ports to serve through the same TLS proxy,
+  # for example a Docker connector. Empty by default. Each item:
+  # `name` (a DNS label, used in the port and container names), `port` (the
+  # LoadBalancer port) and `nexusPort` (the port on the Nexus ClusterIP
+  # Service to forward to). The Nexus side has to exist already: add the
+  # connector to Nexus and to the Nexus Service yourself, for example with
+  # `nexus3.service.additionalPorts`. This list does not create it.
+  extraPorts: []
+  #  - name: docker
+  #    port: 5000
+  #    nexusPort: 8082
+  service:
+    # -- Annotations on the LoadBalancer Service, passed through unchanged.
+    # Use them for whatever your load balancer reads (address pools, static
+    # address selection, class-specific settings).
+    annotations: {}
+    # -- Labels on the LoadBalancer Service, passed through unchanged.
+    labels: {}
+    # -- `spec.loadBalancerClass`. Left unset (no field rendered) when null.
+    loadBalancerClass: null
+    # -- `spec.loadBalancerIP`. Left unset when null. Kubernetes has deprecated
+    # this field; if your load balancer selects an address by annotation, use
+    # `service.annotations` instead.
+    loadBalancerIP: null
+    # -- `spec.externalTrafficPolicy`, `Cluster` or `Local`. Left unset when
+    # null.
+    externalTrafficPolicy: null
+  # -- Number of proxy replicas.
+  replicas: 1
+  image:
+    # -- Image repository for the TLS proxy.
+    repository: docker.io/ghostunnel/ghostunnel
+    # -- Image tag for the TLS proxy. The `-distroless` variant has no shell.
+    tag: v1.11.3-distroless
+    # -- Image digest for the TLS proxy. A tag is mutable; only a digest names
+    # one immutable image (ADR-004). Digest measured for
+    # `docker.io/ghostunnel/ghostunnel:v1.11.3-distroless`.
+    digest: sha256:51fa619294acf716e01efcb03ad00dc11229dc1f3829cba984c5b0a4f43f4faf
+  # -- Resources for EACH proxy container (one per exposed port). All four of
+  # requests/limits x cpu/memory are set on purpose, for the same reason as
+  # `provision.resources`: the Checkov gate runs with `soft_fail: false`.
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 250m
+      memory: 64Mi

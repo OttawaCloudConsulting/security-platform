@@ -14,7 +14,7 @@ set -euo pipefail
 # It reports EVERY failure rather than stopping at the first, so one run tells
 # you the whole story.
 #
-# It asserts 22 offline invariants. That count is a literal in three places
+# It asserts 28 offline invariants. That count is a literal in three places
 # which must move together in one commit: this line, the `check-nexus-chart:
 # asserting ...` echo below, and CHECK_COUNT at the foot of the file.
 #
@@ -92,7 +92,7 @@ if ! compgen -G "${CHART_DIR}/charts/*.tgz" >/dev/null; then
   exit 2
 fi
 
-echo "check-nexus-chart: asserting 22 offline invariants against ${CHART_DIR}"
+echo "check-nexus-chart: asserting 28 offline invariants against ${CHART_DIR}"
 
 # The admin credential is a Kubernetes Secret NAME wired through
 # nexus3.rootPassword.secret; templates/job-provision.yaml wraps it in Helm's
@@ -540,8 +540,146 @@ else
 fi
 rm -f "$overlay_values"
 
+# ── 23. EXPOSE-DEFAULT-OFF ───────────────────────────────────────────────────
+# TLS exposure ships OFF, and "off" must mean ABSENT: the shipped value is
+# false, an explicit `expose.enabled=false` renders the same bytes as the
+# default, and the default render has no proxy and no LoadBalancer Service. The
+# pre-change render was compared byte for byte against origin/main when this
+# block was added; this check keeps the source-level half of that claim.
+if ! expose_default=$(yq '.expose.enabled' "$VALUES"); then
+  fail "EXPOSE-DEFAULT-OFF" "yq failed reading .expose.enabled from ${VALUES}"
+elif [ "$(unquote "$expose_default")" != "false" ]; then
+  fail "EXPOSE-DEFAULT-OFF" "expected .expose.enabled == false in ${VALUES}, got '${expose_default}'"
+fi
+if ! x_default=$(render) || ! x_off=$(render --set expose.enabled=false); then
+  fail "EXPOSE-DEFAULT-OFF" "render failed on the default or the expose.enabled=false render"
+else
+  if [ "$x_default" != "$x_off" ]; then
+    fail "EXPOSE-DEFAULT-OFF" "render with expose.enabled=false differs from the default render"
+  fi
+  if printf '%s\n' "$x_default" | grep -Eqi 'ghostunnel|expose-tls|type: LoadBalancer'; then
+    fail "EXPOSE-DEFAULT-OFF" "the default render contains a TLS proxy or a LoadBalancer Service — exposure must render nothing unless expose.enabled is true"
+  fi
+fi
+
+# ── 24. EXPOSE-REQUIRES-TLS-SECRET ───────────────────────────────────────────
+# With expose.enabled=true and no certificate Secret name the render must FAIL
+# and name the value to set. The chart never creates or manages the
+# certificate, so an unset name can never be papered over with a generated one.
+if expose_err=$(render --set expose.enabled=true 2>&1 >/dev/null); then
+  fail "EXPOSE-REQUIRES-TLS-SECRET" "expose.enabled=true with no expose.tls.secretName rendered successfully"
+else
+  case "$expose_err" in
+    *expose.tls.secretName*) ;;
+    *) fail "EXPOSE-REQUIRES-TLS-SECRET" "render failed, but the message never mentions expose.tls.secretName: $(printf '%s' "$expose_err" | tr '\n' ' ')" ;;
+  esac
+fi
+
+# ── 25. EXPOSE-LB-PASSTHROUGH ────────────────────────────────────────────────
+# The consumer supplies every environment-specific value and the chart renders
+# it unchanged: annotations, labels, loadBalancerClass, loadBalancerIP,
+# externalTrafficPolicy and the ports. The values here are invented
+# placeholders (example.test, 192.0.2.0/24 documentation range), not a real
+# environment. The converse matters as much: with none of them set, none of the
+# optional fields may appear, so the chart cannot be inventing a default.
+expose_values="$(mktemp)"
+trap 'rm -f "${overlay_values:-}" "${expose_values:-}"' EXIT
+cat >"$expose_values" <<'EXPOSEVALUES'
+expose:
+  enabled: true
+  tls:
+    secretName: nexus-tls
+  port: 8443
+  service:
+    annotations:
+      example.test/address-pool: pool-a
+      example.test/addresses: "192.0.2.10"
+    labels:
+      tier: edge
+    loadBalancerClass: example.test/lb
+    loadBalancerIP: 192.0.2.10
+    externalTrafficPolicy: Local
+  extraPorts:
+    - name: docker
+      port: 5000
+      nexusPort: 8082
+EXPOSEVALUES
+lb_path='select(.kind=="Service" and .spec.type=="LoadBalancer")'
+if ! x_render=$(render -f "$expose_values"); then
+  fail "EXPOSE-LB-PASSTHROUGH" "render failed with the exposure values"
+else
+  x_lb=$(printf '%s\n' "$x_render" | yq -o=json "$lb_path") || x_lb=""
+  if [ -z "$x_lb" ]; then
+    fail "EXPOSE-LB-PASSTHROUGH" "no LoadBalancer Service in the enabled render"
+  elif ! printf '%s\n' "$x_lb" | jq -e '
+      .metadata.annotations == {"example.test/address-pool":"pool-a","example.test/addresses":"192.0.2.10"}
+      and .metadata.labels.tier == "edge"
+      and .spec.loadBalancerClass == "example.test/lb"
+      and .spec.loadBalancerIP == "192.0.2.10"
+      and .spec.externalTrafficPolicy == "Local"
+      and (.spec.ports | map({name,port}) | sort_by(.port)) == [{"name":"https-docker","port":5000},{"name":"https","port":8443}]' >/dev/null 2>&1; then
+    fail "EXPOSE-LB-PASSTHROUGH" "the LoadBalancer Service does not carry the consumer values unchanged, got: $(printf '%s' "$x_lb" | tr -d '\n ')"
+  fi
+fi
+if ! x_bare=$(render --set expose.enabled=true --set expose.tls.secretName=nexus-tls | yq -o=json "$lb_path"); then
+  fail "EXPOSE-LB-PASSTHROUGH" "render failed with only expose.tls.secretName set"
+elif ! printf '%s\n' "$x_bare" | jq -e '(.metadata | has("annotations") | not) and (.spec | has("loadBalancerClass") or has("loadBalancerIP") or has("externalTrafficPolicy") | not)' >/dev/null 2>&1; then
+  fail "EXPOSE-LB-PASSTHROUGH" "with no consumer values the LoadBalancer Service still carries an annotation or a class, address or policy field — the chart must not invent defaults"
+fi
+
+# ── 26. EXPOSE-NO-PLAINTEXT ──────────────────────────────────────────────────
+# E3: TLS only on the LoadBalancer path. Every port on the LoadBalancer Service
+# is named https*, targets a proxy container port, and every proxy container
+# runs with a certificate and a key. There is no http port, no container
+# without --cert, and the Service selects only the proxy pods (never Nexus).
+if ! x_render=$(render -f "$expose_values"); then
+  fail "EXPOSE-NO-PLAINTEXT" "render failed with the exposure values"
+else
+  if ! printf '%s\n' "$x_render" | yq -o=json "$lb_path" | jq -e '(.spec.ports | length > 0) and (.spec.ports | all(.name | startswith("https"))) and (.spec.ports | all(.targetPort >= 8443)) and (.spec.selector["app.kubernetes.io/component"] == "expose-tls")' >/dev/null 2>&1; then
+    fail "EXPOSE-NO-PLAINTEXT" "a LoadBalancer port is not an https* port to a proxy port, or the selector does not pin component expose-tls"
+  fi
+  if ! printf '%s\n' "$x_render" | yq -o=json 'select(.kind=="Deployment" and .metadata.name == "t-nexus-expose") | .spec.template.spec.containers' | jq -e 'length >= 1 and all(.[]; (.args | any(startswith("--cert="))) and (.args | any(startswith("--key="))) and (.args[0] == "server") and (.args | any(. == "--unsafe-target")) and (.ports | all(.containerPort >= 8443)))' >/dev/null 2>&1; then
+    fail "EXPOSE-NO-PLAINTEXT" "a proxy container lacks --cert/--key or --unsafe-target (ghostunnel refuses to start without it for a non-localhost target), is not 'ghostunnel server', or listens below 8443 — every listener on the exposure path must be TLS"
+  fi
+fi
+
+# ── 27. EXPOSE-CLUSTERIP-UNCHANGED ───────────────────────────────────────────
+# E1: the existing in-cluster access stays exactly as it is. Drop the two
+# objects the exposure adds (the proxy Deployment and the LoadBalancer Service,
+# both named <release>-nexus-expose) from the enabled render, and what is left
+# must equal the default render: the Nexus StatefulSet, both ClusterIP
+# Services, the Job and the ConfigMaps. Stricter than comparing the Services
+# alone, and it fails if exposure ever starts editing the Nexus pod.
+x_rest=$(render -f "$expose_values" | yq 'select(.metadata.name != "t-nexus-expose")') || x_rest=""
+x_base=$(render | yq 'select(.metadata.name != "t-nexus-expose")') || x_base=""
+if [ -z "$x_base" ] || [ "$x_rest" != "$x_base" ]; then
+  fail "EXPOSE-CLUSTERIP-UNCHANGED" "enabling exposure changed an object other than the proxy Deployment and the LoadBalancer Service"
+fi
+if ! render -f "$expose_values" | yq -o=json 'select(.kind=="Service" and .spec.type=="ClusterIP" and .metadata.name == "t-nexus3") | .spec.ports' | jq -e 'length == 1 and .[0].port == 8081' >/dev/null 2>&1; then
+  fail "EXPOSE-CLUSTERIP-UNCHANGED" "the Nexus ClusterIP Service is missing or no longer exposes only port 8081 in the enabled render"
+fi
+
+# ── 28. EXPOSE-RELOAD ────────────────────────────────────────────────────────
+# E3: a renewed certificate is picked up with no manual step. That needs three
+# things together: the Secret mounted as a DIRECTORY (a subPath mount never
+# receives updates), the named Secret behind the volume, and a timed reload on
+# every proxy process. The check asserts all three, and that the interval
+# comes from the value.
+if ! x_render=$(render -f "$expose_values" --set expose.tls.reloadInterval=45s); then
+  fail "EXPOSE-RELOAD" "render failed with the exposure values"
+else
+  x_dep=$(printf '%s\n' "$x_render" | yq -o=json 'select(.kind=="Deployment" and .metadata.name == "t-nexus-expose") | .spec.template.spec') || x_dep=""
+  if ! printf '%s\n' "$x_dep" | jq -e '
+      (.volumes | map(select(.name=="tls")) | .[0].secret.secretName) == "nexus-tls"
+      and (.containers | all(.volumeMounts | map(select(.name=="tls")) | length == 1 and (.[0] | has("subPath") | not) and .[0].mountPath == "/etc/ghostunnel/tls"))
+      and (.containers | all(.args | any(. == "--timed-reload=45s")))' >/dev/null 2>&1; then
+    fail "EXPOSE-RELOAD" "the certificate Secret is not mounted as a directory behind the named Secret, or a proxy container lacks --timed-reload from expose.tls.reloadInterval"
+  fi
+fi
+rm -f "$expose_values"
+
 # ── Terminal summary ─────────────────────────────────────────────────────────
-CHECK_COUNT=22
+CHECK_COUNT=28
 
 if [ "${#FAILURES[@]}" -gt 0 ]; then
   for line in "${FAILURES[@]}"; do

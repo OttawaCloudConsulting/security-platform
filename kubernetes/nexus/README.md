@@ -21,7 +21,9 @@ kubernetes/nexus/
     ├── configmap-ldap.yaml            # rendered only when ldap.enabled
     ├── configmap-provision-script.yaml
     ├── configmap-repos.yaml
-    └── job-provision.yaml
+    ├── deployment-expose.yaml         # rendered only when expose.enabled
+    ├── job-provision.yaml
+    └── service-expose.yaml            # rendered only when expose.enabled
 ```
 
 The pinned `nexus3` subchart renders the Nexus `StatefulSet`, its `Service` and its `PersistentVolumeClaim`. This wrapper renders two `ConfigMaps` — the provisioning script and one JSON body per proxy repository — and a `Job` annotated `helm.sh/hook: post-install,post-upgrade` (and `argocd.argoproj.io/hook: Sync` for ArgoCD). After the install the Job polls `/service/rest/v1/status/writable`, accepts the EULA if you opted in, and then upserts each repository with a `GET` followed by a `PUT` or a `POST`, so re-running it on every upgrade is safe.
@@ -179,6 +181,42 @@ Things to know before you turn it on:
 - **Use `ldaps`.** `ldap.protocol: ldap` sends the user's password in clear text.
 - **Roles are created once.** Changing `privileges` in `ldap.roles` later does not update a role that already exists; edit it in Nexus or delete it first.
 - **The LDAP step is a separate script on purpose.** A default render is byte-identical to a chart without LDAP support, and `scripts/check-nexus-chart.sh` asserts that no LDAP text appears in it.
+
+## TLS Exposure (opt-in)
+
+`expose.enabled` ships `false`. When it is `true`, the chart adds a TLS-terminating proxy and a `LoadBalancer` Service so the Nexus UI, REST API and package clients are reachable over TLS without `kubectl port-forward`. It is **in addition to** the existing access: the Nexus pod, its `ClusterIP` Service and port-forward are untouched whatever this is set to, and with `expose.enabled: false` the render is byte-identical to a chart without this block.
+
+How it works. A separate `ghostunnel` Deployment sits in front of the Nexus `ClusterIP` Service, and the `LoadBalancer` Service points at it. Every port on the `LoadBalancer` is TLS; there is no plain-HTTP port. The proxy forwards to Nexus in plaintext **inside the cluster**, the same hop the provisioning Job already uses, and it must be started with `--unsafe-target` for that reason (ghostunnel refuses a non-local target without it). Nexus sees the proxy as the client, not the original caller.
+
+What you supply. Everything environment-specific comes from values, and anything you leave unset is left unset on the Service:
+
+```yaml
+expose:
+  enabled: true
+  tls:
+    secretName: nexus-tls          # an existing kubernetes.io/tls Secret, required
+  port: 443
+  service:
+    annotations: {}                # passed through unchanged
+    labels: {}                     # passed through unchanged
+    loadBalancerClass: null
+    loadBalancerIP: null           # or select the address by annotation
+    externalTrafficPolicy: null
+  extraPorts: []                   # e.g. a Docker connector, see below
+```
+
+What you must own, because the chart will not do it: issuing and renewing the certificate (no `Certificate`, `Issuer` or self-signed generation here), DNS, address allocation, load-balancer announcement and any `NetworkPolicy`.
+
+Renewing the certificate needs no manual step. The Secret is mounted as a directory, kubelet refreshes it in place when it changes (typically within a minute), and the proxy re-reads it every `expose.tls.reloadInterval` (default `300s`). Measured with the pinned proxy image, a Linux volume and an atomic symlink swap like kubelet's: after the swap the old certificate stopped verifying and the new one verified, with the container up and not restarted. Worst case a renewed certificate is served about `reloadInterval` plus a minute after the Secret changes.
+
+`expose.extraPorts` serves more Nexus connector ports through the same proxy (each item: `name`, `port` on the `LoadBalancer`, `nexusPort` on the Nexus Service). It does not create the connector: add it to Nexus and to the Nexus Service yourself, for example with `nexus3.service.additionalPorts`.
+
+Before you turn it on:
+
+- **Anonymous read.** With `anonymous.enabled: true`, every repository becomes readable by anyone who can reach the address, with no credential. `anonymous.enabled` is the switch; this block does not change it. Decide it first.
+- **The local `admin`** (the break-glass login) becomes reachable from the same network. With LDAP on, human logins also cross the network, which is why TLS matters here.
+- **Larger attack surface.** A network listener now exists where there was none.
+- **The in-cluster hop is plaintext.** Add a `NetworkPolicy` in your own repository if that matters to you.
 
 ## Install
 

@@ -1,0 +1,120 @@
+{{/*
+The TLS-terminating proxy for the optional LoadBalancer exposure. Rendered ONLY
+when expose.enabled is true; a default render has no trace of it.
+
+ONE ghostunnel PROCESS PER PORT. ghostunnel serves a single listener, so the
+main listener and every expose.extraPorts item each get their own container in
+the same pod. Container listen ports are 8443 for the main one and 8444, 8445,
+... for the extras, in list order. They are internal to the pod: the
+LoadBalancer Service maps its own ports onto them.
+
+NO PLAIN-HTTP LISTENER. Every container runs `ghostunnel server` with --cert and
+--key. There is no http container and no port that is not TLS. The
+EXPOSE-NO-PLAINTEXT check in scripts/check-nexus-chart.sh asserts that.
+
+CERTIFICATE RELOAD. The Secret is mounted as a directory (no subPath), so
+kubelet refreshes it in place when the Secret changes, and --timed-reload makes
+each process re-read the files on that interval. A renewed certificate is
+served with no restart and no manual step.
+
+CLIENT AUTHENTICATION. --disable-authentication means no client certificate is
+requested: this is server-side TLS only, which is what a browser, curl, npm,
+pip and docker present.
+
+The proxy reaches Nexus over the ClusterIP Service, in plaintext inside the
+cluster. Nexus sees the proxy's address as the client address, not the
+original caller's.
+
+--unsafe-target IS REQUIRED, AND MEASURED. ghostunnel refuses to start with a
+target that is not unix:PATH or localhost:PORT unless it is set: `error:
+--target must be unix:PATH or localhost:PORT (unless --unsafe-target is set)`.
+The target here is the Nexus ClusterIP Service, deliberately outside the proxy
+pod, so the flag is needed. It is ghostunnel's explicit acknowledgement that the
+hop behind the proxy is plaintext. That hop is the same one the provisioning
+Job already uses, and it stays inside the cluster. A sidecar on localhost would
+avoid the flag but would mean editing the Nexus pod, which this design avoids.
+*/}}
+{{- if .Values.expose.enabled }}
+{{- $e := .Values.expose }}
+{{- $_ := required "expose.tls.secretName is required when expose.enabled is true: name an existing kubernetes.io/tls Secret that holds the certificate and key" $e.tls.secretName -}}
+{{- $img := $e.image }}
+{{- $nexusHost := printf "%s.%s.svc.cluster.local" (include "nexus.nexus3Fullname" .) .Release.Namespace }}
+{{- $nexusPort := toString (default 8081 .Values.nexus3.service.port) }}
+{{- $listeners := list (dict "name" "https" "listen" 8443 "nexusPort" $nexusPort) }}
+{{- range $i, $p := $e.extraPorts }}
+{{- $_ := required "every expose.extraPorts item needs a name" $p.name -}}
+{{- $_ := required (printf "expose.extraPorts item '%s' needs a port" $p.name) $p.port -}}
+{{- $_ := required (printf "expose.extraPorts item '%s' needs a nexusPort" $p.name) $p.nexusPort -}}
+{{- $listeners = append $listeners (dict "name" (printf "https-%s" $p.name) "listen" (add 8444 $i) "nexusPort" (toString $p.nexusPort)) }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nexus.exposeName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nexus.labels" . | nindent 4 }}
+    app.kubernetes.io/component: expose-tls
+spec:
+  replicas: {{ $e.replicas }}
+  selector:
+    matchLabels:
+      {{- include "nexus.exposeSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "nexus.labels" . | nindent 8 }}
+        app.kubernetes.io/component: expose-tls
+    spec:
+      # The proxy makes no Kubernetes API call; a mounted token would be pure
+      # attack surface (as for the provisioning Job).
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        {{- range $listeners }}
+        - name: tls-{{ .listen }}
+          image: {{ if $img.digest }}{{ printf "%s@%s" $img.repository $img.digest }}{{ else }}{{ printf "%s:%s" $img.repository (toString $img.tag) }}{{ end }}
+          args:
+            - server
+            - --listen=:{{ .listen }}
+            - --target={{ $nexusHost }}:{{ .nexusPort }}
+            - --unsafe-target
+            - --cert=/etc/ghostunnel/tls/tls.crt
+            - --key=/etc/ghostunnel/tls/tls.key
+            - --disable-authentication
+            - --timed-reload={{ $e.tls.reloadInterval }}
+          ports:
+            - name: {{ .name | trunc 15 | trimSuffix "-" }}
+              containerPort: {{ .listen }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .listen }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: {{ .listen }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/ghostunnel/tls
+              readOnly: true
+          resources:
+            {{- toYaml $e.resources | nindent 12 }}
+        {{- end }}
+      volumes:
+        - name: tls
+          secret:
+            secretName: {{ $e.tls.secretName }}
+{{- end }}
