@@ -144,7 +144,7 @@ That reference is the one that routes. The full anonymous client handshake behin
 
 What the step does, in order:
 
-1. Upserts one LDAP server definition named `ldap.name`: `GET`, then `PUT` if it exists or `POST` if it does not. Nexus tests the connection and the bind when it saves the definition, so a wrong host, DN or password fails the Job with an HTTP 400.
+1. Checks the connection and the bind with Nexus's `verify-connection` call, then upserts one LDAP server definition named `ldap.name`: `GET`, then `PUT` (with the id Nexus returned) if it exists or `POST` if it does not. Nexus does not test a definition when it saves it, so the explicit check is what makes a wrong host, DN, base or password fail the Job with Nexus's own message, before anything is stored.
 2. Creates each role in `ldap.roles` that does not exist yet. Nexus maps the CN of a directory group to the role with the same id. A role that already exists, `nx-admin` included, is never modified.
 3. Appends `LdapRealm` to the active realms, directly after `NexusAuthenticatingRealm`. Every realm that was active stays active, `DockerToken` included.
 
@@ -174,7 +174,7 @@ ldap:
 Things to know before you turn it on:
 
 - **Logins are password-only.** Nexus binds to the directory with the user's password, so any MFA configured in the identity provider is bypassed for Nexus.
-- **The directory becomes a dependency for human logins.** The local `admin` still works if it is down. Anonymous read (`anonymous.enabled`) is independent of this setting.
+- **The directory becomes a dependency for human logins and for upgrades.** The local `admin` still works if it is down, but the connection check runs on every run of the Job, so a sync while the directory is unreachable fails the hook Job. Anonymous read (`anonymous.enabled`) is independent of this setting.
 - **Defaults fit Authentik.** `userIdAttribute: cn` because `uid` is a hash there, and `userBaseDn: ou=users` with `userObjectClass: user` keeps the per-user entry that Authentik also emits under `ou=virtual-groups` out of the lookup. Another directory needs its own values.
 - **Use `ldaps`.** `ldap.protocol: ldap` sends the user's password in clear text.
 - **Roles are created once.** Changing `privileges` in `ldap.roles` later does not update a role that already exists; edit it in Nexus or delete it first.

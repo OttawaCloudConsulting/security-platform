@@ -481,6 +481,14 @@ else
   if ! printf '%s\n' "$ldap_render" | yq 'select(.kind=="ConfigMap" and (.metadata.name | test("-ldap$"))) | .data."server.json"' | jq -e 'has("authPassword") | not' >/dev/null; then
     fail "LDAP-ENV-WIRING" "server.json is missing or carries an authPassword field — the password must never be rendered into a ConfigMap"
   fi
+  # The password must not travel on ANY argv. `jq --arg pw "${LDAP_BIND_PASSWORD}"`
+  # puts it on jq's, where ps and /proc/<pid>/cmdline show it; jq must read it
+  # from its environment (`env.LDAP_BIND_PASSWORD`) instead (Copilot, PR 44).
+  if printf '%s\n' "$ldap_render" | grep -Eq -e '--arg(json)?[[:space:]]+[A-Za-z_]+[[:space:]]+"?\$\{?LDAP_BIND_PASSWORD'; then
+    fail "LDAP-ENV-WIRING" "the LDAP script passes LDAP_BIND_PASSWORD to jq as an argument — it must read env.LDAP_BIND_PASSWORD"
+  elif ! printf '%s\n' "$ldap_render" | grep -q 'env\.LDAP_BIND_PASSWORD'; then
+    fail "LDAP-ENV-WIRING" "the LDAP script never reads env.LDAP_BIND_PASSWORD — the bind password has no route into the request body"
+  fi
   if printf '%s\n' "$ldap_render" | grep -Eq '^[[:space:]]*(set -[A-Za-z]*x|set -o xtrace)|bash -[A-Za-z]*x'; then
     fail "LDAP-ENV-WIRING" "shell tracing appears in the LDAP render — it would log the bind password"
   fi

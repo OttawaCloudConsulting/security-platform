@@ -18,11 +18,16 @@ set -euo pipefail
 #   NEXUS_USER          the literal "admin"
 #   NEXUS_PASSWORD      the admin password, as in provision.sh
 #   LDAP_BIND_PASSWORD  the directory bind password. Comes from a secretKeyRef.
-#                       It is read here and handed to jq with --arg, then to
-#                       curl through a process substitution, so it is never
-#                       written to a file in this container. It is never
+#                       jq reads it from its own environment (`env.`), NOT from
+#                       an argument: `jq --arg` would put it on jq's argv, where
+#                       `ps` and /proc/<pid>/cmdline can see it for the life of
+#                       the process (Copilot review of PR 44). curl then gets
+#                       the body through a process substitution, so it is on no
+#                       curl argv and in no file in this container. It is never
 #                       printed, and `set -x` must never be turned on in this
-#                       script or in the `bash -c` that calls it.
+#                       script or in the `bash -c` that calls it. What does hold
+#                       it for the whole run is the process environment, which
+#                       is the secretKeyRef contract and cannot be hidden.
 #   LDAP_CONFIG_DIR     directory holding server.json and roles.json,
 #                       default /ldap-config
 #
@@ -82,12 +87,25 @@ if [ -z "${LDAP_BIND_PASSWORD}" ]; then
   exit 1
 fi
 
-# ── 1. LDAP server definition (upsert) ───────────────────────────────────────
-# GET first: 200 -> PUT (204), 404 -> POST (201). A blind POST fails the second
-# run. Nexus tests the connection and the bind when it saves the definition, so
-# a wrong host, DN or password is a 400 here, which is the loud failure wanted.
-# The body is built by jq from the rendered server.json plus the password, and
-# goes to curl on a /dev/fd path, so the password is on no argv and in no file.
+# ── 1. LDAP server definition (verify, then upsert) ──────────────────────────
+# VERIFY FIRST. Measured on Nexus 3.96.0: saving a definition does NOT test it.
+# A POST naming an unresolvable host returns 201 and stores the definition. The
+# bind is only tested by POST /v1/security/ldap/verify-connection, which answers
+# 204 when the bind and the base lookup work and 400 with a message such as
+# "Failed to connect to LDAP Server: [LDAP: error code 49 - Invalid
+# Credentials]" when they do not. So the definition is verified before anything
+# is written, and a bad host, DN, base or password fails the Job here instead
+# of being stored and failing every user login later. Consequence: an upgrade
+# while the directory is unreachable fails the hook Job. That is the intent.
+#
+# UPSERT. GET by NAME: 200 -> PUT (204), 404 -> POST (201). Measured: GET and
+# PUT take the definition NAME in the path (a GET by the generated id is 404),
+# but a PUT whose body has no `id` is rejected with 400 "PARAMETER id must not
+# be empty". The id is therefore read from the GET response and merged into the
+# PUT body. A POST must not carry one. The body is built by jq from the
+# rendered server.json; jq reads the password from its environment, never from
+# an argument, and the body goes to curl on a /dev/fd path. The password is in
+# no file and on no argv.
 server_json="${LDAP_CONFIG_DIR}/server.json"
 ldap_name="$(jq -r '.name' "${server_json}")"
 if [ -z "${ldap_name}" ] || [ "${ldap_name}" = "null" ]; then
@@ -96,24 +114,48 @@ if [ -z "${ldap_name}" ] || [ "${ldap_name}" = "null" ]; then
 fi
 ldap_url="${NEXUS_HOST}/service/rest/v1/security/ldap"
 ldap_name_uri="$(jq -rn --arg n "${ldap_name}" '$n|@uri')"
+verify_out="${TMP_DIR}/ldap-verify.json"
 
-http_status "${ldap_url}/${ldap_name_uri}"
+rc=0
+HTTP_CODE="$(curl -sS -o "${verify_out}" -w '%{http_code}' \
+  --connect-timeout 5 --max-time 60 \
+  -u "${NEXUS_USER}:${NEXUS_PASSWORD}" \
+  -X POST -H 'Content-Type: application/json' \
+  --data-binary @<(jq '.authPassword = env.LDAP_BIND_PASSWORD' "${server_json}") \
+  "${ldap_url}/verify-connection")" || rc=$?
+if [ "${rc}" -ne 0 ]; then
+  echo "FATAL: curl exited ${rc} requesting ${ldap_url}/verify-connection (transport failure)" >&2
+  exit 1
+fi
+if [ "${HTTP_CODE}" != "204" ]; then
+  echo "FATAL: LDAP connection check for server '${ldap_name}' returned HTTP ${HTTP_CODE}, expected 204: $(jq -r '.message // empty' "${verify_out}" 2>/dev/null)" >&2
+  exit 1
+fi
+echo "ldap: server=${ldap_name} connection verified (HTTP 204)"
+
+ldap_existing="${TMP_DIR}/ldap-existing.json"
+http_body "${ldap_url}/${ldap_name_uri}" "${ldap_existing}"
 existing="${HTTP_CODE}"
 if [ "${existing}" = "200" ]; then
+  ldap_id="$(jq -r '.id // empty' "${ldap_existing}")"
+  if [ -z "${ldap_id}" ]; then
+    echo "FATAL: the existing LDAP server '${ldap_name}' has no id in the GET response" >&2
+    exit 1
+  fi
   http_status "${ldap_url}/${ldap_name_uri}" \
     -X PUT -H 'Content-Type: application/json' \
-    --data-binary @<(jq --arg pw "${LDAP_BIND_PASSWORD}" '.authPassword = $pw' "${server_json}")
+    --data-binary @<(jq --arg id "${ldap_id}" '.authPassword = env.LDAP_BIND_PASSWORD | .id = $id' "${server_json}")
   if [ "${HTTP_CODE}" != "204" ]; then
-    echo "FATAL: update of LDAP server '${ldap_name}' returned HTTP ${HTTP_CODE}, expected 204 (a 400 usually means Nexus could not connect or bind: check host, bindDn and the Secret)" >&2
+    echo "FATAL: update of LDAP server '${ldap_name}' returned HTTP ${HTTP_CODE}, expected 204" >&2
     exit 1
   fi
   echo "ldap: server=${ldap_name} action=updated (HTTP 204)"
 elif [ "${existing}" = "404" ]; then
   http_status "${ldap_url}" \
     -X POST -H 'Content-Type: application/json' \
-    --data-binary @<(jq --arg pw "${LDAP_BIND_PASSWORD}" '.authPassword = $pw' "${server_json}")
+    --data-binary @<(jq '.authPassword = env.LDAP_BIND_PASSWORD' "${server_json}")
   if [ "${HTTP_CODE}" != "201" ]; then
-    echo "FATAL: creation of LDAP server '${ldap_name}' returned HTTP ${HTTP_CODE}, expected 201 (a 400 usually means Nexus could not connect or bind: check host, bindDn and the Secret)" >&2
+    echo "FATAL: creation of LDAP server '${ldap_name}' returned HTTP ${HTTP_CODE}, expected 201" >&2
     exit 1
   fi
   echo "ldap: server=${ldap_name} action=created (HTTP 201)"
@@ -127,7 +169,8 @@ fi
 # already exists is left exactly as it is — built-in ones such as nx-admin
 # included — so this script can never weaken or rewrite a role. Only a 404
 # creates. 200 on create, not 201: measured Nexus behaviour for this endpoint
-# is 200, and 201 is accepted too so a future change does not fail a good run.
+# is 200 (measured on Nexus 3.96.0), and 201 is accepted too so a future change
+# does not fail a good run.
 roles_json="${LDAP_CONFIG_DIR}/roles.json"
 role_count="$(jq 'length' "${roles_json}")"
 echo "roles: ${role_count} role(s) requested"
@@ -157,6 +200,11 @@ while [ "${i}" -lt "${role_count}" ]; do
 done
 
 # ── 3. Active realms: LdapRealm after NexusAuthenticatingRealm ───────────────
+# MEASURED on Nexus 3.96.0: creating the first LDAP server already adds
+# LdapRealm to the active list (at the end), so on a first run this step
+# usually finds it present and writes nothing. The step stays because it makes
+# the outcome independent of that behaviour, and because it is what places the
+# realm when it is absent (for example after someone removed it by hand).
 # The PUT REPLACES the whole list, so the list is READ first and the new one is
 # derived from what was read (the same two traps provision.sh documents). The
 # result must still contain NexusAuthenticatingRealm and every realm that was
