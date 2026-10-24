@@ -200,7 +200,7 @@ jobs:
         id: artifact-sast
         if: always()                     # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: semgrep-results          # unique across the five parallel jobs
           path: |
@@ -337,7 +337,7 @@ jobs:
         id: artifact-iac
         if: always()                     # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: checkov-results          # unique across the five parallel jobs
           path: |
@@ -866,7 +866,7 @@ jobs:
         id: artifact-sca
         if: always()                     # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: sca-results              # unique across the five parallel jobs
           path: |
@@ -1068,7 +1068,7 @@ jobs:
         id: artifact-container
         if: always() && steps.docker.outputs.found == 'true'  # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: trivy-image-results      # unique across the five parallel jobs
           path: |
@@ -1215,7 +1215,7 @@ jobs:
         id: artifact-secrets
         if: always()                     # scanners exit non-zero by design (D-04)
         continue-on-error: true          # ADR-001: upload failures must not block
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: gitleaks-results         # unique across the five parallel jobs
           path: |
