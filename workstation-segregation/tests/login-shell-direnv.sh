@@ -59,4 +59,49 @@ done
 out="$( cd "$fixture/clients/a" && dr /bin/bash -i -l -c "$show_client" 2>/dev/null </dev/null || true )"
 [ -z "$out" ] || fail "interactive login shell exported at startup: '$out'"
 
+# --- Linux without ~/.bash_profile: deploy must put the bootstrap into ~/.profile ---------
+# A uname stub makes deploy.sh behave as on Linux. Bash then reads ~/.profile for login
+# shells; installing it only into ~/.bash_profile would leave this layout without the refresh.
+lhome="$fixture/linux-home"
+mkdir -p "$lhome/.config" "$lhome/.local/share" "$fixture/linux-bin" "$fixture/linux-clients/lc"
+# shellcheck disable=SC2016  # expanded by the shell under test
+printf '# distro default profile\n[ -n "$BASH_VERSION" ] && [ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc"\n' > "$lhome/.profile"
+printf 'export WSK_TEST_CLIENT=lc\n' > "$fixture/linux-clients/lc/.envrc"
+cat > "$fixture/linux-bin/uname" <<'STUB'
+#!/bin/bash
+[ "${1:-}" = -s ] && { echo Linux; exit 0; }
+exec /usr/bin/uname "$@"
+STUB
+cat > "$fixture/linux-bin/crontab" <<'STUB'
+#!/bin/bash
+case "${1:-}" in
+  -l) [ -f "$HOME/stub-crontab" ] && cat "$HOME/stub-crontab" || exit 1 ;;
+  -) cat > "$HOME/stub-crontab" ;;
+  -r) rm -f "$HOME/stub-crontab" ;;
+  *) exit 2 ;;
+esac
+STUB
+chmod 755 "$fixture/linux-bin/uname" "$fixture/linux-bin/crontab"
+printf 'CLIENT_ROOT=%s/linux-clients\nBIN_DIR=%s/linux-bin\n' "$fixture" "$fixture" > "$fixture/linux.conf"
+ldr() { env -i HOME="$lhome" TMPDIR="$fixture" PATH="$fixture/linux-bin:$direnv_dir:/usr/bin:/bin" SHELL=/bin/bash \
+  XDG_CONFIG_HOME="$lhome/.config" XDG_STATE_HOME="$lhome/.local/state" XDG_DATA_HOME="$lhome/.local/share" "$@"; }
+ldr /bin/bash "$kit/deploy.sh" --config "$fixture/linux.conf" --skip-tools >"$fixture/linux-deploy.log" 2>&1 \
+  || fail "linux-style deploy failed: $(tail -5 "$fixture/linux-deploy.log")"
+[ ! -e "$lhome/.bash_profile" ] || fail "deploy created ~/.bash_profile on Linux, shadowing ~/.profile"
+grep -q 'workstation-segregation:shell' "$lhome/.profile" || fail "bootstrap not installed in ~/.profile"
+ldr direnv allow "$fixture/linux-clients/lc" >/dev/null 2>&1
+out="$( cd "$fixture/linux-clients/lc" && ldr /bin/bash -l -c "$show_client" 2>/dev/null )"
+[ "$out" = lc ] || fail "Linux ~/.profile layout: login shell got '${out}', expected lc"
+out="$( cd "$fixture/outside" && ldr /bin/bash -l -c "$show_client" 2>/dev/null )"
+[ -z "$out" ] || fail "Linux ~/.profile layout: environment set outside any client: '$out'"
+# A non-bash POSIX shell reading the same ~/.profile must not run the bash bootstrap. Only
+# checkable where sh is not bash itself (macOS /bin/sh is bash in POSIX mode).
+if [ -z "$(/bin/sh -c 'printf %s "${BASH_VERSION:-}"')" ]; then
+  out="$( cd "$fixture/linux-clients/lc" && ldr /bin/sh -c ". \"$lhome/.profile\"; $show_client" 2>/dev/null || true )"
+  [ -z "$out" ] || fail "non-bash shell ran the bootstrap from ~/.profile: '$out'"
+fi
+ldr /bin/bash "$kit/deploy.sh" --config "$fixture/linux.conf" --skip-tools --uninstall >/dev/null 2>&1 \
+  || fail "linux-style uninstall failed"
+! grep -q 'workstation-segregation:shell' "$lhome/.profile" || fail "uninstall left the ~/.profile block"
+
 echo "PASS: non-interactive login shells load only the approved client and replace a previous one"

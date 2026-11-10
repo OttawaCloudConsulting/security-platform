@@ -12,7 +12,9 @@ export WORKSTATION_SEGREGATION_CONFIG="$CONFIG_FILE"
 EOF
 
   # Login shells: macOS Terminal reads ~/.bash_profile. On Linux, ~/.profile
-  # already sources ~/.bashrc, and creating ~/.bash_profile would shadow it.
+  # already sources ~/.bashrc, and creating ~/.bash_profile would shadow it, so
+  # without a ~/.bash_profile the bootstrap goes into ~/.profile instead (bash
+  # only: ~/.profile is also read by other POSIX shells).
   local bp="$HOME/.bash_profile"
   if [ -f "$bp" ] || [ "$KIT_OS" = darwin ]; then
     if [ ! -f "$bp" ] && [ -f "$HOME/.profile" ] && [ "$DRY_RUN" != 1 ]; then
@@ -22,6 +24,14 @@ EOF
 export WORKSTATION_SEGREGATION_ROOT="$KIT_ROOT"
 export WORKSTATION_SEGREGATION_BIN="$BIN_DIR"
 [ -r "$KIT_ROOT/shell/bash_profile.sh" ] && . "$KIT_ROOT/shell/bash_profile.sh"
+EOF
+  elif [ -f "$HOME/.profile" ]; then
+    block_insert "$HOME/.profile" shell <<EOF
+if [ -n "\${BASH_VERSION:-}" ]; then
+  export WORKSTATION_SEGREGATION_ROOT="$KIT_ROOT"
+  export WORKSTATION_SEGREGATION_BIN="$BIN_DIR"
+  [ -r "$KIT_ROOT/shell/bash_profile.sh" ] && . "$KIT_ROOT/shell/bash_profile.sh"
+fi
 EOF
   fi
   case "${SHELL:-}" in
@@ -146,6 +156,7 @@ global_install() {
 global_uninstall() {
   block_remove "$HOME/.bashrc" shell
   block_remove "$HOME/.bash_profile" shell
+  block_remove "$HOME/.profile" shell
   block_remove "$HOME/.gitconfig" include
   remove_claude_hook
   run rm -f "$KIT_CONFIG_DIR/gitconfig-clients"

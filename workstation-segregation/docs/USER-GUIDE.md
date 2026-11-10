@@ -301,7 +301,7 @@ Logs: `~/.local/state/workstation-segregation/{watch.log,cron.log}`.
 
 | Location | Change |
 |---|---|
-| `~/.bashrc`, `~/.bash_profile` | One marked block each (`# >>> workstation-segregation:shell >>>`). Created if absent on macOS. Non-interactive login shells also run `direnv export` once (approved `.envrc` files only). |
+| `~/.bashrc`, `~/.bash_profile` (Linux without one: `~/.profile`) | One marked block each (`# >>> workstation-segregation:shell >>>`). `~/.bash_profile` is created if absent on macOS only; the `~/.profile` block runs for bash only. Non-interactive login shells also run `direnv export` once (approved `.envrc` files only). |
 | `~/.gitconfig` | Defaults set if unset; global `gh` credential helpers removed; one marked `[include]` kept as the last entry. |
 | `~/.config/workstation-segregation/gitconfig-clients` | Generated `includeIf` per client. |
 | `~/.claude/settings.json` | SessionStart hook added (backup first). |
