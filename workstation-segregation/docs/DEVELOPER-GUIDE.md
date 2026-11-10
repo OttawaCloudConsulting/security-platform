@@ -4,7 +4,7 @@ For people changing the scripts. Operators should read [USER-GUIDE.md](USER-GUID
 
 ## 1. Design goals and constraints
 
-- **One entry point:** `deploy.sh` does everything; `bin/watch.sh` is the only other executable users see (via cron).
+- **One entry point:** `deploy.sh` does everything; `bin/watch.sh` runs from cron. The client launchers (`bin/*-client.sh`, `shims/browser/*`) are reached only through client shell functions and the `.envrc` `PATH`, never called by hand.
 - **Portable:** macOS and Ubuntu/Debian. Tools are release binaries in `BIN_DIR`, not package-manager installs (apt only for prerequisites).
 - **Runs on stock macOS bash 3.2.** Never use: `declare -A`, `mapfile`/`readarray`, `${v,,}`/`${v^^}`, `[[ -v ]]`, `|&`, `&>>`, `local -n`, `globstar`. `+=`, `${!var}`, `[[ ]]`, `local` are fine. The shell files in `shell/` are sourced by the user's interactive bash, so the same rule applies.
 - **Non-destructive and idempotent:** create-if-missing for client files; marked, replaceable blocks for global files; backups only when content changes.
@@ -17,6 +17,9 @@ For people changing the scripts. Operators should read [USER-GUIDE.md](USER-GUID
 deploy.sh                 entry: arg parsing, prereqs, orchestration, summary
 bin/watch.sh              cron entry: finds new client dirs, scaffolds them
 bin/codex-client.sh       validates client context and scrubs API/auth overrides before exec
+bin/browser-client.sh     validates client context, resolves the named browser profile, launches with a scrubbed env
+bin/agy-client.sh         gated AGY launcher (see "Gated AGY integration")
+shims/browser/            chrome, firefox, browser: three-line shims that exec browser-client.sh (put on PATH by .envrc)
 lib/common.sh             logging, run(), config loading, block/backup/file helpers, template render, TCC check
 lib/tools.sh              tool installers, checksum verification, versions.lock
 lib/global.sh             ~/.bashrc, ~/.bash_profile, ~/.gitconfig, ~/.claude/settings.json handling
@@ -25,6 +28,9 @@ scheduler/install.sh      OS dispatch -> darwin.sh | linux.sh   (cron-common.sh 
 shell/                    sourced by the user's shell: bashrc.sh, bash_profile.sh, aliases.sh
 hooks/direnv-session-env.sh   Claude Code SessionStart hook
 templates/                client/* (rendered per client), starship.toml, git-global.conf
+tests/                    offline suites (codex-*, browser-*, agy-*); see section 9
+docs/                     user/developer guides, known issues, AGY evidence
+tools/                    separate OS-level tool installer with its own docs and tests (tools/README.md)
 workstation-segregation.conf.example, versions.conf.example
 ```
 
@@ -35,7 +41,7 @@ workstation-segregation.conf.example, versions.conf.example
 ### deploy.sh
 
 1. Parse args; export `KIT_ROOT`, `DRY_RUN`, `UPDATE_TOOLS`.
-2. Config: if missing, copy the example and exit 1 (uninstall falls back to the example's defaults). `load_config` sets defaults, sources the config, then `versions.conf`, then normalises and validates (`CLIENT_ROOT` absolute and path-safe, numeric intervals) and derives `STATE_DIR` and `KIT_CONFIG_DIR`.
+2. Config: if missing, copy the example and exit 1 (uninstall falls back to the example's defaults). `load_config` sets defaults, sources the config, then `versions.conf`, then normalises and validates (`CLIENT_ROOT` absolute; `CLIENT_ROOT`, `BIN_DIR` and the kit path limited to `[A-Za-z0-9._/-]` by `is_safe_path`; numeric intervals) and derives `STATE_DIR` and `KIT_CONFIG_DIR`.
 3. `--uninstall`: `scheduler/install.sh remove`, `global_uninstall`, `uninstall_tools`, remove `STATE_DIR`, exit.
 4. `check_prereqs` (apt on Debian/Ubuntu, otherwise instruct).
 5. `install_tools` unless `--skip-tools`; prepend `BIN_DIR` to `PATH`.
@@ -49,7 +55,7 @@ workstation-segregation.conf.example, versions.conf.example
 1. Set a minimal `PATH` (cron's is bare) plus `BIN_DIR` and common brew locations; load config; log to `STATE_DIR/watch.log` unless `--verbose`.
 2. `mkdir` lock `STATE_DIR/watch.lock` (stale after 30 min). `flock` is unavailable on stock macOS.
 3. Require the baseline file; `check_client_root` (surfaces TCC denials).
-4. For each top-level real directory: skip excluded/dot-dirs, dirs with `.workstation/.segregation-managed`, baseline dirs not in `ADOPT_DIRS`, and dirs modified within `MIN_AGE_MIN`. Scaffold the rest.
+4. For each top-level real directory (symlinks are skipped): skip excluded/dot-dirs, dirs with `.workstation/.segregation-managed`, baseline dirs not in `ADOPT_DIRS`, and dirs modified within `MIN_AGE_MIN`. Scaffold the rest.
 5. Always `regen_gitconfig_clients` (cheap, writes only on change).
 
 ## 4. Core helpers (`lib/common.sh`)
@@ -62,7 +68,7 @@ workstation-segregation.conf.example, versions.conf.example
 | `block_remove file id` | Removes the block, with backup. |
 | `write_file_if_changed dest mode` (stdin) | Atomic-ish write only on difference. |
 | `backup_file` | `cp -p file file.bak.<ts>`. |
-| `render_template src` | `sed` substitution of `{{CLIENT}} {{CLIENT_UC}} {{DIR}} {{KIT}} {{GH}} {{HOME}} {{AGENT_PREFIX}}` from `R_*` shell variables (values escaped with `sed_escape`). |
+| `render_template src` | `sed` substitution of `{{CLIENT}} {{CLIENT_UC}} {{DIR}} {{KIT}} {{GH}} {{HOME}} {{AGENT_PREFIX}} {{BROWSER_PREFIX}}` from `R_*` shell variables (`{{KIT}}`/`{{HOME}}` from `KIT_ROOT`/`HOME`) (values escaped with `sed_escape`). |
 | `is_excluded`, `in_list` | Membership tests on `EXCLUDE_DIRS` / space-separated lists. |
 | `check_client_root` | `ls -A` the root and emit the Full Disk Access instruction on "Operation not permitted". |
 | `detect_platform` | Sets `KIT_OS` (`darwin`/`linux`) and `KIT_ARCH` (`amd64`/`arm64`). |
@@ -73,11 +79,64 @@ Dry-run rule: any new code path that writes must go through `run`, a block/write
 
 `scaffold_client <dir> [adopt]`:
 
-- Validates the name, sets `R_CLIENT`, `R_CLIENT_UC`, `R_DIR`, `R_GH` (absolute `gh` path), `R_AGENT_PREFIX` (`""` or `"# "` per `ENABLE_AGENT_CLI_ISOLATION`).
+- Validates the name, sets `R_CLIENT`, `R_CLIENT_UC`, `R_DIR`, `R_GH` (absolute `gh` path), `R_AGENT_PREFIX` (`""` or `"# "` per `ENABLE_AGENT_CLI_ISOLATION`), `R_BROWSER_PREFIX` (same, per `ENABLE_BROWSER_ISOLATION`).
 - Creates `.workstation/*`, `.aws`, `.kube` directories (mode 700 only when newly created).
 - `_install_tpl <template> <dest> <mode>` renders `templates/client/<template>` to `<client>/<dest>` **only if the destination does not exist** (returns 1 if it existed). Only a freshly created `.envrc` triggers `direnv allow`; a pre-existing `.envrc` is never trusted automatically.
 - `adopt` mode skips SSH and Codex shell fragments because they are sourced by the user's shell; adopting must not change behaviour. New clients get the Codex fragment only when agent isolation is enabled. Codex and OpenAI config files are inert on adoption and always created if missing.
 - Writes the marker `.workstation/.segregation-managed` last.
+
+### NotebookLM CLI state
+
+`nlm` has no config-dir flag, only the `NOTEBOOKLM_MCP_CLI_PATH` environment variable
+(`notebooklm_tools/utils/config.py:get_storage_dir`), and otherwise falls back to
+`$HOME/.notebooklm-mcp-cli`. The `.envrc` template exports it unconditionally (it is
+not an agent CLI) to `.workstation/notebooklm`, and `scaffold_client` creates that
+directory with mode 700, also when adopting. `nlm` creates its own files inside it.
+`tests/codex-deploy.sh` checks the directory and the export.
+
+### Browser profiles
+
+`templates/client/envrc` carries a browser block gated by `{{BROWSER_PREFIX}}`
+(`ENABLE_BROWSER_ISOLATION`, default 0 = commented out; `scaffold_client` reads it as
+`${ENABLE_BROWSER_ISOLATION:-0}` so fixtures that skip `load_config` still work).
+It does `PATH_add <kit>/shims/browser` and exports `BROWSER` and `GH_BROWSER` (gh
+checks `GH_BROWSER` first) plus `WORKSTATION_{BROWSER,CHROME_PROFILE,FIREFOX_PROFILE}`.
+Profiles are the user's existing ones; nothing is created under `.workstation/`.
+
+`shims/browser/{chrome,firefox,browser}` are three-line shims that `exec`
+`bin/browser-client.sh <kind>`, so launcher fixes never need another `.envrc` edit.
+The launcher follows `bin/codex-client.sh` (label/dir/absolute-path checks and the
+descendant-cwd rule, which also stops stale exported variables from opening another
+client's profile) and then:
+
+- `--list` is handled first, before any validation.
+- Chrome: a directory under the data dir wins; otherwise exactly one `Local State`
+  `profile.info_cache` entry (case-insensitive, `jq --arg`, directory must exist).
+  Passes `--profile-directory=<dir>`. Firefox: `Name=` inside `[Profile*]` sections of
+  `profiles.ini` only, exactly one case-insensitive hit, exact stored name to `-P`.
+- Failure: `chrome`/`firefox` exit 1; `browser` prints the error and exits **0**, because
+  Python's `webbrowser` treats non-zero as "could not launch" and tries the next browser.
+- The binary is resolved and checked before detaching (macOS app path, else `PATH` with the
+  shim directory removed so a lookup cannot find the shim again). Launch is
+  `nohup … </dev/null >/dev/null 2>&1 &`; success only means "launch requested".
+  No `--no-remote`/`--new-instance`/`open -na`: Firefox remotes per profile and a running
+  Chrome handles `--profile-directory` itself.
+- The browser starts through `env -i` with an allowlist (`HOME`, fixed `PATH`, locale, display and
+  session variables). A browser started from a client shell can live for days and serves every
+  profile, so it must not keep that client's `AWS_*`, `KUBECONFIG`, `GH_CONFIG_DIR`,
+  `OPENAI_*`, `BROWSER` or shim `PATH` (same reasoning as the `OPENAI_*` scrub in `codex-client.sh`).
+  The tests have the stubs dump their environment and fail if any of these leak.
+- `BROWSER`/`GH_BROWSER` must name the `browser` shim: Python's `webbrowser` maps the basenames
+  `chrome`/`firefox` to its own controllers and would bypass the profile selection.
+- Test-only variables: `WORKSTATION_BROWSER_BIN_{CHROME,FIREFOX}`,
+  `WORKSTATION_BROWSER_APPS_DIR`, `WORKSTATION_{CHROME,FIREFOX}_DATA_DIR`,
+  `WORKSTATION_BROWSER_FOREGROUND=1`.
+
+`tests/browser-isolation.sh` covers all of this with stub browsers and fake profile data.
+Real browser handoff behavior (cold start, other profile running, target already running,
+two client profiles running at once) cannot be tested headlessly; check it by hand and record
+the Chrome/Firefox versions. Known limits: `open URL` and links from other apps ignore the
+client; named profiles share one browser process and keychain.
 
 ### Codex and GPT API environment handling
 
@@ -135,12 +194,13 @@ Helpers: `gh_latest_tag owner/repo` (follows `releases/latest`, so no API rate l
 
 Checksum behaviour: found and matching → proceed; mismatch → `die` (that tool fails); none published → warn and install, or fail when `REQUIRE_CHECKSUMS=1`. Each installer runs in a subshell with `set -e` and its status captured explicitly, so one tool failing does not stop the rest.
 
-Per-tool notes: terraform's version comes from the HashiCorp releases index (first non-prerelease entry); kubectl from `dl.k8s.io/release/stable.txt`; awscli from the CHANGELOG, installed with the macOS `.pkg` (`installer -target CurrentUserHomeDirectory` plus a choices XML, signature checked with `pkgutil`) or the Linux zip installer into `~/.local/aws-cli`.
+Per-tool notes: terraform's version comes from the HashiCorp releases index (first non-prerelease entry); kubectl from `dl.k8s.io/release/stable.txt`; awscli from the CHANGELOG, installed with the macOS `.pkg` (`installer -target CurrentUserHomeDirectory` plus a choices XML, signature checked with `pkgutil`) or the Linux zip installer into `~/.local/aws-cli`. azcli (`az`) has no standalone binary: it is `pip install azure-cli==<ver>` into a venv at `~/.local/azure-cli` (needs python3 >= 3.10), version from the `Azure/azure-cli` GitHub release tag, symlinked into `BIN_DIR`; no checksum.
 
 ## 7. Global configuration (`lib/global.sh`)
 
 - **Shell:** `setup_shell` writes a `shell` block into `~/.bashrc` (exports `WORKSTATION_SEGREGATION_ROOT/BIN/CONFIG`, sources `shell/bashrc.sh`). `~/.bash_profile` gets a block only if it exists or on macOS (on Linux creating it would shadow `~/.profile`). It warns about a non-bash login shell.
 - **Shell integration (`shell/bashrc.sh`):** guarded against double sourcing; adds `BIN_DIR` to `PATH`; interactive-only part sets up the direnv hook, `_workstation_history_sync` (swap `HISTFILE` per client) and `_workstation_client_sync` (source/unload `<client>/.workstation/bash/*.sh`), and Starship using `STARSHIP_CONFIG` (default: the project's template).
+- **Login shells (`shell/bash_profile.sh`):** adds `BIN_DIR` to `PATH`, sources `~/.bashrc`, and in **non-interactive** login shells runs `eval "$(direnv export bash)"` once. Agent command shells draw no prompt, so the `PROMPT_COMMAND` hook never fires and inherited client variables would be missing or stale. direnv keeps its own allow/deny checks; `.envrc` is never sourced directly.
 - **Git:** `credential.helper` and `user.useConfigOnly` are always enforced; other defaults from `templates/git-global.conf` only when unset. Global `credential.https://github.com.helper` and the gist equivalent are unset because `gh auth setup-git` writes them after includes and they override the per-client helper. The `include` block is inserted **last**, and the previous `~/.gitconfig` is kept as `.bak` if anything changed.
 - **Claude hook:** `jq` merges a SessionStart entry (`/bin/bash <root>/hooks/direnv-session-env.sh`) into `~/.claude/settings.json`, idempotently, with backup. `remove_claude_hook` reverses it. Per-client `.workstation/claude/settings.json` gets the same hook because `CLAUDE_CONFIG_DIR` replaces the global settings.
 
@@ -155,11 +215,25 @@ direnv and a stub Codex binary. It covers API environment transitions, explicit
 API access, launcher checks/scrubbing, argument and exit-status preservation,
 private permissions, adoption, disabled isolation, dry-run and fragment removal.
 No login, credentials or paid API calls are needed.
+Run `/bin/bash tests/browser-isolation.sh` for the browser launcher (stub browsers,
+fake `Local State`/`profiles.ini`, real direnv): profile mapping, failure exit codes,
+cwd rules, URL passthrough, `--list`, the PATH recursion guard and `.envrc` rendering
+with the flag on and off. It never launches a real browser.
 Run `/bin/bash tests/codex-deploy.sh` to verify full dry-run and repeat deploys
 in a disposable home with a stub crontab, including adoption preservation.
+Run `/bin/bash tests/gh-credential-guard.sh` for the client GitHub credential helper: no
+credential and no gh call without a client login (missing or empty `hosts.yml`), passthrough of
+`get`/`store`/`erase` with one, and inherited `GH_TOKEN`-style variables dropped before gh runs.
+Run `/bin/bash tests/path-validation.sh` for the safe-path rule: unsafe `CLIENT_ROOT`, `BIN_DIR`
+and kit locations are rejected before anything is written, and an unsafe client name is skipped.
+The AGY suites (`agy-isolation`, `agy-deploy`, `agy-login-isolation-stub`,
+`agy-account-isolation-stub`) are listed in [AGY-LOGIN-ISOLATION.md](AGY-LOGIN-ISOLATION.md#offline-integration-verification).
 
-Both suites passed on macOS Bash 3.2 during implementation, along with syntax
-checks for the kit's shell files. ShellCheck passed for the new launcher and
+The offline suites are expected to pass on macOS Bash 3.2 and on current Bash. Every suite
+creates its fixture with `mktemp -d "${TMPDIR:-/tmp}/wsk-…"` followed by `cd -P`,
+so it also runs inside a sandbox that only allows `$TMPDIR`; keep that pattern
+for new suites. The suites also passed during implementation, along with syntax checks for the
+kit's shell files. ShellCheck passed for the new launcher and
 Codex fragment. The isolation suite also checks watched API-file reloads,
 explicit API access from the scrubbed Codex subprocess, and wrapper removal
 when switching clients or leaving them. Normalize macOS temporary fixture paths
@@ -189,7 +263,7 @@ mkdir $T/clients/acme && /bin/bash bin/watch.sh --config $T/c.conf --verbose
 
 Always invoke with `/bin/bash` (3.2 on macOS) so version-specific bugs show. Checklist before merging:
 
-- `/bin/bash -n` on every script; `shellcheck -s bash -x` (current output is only SC2034 for config variables, SC2088 and SC2016 noise).
+- `/bin/bash -n` on every script; `shellcheck -s bash -x`. Known output, all reviewed as intentional or harmless: SC2034 (config/`R_*` variables used across sourced files), SC2016, SC2088 (literal `~` in `case` patterns), SC2048 (deliberate word-splitting in `in_list`), SC2030/SC2031 (subshell variables in tests), SC1091, SC2015, SC2018/SC2019, SC2155. Investigate anything new.
 - Grep for forbidden constructs (section 1).
 - Dry-run changes nothing; second real run reports only `unchanged`.
 - An existing `.envrc` and other client files are byte-identical after deploy.
@@ -198,7 +272,7 @@ Always invoke with `/bin/bash` (3.2 on macOS) so version-specific bugs show. Che
 - Tools: install into a temp `BIN_DIR`, check `--version`, check the "checksum ok" line (or the documented warning).
 - Linux has not been tested. Run the above in an `ubuntu:24.04` container (it needs `cron`, `curl`, `unzip`, `git`, `jq`) before relying on it. The awscli installer has not been run on either OS.
 
-The sandbox used during development blocks some hosts; tool tests need `github.com` (and `objects.githubusercontent.com`), `dl.k8s.io`, `get.helm.sh`, `releases.hashicorp.com`, `awscli.amazonaws.com`.
+The sandbox used during development blocks some hosts; tool tests need `github.com` (and `objects.githubusercontent.com`), `dl.k8s.io`, `get.helm.sh`, `releases.hashicorp.com`, `awscli.amazonaws.com`, `pypi.org`, `files.pythonhosted.org`.
 
 ## 10. Pitfalls learned
 
@@ -211,15 +285,16 @@ The sandbox used during development blocks some hosts; tool tests need `github.c
 - `flock`, GNU `sed -i` without a suffix, `readlink -f`, `date -d` and `find -printf` do not exist or differ on macOS. Use portable forms (`sed -i.bak`, `cd -P && pwd`, `mkdir` locks).
 - `direnv allow` only for files the tool generated; never auto-trust a user's `.envrc`.
 - AWS CLI SSO/CLI token caches cannot be relocated by an environment variable; do not claim otherwise.
-- Paths are restricted to `[A-Za-z0-9._/-]` (`is_safe_path` in `lib/common.sh`) because they appear unquoted in generated Git credential helpers (run through `sh`) and cron. `load_config` rejects `CLIENT_ROOT`, `BIN_DIR` and the kit path; `scaffold_client` skips client directories that fail; `regen_gitconfig_clients` warns and leaves such a client out of the Git includes. `--uninstall` only warns (`LOAD_CONFIG_LENIENT=1`) so an install made before the check can still be removed.
+- Paths outside `[A-Za-z0-9._/-]` are rejected up front (`is_safe_path`) because they appear unquoted in generated Git config, `!` credential helpers run by `sh`, and cron. The same rule applies to client names (plus an alphanumeric first character), to client paths in `gitconfig-clients`, and to the `gh` path `_resolve_gh` finds (an unsafe one falls back to `$BIN_DIR/gh` with a warning). `scaffold_client` validates the full client path before deriving the name, so a trailing newline cannot be stripped away by `basename`. `--uninstall` sets `LOAD_CONFIG_LENIENT=1`, so the three path checks only warn there: uninstall renders nothing, and an install whose paths predate the allowlist can still be removed. `regen_gitconfig_clients` warns and leaves a client with an unsafe path out of the generated Git includes.
 
 ## 11. Known gaps and ideas
 
-- Linux and awscli installers untested; direnv, age and awscli (Linux) have no upstream checksums.
+- Linux and awscli installers untested; direnv, age, azcli and awscli (Linux) have no upstream checksums.
 - Adoption does not automatically enable `core.sshCommand`, SSH wrappers or agent-CLI isolation; manually migrated behavior is preserved.
 - `gh auth setup-git` run after deploy re-adds global helpers after the include; re-run deploy to repair. A watcher check could do this automatically.
 - No `add-client` / `status` CLI, desktop notification, or zsh support (all deliberately out of scope).
-- Not segregated: Docker daemon, browsers, Slack, 1Password, `~/.terraform.d`, AWS token caches.
+- Not segregated: Docker daemon, browser data (only the profile used by CLI launches is selected), Slack, 1Password, `~/.terraform.d`, AWS token caches.
+- Client scripts that run `open URL` ignore `BROWSER`; `"${BROWSER:-open}"` honours the client profile (seen in a client's `prefect.sh`).
 - Tool updates are manual (`--update-tools`), not scheduled.
 
 ## Gated AGY integration
@@ -228,7 +303,7 @@ The sandbox used during development blocks some hosts; tool tests need `github.c
 fragment lifecycle. `lib/scaffold.sh` creates private HOME/TMPDIR and a private
 Git global configuration if both isolation flags are 1. Adoption prepares only
 inert files; existing environments and shell behavior remain intact.
-`lib/common.sh` defaults AGY isolation to 0. The live config is unchanged.
+`lib/common.sh` defaults AGY isolation to 0. The live config sets it explicitly to 0.
 
 See [AGY evidence and operator acceptance](AGY-LOGIN-ISOLATION.md) for limits,
 manual rollout and offline test commands. The original no-authentication probe

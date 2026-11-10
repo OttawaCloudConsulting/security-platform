@@ -196,7 +196,7 @@ Repeat acceptance after an AGY upgrade.
 ## Gated integration and rollout
 
 `ENABLE_AGY_CLI_ISOLATION=0` is the default and example setting. The live
-configuration has not been changed. Both it and `ENABLE_AGENT_CLI_ISOLATION`
+configuration sets it explicitly to 0. Both it and `ENABLE_AGENT_CLI_ISOLATION`
 must equal 1 to scaffold AGY. New clients then receive private
 `.workstation/agy/{home,tmp,gitconfig}` and `.workstation/bash/agy.sh`.
 Adoption may prepare inert private files but never adds the AGY shell fragment
