@@ -16,7 +16,7 @@ export PATH="$BIN_DIR:$PATH"
 command -v direnv >/dev/null || die 'tests require direnv'
 ENABLE_AGENT_CLI_ISOLATION=1
 assert() { "$@" || die "assertion failed: $*"; }
-mode_of() { stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"; }
+mode_of() { stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1"; }
 
 cat > "$BIN_DIR/codex" <<'STUB'
 #!/bin/bash
