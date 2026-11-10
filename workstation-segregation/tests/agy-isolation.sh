@@ -3,7 +3,8 @@
 set -Eeuo pipefail
 KIT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 export KIT_ROOT
-fixture=$(mktemp -d /private/tmp/wsk-agy-client.XXXXXX)
+fixture="$(mktemp -d "${TMPDIR:-/tmp}/wsk-agy-client.XXXXXX")"
+fixture="$(cd -P "$fixture" && pwd)"
 trap 'rm -rf "$fixture"' EXIT
 . "$KIT_ROOT/lib/common.sh"
 . "$KIT_ROOT/lib/scaffold.sh"

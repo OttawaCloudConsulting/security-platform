@@ -2,7 +2,8 @@
 # Offline operator responses and a fake AGY; never invokes real authentication.
 set -Eeuo pipefail
 kit=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-fixture=$(mktemp -d /private/tmp/wsk-agy-account.XXXXXX)
+fixture="$(mktemp -d "${TMPDIR:-/tmp}/wsk-agy-account.XXXXXX")"
+fixture="$(cd -P "$fixture" && pwd)"
 trap 'rm -rf "$fixture"' EXIT
 export FIXTURE="$fixture"
 cat > "$fixture/agy" <<'STUB'

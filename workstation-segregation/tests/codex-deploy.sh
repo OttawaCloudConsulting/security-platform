@@ -2,7 +2,8 @@
 # Exercise deploy twice in a disposable home, with a stub scheduler.
 set -Eeuo pipefail
 kit="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-fixture="$(mktemp -d /private/tmp/wsk-deploy.XXXXXX)"
+fixture="$(mktemp -d "${TMPDIR:-/tmp}/wsk-deploy.XXXXXX")"
+fixture="$(cd -P "$fixture" && pwd)"
 trap 'rm -rf "$fixture"' EXIT
 mkdir -p "$fixture/home" "$fixture/clients/existing/.workstation/bash" "$fixture/bin"
 printf '# WORKSTATION_CLIENT keep existing behavior\n' > "$fixture/clients/existing/.envrc"
