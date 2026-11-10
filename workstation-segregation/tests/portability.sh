@@ -18,7 +18,7 @@ trap 'rm -rf "$fixture"' EXIT
 pristine="$fixture/pristine"
 mkdir -p "$pristine"
 # Tracked files only: untracked local state (config, backups) must not leak into the copy.
-( cd "$kit" && git ls-files ) | while IFS= read -r f; do
+( cd "$kit" && git ls-files -z ) | while IFS= read -r -d '' f; do
   [ -f "$kit/$f" ] || continue
   mkdir -p "$pristine/$(dirname "$f")"
   cp -p "$kit/$f" "$pristine/$f"
@@ -39,6 +39,16 @@ run_checker() { # run_checker <dir> [env VAR=value ...]; sets OUT and RC
 run_checker "$pristine"
 [ "$RC" = 0 ] || fail "clean tree rejected (rc=$RC): $OUT"
 printf '%s\n' "$OUT" | grep -q '^PASS - ' || fail "no PASS line: $OUT"
+
+# The remaining cases plant one violation at a time, so a small synthetic tree is enough
+# (and keeps the suite fast); only the clean-tree assertion above needs the real kit.
+mini="$fixture/mini"
+mkdir -p "$mini/docs" "$mini/templates/client" "$mini/bin"
+printf 'clean\n' > "$mini/docs/ok.md"
+printf 'clean\n' > "$mini/templates/client/envrc"
+printf 'clean\n' > "$mini/bin/watch.sh"
+cp "$pristine/.portability-allow" "$mini/.portability-allow"
+pristine="$mini"
 
 # expect_fail <case> <label> <setup function>: apply to a fresh copy, expect rc=1 + label.
 expect_fail() {
@@ -81,7 +91,7 @@ run_checker "$ok"
 allow="$fixture/case-allow"
 cp -R "$pristine" "$allow"
 plant_users "$allow"
-printf 'docs/plant.md:someone\n' >> "$allow/.portability-allow"
+printf 'ABS-HOME-PATH:docs/plant.md:/someone$\n' >> "$allow/.portability-allow"
 run_checker "$allow"
 [ "$RC" = 0 ] || fail "allowlisted line rejected: $OUT"
 
@@ -101,5 +111,77 @@ OUT="$(env WSK_PORTABILITY_DENYLIST="$nodeny" /bin/bash "$checker" --dir "$prist
 RC=$?
 set -e
 [ "$RC" = 2 ] || fail "--require-denylist: expected rc=2, got $RC: $OUT"
+
+# --- additional detection forms ---------------------------------------------------------
+plant_var_home() { printf 'see %svar%shome%ssomeone%sx\n' "$slash" "$slash" "$slash" "$slash" >> "$1/docs/plant.md"; }
+plant_sysvol()   { printf 'see %sSystem%sVolumes%sData%sUsers%ssomeone\n' "$slash" "$slash" "$slash" "$slash" "$slash" >> "$1/docs/plant.md"; }
+expect_fail var-home ABS-HOME-PATH plant_var_home
+expect_fail sysvol   ABS-HOME-PATH plant_sysvol
+
+# ssh remotes are not e-mail addresses; a real address next to one still is.
+ssh="$fixture/case-ssh"
+cp -R "$pristine" "$ssh"
+printf 'clone git%sgithub.com:org/repo.git\n' "$at" >> "$ssh/docs/plant.md"
+run_checker "$ssh"
+[ "$RC" = 0 ] || fail "ssh remote flagged as e-mail: $OUT"
+printf 'clone git%sgithub.com:org/repo.git or mail someone%srealcompany.io\n' "$at" "$at" >> "$ssh/docs/plant.md"
+run_checker "$ssh"
+[ "$RC" = 1 ] && printf '%s\n' "$OUT" | grep -q '^FAIL: EMAIL: ' || fail "address beside an ssh remote not reported: $OUT"
+
+# A binary file (NUL byte) is scanned as text: a finding in it must not be hidden.
+plant_binary() { printf 'x\0see %sUsers%ssomeone%sp\n' "$slash" "$slash" "$slash" > "$1/docs/blob.bin"; }
+expect_fail binary ABS-HOME-PATH plant_binary
+
+# File names with a tab, a newline, a pipe or a bracket must be scanned, not skipped.
+for hostile in "$(printf 'tab\there.md')" "$(printf 'nl\nhere.md')" 'pipe|here.md' '[brack.md' "q'uote.md"; do
+  hd="$fixture/case-hostile"
+  rm -rf "$hd"; cp -R "$pristine" "$hd"
+  printf 'see %sUsers%ssomeone%sp\n' "$slash" "$slash" "$slash" > "$hd/docs/$hostile"
+  run_checker "$hd"
+  [ "$RC" = 1 ] && printf '%s\n' "$OUT" | grep -q '^FAIL: ABS-HOME-PATH: ' || fail "hostile file name skipped (rc=$RC): $OUT"
+done
+
+# Same through git ls-files in tracked mode: temp repo with the checker and one hostile name.
+repo="$fixture/gitrepo"
+mkdir -p "$repo/scripts" "$repo/workstation-segregation/docs"
+cp "$checker" "$repo/scripts/"
+printf 'clean\n' > "$repo/workstation-segregation/docs/ok.md"
+printf 'see %sUsers%ssomeone%sp\n' "$slash" "$slash" "$slash" > "$repo/workstation-segregation/docs/$(printf 'a\tb.md')"
+git -C "$repo" init -q
+git -C "$repo" add -A
+set +e
+OUT="$(env WSK_PORTABILITY_DENYLIST="$nodeny" /bin/bash "$repo/scripts/$(basename "$checker")" 2>&1)"
+RC=$?
+set -e
+[ "$RC" = 1 ] && printf '%s\n' "$OUT" | grep -q '^FAIL: ABS-HOME-PATH: ' || fail "tracked-mode hostile file name skipped (rc=$RC): $OUT"
+
+# An invalid denylist regex is a preflight error, not "no match".
+badre="$fixture/bad-denylist"
+printf '[unclosed\n' > "$badre"
+set +e
+OUT="$(env WSK_PORTABILITY_DENYLIST="$badre" /bin/bash "$checker" --dir "$pristine" 2>&1)"
+RC=$?
+set -e
+[ "$RC" = 2 ] || fail "invalid denylist regex: expected rc=2, got $RC: $OUT"
+
+# Allowlist scope: an entry excuses its label and matched value only, not the whole line.
+scope="$fixture/case-scope"
+cp -R "$pristine" "$scope"
+printf 'ABS-HOME-PATH:docs/plant.md:%shome%slinuxbrew$\n' "$slash" "$slash" >> "$scope/.portability-allow"
+printf 'brew %shome%slinuxbrew and mail someone%srealcompany.io\n' "$slash" "$slash" "$at" >> "$scope/docs/plant.md"
+run_checker "$scope"
+[ "$RC" = 1 ] && printf '%s\n' "$OUT" | grep -q '^FAIL: EMAIL: ' || fail "allowlisted path value hid an unrelated e-mail on the same line: $OUT"
+! printf '%s\n' "$OUT" | grep -q '^FAIL: ABS-HOME-PATH: ' || fail "allowlisted value was still reported: $OUT"
+# Same text for another label's entry must not excuse it.
+other="$fixture/case-otherlabel"
+cp -R "$pristine" "$other"
+printf 'EMAIL:docs/plant.md:%shome%slinuxbrew$\n' "$slash" "$slash" >> "$other/.portability-allow"
+printf 'brew %shome%slinuxbrew\n' "$slash" "$slash" >> "$other/docs/plant.md"
+run_checker "$other"
+[ "$RC" = 1 ] && printf '%s\n' "$OUT" | grep -q '^FAIL: ABS-HOME-PATH: ' || fail "entry for another label excused a finding: $OUT"
+
+# Comment lines of the allowlist are scanned.
+plant_allow_comment() { printf '# owner: someone%srealcompany.io\n' "$at" >> "$1/.portability-allow"; }
+expect_fail allow-comment EMAIL plant_allow_comment
 
 echo "portability.sh: all cases passed"
