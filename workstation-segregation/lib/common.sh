@@ -40,6 +40,17 @@ expand_home() {
   esac
 }
 
+# is_safe_path <string>: non-empty and only [A-Za-z0-9._/-] (no shell metacharacters,
+# whitespace or newlines). Bash 3.2 safe.
+is_safe_path() {
+  case "$1" in
+    ''|*[!A-Za-z0-9._/-]*) return 1 ;;
+  esac
+  return 0
+}
+
+_path_problem() { if [ "${LOAD_CONFIG_LENIENT:-0}" = 1 ]; then warn "$*"; else die "$*"; fi; }
+
 # load_config <file>: defaults first, then the user's file, then versions.conf.
 load_config() {
   local cfg="$1"
@@ -47,12 +58,13 @@ load_config() {
   CONFIG_FILE="$(cd "$(dirname "$cfg")" && pwd)/$(basename "$cfg")"
 
   CLIENT_ROOT="$HOME/Documents"
-  EXCLUDE_DIRS="workstation workstation-segregation tools Codex Zoom"
+  EXCLUDE_DIRS="workstation workstation-segregation tools"
   ADOPT_DIRS=""
   WATCH_INTERVAL_MIN=5
   MIN_AGE_MIN=2
   ENABLE_AGENT_CLI_ISOLATION=1
   ENABLE_AGY_CLI_ISOLATION=0
+  ENABLE_BROWSER_ISOLATION=0
   INSTALL_TOOLS="jq yq direnv gh kubectl helm starship sops age terraform awscli"
   REQUIRE_CHECKSUMS=0
   BIN_DIR="$HOME/.local/bin"
@@ -67,9 +79,13 @@ load_config() {
   CLIENT_ROOT="${CLIENT_ROOT%/}"
   BIN_DIR="$(expand_home "$BIN_DIR")"
   case "$CLIENT_ROOT" in /*) ;; *) die "CLIENT_ROOT must be an absolute path: $CLIENT_ROOT" ;; esac
-  case "$CLIENT_ROOT$BIN_DIR$KIT_ROOT" in
-    *[[:space:]]*) die "whitespace in CLIENT_ROOT, BIN_DIR or the kit path is not supported" ;;
-  esac
+  # These paths are interpolated unquoted into `!` Git credential helpers (run
+  # via sh), so only a conservative character set is allowed.
+  # Uninstall renders nothing, so it only warns (LOAD_CONFIG_LENIENT=1) and an install that was
+  # valid before these checks can still be removed.
+  is_safe_path "$CLIENT_ROOT" || _path_problem "CLIENT_ROOT contains unsupported characters (allowed: A-Z a-z 0-9 . _ / -): $CLIENT_ROOT"
+  is_safe_path "$BIN_DIR" || _path_problem "BIN_DIR contains unsupported characters (allowed: A-Z a-z 0-9 . _ / -): $BIN_DIR"
+  is_safe_path "$KIT_ROOT" || _path_problem "KIT_ROOT (kit location) contains unsupported characters (allowed: A-Z a-z 0-9 . _ / -): $KIT_ROOT"
   # Never treat the kit itself as a client, whatever it is named.
   if [ "$(dirname "$KIT_ROOT")" = "$CLIENT_ROOT" ]; then
     EXCLUDE_DIRS="$EXCLUDE_DIRS $(basename "$KIT_ROOT")"
@@ -196,6 +212,7 @@ render_template() {
     -e "s|{{GH}}|$(sed_escape "$R_GH")|g" \
     -e "s|{{HOME}}|$(sed_escape "$HOME")|g" \
     -e "s|{{AGENT_PREFIX}}|$(sed_escape "$R_AGENT_PREFIX")|g" \
+    -e "s|{{BROWSER_PREFIX}}|$(sed_escape "${R_BROWSER_PREFIX-}")|g" \
     "$1"
 }
 

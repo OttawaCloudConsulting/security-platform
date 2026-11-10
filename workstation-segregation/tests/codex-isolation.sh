@@ -16,7 +16,7 @@ export PATH="$BIN_DIR:$PATH"
 command -v direnv >/dev/null || die 'tests require direnv'
 ENABLE_AGENT_CLI_ISOLATION=1
 assert() { "$@" || die "assertion failed: $*"; }
-mode_of() { stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"; }
+mode_of() { stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1"; }
 
 cat > "$BIN_DIR/codex" <<'STUB'
 #!/bin/bash
@@ -39,6 +39,9 @@ for client in a b empty; do scaffold_client "$fixture/clients/$client" > /dev/nu
 a="$fixture/clients/a"
 b="$fixture/clients/b"
 empty="$fixture/clients/empty"
+# Cloud profile belongs to the client; parent-shell profiles are scrubbed.
+printf '\nexport AWS_PROFILE=client-cloud\n' >> "$a/.envrc"
+direnv allow "$a"
 assert test "$(mode_of "$a/.workstation/openai")" = 700
 assert test "$(mode_of "$a/.workstation/openai/env")" = 600
 assert test "$(mode_of "$a/.workstation/codex/config.toml")" = 600

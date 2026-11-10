@@ -3,7 +3,8 @@
 set -Eeuo pipefail
 KIT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 export KIT_ROOT
-fixture=$(mktemp -d /private/tmp/wsk-agy-client.XXXXXX)
+fixture="$(mktemp -d "${TMPDIR:-/tmp}/wsk-agy-client.XXXXXX")"
+fixture="$(cd -P "$fixture" && pwd)"
 trap 'rm -rf "$fixture"' EXIT
 . "$KIT_ROOT/lib/common.sh"
 . "$KIT_ROOT/lib/scaffold.sh"
@@ -20,10 +21,21 @@ ENABLE_AGY_CLI_ISOLATION=1 ENABLE_AGENT_CLI_ISOLATION=0
 scaffold_client "$fixture/clients/agent-disabled" > /dev/null
 [ ! -e "$fixture/clients/agent-disabled/.workstation/bash/agy.sh" ]
 ENABLE_AGENT_CLI_ISOLATION=1
+# Stub gh exists before scaffolding so _resolve_gh renders it into the guarded helper.
+cat > "$BIN_DIR/gh" <<'GH'
+#!/bin/bash
+set -eu
+[ "$GH_CONFIG_DIR" = "$WORKSTATION_CLIENT_DIR/.workstation/gh" ]
+[ "$1 $2" = 'auth git-credential' ]
+printf 'username=%s\npassword=offline-fixture\n' "$WORKSTATION_CLIENT"
+GH
+chmod 755 "$BIN_DIR/gh"
 for client in a b; do
   scaffold_client "$fixture/clients/$client" > /dev/null
   git config --file "$fixture/clients/$client/.workstation/git/config" user.name "Fixture $client"
   git config --file "$fixture/clients/$client/.workstation/git/config" user.email "$client@example.invalid"
+  # The rendered helper only calls gh when this client has a login.
+  printf 'github.com:\n  user: stub\n' > "$fixture/clients/$client/.workstation/gh/hosts.yml"
 done
 cat > "$BIN_DIR/agy" <<'STUB'
 #!/bin/bash
@@ -51,17 +63,6 @@ case "$credentials" in *"username=$WORKSTATION_CLIENT"*) ;; *) exit 92 ;; esac
 [ "$#" = 3 ] && [ "$1" = 'argument with spaces' ] && [ "$2" = '' ] && [ "$3" = '*' ]
 exit 23
 STUB
-# _resolve_gh uses the available real binary when present; replace each fixture helper.
-for client in a b; do
-  git config --file "$fixture/clients/$client/.workstation/git/config" --replace-all credential.https://github.com.helper "!GH_CONFIG_DIR=$fixture/clients/$client/.workstation/gh $fixture/bin/gh auth git-credential" '^!'
-done
-cat > "$BIN_DIR/gh" <<'GH'
-#!/bin/bash
-set -eu
-[ "$GH_CONFIG_DIR" = "$WORKSTATION_CLIENT_DIR/.workstation/gh" ]
-[ "$1 $2" = 'auth git-credential' ]
-printf 'username=%s\npassword=offline-fixture\n' "$WORKSTATION_CLIENT"
-GH
 printf '#!/bin/bash\nexit 0\n' > "$BIN_DIR/starship"
 chmod 755 "$BIN_DIR/agy" "$BIN_DIR/starship" "$BIN_DIR/gh"
 export FIXTURE="$fixture" AWS_PROFILE=fixture-cloud

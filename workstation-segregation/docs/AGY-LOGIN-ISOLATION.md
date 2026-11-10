@@ -105,7 +105,7 @@ context; these findings are transcribed from the approved plan.
 
 ## Completed one-account operator check (2026-10-13)
 
-Reviewed report: `/Users/christian/Documents/agy-account-check-01/reports/run.8rsVdj`.
+Reviewed report: `<state-root>/reports/<run-id>` (path withheld; kept with the operator's records).
 The operator ran installed AGY **1.3.4** from a fresh state root in one-account
 mode. Every interactive launch exited with status 0. The report records:
 
@@ -138,9 +138,9 @@ Run from an ordinary interactive terminal, using a new, nonexistent absolute
 state root (not an existing empty directory):
 
 ```bash
-./tests/agy-account-isolation.sh --state-dir "$HOME/Documents/agy-account-check-01"
+./tests/agy-account-isolation.sh --state-dir "$HOME/agy-check-a"
 # Later, with a distinct second Google account and another fresh root:
-./tests/agy-account-isolation.sh --state-dir "$HOME/Documents/agy-account-check-02" --accounts two
+./tests/agy-account-isolation.sh --state-dir "$HOME/agy-check-b" --accounts two
 # Optional installed binary: --binary /absolute/path/to/agy
 ```
 
@@ -196,7 +196,7 @@ Repeat acceptance after an AGY upgrade.
 ## Gated integration and rollout
 
 `ENABLE_AGY_CLI_ISOLATION=0` is the default and example setting. The live
-configuration has not been changed. Both it and `ENABLE_AGENT_CLI_ISOLATION`
+configuration sets it explicitly to 0. Both it and `ENABLE_AGENT_CLI_ISOLATION`
 must equal 1 to scaffold AGY. New clients then receive private
 `.workstation/agy/{home,tmp,gitconfig}` and `.workstation/bash/agy.sh`.
 Adoption may prepare inert private files but never adds the AGY shell fragment
@@ -230,7 +230,7 @@ migrate an existing client after acceptance:
    assigned Google account and confirm identity across fresh wrapper processes.
    Recheck other clients and the ordinary account. A mismatch blocks rollout.
 
-Do not automatically migrate `mlse`, `occ`, or `zonal`. Never copy or link the
+Do not automatically migrate existing clients. Never copy or link the
 ordinary home's authentication, settings, plugins, or skills into private homes.
 HOME-dependent tools and AWS caches inside AGY may need separate configuration
 or login. This is account/configuration segregation, not a filesystem sandbox;

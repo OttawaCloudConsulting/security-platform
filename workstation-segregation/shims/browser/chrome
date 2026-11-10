@@ -1,0 +1,3 @@
+#!/bin/bash
+# Shim: forwards to the kit launcher (see bin/browser-client.sh).
+exec /bin/bash "$(dirname "$0")/../../bin/browser-client.sh" chrome "$@"

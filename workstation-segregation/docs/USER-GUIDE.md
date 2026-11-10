@@ -39,8 +39,9 @@ Deploy options:
 | `--dry-run` | Print actions only |
 | `--skip-tools` | Skip tool downloads |
 | `--update-tools` | Refresh unpinned tools to the latest release |
-| `--yes` | Accept the `sudo apt-get` prompt (Ubuntu/Debian) |
+| `--yes`, `-y` | Accept the `sudo apt-get` prompt (Ubuntu/Debian) |
 | `--uninstall` | Remove everything the tool added (never client directories) |
+| `--help`, `-h` | Print usage |
 
 Deploy is idempotent. Re-run it any time, for example after changing the config.
 
@@ -54,14 +55,15 @@ File: `workstation-segregation.conf` in the project directory (shell syntax, `KE
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `CLIENT_ROOT` | `~/Documents` | Directory whose subdirectories are clients. Absolute path, no spaces. |
-| `EXCLUDE_DIRS` | `workstation workstation-segregation tools Codex Zoom` | Names never treated as clients. Dot-directories are always skipped. The project's own directory is excluded automatically. |
+| `CLIENT_ROOT` | `~/Documents` | Directory whose subdirectories are clients. Absolute path using only `A-Z a-z 0-9 . _ / -`. |
+| `EXCLUDE_DIRS` | `workstation workstation-segregation tools` | Names never treated as clients. Dot-directories are always skipped. The project's own directory is excluded automatically. |
 | `ADOPT_DIRS` | empty | Pre-existing, not-yet-segregated directories to treat as clients. |
 | `WATCH_INTERVAL_MIN` | `5` | How often cron runs the watcher. Re-run deploy after changing it. |
 | `MIN_AGE_MIN` | `2` | A new directory must be unmodified this long before scaffolding (avoids half-copied dirs). `0` disables. |
 | `ENABLE_AGY_CLI_ISOLATION` | `0` | AGY wrapper for new clients only when both isolation flags are 1; enable only after two-account acceptance. |
 | `ENABLE_AGENT_CLI_ISOLATION` | `1` | New clients get their own `CLAUDE_CONFIG_DIR` / `CODEX_HOME`. `0` writes them commented out. |
-| `INSTALL_TOOLS` | jq yq direnv gh kubectl helm starship sops age terraform awscli | Tools to install. Remove names to skip. |
+| `ENABLE_BROWSER_ISOLATION` | `0` | `1`: new clients get the browser block in `.envrc` (`chrome`, `firefox`, `$BROWSER`, `$GH_BROWSER` open the client's named profile). `0` writes it commented out. Opt in per machine; see "Browser profiles". |
+| `INSTALL_TOOLS` | jq yq direnv gh kubectl helm starship sops age terraform awscli | Tools to install. Remove names to skip. Add `azcli` for the Azure CLI (PyPI venv, needs python3 >= 3.10, no checksum). |
 | `BIN_DIR` | `~/.local/bin` | Where tool binaries go. Put first on `PATH` by the shell integration. |
 | `REQUIRE_CHECKSUMS` | `0` | `1` = abort a tool install if upstream publishes no checksum. |
 | `TOOL_VERSION_<NAME>` | unset | Pin a tool, e.g. `TOOL_VERSION_KUBECTL=1.34.1`. Unpinned tools use the latest release. |
@@ -84,14 +86,17 @@ All paths are relative to the client directory. Dummy values are `REPLACE_ME`, `
 | File | What to do |
 |---|---|
 | `.workstation/git/config` | Uncomment `[user]` `name` and `email`. Until set, `git commit` fails by design. |
-| `.workstation/gh/` | Inside the client dir run `gh auth login`. Git then authenticates to GitHub with that login. |
+| `.workstation/gh/` | Inside the client dir run `gh auth login`. Git then authenticates to GitHub with that login. Until then, in clients created with the guarded helper, Git gets no GitHub credential (it prompts or fails) instead of using another account's token; older clients need the helper line updated by hand, see [KNOWN-ISSUES.md](KNOWN-ISSUES.md). |
 | `.aws/config` | Uncomment and edit the `sso-session` and `profile`. Then `export AWS_PROFILE=...` in `.envrc` and `direnv allow`. |
+| `.workstation/azure` | Run `az login` once per client, from inside that client's directory. `.envrc` sets `AZURE_CONFIG_DIR` here, so tokens (`msal_token_cache.json`), profile and subscription stay out of the shared `~/.azure`. Adopted clients keep their `.envrc`: add `export AZURE_CONFIG_DIR="$(expand_path .workstation/azure)"` by hand and run `direnv allow`. |
 | `.kube/config` | Populate, for example `aws eks update-kubeconfig --name <cluster> --region <region>`. |
 | `.workstation/ssh/` | Copy the client key to `id_ed25519` (mode 600). Add hosts to `config`. |
 | `.workstation/npm/npmrc`, `terraform/terraformrc`, `python/pip.conf` | Registry URLs and tokens, if the client needs them. |
 | `.workstation/age/keys.txt` | Replace the placeholder with a real key: `age-keygen -o keys.txt`. |
 | `.workstation/claude`, `.workstation/codex` | Log in to Claude Code / Codex once per client. |
+| `.workstation/notebooklm` | Run `nlm login` once per client, with that client's Google account. `.envrc` sets `NOTEBOOKLM_MCP_CLI_PATH` here, so the login, its Chrome profile and aliases stay out of the shared `~/.notebooklm-mcp-cli`. |
 | `.workstation/openai/env` | Uncomment the client's GPT API key, project and organization settings as needed. Keep this private local file out of repositories. |
+| `.envrc` browser block | Set `WORKSTATION_CHROME_PROFILE` and `WORKSTATION_FIREFOX_PROFILE` to the names of the client's *existing* browser profiles (list them with `browser --list`; a Chrome directory name such as `Profile 2` also works). Until then `direnv` warns and `chrome`/`firefox` refuse to start. See "Browser profiles" below. |
 | `.envrc` | Optional extras are listed as comments (uv index, 1Password account, k9s). |
 
 After editing `.envrc`, run `direnv allow`. Only the `.envrc` the tool generated is auto-approved; later edits and any pre-existing `.envrc` need your approval.
@@ -171,11 +176,11 @@ user/admin skills remain available through Codex's normal discovery. This
 separates local configuration and credentials; it does not restrict filesystem
 access, global skill discovery, desktop/browser sessions or remote account data.
 
-### Manual migration for mlse, occ and zonal
+### Migrating an existing client
 
 Adoption adds missing Codex/API configuration files but preserves each existing
-`.envrc` and shell fragments. For **each** of `~/Documents/mlse`,
-`~/Documents/occ` and `~/Documents/zonal`:
+`.envrc` and shell fragments. Repeat these steps for **each** existing client
+directory (`<client>` below):
 
 1. Back up `.envrc`. Enable its existing
    `export CODEX_HOME="$(expand_path .workstation/codex)"` line and add
@@ -188,72 +193,88 @@ Adoption adds missing Codex/API configuration files but preserves each existing
    `.workstation/codex/config.toml` and `.workstation/openai/env` with mode 600,
    preserving any existing files. Fill the API file privately.
 4. Add `.workstation/bash/codex.sh` with the following function (back up any
-   existing fragment before editing):
+   existing fragment before editing; replace `<kit>` with the absolute path of
+   this kit):
 
    ```bash
-   codex() { /bin/bash "$HOME/Documents/workstation-segregation/bin/codex-client.sh" "$@"; }
+   codex() { /bin/bash "<kit>/bin/codex-client.sh" "$@"; }
    ```
 
-   Adjust the kit path if installed elsewhere. Open a new terminal to load the
-   fragment; the fragment hook only reloads on client-directory changes.
+   Open a new terminal to load the fragment; the fragment hook only reloads on
+   client-directory changes.
 5. Enter that client, run `direnv allow`, and let the shell prompt reload its
    environment. Confirm `CODEX_HOME` points to that client's directory, then
    run `codex login` and `codex login status` with the intended ChatGPT account.
+6. Fill the client's private `.workstation/openai/env` with its GPT API settings
+   when needed. Never copy credentials between clients.
 
 These steps are manual; re-running deploy never migrates existing environment or
 shell behavior automatically.
 
-### This workstation: migration applied on 2026-10-13
+If `direnv allow` cannot be run from an automated session (for example an agent
+sandbox that cannot write `~/.local/share/direnv/allow/`), run it yourself in each
+client directory as your normal user.
 
-The existing `mlse`, `occ` and `zonal` clients have now been updated:
+### NotebookLM CLI (`nlm`)
 
-- Each `.envrc` was backed up as `.envrc.bak.<timestamp>`, its existing
-  `CODEX_HOME` export enabled, and `CODEX_SQLITE_HOME` clearing added.
-- Each `.envrc` now clears inherited exported `OPENAI_*` and Codex authentication
-  overrides before watching and loading `.workstation/openai/env`.
-- Each client has `.workstation/bash/codex.sh`, calling the kit launcher.
-- The private Codex/API files created by deploy were preserved; their permissions
-  and Codex authentication defaults were checked.
+`nlm` (PyPI `notebooklm-mcp-cli`) keeps its Google login (`profiles/`), Chrome login
+profile, aliases and locks in `$NOTEBOOKLM_MCP_CLI_PATH`, defaulting to
+`~/.notebooklm-mcp-cli`. `HOME` is identical in every client, so without the variable
+a login made in one client is visible in all of them. New clients get
+`export NOTEBOOKLM_MCP_CLI_PATH="$(expand_path .workstation/notebooklm)"` in `.envrc`
+and a mode 700 `.workstation/notebooklm`. Adopted clients keep their `.envrc`, so add
+that line by hand, run `direnv allow`, and run `nlm login` from inside the client.
+Check with `nlm login profile list`: it must not list another client's account.
+An existing login in `~/.notebooklm-mcp-cli` is not moved; log in again in the client
+that owns it, then delete or log out the shared copy.
 
-Bash 3.2 syntax and real direnv environment checks passed for all three clients.
-The checks used a temporary approval store because the agent sandbox could not
-write to this user's normal direnv approval store. Approval in that store and
-client logins were not confirmed during this update.
+### Browser profiles
 
-The local [temp-update-configs.sh](../../temp-update-configs.sh) helper lives in
-`~/Documents`, alongside the client directories. Run it as your normal user:
-
-```bash
-cd ~/Documents
-./temp-update-configs.sh
-```
-
-It verifies that direnv and all three `.envrc` files exist, then runs `direnv allow`
-for each client. It only approves the already-updated environments; it does not
-edit configuration or perform logins. It is a temporary local helper outside
-the portable kit. The equivalent commands are:
+Inside a client directory, `chrome`, `firefox`, `$BROWSER` and `$GH_BROWSER` open that
+client's own **existing named profile**, so `gh auth login`, `az login`, `aws sso login`
+and scripts that open URLs land in the right browser session. The `.envrc` block
+(controlled by `ENABLE_BROWSER_ISOLATION`, default **0**: set it to 1 in `workstation-segregation.conf` to opt in, then new clients get the block active; otherwise it is rendered commented out) sets:
 
 ```bash
-for client in mlse occ zonal; do
-  direnv allow "$HOME/Documents/$client"
-done
+export WORKSTATION_BROWSER=chrome          # what $BROWSER opens: chrome or firefox
+export WORKSTATION_CHROME_PROFILE=<name>   # display name or directory name (Default, Profile 2)
+export WORKSTATION_FIREFOX_PROFILE=<name>  # a Name= from Firefox's profile manager
+PATH_add "<kit>/shims/browser"             # chrome, firefox, browser
+export BROWSER="<kit>/shims/browser/browser"
+export GH_BROWSER="$BROWSER"               # gh looks at GH_BROWSER before BROWSER
 ```
 
-After approval, open a new terminal so the client shell fragments load. Enter
-each client directory, run `codex login` with its ChatGPT account, and check
-`codex login status`. Fill each private `.workstation/openai/env` with that
-client's GPT API settings when needed. API keys and login credentials were not
-populated or copied as part of the migration.
+- `browser --list` (works anywhere) shows the available Chrome and Firefox profiles.
+- A Chrome display name must match exactly one existing profile directory; Firefox names are
+  matched case-insensitively and the stored name is passed to `-P`.
+- If the profile is unset, unknown or ambiguous, or the shell is outside the client directory
+  tree, the launcher does **not** fall back to your shared default profile. `chrome` and
+  `firefox` exit 1 with a message. `browser` (the `$BROWSER` target) prints the message and
+  exits 0 without opening anything, because Python's `webbrowser` (used by aws/az) would
+  otherwise fall back to the system browser. `gh` and `aws sso login` print the full URL:
+  copy it into the right profile. `az login` hides the query string, so press Ctrl-C and
+  run `az login --use-device-code` instead.
+- `BROWSER` must stay a single plain path: no `%s`, no colon-separated list. `BROWSER` and
+  `GH_BROWSER` must point at the `browser` shim, never at `chrome` or `firefox`: Python's
+  `webbrowser` recognises those basenames and would use its own built-in launcher, skipping
+  the profile selection.
+- The browser is started with a scrubbed environment (`HOME`, a fixed `PATH` and display/session
+  variables only). A long-lived browser process must not carry one client's `AWS_*`,
+  `KUBECONFIG`, `OPENAI_*` or similar into every other profile it serves.
+- Limits: links clicked in other apps and `open URL` still use the system default browser.
+  Named profiles share one browser process and keychain, so this separates sessions, not data at rest.
+- Adopted clients: copy the block from a new client's `.envrc` by hand (back up first), fill in
+  the profile names, `direnv allow`, and restart Claude sessions, whose hook only runs at start.
 
 ## 6. What is and is not segregated
 
-Segregated per client: AWS config and credentials file, kubeconfig, GitHub CLI login and Git credentials, Git identity, SSH keys and config, Docker registry logins, Helm config/cache, Terraform CLI config, npm/pip config, SOPS age key, shell history, Claude and Codex config (when enabled), and GPT API settings loaded by the new environment template.
+Segregated per client: AWS config and credentials file, Azure CLI login (`AZURE_CONFIG_DIR`), kubeconfig, which GitHub CLI account and Git credentials a client selects (the gh token itself is in the shared macOS Keychain with default storage, see [KNOWN-ISSUES.md](KNOWN-ISSUES.md)), Git identity, SSH keys and config, Docker CLI config and Helm config/cache (but **not** Docker or Helm registry logins on macOS, see [KNOWN-ISSUES.md](KNOWN-ISSUES.md)), Terraform CLI config, NotebookLM CLI (`nlm`) login, npm/pip config, SOPS age key (SOPS 3.13 also always loads your global `~/.ssh/id_ed25519`/`id_rsa` and `~/Library/Application Support/sops/age/keys.txt` if present), shell history, Claude and Codex config (when enabled), GPT API settings loaded by the new environment template, and which browser profile command-line launches use (`chrome`, `firefox`, `$BROWSER`).
 
-Not segregated: AWS SSO and CLI token caches (`~/.aws/sso/cache`, `~/.aws/cli/cache`), Docker daemon and images, `~/.terraform.d`, browsers, Slack, 1Password vaults, other agent CLIs. SSH inside client directories uses only the client key (`IdentitiesOnly yes`), so agent-held keys are not offered there unless you edit `.workstation/ssh/config`.
+Not segregated: AWS SSO and CLI token caches (`~/.aws/sso/cache`, `~/.aws/cli/cache`), Docker daemon and images, `~/.terraform.d`, browser data itself and links opened outside the client shell (Dock, other apps, `open URL`), Slack, 1Password vaults, other agent CLIs. SSH inside client directories uses only the client key (`IdentitiesOnly yes`), so agent-held keys are not offered there unless you edit `.workstation/ssh/config`.
 
 ## 7. Keeping tools current
 
-`./deploy.sh --update-tools` moves unpinned tools to the latest release. Pinned tools stay put. Checksums are verified where upstream publishes them; direnv, age and awscli (on Linux) install over HTTPS only and deploy says so. Set `REQUIRE_CHECKSUMS=1` to refuse unverified installs.
+`./deploy.sh --update-tools` moves unpinned tools to the latest release. Pinned tools stay put. Checksums are verified where upstream publishes them; direnv, age, azcli and awscli (on Linux) install over HTTPS only and deploy says so. Set `REQUIRE_CHECKSUMS=1` to refuse unverified installs.
 
 ## 8. Troubleshooting
 
@@ -265,36 +286,27 @@ Not segregated: AWS SSO and CLI token caches (`~/.aws/sso/cache`, `~/.aws/cli/ca
 | Git asks for GitHub credentials | Run `gh auth login` inside the client dir. Check you did not run `gh auth setup-git` (it re-adds a global helper that overrides the client one; re-run `./deploy.sh` to repair). |
 | Git identity not applied | The directory must be inside a Git repo under the client dir. Check `~/.config/workstation-segregation/gitconfig-clients` lists the client. |
 | Tools missing from `PATH` | Open a new terminal. Confirm `~/.bashrc` contains the `workstation-segregation:shell` block and your login shell is bash. |
-| Doubled prompt or hooks | Old `../workstation` config is still present. See Migration. |
+| Doubled prompt or hooks | A hand-written direnv hook, starship init or earlier managed block is still in `~/.bashrc` or `~/.bash_profile`. Remove the duplicate; keep the `workstation-segregation:shell` block. |
 | A tool failed to install | Deploy continues with the others and lists failures. Re-run, or pin another version. |
 | Claude Bash tool lacks client variables | The SessionStart hook runs at session start only; start Claude from inside the client directory. |
+| Claude session keeps the previous client's variables | Known issue: the hook cannot unload a client. Start one Claude session per client. See [KNOWN-ISSUES.md](KNOWN-ISSUES.md). |
 
 Logs: `~/.local/state/workstation-segregation/{watch.log,cron.log}`.
 
-## 9. Migrating from the old `workstation` setup
-
-Deploy leaves the old setup alone and warns about it. Running both duplicates hooks and prompts, so after a successful deploy:
-
-1. **First** copy what the old block provided that this tool does not (the `/opt/homebrew/bin` PATH line, `EDITOR`/`VISUAL`, `HOMEBREW_NO_ANALYTICS`, nvm init, aliases from `~/.workstation_aliases`) into `~/.bashrc`, outside any managed block.
-2. Remove the old `# >>> workstation managed >>>` and `# >>> workstation bash_profile managed >>>` blocks from `~/.bashrc` and `~/.bash_profile`.
-3. Remove the old SessionStart hook (`workstation/config/claude/direnv-session-env.sh`) from `~/.claude/settings.json`.
-4. Delete `~/Documents/.workstation-projects`.
-5. Optionally delete hand-written `includeIf` blocks in `~/.gitconfig` once the generated ones work.
-
-## 10. Uninstall
+## 9. Uninstall
 
 `./deploy.sh --uninstall` removes the shell blocks, the Git include, the Claude hook, the cron entry, installed tool binaries (those in `versions.lock`) and the state directory. Client directories and their files are never touched. Global Git defaults and the removed `gh` credential helpers are not restored; `~/.gitconfig.bak.*` holds the earlier file.
 
-## 11. Files this tool changes
+## 10. Files this tool changes
 
 | Location | Change |
 |---|---|
-| `~/.bashrc`, `~/.bash_profile` | One marked block each (`# >>> workstation-segregation:shell >>>`). Created if absent on macOS. |
+| `~/.bashrc`, `~/.bash_profile` (Linux without one: `~/.profile`) | One marked block each (`# >>> workstation-segregation:shell >>>`). `~/.bash_profile` is created if absent on macOS only; the `~/.profile` block runs for bash only. Non-interactive login shells also run `direnv export` once (approved `.envrc` files only). |
 | `~/.gitconfig` | Defaults set if unset; global `gh` credential helpers removed; one marked `[include]` kept as the last entry. |
 | `~/.config/workstation-segregation/gitconfig-clients` | Generated `includeIf` per client. |
 | `~/.claude/settings.json` | SessionStart hook added (backup first). |
 | `crontab` | One tagged line. Other entries are preserved. |
-| `~/.local/bin` (`BIN_DIR`) | Tool binaries; awscli under `~/.local/aws-cli`. |
+| `~/.local/bin` (`BIN_DIR`) | Tool binaries; awscli under `~/.local/aws-cli`, azcli (venv) under `~/.local/azure-cli`. |
 | `~/.local/state/workstation-segregation/` | Logs, baseline of pre-existing directories, watcher lock. |
 | Each client directory | Created-if-missing files only. |
 

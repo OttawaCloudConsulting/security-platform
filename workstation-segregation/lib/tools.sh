@@ -83,6 +83,7 @@ tool_bins() {
   case "$1" in
     age)    echo "age age-keygen" ;;
     awscli) echo "aws aws_completer" ;;
+    azcli)  echo "az" ;;
     *)      echo "$1" ;;
   esac
 }
@@ -247,6 +248,26 @@ EOF
   ln -sf "$loc/aws-cli/aws_completer" "$BIN_DIR/aws_completer"
 }
 
+# azcli: Microsoft ships no standalone binary (macOS: Homebrew only; Linux: apt
+# repo). Install the PyPI package into a private venv under ~/.local/azure-cli
+# and link `az` into BIN_DIR. Needs python3 >= 3.10 (with venv). Version is the
+# latest GitHub release tag; pip verifies nothing beyond HTTPS/TLS.
+tool_azcli_latest() { local t; t="$(gh_latest_tag Azure/azure-cli)" || return 1; echo "${t#azure-cli-}"; }
+tool_azcli_install() {
+  local v="$1" venv="$HOME/.local/azure-cli"
+  command -v python3 >/dev/null 2>&1 || die "azcli needs python3 >= 3.10 (not found); install one first (stock macOS python3 is 3.9)"
+  python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' \
+    || die "azcli needs python3 >= 3.10 (found $(python3 -V 2>&1)); stock macOS python3 is 3.9, install a newer one first"
+  [ "$REQUIRE_CHECKSUMS" = 1 ] && die "azcli: PyPI install cannot be checksum-verified (REQUIRE_CHECKSUMS=1)"
+  warn "azcli: installed from PyPI into $venv; no checksum verification (HTTPS only)"
+  mkdir -p "$BIN_DIR"
+  rm -rf "$venv"
+  python3 -m venv "$venv" || die "azcli: could not create venv (Debian/Ubuntu: apt install python3-venv)"
+  "$venv/bin/python" -m pip install --quiet --disable-pip-version-check "azure-cli==$v" \
+    || { rm -rf "$venv"; die "azcli: pip install azure-cli==$v failed"; }
+  ln -sf "$venv/bin/az" "$BIN_DIR/az"
+}
+
 # --- driver ------------------------------------------------------------------
 _pinned_version() { # _pinned_version <tool>
   local var="TOOL_VERSION_$(printf '%s' "$1" | tr 'a-z' 'A-Z')" v
@@ -319,6 +340,7 @@ uninstall_tools() {
       run rm -f "$BIN_DIR/$b"
     done
     [ "$t" = awscli ] && run rm -rf "$HOME/.local/aws-cli"
+    [ "$t" = azcli ] && run rm -rf "$HOME/.local/azure-cli"
   done < "$LOCK_FILE"
   run rm -f "$LOCK_FILE"
 }

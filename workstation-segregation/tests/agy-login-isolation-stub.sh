@@ -7,7 +7,7 @@ fixture=$(mktemp -d "${TMPDIR:-/tmp}/wsk-agy-stub.XXXXXX")
 fixture=$(cd -P "$fixture" && pwd)
 trap 'rm -rf "$fixture"' EXIT
 mkdir -p "$fixture/bin" "$fixture/parent-home" "$fixture/runs"
-mode_of() { stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"; }
+mode_of() { stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1"; }
 export STUB_FIXTURE="$fixture"
 export HOME="$fixture/parent-home" TMPDIR="$fixture/runs"
 export GEMINI_API_KEY=secret GOOGLE_API_KEY=secret GOOGLE_APPLICATION_CREDENTIALS=secret
@@ -21,7 +21,7 @@ cat > "$fixture/bin/agy" <<'STUB'
 #!/bin/bash
 set -euo pipefail
 fail() { printf 'Stub assertion failed: %s\n' "$1" >&2; exit 90; }
-mode_of() { stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"; }
+mode_of() { stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1"; }
 for name in $(compgen -e); do
   case "$name" in
     GEMINI_CLI_HOME|ANTIGRAVITY_APP_DATA_DIR) ;;
