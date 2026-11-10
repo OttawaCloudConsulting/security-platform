@@ -47,7 +47,7 @@ load_config() {
   CONFIG_FILE="$(cd "$(dirname "$cfg")" && pwd)/$(basename "$cfg")"
 
   CLIENT_ROOT="$HOME/Documents"
-  EXCLUDE_DIRS="workstation workstation-segregation tools Codex Zoom"
+  EXCLUDE_DIRS="workstation workstation-segregation tools"
   ADOPT_DIRS=""
   WATCH_INTERVAL_MIN=5
   MIN_AGE_MIN=2

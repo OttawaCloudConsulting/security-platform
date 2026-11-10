@@ -24,15 +24,6 @@ export WORKSTATION_SEGREGATION_BIN="$BIN_DIR"
 [ -r "$KIT_ROOT/shell/bash_profile.sh" ] && . "$KIT_ROOT/shell/bash_profile.sh"
 EOF
   fi
-  local f
-  for f in "$HOME/.bashrc" "$HOME/.bash_profile"; do
-    if grep -qE '^# >>> workstation (bash_profile )?managed >>>' "$f" 2>/dev/null; then
-      warn "$f still has the OLD ../workstation managed block: remove it to avoid duplicate direnv hook/starship/PROMPT_COMMAND, but FIRST copy its PATH (/opt/homebrew/bin), EDITOR and nvm lines elsewhere in the file (see README, Migrating)"
-    fi
-  done
-  if [ -f "$HOME/Documents/.workstation-projects" ]; then
-    warn "old auto-allow list ~/Documents/.workstation-projects exists; the kit no longer reads it (safe to delete once migrated)"
-  fi
   case "${SHELL:-}" in
     */bash) ;;
     *) warn "login shell is '${SHELL:-unknown}', not bash. Switch with: chsh -s /bin/bash (kit integration is bash-only)" ;;

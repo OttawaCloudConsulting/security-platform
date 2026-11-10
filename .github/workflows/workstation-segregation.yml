@@ -1,0 +1,87 @@
+---
+# workstation-segregation gates. Two independent jobs:
+#
+#   portability  Fails when the kit carries client, project or machine-specific
+#                content (absolute home paths, non-placeholder e-mail addresses,
+#                local state files). Client names are checked locally against an
+#                untracked denylist, never in CI. See
+#                scripts/check-workstation-portability.sh.
+#   kit-tests    The kit's offline suites on Linux and macOS. The two operator
+#                harnesses that need a real login (agy-account-isolation.sh,
+#                agy-login-isolation.sh) are not run here.
+name: workstation-segregation
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - workstation-segregation/**
+      - scripts/check-workstation-portability.sh
+      - .github/workflows/workstation-segregation.yml
+  push:
+    branches: [main]
+    paths:
+      - workstation-segregation/**
+      - scripts/check-workstation-portability.sh
+      - .github/workflows/workstation-segregation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  portability:
+    name: portability
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Portability check
+        run: scripts/check-workstation-portability.sh
+
+  kit-tests:
+    name: kit-tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The isolation suites run real direnv against fixture clients.
+      - name: Install direnv (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y direnv jq
+      - name: Install direnv (macOS)
+        if: runner.os == 'macOS'
+        run: brew install direnv jq
+
+      - name: Kit suites
+        working-directory: workstation-segregation
+        run: |
+          status=0
+          for t in tests/*.sh; do
+            case "$t" in
+              tests/agy-account-isolation.sh|tests/agy-login-isolation.sh) continue ;;
+            esac
+            echo "::group::$t"
+            if /bin/bash "$t"; then echo "PASS $t"; else echo "FAIL $t"; status=1; fi
+            echo "::endgroup::"
+          done
+          exit "$status"
+
+      - name: Tools installer suites
+        working-directory: workstation-segregation
+        run: |
+          status=0
+          for t in tools/tests/test-*.sh; do
+            echo "::group::$t"
+            if /bin/bash "$t"; then echo "PASS $t"; else echo "FAIL $t"; status=1; fi
+            echo "::endgroup::"
+          done
+          exit "$status"

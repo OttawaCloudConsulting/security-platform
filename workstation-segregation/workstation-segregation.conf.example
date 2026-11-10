@@ -6,7 +6,7 @@
 CLIENT_ROOT=~/Documents
 
 # Top-level names under CLIENT_ROOT that are never clients (dot-dirs are always skipped).
-EXCLUDE_DIRS="workstation workstation-segregation tools Codex Zoom"
+EXCLUDE_DIRS="workstation workstation-segregation tools"
 
 # Directories that already existed at first deploy are NOT treated as clients
 # unless already segregated (.envrc/.workstation present) or listed here.

@@ -55,7 +55,7 @@ File: `workstation-segregation.conf` in the project directory (shell syntax, `KE
 | Variable | Default | Meaning |
 |---|---|---|
 | `CLIENT_ROOT` | `~/Documents` | Directory whose subdirectories are clients. Absolute path, no spaces. |
-| `EXCLUDE_DIRS` | `workstation workstation-segregation tools Codex Zoom` | Names never treated as clients. Dot-directories are always skipped. The project's own directory is excluded automatically. |
+| `EXCLUDE_DIRS` | `workstation workstation-segregation tools` | Names never treated as clients. Dot-directories are always skipped. The project's own directory is excluded automatically. |
 | `ADOPT_DIRS` | empty | Pre-existing, not-yet-segregated directories to treat as clients. |
 | `WATCH_INTERVAL_MIN` | `5` | How often cron runs the watcher. Re-run deploy after changing it. |
 | `MIN_AGE_MIN` | `2` | A new directory must be unmodified this long before scaffolding (avoids half-copied dirs). `0` disables. |
@@ -171,11 +171,11 @@ user/admin skills remain available through Codex's normal discovery. This
 separates local configuration and credentials; it does not restrict filesystem
 access, global skill discovery, desktop/browser sessions or remote account data.
 
-### Manual migration for mlse, occ and zonal
+### Migrating an existing client
 
 Adoption adds missing Codex/API configuration files but preserves each existing
-`.envrc` and shell fragments. For **each** of `~/Documents/mlse`,
-`~/Documents/occ` and `~/Documents/zonal`:
+`.envrc` and shell fragments. Repeat these steps for **each** existing client
+directory (`<client>` below):
 
 1. Back up `.envrc`. Enable its existing
    `export CODEX_HOME="$(expand_path .workstation/codex)"` line and add
@@ -188,62 +188,27 @@ Adoption adds missing Codex/API configuration files but preserves each existing
    `.workstation/codex/config.toml` and `.workstation/openai/env` with mode 600,
    preserving any existing files. Fill the API file privately.
 4. Add `.workstation/bash/codex.sh` with the following function (back up any
-   existing fragment before editing):
+   existing fragment before editing; replace `<kit>` with the absolute path of
+   this kit):
 
    ```bash
-   codex() { /bin/bash "$HOME/Documents/workstation-segregation/bin/codex-client.sh" "$@"; }
+   codex() { /bin/bash "<kit>/bin/codex-client.sh" "$@"; }
    ```
 
-   Adjust the kit path if installed elsewhere. Open a new terminal to load the
-   fragment; the fragment hook only reloads on client-directory changes.
+   Open a new terminal to load the fragment; the fragment hook only reloads on
+   client-directory changes.
 5. Enter that client, run `direnv allow`, and let the shell prompt reload its
    environment. Confirm `CODEX_HOME` points to that client's directory, then
    run `codex login` and `codex login status` with the intended ChatGPT account.
+6. Fill the client's private `.workstation/openai/env` with its GPT API settings
+   when needed. Never copy credentials between clients.
 
 These steps are manual; re-running deploy never migrates existing environment or
 shell behavior automatically.
 
-### This workstation: migration applied on 2026-10-13
-
-The existing `mlse`, `occ` and `zonal` clients have now been updated:
-
-- Each `.envrc` was backed up as `.envrc.bak.<timestamp>`, its existing
-  `CODEX_HOME` export enabled, and `CODEX_SQLITE_HOME` clearing added.
-- Each `.envrc` now clears inherited exported `OPENAI_*` and Codex authentication
-  overrides before watching and loading `.workstation/openai/env`.
-- Each client has `.workstation/bash/codex.sh`, calling the kit launcher.
-- The private Codex/API files created by deploy were preserved; their permissions
-  and Codex authentication defaults were checked.
-
-Bash 3.2 syntax and real direnv environment checks passed for all three clients.
-The checks used a temporary approval store because the agent sandbox could not
-write to this user's normal direnv approval store. Approval in that store and
-client logins were not confirmed during this update.
-
-The local [temp-update-configs.sh](../../temp-update-configs.sh) helper lives in
-`~/Documents`, alongside the client directories. Run it as your normal user:
-
-```bash
-cd ~/Documents
-./temp-update-configs.sh
-```
-
-It verifies that direnv and all three `.envrc` files exist, then runs `direnv allow`
-for each client. It only approves the already-updated environments; it does not
-edit configuration or perform logins. It is a temporary local helper outside
-the portable kit. The equivalent commands are:
-
-```bash
-for client in mlse occ zonal; do
-  direnv allow "$HOME/Documents/$client"
-done
-```
-
-After approval, open a new terminal so the client shell fragments load. Enter
-each client directory, run `codex login` with its ChatGPT account, and check
-`codex login status`. Fill each private `.workstation/openai/env` with that
-client's GPT API settings when needed. API keys and login credentials were not
-populated or copied as part of the migration.
+If `direnv allow` cannot be run from an automated session (for example an agent
+sandbox that cannot write `~/.local/share/direnv/allow/`), run it yourself in each
+client directory as your normal user.
 
 ## 6. What is and is not segregated
 
@@ -265,27 +230,17 @@ Not segregated: AWS SSO and CLI token caches (`~/.aws/sso/cache`, `~/.aws/cli/ca
 | Git asks for GitHub credentials | Run `gh auth login` inside the client dir. Check you did not run `gh auth setup-git` (it re-adds a global helper that overrides the client one; re-run `./deploy.sh` to repair). |
 | Git identity not applied | The directory must be inside a Git repo under the client dir. Check `~/.config/workstation-segregation/gitconfig-clients` lists the client. |
 | Tools missing from `PATH` | Open a new terminal. Confirm `~/.bashrc` contains the `workstation-segregation:shell` block and your login shell is bash. |
-| Doubled prompt or hooks | Old `../workstation` config is still present. See Migration. |
+| Doubled prompt or hooks | A hand-written direnv hook, starship init or earlier managed block is still in `~/.bashrc` or `~/.bash_profile`. Remove the duplicate; keep the `workstation-segregation:shell` block. |
 | A tool failed to install | Deploy continues with the others and lists failures. Re-run, or pin another version. |
 | Claude Bash tool lacks client variables | The SessionStart hook runs at session start only; start Claude from inside the client directory. |
 
 Logs: `~/.local/state/workstation-segregation/{watch.log,cron.log}`.
 
-## 9. Migrating from the old `workstation` setup
-
-Deploy leaves the old setup alone and warns about it. Running both duplicates hooks and prompts, so after a successful deploy:
-
-1. **First** copy what the old block provided that this tool does not (the `/opt/homebrew/bin` PATH line, `EDITOR`/`VISUAL`, `HOMEBREW_NO_ANALYTICS`, nvm init, aliases from `~/.workstation_aliases`) into `~/.bashrc`, outside any managed block.
-2. Remove the old `# >>> workstation managed >>>` and `# >>> workstation bash_profile managed >>>` blocks from `~/.bashrc` and `~/.bash_profile`.
-3. Remove the old SessionStart hook (`workstation/config/claude/direnv-session-env.sh`) from `~/.claude/settings.json`.
-4. Delete `~/Documents/.workstation-projects`.
-5. Optionally delete hand-written `includeIf` blocks in `~/.gitconfig` once the generated ones work.
-
-## 10. Uninstall
+## 9. Uninstall
 
 `./deploy.sh --uninstall` removes the shell blocks, the Git include, the Claude hook, the cron entry, installed tool binaries (those in `versions.lock`) and the state directory. Client directories and their files are never touched. Global Git defaults and the removed `gh` credential helpers are not restored; `~/.gitconfig.bak.*` holds the earlier file.
 
-## 11. Files this tool changes
+## 10. Files this tool changes
 
 | Location | Change |
 |---|---|

@@ -101,11 +101,8 @@ The parent shell keeps its API settings. Commands inside Codex reload API settin
 explicitly with `direnv exec "$WORKSTATION_CLIENT_DIR" <command>`; no Codex
 session hook or installer was added.
 
-The 2026-10-13 migration updated this workstation's three existing client `.envrc`
-files and installed their Codex fragments, with `.envrc.bak.<timestamp>` backups.
-This was a manual migration, not a change to adoption behavior. The local
-`../temp-update-configs.sh` (relative to the kit root) only runs the remaining
-direnv approvals. See the [workstation migration status](USER-GUIDE.md#this-workstation-migration-applied-on-2026-10-13).
+Existing clients are migrated by hand (see "Migrating an existing client" in the
+[User Guide](USER-GUIDE.md)); this is deliberately not part of adoption behavior.
 
 `regen_gitconfig_clients` writes `$KIT_CONFIG_DIR/gitconfig-clients`: one `includeIf "gitdir:<dir>/"` per top-level dir that has `.workstation/git/config`. It uses `gitdir/i:` on macOS (case-insensitive FS) and also emits the physical (`cd -P`) path when `CLIENT_ROOT` is reached through a symlink, because Git matches the real path.
 
@@ -142,7 +139,7 @@ Per-tool notes: terraform's version comes from the HashiCorp releases index (fir
 
 ## 7. Global configuration (`lib/global.sh`)
 
-- **Shell:** `setup_shell` writes a `shell` block into `~/.bashrc` (exports `WORKSTATION_SEGREGATION_ROOT/BIN/CONFIG`, sources `shell/bashrc.sh`). `~/.bash_profile` gets a block only if it exists or on macOS (on Linux creating it would shadow `~/.profile`). It warns about the old `workstation` blocks and a non-bash login shell.
+- **Shell:** `setup_shell` writes a `shell` block into `~/.bashrc` (exports `WORKSTATION_SEGREGATION_ROOT/BIN/CONFIG`, sources `shell/bashrc.sh`). `~/.bash_profile` gets a block only if it exists or on macOS (on Linux creating it would shadow `~/.profile`). It warns about a non-bash login shell.
 - **Shell integration (`shell/bashrc.sh`):** guarded against double sourcing; adds `BIN_DIR` to `PATH`; interactive-only part sets up the direnv hook, `_workstation_history_sync` (swap `HISTFILE` per client) and `_workstation_client_sync` (source/unload `<client>/.workstation/bash/*.sh`), and Starship using `STARSHIP_CONFIG` (default: the project's template).
 - **Git:** `credential.helper` and `user.useConfigOnly` are always enforced; other defaults from `templates/git-global.conf` only when unset. Global `credential.https://github.com.helper` and the gist equivalent are unset because `gh auth setup-git` writes them after includes and they override the per-client helper. The `include` block is inserted **last**, and the previous `~/.gitconfig` is kept as `.bak` if anything changed.
 - **Claude hook:** `jq` merges a SessionStart entry (`/bin/bash <root>/hooks/direnv-session-env.sh`) into `~/.claude/settings.json`, idempotently, with backup. `remove_claude_hook` reverses it. Per-client `.workstation/claude/settings.json` gets the same hook because `CLAUDE_CONFIG_DIR` replaces the global settings.

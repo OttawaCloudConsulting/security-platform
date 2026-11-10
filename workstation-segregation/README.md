@@ -2,7 +2,7 @@
 
 Portable client segregation for a macOS or Ubuntu/Debian workstation. Each client gets its own
 directory under one root; entering it (via direnv) switches cloud, cluster, Git, registry, SSH,
-agent-CLI and shell-history state to that client's. Generalised from `../workstation/`.
+agent-CLI and shell-history state to that client's.
 
 Full documentation: [docs/USER-GUIDE.md](docs/USER-GUIDE.md) (operating it) and [docs/DEVELOPER-GUIDE.md](docs/DEVELOPER-GUIDE.md) (changing it). Open problems: [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md).
 
@@ -85,18 +85,6 @@ client's private settings. Commands inside Codex can opt in with
 - Starship uses `STARSHIP_CONFIG` pointing at `templates/starship.toml` (your `~/.config/starship.toml` is not touched). Set `STARSHIP_CONFIG` yourself to override.
 - Adopted clients get inert config files only (no `ssh`/`scp`/`sftp` wrapper fragment) and keep their `.envrc`/git config, so they do **not** get `core.sshCommand` or agent-CLI isolation until added by hand.
 - Per-client SSH uses `IdentitiesOnly yes` with a client key path; agent-held keys (1Password, ssh-agent) are not offered inside client directories unless you change `.workstation/ssh/config`.
-
-## Migrating from `../workstation` (same machine)
-
-The old setup is not removed automatically; deploy warns about each leftover. Running both causes duplicate
-direnv hooks, `PROMPT_COMMAND` entries, starship init and Claude hooks. After the first successful deploy:
-
-0. **First copy what the old block provides that the kit does not**: the `/opt/homebrew/bin` PATH line, `EDITOR`/`VISUAL`, `HOMEBREW_NO_ANALYTICS`, the nvm init, and any aliases you use from `~/.workstation_aliases` (e.g. `python`, `reload`, `path`) into `~/.bashrc` outside any managed block. Otherwise `node`, `k9s`, `shellcheck`, `code --wait` etc. vanish from interactive shells.
-1. Remove the `# >>> workstation managed >>>` / `# >>> workstation bash_profile managed >>>` blocks from `~/.bashrc` and `~/.bash_profile`; delete `~/.workstation_aliases`, `~/.workstation_bash_profile`.
-2. Remove the old SessionStart hook (`workstation/config/claude/direnv-session-env.sh`) from `~/.claude/settings.json`.
-3. Delete `~/Documents/.workstation-projects` (the kit does not auto-approve edits; run `direnv allow` after changing an `.envrc`).
-4. Leave the old launchd job unloaded; the cron watcher replaces it for client creation (tool updates: `./deploy.sh --update-tools`).
-5. Optionally delete the hand-written `includeIf` blocks in `~/.gitconfig` once `git -C <repo> config user.email` resolves via the generated include.
 
 ## Uninstall
 

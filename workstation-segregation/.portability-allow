@@ -1,0 +1,6 @@
+# Exceptions for scripts/check-workstation-portability.sh.
+# Format: <path relative to this directory>:<extended regex matched against the line>
+# Keep entries narrow and say why.
+
+# Homebrew's standard prefix on Linux is a fixed system path, not a user home.
+bin/watch.sh:/home/linuxbrew/
