@@ -37,6 +37,14 @@ deploy_fixture > "$fixture/first.log" 2>&1
 grep -qx '# WORKSTATION_CLIENT keep existing behavior' "$fixture/clients/existing/.envrc"
 grep -qx '# custom fragment' "$fixture/clients/existing/.workstation/bash/custom.sh"
 [ -f "$fixture/clients/existing/.workstation/openai/env" ]
+for d in azure notebooklm; do
+  [ -d "$fixture/clients/new/.workstation/$d" ]
+  [ -d "$fixture/clients/existing/.workstation/$d" ]
+done
+grep -q '^export AZURE_CONFIG_DIR=' "$fixture/clients/new/.envrc"
+grep -q '^unset AZURE_CLIENT_ID ' "$fixture/clients/new/.envrc"
+grep -q '^unset AWS_ACCESS_KEY_ID ' "$fixture/clients/new/.envrc"
+grep -q '^export NOTEBOOKLM_MCP_CLI_PATH=' "$fixture/clients/new/.envrc"
 snapshot > "$fixture/before"
 deploy_fixture > "$fixture/second.log" 2>&1
 snapshot > "$fixture/after"

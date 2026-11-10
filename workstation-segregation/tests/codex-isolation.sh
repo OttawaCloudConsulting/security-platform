@@ -39,6 +39,9 @@ for client in a b empty; do scaffold_client "$fixture/clients/$client" > /dev/nu
 a="$fixture/clients/a"
 b="$fixture/clients/b"
 empty="$fixture/clients/empty"
+# Cloud profile belongs to the client; parent-shell profiles are scrubbed.
+printf '\nexport AWS_PROFILE=client-cloud\n' >> "$a/.envrc"
+direnv allow "$a"
 assert test "$(mode_of "$a/.workstation/openai")" = 700
 assert test "$(mode_of "$a/.workstation/openai/env")" = 600
 assert test "$(mode_of "$a/.workstation/codex/config.toml")" = 600

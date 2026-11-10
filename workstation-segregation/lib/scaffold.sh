@@ -83,7 +83,7 @@ scaffold_client() { # scaffold_client <abs dir> [adopt]
   for sub in git bash; do
     [ -d "$dir/.workstation/$sub" ] || run mkdir -p "$dir/.workstation/$sub"
   done
-  for sub in gh docker helm helm/config helm/cache terraform npm python age ssh claude codex openai; do
+  for sub in gh docker helm helm/config helm/cache terraform npm python age ssh azure claude codex openai notebooklm; do
     _mkdir_private "$dir/.workstation/$sub"
   done
   # Inert private state may be prepared on adoption; never add a sourced wrapper.

@@ -6,10 +6,24 @@ export WORKSTATION_CLIENT_DIR="$(expand_path .)"
 
 # Client-scoped AWS and Kubernetes config.
 # Set AWS_PROFILE once .aws/config has a real profile.
+# Discard inherited credentials and profile selection before client settings.
+unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN
+unset AWS_PROFILE AWS_DEFAULT_PROFILE AWS_ROLE_ARN AWS_ROLE_SESSION_NAME AWS_WEB_IDENTITY_TOKEN_FILE
+unset AWS_CONTAINER_CREDENTIALS_RELATIVE_URI AWS_CONTAINER_CREDENTIALS_FULL_URI \
+  AWS_CONTAINER_AUTHORIZATION_TOKEN AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE
 export AWS_CONFIG_FILE="$(expand_path .aws/config)"
 export AWS_SHARED_CREDENTIALS_FILE="$(expand_path .aws/credentials)"
 # export AWS_PROFILE=REPLACE_ME
 export KUBECONFIG="$(expand_path .kube/config)"
+
+# Client-scoped Azure CLI login (az: tokens, profile, subscription). Discard inherited
+# service-principal settings: az itself ignores most of these, but Azure SDKs
+# (AZURE_*) and Terraform azurerm (ARM_*) would authenticate as another client with them.
+unset AZURE_CLIENT_ID AZURE_CLIENT_SECRET AZURE_CLIENT_CERTIFICATE_PATH AZURE_CLIENT_CERTIFICATE_PASSWORD \
+  AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_USERNAME AZURE_PASSWORD AZURE_FEDERATED_TOKEN_FILE
+unset ARM_CLIENT_ID ARM_CLIENT_SECRET ARM_CLIENT_CERTIFICATE_PATH ARM_CLIENT_CERTIFICATE_PASSWORD \
+  ARM_TENANT_ID ARM_SUBSCRIPTION_ID ARM_ACCESS_KEY ARM_SAS_TOKEN ARM_OIDC_TOKEN
+export AZURE_CONFIG_DIR="$(expand_path .workstation/azure)"
 
 # Client-scoped shell history (switched by the shell integration).
 export HISTFILE="$(expand_path .bash_history)"
@@ -28,6 +42,9 @@ export TF_CLI_CONFIG_FILE="$(expand_path .workstation/terraform/terraformrc)"
 export NPM_CONFIG_USERCONFIG="$(expand_path .workstation/npm/npmrc)"
 export PIP_CONFIG_FILE="$(expand_path .workstation/python/pip.conf)"
 export SOPS_AGE_KEY_FILE="$(expand_path .workstation/age/keys.txt)"
+# NotebookLM CLI (nlm): Google login, Chrome login profile and aliases. Without
+# this nlm uses ~/.notebooklm-mcp-cli, shared by every client.
+export NOTEBOOKLM_MCP_CLI_PATH="$(expand_path .workstation/notebooklm)"
 
 # Agent CLIs with a separate client account and local settings/state.
 # Common user/admin skills remain discoverable. Controlled by
