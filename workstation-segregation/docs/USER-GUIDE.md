@@ -54,7 +54,7 @@ File: `workstation-segregation.conf` in the project directory (shell syntax, `KE
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `CLIENT_ROOT` | `~/Documents` | Directory whose subdirectories are clients. Absolute path, no spaces. |
+| `CLIENT_ROOT` | `~/Documents` | Directory whose subdirectories are clients. Absolute path using only `A-Z a-z 0-9 . _ / -`. |
 | `EXCLUDE_DIRS` | `workstation workstation-segregation tools` | Names never treated as clients. Dot-directories are always skipped. The project's own directory is excluded automatically. |
 | `ADOPT_DIRS` | empty | Pre-existing, not-yet-segregated directories to treat as clients. |
 | `WATCH_INTERVAL_MIN` | `5` | How often cron runs the watcher. Re-run deploy after changing it. |

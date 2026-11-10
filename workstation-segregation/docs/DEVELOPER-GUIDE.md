@@ -35,7 +35,7 @@ workstation-segregation.conf.example, versions.conf.example
 ### deploy.sh
 
 1. Parse args; export `KIT_ROOT`, `DRY_RUN`, `UPDATE_TOOLS`.
-2. Config: if missing, copy the example and exit 1 (uninstall falls back to the example's defaults). `load_config` sets defaults, sources the config, then `versions.conf`, then normalises and validates (`CLIENT_ROOT` absolute, no whitespace, numeric intervals) and derives `STATE_DIR` and `KIT_CONFIG_DIR`.
+2. Config: if missing, copy the example and exit 1 (uninstall falls back to the example's defaults). `load_config` sets defaults, sources the config, then `versions.conf`, then normalises and validates (`CLIENT_ROOT` absolute and path-safe, numeric intervals) and derives `STATE_DIR` and `KIT_CONFIG_DIR`.
 3. `--uninstall`: `scheduler/install.sh remove`, `global_uninstall`, `uninstall_tools`, remove `STATE_DIR`, exit.
 4. `check_prereqs` (apt on Debian/Ubuntu, otherwise instruct).
 5. `install_tools` unless `--skip-tools`; prepend `BIN_DIR` to `PATH`.
@@ -211,7 +211,7 @@ The sandbox used during development blocks some hosts; tool tests need `github.c
 - `flock`, GNU `sed -i` without a suffix, `readlink -f`, `date -d` and `find -printf` do not exist or differ on macOS. Use portable forms (`sed -i.bak`, `cd -P && pwd`, `mkdir` locks).
 - `direnv allow` only for files the tool generated; never auto-trust a user's `.envrc`.
 - AWS CLI SSO/CLI token caches cannot be relocated by an environment variable; do not claim otherwise.
-- Paths with whitespace are rejected up front because they appear unquoted in generated Git config and cron.
+- Paths are restricted to `[A-Za-z0-9._/-]` (`is_safe_path` in `lib/common.sh`) because they appear unquoted in generated Git credential helpers (run through `sh`) and cron. `load_config` rejects `CLIENT_ROOT`, `BIN_DIR` and the kit path; `scaffold_client` skips client directories that fail; `regen_gitconfig_clients` warns and leaves such a client out of the Git includes. `--uninstall` only warns (`LOAD_CONFIG_LENIENT=1`) so an install made before the check can still be removed.
 
 ## 11. Known gaps and ideas
 

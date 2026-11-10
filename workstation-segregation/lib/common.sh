@@ -40,6 +40,17 @@ expand_home() {
   esac
 }
 
+# is_safe_path <string>: non-empty and only [A-Za-z0-9._/-] (no shell metacharacters,
+# whitespace or newlines). Bash 3.2 safe.
+is_safe_path() {
+  case "$1" in
+    ''|*[!A-Za-z0-9._/-]*) return 1 ;;
+  esac
+  return 0
+}
+
+_path_problem() { if [ "${LOAD_CONFIG_LENIENT:-0}" = 1 ]; then warn "$*"; else die "$*"; fi; }
+
 # load_config <file>: defaults first, then the user's file, then versions.conf.
 load_config() {
   local cfg="$1"
@@ -67,9 +78,13 @@ load_config() {
   CLIENT_ROOT="${CLIENT_ROOT%/}"
   BIN_DIR="$(expand_home "$BIN_DIR")"
   case "$CLIENT_ROOT" in /*) ;; *) die "CLIENT_ROOT must be an absolute path: $CLIENT_ROOT" ;; esac
-  case "$CLIENT_ROOT$BIN_DIR$KIT_ROOT" in
-    *[[:space:]]*) die "whitespace in CLIENT_ROOT, BIN_DIR or the kit path is not supported" ;;
-  esac
+  # These paths are interpolated unquoted into `!` Git credential helpers (run
+  # via sh), so only a conservative character set is allowed.
+  # Uninstall renders nothing, so it only warns (LOAD_CONFIG_LENIENT=1) and an install that was
+  # valid before these checks can still be removed.
+  is_safe_path "$CLIENT_ROOT" || _path_problem "CLIENT_ROOT contains unsupported characters (allowed: A-Z a-z 0-9 . _ / -): $CLIENT_ROOT"
+  is_safe_path "$BIN_DIR" || _path_problem "BIN_DIR contains unsupported characters (allowed: A-Z a-z 0-9 . _ / -): $BIN_DIR"
+  is_safe_path "$KIT_ROOT" || _path_problem "KIT_ROOT (kit location) contains unsupported characters (allowed: A-Z a-z 0-9 . _ / -): $KIT_ROOT"
   # Never treat the kit itself as a client, whatever it is named.
   if [ "$(dirname "$KIT_ROOT")" = "$CLIENT_ROOT" ]; then
     EXCLUDE_DIRS="$EXCLUDE_DIRS $(basename "$KIT_ROOT")"

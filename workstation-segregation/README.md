@@ -72,7 +72,9 @@ client's private settings. Commands inside Codex can opt in with
 
 - **macOS privacy (TCC):** cron cannot read `~/Documents`, `~/Desktop` or `~/Downloads` until `/usr/sbin/cron` has *Full Disk Access* (System Settings → Privacy & Security). Manual, one-time. If the kit itself also lives there, cron cannot even open `watch.sh`; the cron line detects that and writes `cannot read watch.sh - grant Full Disk Access to /usr/sbin/cron` to `~/.local/state/workstation-segregation/cron.log`. Putting `CLIENT_ROOT` elsewhere (e.g. `~/clients`) avoids it.
 - **Bash only**, scripts run on stock macOS bash 3.2. Interactive integration needs the login shell to be bash (`chsh -s /bin/bash`; deploy warns). macOS bash 3.2 is enough; no bash 5 is installed.
-- **Paths must not contain whitespace** (`CLIENT_ROOT`, `BIN_DIR`, kit location).
+- **Paths may contain only `A-Z a-z 0-9 . _ / -`** (`CLIENT_ROOT`, `BIN_DIR`, kit location, client
+  directory names and the resolved `gh` path), because they appear unquoted in generated Git
+  credential helpers. A client directory with other characters is skipped with a warning.
 - **AWS SSO/CLI token caches** (`~/.aws/sso/cache`, `~/.aws/cli/cache`) are not relocatable by env var and stay shared; sso-session names are client-prefixed to keep them distinguishable.
 - **Agent CLIs:** with `ENABLE_AGENT_CLI_ISOLATION=1` new clients set `CLAUDE_CONFIG_DIR=<client>/.workstation/claude` and `CODEX_HOME=…/codex` for separate login, local settings and state. Common user/admin skills remain discoverable. Adopted clients keep their environment and shell behavior until manually migrated.
 - Docker daemon/images, browsers, Slack and 1Password vaults are **not** segregated.

@@ -48,6 +48,8 @@ if [ ! -f "$CONFIG" ]; then
     exit 1
   fi
 fi
+# Uninstall must work for installs whose paths predate the character allowlist.
+if [ "$UNINSTALL" = 1 ]; then LOAD_CONFIG_LENIENT=1; fi
 load_config "$CONFIG"
 detect_platform
 # shellcheck source=lib/tools.sh

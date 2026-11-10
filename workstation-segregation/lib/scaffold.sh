@@ -15,6 +15,11 @@ is_segregated() { # is_segregated <dir>
 _resolve_gh() {
   local g
   g="$(PATH="$BIN_DIR:$PATH" command -v gh 2>/dev/null || true)"
+  # {{GH}} lands unquoted in Git credential helpers; BIN_DIR was validated in load_config.
+  if [ -n "$g" ] && ! is_safe_path "$g"; then
+    warn "gh at '$g' has unsupported characters in its path; using $BIN_DIR/gh"
+    g=""
+  fi
   printf '%s\n' "${g:-$BIN_DIR/gh}"
 }
 
@@ -57,8 +62,12 @@ _install_agy_gitconfig() {
 # fragments that would change SSH or Codex behaviour).
 scaffold_client() { # scaffold_client <abs dir> [adopt]
   local dir="$1" mode="${2:-new}" name sub envrc_created=0
-  name="$(basename "$dir")"
-  if ! printf '%s' "$name" | grep -Eq "$CLIENT_NAME_RE"; then
+  # Validate the whole path first: basename in a command substitution would strip
+  # a trailing newline and let "good<newline>" pass as "good".
+  is_safe_path "$dir" || { warn "skipping '$dir': unsupported characters in path (allowed: A-Z a-z 0-9 . _ / -)"; return 1; }
+  while [ "${dir%/}" != "$dir" ] && [ "$dir" != / ]; do dir="${dir%/}"; done
+  name="${dir##*/}"
+  if [[ "$name" != [A-Za-z0-9]* ]]; then
     warn "skipping '$name': client names must match $CLIENT_NAME_RE"
     return 1
   fi
@@ -144,6 +153,8 @@ regen_gitconfig_clients() {
       name="$(basename "$d")"
       is_excluded "$name" && continue
       [ -f "$d/.workstation/git/config" ] || continue
+      # Unsafe characters would be interpreted by sh in the credential helper; skip loudly.
+      is_safe_path "$d" || { warn "not including '$d' in the generated Git includes: unsupported characters in path (allowed: A-Z a-z 0-9 . _ / -)"; continue; }
       printf '[includeIf "%s:%s/"]\n\tpath = %s/.workstation/git/config\n' "$kw" "$d" "$d"
       # git matches gitdir against the physical path; add it when the root is reached via a symlink.
       real="$(cd -P "$d" 2>/dev/null && pwd || true)"
