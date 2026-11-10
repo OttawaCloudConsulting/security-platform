@@ -11,6 +11,9 @@
 [core]
 	sshCommand = ssh -F {{DIR}}/.workstation/ssh/config
 
+# No gh login in this client (empty or missing hosts.yml) means no credential:
+# Git prompts or fails instead of using another account's shared Keychain token.
+# Inherited token variables are dropped because Git may run this helper outside direnv.
 [credential "https://github.com"]
 	helper =
-	helper = !GH_CONFIG_DIR={{DIR}}/.workstation/gh {{GH}} auth git-credential
+	helper = "!f() { [ -s {{DIR}}/.workstation/gh/hosts.yml ] || exit 0; env -u GH_TOKEN -u GITHUB_TOKEN -u GH_ENTERPRISE_TOKEN -u GITHUB_ENTERPRISE_TOKEN GH_CONFIG_DIR={{DIR}}/.workstation/gh {{GH}} auth git-credential \"$@\"; }; f"

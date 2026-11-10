@@ -15,6 +15,9 @@ export KUBECONFIG="$(expand_path .kube/config)"
 export HISTFILE="$(expand_path .bash_history)"
 
 # Client-scoped GitHub CLI login (git uses it via .workstation/git/config).
+# Token overrides take precedence over the client login; discard inherited ones.
+# An inherited GH_HOST would let gh commands pass gh's empty-config auth gate.
+unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN GH_HOST
 export GH_CONFIG_DIR="$(expand_path .workstation/gh)"
 
 # Client-scoped tool config (.workstation/<tool>/).
