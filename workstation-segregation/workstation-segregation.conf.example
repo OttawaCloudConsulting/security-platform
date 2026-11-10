@@ -31,6 +31,10 @@ ENABLE_AGY_CLI_ISOLATION=0
 ENABLE_BROWSER_ISOLATION=0
 
 # Tools installed as release binaries into BIN_DIR. Remove names to skip them.
+# Optional, not installed by default: add `azcli` for the Azure CLI (`az`). It has no
+# standalone binary, so it is installed from PyPI into a private venv (HTTPS only, no
+# checksum) and needs python3 >= 3.10 already on the machine (stock macOS has 3.9).
+# Tools that fail to install are reported at the end of the deploy.
 INSTALL_TOOLS="jq yq direnv gh kubectl helm starship sops age terraform awscli"
 BIN_DIR=~/.local/bin
 
