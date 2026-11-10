@@ -47,7 +47,10 @@ grep -q '^unset AWS_ACCESS_KEY_ID ' "$fixture/clients/new/.envrc"
 grep -q '^export NOTEBOOKLM_MCP_CLI_PATH=' "$fixture/clients/new/.envrc"
 # Browser isolation is opt-in: with the default config the block is rendered commented out.
 grep -q '^# export BROWSER=' "$fixture/clients/new/.envrc"
-! grep -q '^export BROWSER=' "$fixture/clients/new/.envrc"
+if grep -q '^export BROWSER=' "$fixture/clients/new/.envrc"; then
+  echo "FAIL: browser block is active with the default config" >&2
+  exit 1
+fi
 snapshot > "$fixture/before"
 deploy_fixture > "$fixture/second.log" 2>&1
 snapshot > "$fixture/after"

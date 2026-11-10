@@ -87,7 +87,7 @@ client's private settings. Commands inside Codex can opt in with
 - Hand-written `includeIf` blocks in `~/.gitconfig` duplicate the generated ones (harmless; deploy warns).
 - Absolute paths of `gh` and the client dir are rendered into per-client git config at scaffold time (machine-specific by design).
 - Under a symlinked `CLIENT_ROOT` both logical and physical paths are emitted for `includeIf`.
-- **azcli needs python3 ≥ 3.10 already on the machine** (stock macOS has 3.9; Homebrew/`tools/` base provide newer). The venv is bound to that interpreter; after a Python major upgrade run `./deploy.sh --update-tools` to rebuild it.
+- **azcli needs python3 ≥ 3.10 already on the machine** (stock macOS has 3.9; Homebrew/`tools/` base provide newer). The venv is bound to that interpreter. After a Python major upgrade, rebuild it: `rm -rf ~/.local/azure-cli` (the `az` link then dangles, so the next `./deploy.sh` reinstalls it). `--update-tools` alone does not, because it skips a tool whose recorded version is already current.
 - Linux: Ubuntu/Debian assumed (apt only for prerequisites). **Linux is untested**, as is the awscli installer on both OSes. The other tools were installed on macOS/arm64 during development (checksum-verified where upstream publishes one); `azcli` is opt-in and has only been exercised with stubs, so check `az --version` after a first install.
 - Starship uses `STARSHIP_CONFIG` pointing at `templates/starship.toml` (your `~/.config/starship.toml` is not touched). Set `STARSHIP_CONFIG` yourself to override.
 - Adopted clients get inert config files only (no `ssh`/`scp`/`sftp` wrapper fragment) and keep their `.envrc`/git config, so they do **not** get `core.sshCommand` or agent-CLI isolation until added by hand.
