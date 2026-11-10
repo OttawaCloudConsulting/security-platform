@@ -77,6 +77,7 @@ scaffold_client() { # scaffold_client <abs dir> [adopt]
   R_DIR="$dir"
   R_GH="$(_resolve_gh)"
   if [ "$ENABLE_AGENT_CLI_ISOLATION" = 1 ]; then R_AGENT_PREFIX=""; else R_AGENT_PREFIX="# "; fi
+  if [ "${ENABLE_BROWSER_ISOLATION:-0}" = 1 ]; then R_BROWSER_PREFIX=""; else R_BROWSER_PREFIX="# "; fi
 
   log "scaffolding client '$name' ($dir)${mode:+ [$mode]}"
   [ -d "$dir/.workstation" ] || run mkdir -p "$dir/.workstation"

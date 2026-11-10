@@ -46,6 +46,17 @@ export SOPS_AGE_KEY_FILE="$(expand_path .workstation/age/keys.txt)"
 # this nlm uses ~/.notebooklm-mcp-cli, shared by every client.
 export NOTEBOOKLM_MCP_CLI_PATH="$(expand_path .workstation/notebooklm)"
 
+# Client browser profiles: `chrome`, `firefox`, $BROWSER and $GH_BROWSER (gh, az, aws sso,
+# python webbrowser) open this client's existing named profile. List profiles: browser --list
+# BROWSER must stay a single plain path (no %s, no colon-separated list).
+# Controlled by ENABLE_BROWSER_ISOLATION in workstation-segregation.conf at scaffold time.
+{{BROWSER_PREFIX}}export WORKSTATION_BROWSER=chrome
+{{BROWSER_PREFIX}}export WORKSTATION_CHROME_PROFILE=REPLACE_ME
+{{BROWSER_PREFIX}}export WORKSTATION_FIREFOX_PROFILE=REPLACE_ME
+{{BROWSER_PREFIX}}PATH_add "{{KIT}}/shims/browser"
+{{BROWSER_PREFIX}}export BROWSER="{{KIT}}/shims/browser/browser"
+{{BROWSER_PREFIX}}export GH_BROWSER="$BROWSER"
+
 # Agent CLIs with a separate client account and local settings/state.
 # Common user/admin skills remain discoverable. Controlled by
 # ENABLE_AGENT_CLI_ISOLATION in workstation-segregation.conf at scaffold time.
@@ -85,3 +96,6 @@ for _f in .workstation/git/config .workstation/npm/npmrc .workstation/terraform/
   fi
 done
 unset _f
+{{BROWSER_PREFIX}}if [ "${WORKSTATION_CHROME_PROFILE:-}" = REPLACE_ME ] || [ "${WORKSTATION_FIREFOX_PROFILE:-}" = REPLACE_ME ]; then
+{{BROWSER_PREFIX}}  log_status "{{CLIENT}}: browser profile not set (WORKSTATION_*_PROFILE in .envrc; list with: browser --list)"
+{{BROWSER_PREFIX}}fi

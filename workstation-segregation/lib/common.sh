@@ -64,6 +64,7 @@ load_config() {
   MIN_AGE_MIN=2
   ENABLE_AGENT_CLI_ISOLATION=1
   ENABLE_AGY_CLI_ISOLATION=0
+  ENABLE_BROWSER_ISOLATION=0
   INSTALL_TOOLS="jq yq direnv gh kubectl helm starship sops age terraform awscli"
   REQUIRE_CHECKSUMS=0
   BIN_DIR="$HOME/.local/bin"
@@ -211,6 +212,7 @@ render_template() {
     -e "s|{{GH}}|$(sed_escape "$R_GH")|g" \
     -e "s|{{HOME}}|$(sed_escape "$HOME")|g" \
     -e "s|{{AGENT_PREFIX}}|$(sed_escape "$R_AGENT_PREFIX")|g" \
+    -e "s|{{BROWSER_PREFIX}}|$(sed_escape "${R_BROWSER_PREFIX-}")|g" \
     "$1"
 }
 

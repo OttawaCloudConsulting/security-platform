@@ -24,6 +24,12 @@ ENABLE_AGENT_CLI_ISOLATION=1
 # Pending real two-account acceptance; requires agent isolation too.
 ENABLE_AGY_CLI_ISOLATION=0
 
+# 1 = new clients get the browser block in .envrc: `chrome`, `firefox`, $BROWSER and
+# $GH_BROWSER open the client's existing named browser profile (set
+# WORKSTATION_CHROME_PROFILE / WORKSTATION_FIREFOX_PROFILE per client); 0 (default) =
+# commented out. Opt in per machine once the browser profiles exist.
+ENABLE_BROWSER_ISOLATION=0
+
 # Tools installed as release binaries into BIN_DIR. Remove names to skip them.
 INSTALL_TOOLS="jq yq direnv gh kubectl helm starship sops age terraform awscli"
 BIN_DIR=~/.local/bin
