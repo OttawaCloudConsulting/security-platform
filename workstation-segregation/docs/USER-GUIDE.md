@@ -316,4 +316,5 @@ Every changed file is backed up as `<file>.bak.<timestamp>` when its content cha
 
 See [persistent account testing, rollout and rollback](AGY-LOGIN-ISOLATION.md).
 Private HOME changes apply only to the AGY child; existing clients are not
-automatically migrated. One-account testing cannot authorize activation.
+automatically migrated. Once both flags are 1, run `bin/agy-migrate.sh --dry-run --all`, then
+without `--dry-run` (or name clients); `--remove` rolls a client back. One-account testing cannot authorize activation.

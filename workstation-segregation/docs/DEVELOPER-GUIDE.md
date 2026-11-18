@@ -19,6 +19,7 @@ bin/watch.sh              cron entry: finds new client dirs, scaffolds them
 bin/codex-client.sh       validates client context and scrubs API/auth overrides before exec
 bin/browser-client.sh     validates client context, resolves the named browser profile, launches with a scrubbed env
 bin/agy-client.sh         gated AGY launcher (see "Gated AGY integration")
+bin/agy-migrate.sh        operator-run AGY migration (unset stale, then apply) for existing clients
 shims/browser/            chrome, firefox, browser: three-line shims that exec browser-client.sh (put on PATH by .envrc)
 lib/common.sh             logging, run(), config loading, block/backup/file helpers, template render, TCC check
 lib/tools.sh              tool installers, checksum verification, versions.lock
@@ -226,7 +227,7 @@ credential and no gh call without a client login (missing or empty `hosts.yml`),
 `get`/`store`/`erase` with one, and inherited `GH_TOKEN`-style variables dropped before gh runs.
 Run `/bin/bash tests/path-validation.sh` for the safe-path rule: unsafe `CLIENT_ROOT`, `BIN_DIR`
 and kit locations are rejected before anything is written, and an unsafe client name is skipped.
-The AGY suites (`agy-isolation`, `agy-deploy`, `agy-login-isolation-stub`,
+The AGY suites (`agy-isolation`, `agy-deploy`, `agy-migrate`, `agy-login-isolation-stub`,
 `agy-account-isolation-stub`) are listed in [AGY-LOGIN-ISOLATION.md](AGY-LOGIN-ISOLATION.md#offline-integration-verification).
 
 The offline suites are expected to pass on macOS Bash 3.2 and on current Bash. Every suite
@@ -303,6 +304,8 @@ The sandbox used during development blocks some hosts; tool tests need `github.c
 fragment lifecycle. `lib/scaffold.sh` creates private HOME/TMPDIR and a private
 Git global configuration if both isolation flags are 1. Adoption prepares only
 inert files; existing environments and shell behavior remain intact.
+`bin/agy-migrate.sh` is the only path that adds the wrapper to an existing client; it reuses
+`set_render_vars`, `_write_agy_gitconfig` and `scaffold_client ... adopt` from `lib/scaffold.sh`.
 `lib/common.sh` defaults AGY isolation to 0. The live config sets it explicitly to 0.
 
 See [AGY evidence and operator acceptance](AGY-LOGIN-ISOLATION.md) for limits,

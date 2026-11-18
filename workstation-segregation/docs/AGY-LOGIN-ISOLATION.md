@@ -215,28 +215,48 @@ Git config and explicit command options still apply. See
 [Git environment documentation](https://github.com/git/htmldocs/blob/gh-pages/git.adoc).
 
 After a real integration pass, set both flags to 1 in the kit configuration and
-use the normal reviewed deployment workflow for **new** clients. To manually
-migrate an existing client after acceptance:
+use the normal reviewed deployment workflow for **new** clients. Deploy never adds
+the wrapper to existing (adopted) clients; migrate them explicitly with
+`bin/agy-migrate.sh`:
 
-1. Back up and review its `.envrc` and `.workstation/bash` fragments. Confirm its
-   absolute client tool paths and active WORKSTATION_CLIENT / WORKSTATION_CLIENT_DIR.
-2. Prepare the private directories and Git configuration using the kit's
-   create-if-missing scaffold in adoption mode; review the resulting file. It
-   must carry the defaults from `templates/git-global.conf` and include only
-   that client's `.workstation/git/config`.
-3. Render `templates/client/agy-fragment.sh` with the client name and absolute
-   kit path to `.workstation/bash/agy.sh`. Do not overwrite an existing fragment.
-4. Leave and re-enter the client so the fragment loads. Authenticate with its
-   assigned Google account and confirm identity across fresh wrapper processes.
-   Recheck other clients and the ordinary account. A mismatch blocks rollout.
+```bash
+bin/agy-migrate.sh --dry-run zonal occ      # or --all: every segregated client
+bin/agy-migrate.sh zonal occ
+```
 
-Do not automatically migrate existing clients. Never copy or link the
+For each named client (or `--all` segregated, non-excluded clients) it:
+
+1. **Unsets** kit-managed AGY files that differ from what the current kit renders:
+   `.workstation/bash/agy.sh` (a fragment from an older or moved kit) and
+   `.workstation/agy/gitconfig` (wrong include or defaults). Each is backed up as
+   `<file>.bak.<timestamp>` first; a symlink in their place is moved aside.
+2. **Applies** the create-if-missing adopt scaffold, which adds missing private
+   directories including `.workstation/agy/{home,tmp}` and the private Git
+   configuration (defaults from `templates/git-global.conf`, then an include of
+   only that client's `.workstation/git/config`), tightens the AGY directories to
+   mode 700, and renders `templates/client/agy-fragment.sh` with the absolute kit
+   path to `.workstation/bash/agy.sh`.
+3. Reports `ANTIGRAVITY_APP_DATA_DIR` / `GEMINI_CLI_HOME` exports in `.envrc` or
+   other fragments. They are rejected relocation candidates; the wrapper clears
+   them for AGY, and `.envrc` is never edited (remove them by hand if unused).
+
+It refuses to apply unless both flags are 1, skips unsegregated, excluded or
+invalidly named directories, and refuses clients whose AGY or `.workstation`
+directories are symlinks. Matching files are left alone, so repeat runs change
+nothing. The private home's contents (AGY login state) are never touched.
+
+Afterwards, leave and re-enter each client so the fragment loads. Authenticate
+with its assigned Google account and confirm identity across fresh wrapper
+processes. Recheck other clients and the ordinary account. A mismatch blocks rollout.
+
+Deploy and the watcher never migrate existing clients. Never copy or link the
 ordinary home's authentication, settings, plugins, or skills into private homes.
 HOME-dependent tools and AWS caches inside AGY may need separate configuration
 or login. This is account/configuration segregation, not a filesystem sandbox;
 calling the binary directly bypasses the function.
 
-Rollback: remove only the enabled client's `.workstation/bash/agy.sh`, then leave
+Rollback: `bin/agy-migrate.sh --remove CLIENT...` backs up and removes only the
+client's `.workstation/bash/agy.sh` (it works with the flag at 0), then leave
 and re-enter the client (or open a new terminal). Keep its private home intact.
 Do not log out or clean up the keyring. Reset the AGY flag to 0 to prevent new
 clients receiving the fragment.
@@ -247,6 +267,7 @@ clients receiving the fragment.
 /bin/bash tests/agy-account-isolation-stub.sh
 /bin/bash tests/agy-isolation.sh
 /bin/bash tests/agy-deploy.sh
+/bin/bash tests/agy-migrate.sh
 /bin/bash tests/agy-login-isolation-stub.sh
 /bin/bash tests/codex-isolation.sh
 /bin/bash tests/codex-deploy.sh

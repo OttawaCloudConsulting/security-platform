@@ -45,10 +45,9 @@ _mkdir_private() { # _mkdir_private <path>: mode 700, only when newly created
 }
 
 # Private global Git defaults, followed by exactly this client's config.
-_install_agy_gitconfig() {
-  local dest="$R_DIR/.workstation/agy/gitconfig" key value
-  [ ! -e "$dest" ] && [ ! -L "$dest" ] || return 0
-  if [ "$DRY_RUN" = 1 ]; then log "DRY-RUN: create $dest"; return 0; fi
+# _write_agy_gitconfig <file>: (re)write <file> from templates/git-global.conf.
+_write_agy_gitconfig() {
+  local dest="$1" key value
   (umask 077; : > "$dest")
   while IFS='=' read -r key value; do
     case "$key" in ''|'#'*) continue ;; esac
@@ -56,6 +55,23 @@ _install_agy_gitconfig() {
   done < "$KIT_ROOT/templates/git-global.conf"
   git config --file "$dest" include.path "$R_DIR/.workstation/git/config"
   chmod 600 "$dest"
+}
+
+_install_agy_gitconfig() {
+  local dest="$R_DIR/.workstation/agy/gitconfig"
+  [ ! -e "$dest" ] && [ ! -L "$dest" ] || return 0
+  if [ "$DRY_RUN" = 1 ]; then log "DRY-RUN: create $dest"; return 0; fi
+  _write_agy_gitconfig "$dest"
+}
+
+# set_render_vars <abs dir> <name>: the R_* values render_template substitutes.
+set_render_vars() {
+  R_CLIENT="$2"
+  R_CLIENT_UC="$(printf '%s' "$2" | tr 'a-z.-' 'A-Z__')"
+  R_DIR="$1"
+  R_GH="$(_resolve_gh)"
+  if [ "$ENABLE_AGENT_CLI_ISOLATION" = 1 ]; then R_AGENT_PREFIX=""; else R_AGENT_PREFIX="# "; fi
+  if [ "${ENABLE_BROWSER_ISOLATION:-0}" = 1 ]; then R_BROWSER_PREFIX=""; else R_BROWSER_PREFIX="# "; fi
 }
 
 # adopt: dir is already segregated; add only inert config files (no sourced shell
@@ -72,12 +88,7 @@ scaffold_client() { # scaffold_client <abs dir> [adopt]
     return 1
   fi
 
-  R_CLIENT="$name"
-  R_CLIENT_UC="$(printf '%s' "$name" | tr 'a-z.-' 'A-Z__')"
-  R_DIR="$dir"
-  R_GH="$(_resolve_gh)"
-  if [ "$ENABLE_AGENT_CLI_ISOLATION" = 1 ]; then R_AGENT_PREFIX=""; else R_AGENT_PREFIX="# "; fi
-  if [ "${ENABLE_BROWSER_ISOLATION:-0}" = 1 ]; then R_BROWSER_PREFIX=""; else R_BROWSER_PREFIX="# "; fi
+  set_render_vars "$dir" "$name"
 
   log "scaffolding client '$name' ($dir)${mode:+ [$mode]}"
   [ -d "$dir/.workstation" ] || run mkdir -p "$dir/.workstation"

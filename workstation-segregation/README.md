@@ -102,6 +102,6 @@ git defaults and removed `gh` helpers are not restored (a `~/.gitconfig.bak.*` i
 ## Layout
 
 `deploy.sh` (entry) · `lib/` (common, tools, global, scaffold) · `bin/watch.sh` (cron entry) ·
-`bin/{codex,browser,agy}-client.sh` (client launchers) · `shims/browser/` · `scheduler/`
+`bin/{codex,browser,agy}-client.sh` (client launchers) · `bin/agy-migrate.sh` (AGY for existing clients) · `shims/browser/` · `scheduler/`
 (`install.sh` → `darwin.sh` | `linux.sh`) · `shell/` · `hooks/` · `templates/` · `tests/` (offline
 suites) · `docs/` · `tools/` (separate OS-level tool installer, see [tools/README.md](tools/README.md))
