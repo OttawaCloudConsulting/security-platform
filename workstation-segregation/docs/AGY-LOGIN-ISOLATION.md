@@ -220,8 +220,8 @@ the wrapper to existing (adopted) clients; migrate them explicitly with
 `bin/agy-migrate.sh`:
 
 ```bash
-bin/agy-migrate.sh --dry-run zonal occ      # or --all: every segregated client
-bin/agy-migrate.sh zonal occ
+bin/agy-migrate.sh --dry-run client-a client-b  # or --all: every segregated client
+bin/agy-migrate.sh client-a client-b
 ```
 
 For each named client (or `--all` segregated, non-excluded clients) it:

@@ -78,7 +78,7 @@ client's private settings. Commands inside Codex can opt in with
   directory names and the resolved `gh` path), because they appear unquoted in generated Git
   credential helpers. A client directory with other characters is skipped with a warning.
 - **AWS SSO/CLI token caches** (`~/.aws/sso/cache`, `~/.aws/cli/cache`) are not relocatable by env var and stay shared; sso-session names are client-prefixed to keep them distinguishable.
-- **Agent CLIs:** with `ENABLE_AGENT_CLI_ISOLATION=1` new clients set `CLAUDE_CONFIG_DIR=<client>/.workstation/claude` and `CODEX_HOME=…/codex` for separate login, local settings and state. Common user/admin skills remain discoverable. Adopted clients keep their environment and shell behavior until manually migrated.
+- **Agent CLIs:** with `ENABLE_AGENT_CLI_ISOLATION=1` new clients set `CLAUDE_CONFIG_DIR=<client>/.workstation/claude` and `CODEX_HOME=…/codex` for separate login, local settings and state. Common user/admin skills remain discoverable. Adopted clients keep their environment and shell behavior until migrated with `bin/claude-migrate.sh` / `bin/codex-migrate.sh`.
 - **Browsers (opt-in, off by default):** with `ENABLE_BROWSER_ISOLATION=1` new clients put `shims/browser` on `PATH` and set `BROWSER`/`GH_BROWSER`, so `chrome`, `firefox` and CLI logins (gh, az, aws sso) open the client's existing named profile (`WORKSTATION_CHROME_PROFILE`, `WORKSTATION_FIREFOX_PROFILE`; `browser --list`). Links opened outside the client shell still use the system default browser, and profile data is not isolated, only which session is used. See the User Guide.
 - Docker daemon/images, Slack and 1Password vaults, and the browsers' own data, are **not** segregated.
 - **Docker and Helm registry logins are currently NOT segregated on macOS.** The client `config.json` has no `credsStore`, but the Docker CLI (and Helm, via oras-go) then auto-selects `osxkeychain` when that helper is on `PATH`, so `docker login` / `helm registry login` store credentials in the shared login Keychain. See [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md).
@@ -90,7 +90,7 @@ client's private settings. Commands inside Codex can opt in with
 - **azcli needs python3 ≥ 3.10 already on the machine** (stock macOS has 3.9; Homebrew/`tools/` base provide newer). The venv is bound to that interpreter. After a Python major upgrade, rebuild it: `rm -rf ~/.local/azure-cli` (the `az` link then dangles, so the next `./deploy.sh` reinstalls it). `--update-tools` alone does not, because it skips a tool whose recorded version is already current.
 - Linux: Ubuntu/Debian assumed (apt only for prerequisites). **Linux is untested**, as is the awscli installer on both OSes. The other tools were installed on macOS/arm64 during development (checksum-verified where upstream publishes one); `azcli` is opt-in and has only been exercised with stubs, so check `az --version` after a first install.
 - Starship uses `STARSHIP_CONFIG` pointing at `templates/starship.toml` (your `~/.config/starship.toml` is not touched). Set `STARSHIP_CONFIG` yourself to override.
-- Adopted clients get inert config files only (no `ssh`/`scp`/`sftp` wrapper fragment) and keep their `.envrc`/git config, so they do **not** get `core.sshCommand` or agent-CLI isolation until added by hand.
+- Adopted clients get inert config files only (no `ssh`/`scp`/`sftp` wrapper fragment) and keep their `.envrc`/git config, so they do **not** get `core.sshCommand` or agent-CLI isolation until added by hand or with the `bin/*-migrate.sh` scripts.
 - Per-client SSH uses `IdentitiesOnly yes` with a client key path; agent-held keys (1Password, ssh-agent) are not offered inside client directories unless you change `.workstation/ssh/config`.
 
 ## Uninstall
@@ -102,6 +102,6 @@ git defaults and removed `gh` helpers are not restored (a `~/.gitconfig.bak.*` i
 ## Layout
 
 `deploy.sh` (entry) · `lib/` (common, tools, global, scaffold) · `bin/watch.sh` (cron entry) ·
-`bin/{codex,browser,agy}-client.sh` (client launchers) · `bin/agy-migrate.sh` (AGY for existing clients) · `shims/browser/` · `scheduler/`
+`bin/{codex,browser,agy}-client.sh` (client launchers) · `bin/{claude,codex,agy}-migrate.sh` (agent CLIs for existing clients) · `shims/browser/` · `scheduler/`
 (`install.sh` → `darwin.sh` | `linux.sh`) · `shell/` · `hooks/` · `templates/` · `tests/` (offline
 suites) · `docs/` · `tools/` (separate OS-level tool installer, see [tools/README.md](tools/README.md))

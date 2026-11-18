@@ -92,7 +92,7 @@ snapshot > "$fixture/before"
 migrate fresh stale relocating > "$fixture/again" 2>&1 || fail 'repeat run failed'
 snapshot > "$fixture/after"
 cmp -s "$fixture/before" "$fixture/after" || fail 'repeat run changed files'
-grep -q 'fresh: AGY wrapper fragment is current' "$fixture/again" || fail 'repeat run message'
+grep -q 'fresh: .workstation/bash/agy.sh is current' "$fixture/again" || fail 'repeat run message'
 
 # Unknown names fail; --remove is a rollback that keeps the private home, even with the flag off.
 if migrate nosuch > /dev/null 2>&1; then fail 'accepted a missing client'; fi

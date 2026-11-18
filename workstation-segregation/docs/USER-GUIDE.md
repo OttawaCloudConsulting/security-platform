@@ -178,38 +178,46 @@ access, global skill discovery, desktop/browser sessions or remote account data.
 
 ### Migrating an existing client
 
-Adoption adds missing Codex/API configuration files but preserves each existing
-`.envrc` and shell fragments. Repeat these steps for **each** existing client
-directory (`<client>` below):
+Adoption adds missing private files but never edits an existing `.envrc` or adds
+shell fragments, so existing clients need an explicit, operator-run migration.
+One script per agent CLI brings a client to what a new client gets:
 
-1. Back up `.envrc`. Enable its existing
-   `export CODEX_HOME="$(expand_path .workstation/codex)"` line and add
-   `unset CODEX_SQLITE_HOME` immediately below it.
-2. Copy the GPT API clearing/loading block from `templates/client/envrc`
-   (the `for _openai_var` loop through the `dotenv` conditional) into `.envrc`.
-3. Ensure the missing private files have been scaffolded. If doing this manually,
-   create `.workstation/{codex,openai}` with mode 700 and copy
-   `templates/client/codex-config.toml` and `templates/client/openai-env` to
-   `.workstation/codex/config.toml` and `.workstation/openai/env` with mode 600,
-   preserving any existing files. Fill the API file privately.
-4. Add `.workstation/bash/codex.sh` with the following function (back up any
-   existing fragment before editing; replace `<kit>` with the absolute path of
-   this kit):
+```bash
+bin/claude-migrate.sh --dry-run client-a client-b  # preview; prints the .envrc diff
+bin/claude-migrate.sh client-a client-b            # then review and `direnv allow`
+bin/codex-migrate.sh  --allow client-a client-b    # --allow runs `direnv allow` for you
+bin/agy-migrate.sh    client-a client-b            # see AGY-LOGIN-ISOLATION.md
+```
 
-   ```bash
-   codex() { /bin/bash "<kit>/bin/codex-client.sh" "$@"; }
-   ```
+Each takes client names or `--all` (every segregated, non-excluded client),
+`--dry-run`, `--config FILE` and `--remove` (rollback). Apply first **unsets**
+the kit-managed state that differs from the current kit, then **applies** the
+current state. Matching files are left alone, so repeat runs change nothing.
+Every changed file is backed up as `<file>.bak.<timestamp>`.
 
-   Open a new terminal to load the fragment; the fragment hook only reloads on
-   client-directory changes.
-5. Enter that client, run `direnv allow`, and let the shell prompt reload its
-   environment. Confirm `CODEX_HOME` points to that client's directory, then
-   run `codex login` and `codex login status` with the intended ChatGPT account.
-6. Fill the client's private `.workstation/openai/env` with its GPT API settings
-   when needed. Never copy credentials between clients.
+| Script | Unsets, then applies |
+|---|---|
+| `claude-migrate.sh` | `.envrc`: every `CLAUDE_CONFIG_DIR` assignment (active or commented out) becomes one managed `claude` block exporting `.workstation/claude`. `.workstation/claude/settings.json`: SessionStart hooks pointing at another kit's `direnv-session-env.sh` are replaced by this kit's; other settings and hooks stay. |
+| `codex-migrate.sh` | `.envrc`: every `CODEX_HOME` assignment and `unset CODEX_SQLITE_HOME` becomes one managed `codex` block; the GPT API clearing/loading block is added (managed `openai` block) when `.envrc` does not load `.workstation/openai/env` yet. `config.toml`: top-level `cli_auth_credentials_store = "file"` and `forced_login_method = "chatgpt"`, other settings kept. `.workstation/bash/codex.sh`: replaced when it differs. |
+| `agy-migrate.sh` | `.workstation/bash/agy.sh` and `.workstation/agy/gitconfig`; never `.envrc`. |
 
-These steps are manual; re-running deploy never migrates existing environment or
-shell behavior automatically.
+All three also run the create-if-missing adopt scaffold and tighten the private
+directories (700) and files (600) they own. They refuse to apply unless
+`ENABLE_AGENT_CLI_ISOLATION=1` (and `ENABLE_AGY_CLI_ISOLATION=1` for AGY), refuse
+symlinked private paths, and never touch login state (`.workstation/claude`
+credentials and history, `codex/auth.json`, `agy/home`) or the keyring.
+`--remove` drops the export block and active lines (and the wrapper fragment for
+Codex and AGY) but keeps those directories; it also works with the flags at 0.
+
+A changed `.envrc` is blocked by direnv until approved. `--allow` runs
+`direnv allow`, which approves the whole file, including any edits made before
+the script ran, so use it only on an `.envrc` you have already reviewed. Without
+`--allow` the script prints a reminder; review the diff (`--dry-run` shows it) and run
+`direnv allow` in the client. Then open a new terminal or leave and re-enter
+the client so fragments reload, and sign in once per client: `claude` (`/login`),
+`codex login` then `codex login status`, and `agy`. Fill the client's private
+`.workstation/openai/env` with its GPT API settings when needed. Never copy
+credentials between clients.
 
 If `direnv allow` cannot be run from an automated session (for example an agent
 sandbox that cannot write `~/.local/share/direnv/allow/`), run it yourself in each
@@ -317,4 +325,5 @@ Every changed file is backed up as `<file>.bak.<timestamp>` when its content cha
 See [persistent account testing, rollout and rollback](AGY-LOGIN-ISOLATION.md).
 Private HOME changes apply only to the AGY child; existing clients are not
 automatically migrated. Once both flags are 1, run `bin/agy-migrate.sh --dry-run --all`, then
-without `--dry-run` (or name clients); `--remove` rolls a client back. One-account testing cannot authorize activation.
+without `--dry-run` (or name clients); `--remove` rolls a client back. See
+[Migrating an existing client](#migrating-an-existing-client) for the shared behavior. One-account testing cannot authorize activation.

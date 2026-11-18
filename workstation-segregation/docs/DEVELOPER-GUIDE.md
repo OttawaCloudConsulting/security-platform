@@ -19,12 +19,14 @@ bin/watch.sh              cron entry: finds new client dirs, scaffolds them
 bin/codex-client.sh       validates client context and scrubs API/auth overrides before exec
 bin/browser-client.sh     validates client context, resolves the named browser profile, launches with a scrubbed env
 bin/agy-client.sh         gated AGY launcher (see "Gated AGY integration")
-bin/agy-migrate.sh        operator-run AGY migration (unset stale, then apply) for existing clients
+bin/{claude,codex,agy}-migrate.sh   operator-run migrations of existing clients (unset stale, then apply)
 shims/browser/            chrome, firefox, browser: three-line shims that exec browser-client.sh (put on PATH by .envrc)
 lib/common.sh             logging, run(), config loading, block/backup/file helpers, template render, TCC check
 lib/tools.sh              tool installers, checksum verification, versions.lock
 lib/global.sh             ~/.bashrc, ~/.bash_profile, ~/.gitconfig, ~/.claude/settings.json handling
 lib/scaffold.sh           per-client scaffolding, gitconfig-clients generation
+lib/migrate.sh            shared migrate helpers: option parsing, client resolution, unset_if_stale,
+                          managed .envrc blocks (envrc_apply/envrc_remove), mode tightening
 scheduler/install.sh      OS dispatch -> darwin.sh | linux.sh   (cron-common.sh = shared crontab editing)
 shell/                    sourced by the user's shell: bashrc.sh, bash_profile.sh, aliases.sh
 hooks/direnv-session-env.sh   Claude Code SessionStart hook
@@ -161,8 +163,14 @@ The parent shell keeps its API settings. Commands inside Codex reload API settin
 explicitly with `direnv exec "$WORKSTATION_CLIENT_DIR" <command>`; no Codex
 session hook or installer was added.
 
-Existing clients are migrated by hand (see "Migrating an existing client" in the
+Existing clients are migrated by the operator with `bin/codex-migrate.sh` and
+`bin/claude-migrate.sh` (see "Migrating an existing client" in the
 [User Guide](USER-GUIDE.md)); this is deliberately not part of adoption behavior.
+`envrc_apply` owns the lines matching an ERE (active or commented); when the active
+owned lines already equal the block it changes nothing, otherwise it drops every owned
+line and the managed block and appends the block. It never approves an `.envrc`
+unless `--allow` is given. `tests/agent-migrate.sh` evaluates the migrated `.envrc`
+with stubbed direnv stdlib functions to check the resulting environment.
 
 `regen_gitconfig_clients` writes `$KIT_CONFIG_DIR/gitconfig-clients`: one `includeIf "gitdir:<dir>/"` per top-level dir that has `.workstation/git/config`. It uses `gitdir/i:` on macOS (case-insensitive FS) and also emits the physical (`cd -P`) path when `CLIENT_ROOT` is reached through a symlink, because Git matches the real path.
 
@@ -227,6 +235,7 @@ credential and no gh call without a client login (missing or empty `hosts.yml`),
 `get`/`store`/`erase` with one, and inherited `GH_TOKEN`-style variables dropped before gh runs.
 Run `/bin/bash tests/path-validation.sh` for the safe-path rule: unsafe `CLIENT_ROOT`, `BIN_DIR`
 and kit locations are rejected before anything is written, and an unsafe client name is skipped.
+`tests/agent-migrate.sh` covers the Claude and Codex migrators.
 The AGY suites (`agy-isolation`, `agy-deploy`, `agy-migrate`, `agy-login-isolation-stub`,
 `agy-account-isolation-stub`) are listed in [AGY-LOGIN-ISOLATION.md](AGY-LOGIN-ISOLATION.md#offline-integration-verification).
 

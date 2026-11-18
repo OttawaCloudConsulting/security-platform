@@ -163,8 +163,10 @@ log "------------------------------------------------------------"
 log "adopted existing clients:${adopted:- (none)}"
 log "  (adopted clients keep their existing .envrc/git config: they do NOT get core.sshCommand or"
 log "   agent-CLI isolation until you add them by hand; see templates/client/git-config and envrc)"
-if [ "$ENABLE_AGENT_CLI_ISOLATION" = 1 ] && [ "${ENABLE_AGY_CLI_ISOLATION:-0}" = 1 ]; then
-  log "  AGY wrapper for adopted clients: bin/agy-migrate.sh --dry-run --all, then without --dry-run"
+if [ "$ENABLE_AGENT_CLI_ISOLATION" = 1 ]; then
+  migrators="claude codex"
+  if [ "${ENABLE_AGY_CLI_ISOLATION:-0}" = 1 ]; then migrators="$migrators agy"; fi
+  log "  migrate adopted clients' agent CLIs with bin/{${migrators// /,}}-migrate.sh (--dry-run --all first)"
 fi
 [ -z "$ignored" ] || log "existing dirs NOT treated as clients:$ignored (add to ADOPT_DIRS in the config to include)"
 if [ "$DRY_RUN" != 1 ]; then

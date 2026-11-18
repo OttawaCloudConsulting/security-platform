@@ -231,6 +231,11 @@ diff shown, user approves). Consequences to handle:
 
 ### P1-4. Verify and migrate existing clients
 
+*Partly done:* `bin/{claude,codex,agy}-migrate.sh` migrate the agent-CLI isolation of
+existing clients (with backups, idempotent, symlinks refused). They do edit `.envrc`
+(managed blocks), but approve it only on an explicit `--allow`. Verify and the
+non-agent items below remain open.
+
 **Problem.** Existing clients never receive template fixes. There is no way to see which clients
 lack a fix, and manual migration is error-prone.
 
