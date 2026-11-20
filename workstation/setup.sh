@@ -458,7 +458,7 @@ _install_gitleaks() {
     return 1
   fi
 
-  verify_sha256 "$tmpdir/gitleaks.tar.gz" "$expected_hash"
+  verify_sha256 "$tmpdir/gitleaks.tar.gz" "$expected_hash" || return 1
   tar -xzf "$tmpdir/gitleaks.tar.gz" -C "$tmpdir"
   mv "$tmpdir/gitleaks" "$INSTALL_DIR/gitleaks"
   chmod +x "$INSTALL_DIR/gitleaks"
@@ -498,7 +498,7 @@ _install_hadolint() {
     return 1
   fi
 
-  verify_sha256 "$tmpdir/hadolint" "$expected_hash"
+  verify_sha256 "$tmpdir/hadolint" "$expected_hash" || return 1
   chmod +x "$tmpdir/hadolint"
   mv "$tmpdir/hadolint" "$INSTALL_DIR/hadolint"
 }
