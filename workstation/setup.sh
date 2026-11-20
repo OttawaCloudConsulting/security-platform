@@ -482,9 +482,17 @@ _install_hadolint() {
   trap 'rm -rf "${tmpdir:-}"' RETURN
 
   curl -sfL -o "$tmpdir/hadolint" "$url"
-  curl -sfL -o "$tmpdir/hadolint.sha256" "$checksum_url"
 
-  expected_hash="$(cut -d' ' -f1 < "$tmpdir/hadolint.sha256")"
+  # hadolint >= 2.15 publishes a single checksums.sha256 ("<hash> *<asset>");
+  # older releases publish a per-binary <asset>.sha256. Try combined first.
+  if curl -sfL -o "$tmpdir/checksums.sha256" "${url%/*}/checksums.sha256"; then
+    expected_hash="$(awk -v f="hadolint-${os}-${arch}" \
+      '{ n = $2; sub(/^\*/, "", n); if (n == f) { print $1; exit } }' \
+      "$tmpdir/checksums.sha256")"
+  else
+    curl -sfL -o "$tmpdir/hadolint.sha256" "$checksum_url"
+    expected_hash="$(cut -d' ' -f1 < "$tmpdir/hadolint.sha256")"
+  fi
   if [[ -z "$expected_hash" ]]; then
     err "Could not read checksum for hadolint"
     return 1
