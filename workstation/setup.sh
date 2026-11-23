@@ -192,7 +192,7 @@ generate_versions_conf() {
   syft_ver=$(resolve_latest_version "${TOOL_REPOS[SYFT]}") || syft_ver="1.42.2"
   grype_ver=$(resolve_latest_version "${TOOL_REPOS[GRYPE]}") || grype_ver="0.109.1"
   gitleaks_ver=$(resolve_latest_version "${TOOL_REPOS[GITLEAKS]}") || gitleaks_ver="8.30.0"
-  hadolint_ver=$(resolve_latest_version "${TOOL_REPOS[HADOLINT]}") || hadolint_ver="2.14.0"
+  hadolint_ver=$(resolve_latest_version "${TOOL_REPOS[HADOLINT]}") || hadolint_ver="2.15.1"
 
   cat > "$target" <<VERSIONS
 # versions.conf — Pinned security tool versions
@@ -216,7 +216,7 @@ GRYPE_INSTALL_URL="https://raw.githubusercontent.com/anchore/grype/main/install.
 GITLEAKS_URL="https://github.com/gitleaks/gitleaks/releases/download/v{VERSION}/gitleaks_{VERSION}_{OS}_{ARCH}.tar.gz"
 GITLEAKS_CHECKSUMS_URL="https://github.com/gitleaks/gitleaks/releases/download/v{VERSION}/gitleaks_{VERSION}_checksums.txt"
 HADOLINT_URL="https://github.com/hadolint/hadolint/releases/download/v{VERSION}/hadolint-{OS}-{ARCH}"
-HADOLINT_CHECKSUM_URL="https://github.com/hadolint/hadolint/releases/download/v{VERSION}/hadolint-{OS}-{ARCH}.sha256"
+HADOLINT_CHECKSUM_URL="https://github.com/hadolint/hadolint/releases/download/v{VERSION}/checksums.sha256"
 VERSIONS
 
   info "Created $target"
