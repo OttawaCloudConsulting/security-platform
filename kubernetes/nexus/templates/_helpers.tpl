@@ -99,3 +99,25 @@ subchart version changes, re-read that helper and re-check this replica.
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{/*
+Name for the TLS exposure objects (the proxy Deployment and the LoadBalancer
+Service). Same DNS-label bound as nexus.provisionJobName: a Service name is a
+DNS label capped at 63 characters, nexus.fullname may already be 63, and the
+fixed 7-character "-expose" suffix is added AFTER truncating the base to 56.
+*/}}
+{{- define "nexus.exposeName" -}}
+{{- printf "%s-expose" (include "nexus.fullname" . | trunc 56 | trimSuffix "-") }}
+{{- end }}
+
+{{/*
+Selector labels for the TLS proxy pods, and the ONLY labels the LoadBalancer
+Service selects on. `component: expose-tls` is what keeps the Service from
+matching the Nexus pods themselves, which share the instance label.
+*/}}
+{{- define "nexus.exposeSelectorLabels" -}}
+app.kubernetes.io/name: {{ include "nexus.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: expose-tls
+{{- end }}
+

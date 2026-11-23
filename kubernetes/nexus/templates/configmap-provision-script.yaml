@@ -21,3 +21,7 @@ metadata:
 data:
   provision.sh: |
     {{- .Files.Get "files/provision.sh" | nindent 4 }}
+{{- if .Values.ldap.enabled }}
+  provision-ldap.sh: |
+    {{- .Files.Get "files/provision-ldap.sh" | nindent 4 }}
+{{- end }}

@@ -1,0 +1,127 @@
+{{/*
+The TLS-terminating proxy for the optional LoadBalancer exposure. Rendered ONLY
+when expose.enabled is true; a default render has no trace of it.
+
+ONE nginx PROCESS, ONE SERVER BLOCK PER PORT (see configmap-expose.yaml, which
+carries the reasoning for X-Forwarded-Proto, the certificate reload and the
+no-plain-HTTP rule). The container ports are the listen ports: 8443 for the
+main one and 8444, 8445, ... for expose.extraPorts, in list order. They are
+internal to the pod; the LoadBalancer Service maps its own ports onto them.
+
+CERTIFICATE. The Secret is mounted as a directory with no subPath: a subPath
+mount never receives updates, and the reload behaviour depends on kubelet
+refreshing it in place.
+
+CONFIGURATION CHANGES. The nginx configuration is read once at start, so
+the pod template carries a checksum of the ConfigMap: a values change that
+alters the configuration rolls the pod. A renewed certificate does not need
+that, only a configuration change does.
+
+HARDENING. Non-root (a high UID, 10101, which Checkov CKV_K8S_40 asks for; nothing outside /tmp is written, so the image's own UID 101 is not needed), read-only root filesystem, all
+capabilities dropped, no service account token, seccomp RuntimeDefault, image by
+digest. The entrypoint is replaced (`command`) so the image's start-up scripts,
+which write under /etc/nginx, do not run on a read-only filesystem.
+*/}}
+{{- if .Values.expose.enabled }}
+{{- $e := .Values.expose }}
+{{- $_ := required "expose.tls.secretName is required when expose.enabled is true: name an existing kubernetes.io/tls Secret that holds the certificate and key" $e.tls.secretName -}}
+{{- $img := $e.image }}
+{{- /*
+  Port names are validated, never truncated. A Service port name is an IANA
+  service name of at most 15 characters and must be unique, and the Service
+  names its port "https-<name>" (6 characters of prefix), so <name> is at most
+  9 characters of lower-case letters, digits and "-". Truncating instead would
+  let two distinct names collapse into one (docker-hosted-dev and
+  docker-hosted-prod both became "https-docker-ho", Copilot review of PR 46),
+  and a duplicate port name makes the Service and the pod invalid.
+*/ -}}
+{{- $listenPorts := list 8443 }}
+{{- $seen := dict }}
+{{- range $i, $p := $e.extraPorts }}
+{{- $_ := required "every expose.extraPorts item needs a name" $p.name -}}
+{{- $_ := required (printf "expose.extraPorts item '%s' needs a port" $p.name) $p.port -}}
+{{- $_ := required (printf "expose.extraPorts item '%s' needs a nexusPort" $p.name) $p.nexusPort -}}
+{{- if not (regexMatch "^[a-z0-9]([-a-z0-9]{0,7}[a-z0-9])?$" (toString $p.name)) }}
+{{- fail (printf "expose.extraPorts name '%s' is invalid: use 1 to 9 characters, lower-case letters, digits and '-', starting and ending with a letter or digit (it becomes the Service port name https-<name>, limited to 15 characters)" $p.name) }}
+{{- end }}
+{{- if hasKey $seen (toString $p.name) }}
+{{- fail (printf "expose.extraPorts name '%s' is used twice; each name must be unique" $p.name) }}
+{{- end }}
+{{- $_ := set $seen (toString $p.name) true -}}
+{{- $listenPorts = append $listenPorts (add 8444 $i) }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nexus.exposeName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nexus.labels" . | nindent 4 }}
+    app.kubernetes.io/component: expose-tls
+spec:
+  replicas: {{ $e.replicas }}
+  selector:
+    matchLabels:
+      {{- include "nexus.exposeSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "nexus.labels" . | nindent 8 }}
+        app.kubernetes.io/component: expose-tls
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap-expose.yaml") . | sha256sum }}
+    spec:
+      # The proxy makes no Kubernetes API call; a mounted token would be pure
+      # attack surface (as for the provisioning Job).
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: proxy
+          image: {{ if $img.digest }}{{ printf "%s@%s" $img.repository $img.digest }}{{ else }}{{ printf "%s:%s" $img.repository (toString $img.tag) }}{{ end }}
+          command: ["nginx", "-c", "/etc/nginx-custom/nginx.conf", "-g", "daemon off;"]
+          ports:
+            {{- range $listenPorts }}
+            - name: tls-{{ . }}
+              containerPort: {{ . }}
+            {{- end }}
+          readinessProbe:
+            tcpSocket:
+              port: 8443
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8443
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/nginx/tls
+              readOnly: true
+            - name: config
+              mountPath: /etc/nginx-custom
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            {{- toYaml $e.resources | nindent 12 }}
+      volumes:
+        - name: tls
+          secret:
+            secretName: {{ $e.tls.secretName }}
+        - name: config
+          configMap:
+            name: {{ include "nexus.exposeName" . }}-config
+        - name: tmp
+          emptyDir: {}
+{{- end }}

@@ -1,0 +1,61 @@
+{{/*
+The optional LoadBalancer Service for TLS exposure. Rendered ONLY when
+expose.enabled is true.
+
+PASS-THROUGH, NOT DEFAULTS. annotations and labels are rendered exactly as the
+consumer wrote them. loadBalancerClass, loadBalancerIP and externalTrafficPolicy
+are rendered only when set, so a consumer who does not supply one gets the
+cluster's own behaviour rather than a value this chart invented. Nothing here
+names an address, a network, a class or a policy.
+
+EVERY PORT IS TLS. The ports are the main listener and the expose.extraPorts
+items, each targeting a proxy listener that is `ssl` with a certificate. There is
+no http port. The selector matches only the proxy pods (component: expose-tls),
+never the Nexus pods.
+
+The existing ClusterIP Service comes from the nexus3 subchart and is not
+referenced, modified or replaced by anything in this file.
+*/}}
+{{- if .Values.expose.enabled }}
+{{- $e := .Values.expose }}
+{{- $_ := required "expose.tls.secretName is required when expose.enabled is true: name an existing kubernetes.io/tls Secret that holds the certificate and key" $e.tls.secretName -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "nexus.exposeName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nexus.labels" . | nindent 4 }}
+    app.kubernetes.io/component: expose-tls
+    {{- with $e.service.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $e.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: LoadBalancer
+  {{- with $e.service.loadBalancerClass }}
+  loadBalancerClass: {{ . }}
+  {{- end }}
+  {{- with $e.service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  {{- with $e.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ . }}
+  {{- end }}
+  selector:
+    {{- include "nexus.exposeSelectorLabels" . | nindent 4 }}
+  ports:
+    - name: https
+      port: {{ $e.port }}
+      targetPort: 8443
+      protocol: TCP
+    {{- range $i, $p := $e.extraPorts }}
+    - name: {{ printf "https-%s" $p.name }}
+      port: {{ $p.port }}
+      targetPort: {{ add 8444 $i }}
+      protocol: TCP
+    {{- end }}
+{{- end }}
