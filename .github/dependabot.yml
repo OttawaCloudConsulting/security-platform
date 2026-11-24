@@ -17,3 +17,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Wait 7 days after a release before proposing it, so a compromised or
+    # yanked action version has time to be caught upstream (CWE-829; Semgrep
+    # p/default dependabot-missing-cooldown).
+    cooldown:
+      default-days: 7
