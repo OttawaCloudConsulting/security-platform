@@ -56,6 +56,16 @@ A consumer repository adopts these by one of two modes:
 
 The full walk-through for both modes — including `gate_mode` selection, branch protection setup, and Dependabot wiring — is the procedure of record: `docs/adoption-guide.md` in the `security_solution` documentation repository.
 
+**Versioning and release procedure (Mode 2):**
+
+- Tags `vX.Y.Z` and the moving major tag `vX` are workflow versions. Project-phase markers use the `milestone-*` prefix, never a bare `vX.Y`, so Dependabot does not read them as newer workflow majors.
+- To release a `security.yml` change:
+  1. Tag the merged commit: `git tag -a vX.Y.Z -m "vX.Y.Z" <sha> && git push origin vX.Y.Z`.
+  2. Publish its GitHub Release with notes on the `security.yml` change: `gh release create vX.Y.Z --title vX.Y.Z --notes "..."`.
+  3. Move the major tag: `git tag -f vX vX.Y.Z^{} && git push -f origin vX`.
+- Once `vX` moves, every `@vX` consumer runs the new `security.yml` on its next run, with no consumer PR.
+- A consumer that wants to review each change pins `@vX.Y.Z` or a commit SHA instead of `@vX`, and lets Dependabot propose the bumps.
+
 **Files deployed:**
 
 | File | Location in target repo | Description |
