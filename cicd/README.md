@@ -63,7 +63,7 @@ The full walk-through for both modes — including `gate_mode` selection, branch
   1. Tag the merged commit: `git tag -a vX.Y.Z -m "vX.Y.Z" <sha> && git push origin vX.Y.Z`.
   2. Publish its GitHub Release with notes on the `security.yml` change: `gh release create vX.Y.Z --title vX.Y.Z --notes "..."`.
   3. Move the major tag: `git tag -f vX vX.Y.Z^{} && git push -f origin vX`.
-- Once `vX` moves, every `@vX` consumer runs the new `security.yml` on its next run, with no consumer PR.
+- Once `vX` moves, every `@vX` consumer runs the new `security.yml` on its next newly triggered run (a re-run of an earlier run keeps the old version), with no consumer PR.
 - A consumer that wants to review each change pins `@vX.Y.Z` or a commit SHA instead of `@vX`, and lets Dependabot propose the bumps.
 
 **Files deployed:**
